@@ -115,6 +115,8 @@ const WorkoutExerciseComponent = ({ workoutExercise }: WorkoutExerciseComponentP
                 workoutExerciseId={workoutExercise.id}
                 set={set}
                 setNumber={index + 1}
+                currentEquipmentType={workoutExercise.exercise.equipmentType}
+                currentVariation={workoutExercise.exercise.variations?.[0]}
                 onUpdate={handleSetUpdate}
                 onDelete={() => handleSetDelete(set.id)}
               />

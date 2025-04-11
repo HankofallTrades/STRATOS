@@ -12,6 +12,8 @@ export interface ExerciseSet {
   reps: number;
   exerciseId: string;
   completed: boolean;
+  equipmentType?: 'DB' | 'BB' | 'KB' | 'Cable' | 'Free';
+  variation?: string;
 }
 
 export interface WorkoutExercise {
