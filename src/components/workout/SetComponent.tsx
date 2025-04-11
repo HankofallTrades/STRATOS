@@ -1,5 +1,5 @@
 import React from 'react';
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useWorkout } from "@/context/WorkoutContext";
 import { ExerciseSet, WeightSuggestion } from "@/types/workout";
 import { Input } from "@/components/ui/input";
@@ -14,14 +14,38 @@ interface SetComponentProps {
   setNumber: number;
   onUpdate: (updatedSet: ExerciseSet) => void;
   onDelete: () => void;
+  currentEquipmentType: 'DB' | 'BB' | 'KB' | 'Cable' | 'Free' | undefined;
+  currentVariation: string | undefined;
 }
 
-const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, setNumber, onUpdate, onDelete }) => {
-  const { updateSet, completeSet, getWeightSuggestions } = useWorkout();
+const SetComponent: React.FC<SetComponentProps> = ({
+  workoutExerciseId,
+  set,
+  setNumber,
+  onUpdate,
+  onDelete,
+  currentEquipmentType,
+  currentVariation,
+}) => {
+  const { 
+    updateSet, 
+    completeSet, 
+    getWeightSuggestions,
+    getLastSetPerformance
+  } = useWorkout();
   
   const [weight, setWeight] = useState<number>(set.weight);
   const [reps, setReps] = useState<number>(set.reps);
   const [suggestions, setSuggestions] = useState<WeightSuggestion[]>([]);
+  
+  const lastPerformance = useMemo(() => {
+    return getLastSetPerformance(
+      set.exerciseId,
+      setNumber,
+      currentEquipmentType,
+      currentVariation
+    );
+  }, [set.exerciseId, setNumber, currentEquipmentType, currentVariation, getLastSetPerformance]);
   
   useEffect(() => {
     setSuggestions(getWeightSuggestions(set.exerciseId));
@@ -64,6 +88,9 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
           <div>
             <Label htmlFor={`weight-${set.id}`} className="text-xs text-gray-500 mb-1 block">
               Weight (kg)
+              {lastPerformance && (
+                <span className="ml-2 text-xs text-gray-400 font-normal">(Last: {lastPerformance.weight}kg)</span>
+              )}
             </Label>
             <Input
               id={`weight-${set.id}`}
@@ -80,6 +107,9 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
           <div>
             <Label htmlFor={`reps-${set.id}`} className="text-xs text-gray-500 mb-1 block">
               Reps
+              {lastPerformance && (
+                <span className="ml-2 text-xs text-gray-400 font-normal">(Last: {lastPerformance.reps})</span>
+              )}
             </Label>
             <Input
               id={`reps-${set.id}`}

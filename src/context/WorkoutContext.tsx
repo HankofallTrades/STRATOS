@@ -43,6 +43,14 @@ interface WorkoutContextType {
   // New additions
   addExerciseVariation: (exerciseId: string, variation: string) => void;
   getExerciseVariations: (exerciseId: string) => string[];
+  
+  // New additions
+  getLastSetPerformance: (
+    exerciseId: string,
+    setNumber: number, // 1-indexed
+    equipmentType: 'DB' | 'BB' | 'KB' | 'Cable' | 'Free' | undefined,
+    variation: string | undefined
+  ) => { weight: number; reps: number } | null;
 }
 
 const WorkoutContext = createContext<WorkoutContextType | undefined>(undefined);
@@ -361,21 +369,34 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Update a set in the current workout
   const updateSet = (workoutExerciseId: string, setId: string, weight: number, reps: number) => {
     if (!currentWorkout) return;
-    
+
     setCurrentWorkout((prev) => {
       if (!prev) return null;
       return {
         ...prev,
-        exercises: prev.exercises.map((ex) =>
-          ex.id === workoutExerciseId
-            ? {
-                ...ex,
-                sets: ex.sets.map((set) =>
-                  set.id === setId ? { ...set, weight, reps } : set
-                ),
-              }
-            : ex
-        ),
+        exercises: prev.exercises.map((ex) => {
+          if (ex.id === workoutExerciseId) {
+            // Get the current equipment type and variation for this exercise
+            const currentEquipmentType = ex.exercise.equipmentType;
+            const currentVariation = ex.exercise.variations?.[0]; // Assuming the first variation is the active one
+
+            return {
+              ...ex,
+              sets: ex.sets.map((set) =>
+                set.id === setId
+                  ? {
+                      ...set,
+                      weight,
+                      reps,
+                      equipmentType: currentEquipmentType, // Store equipment type
+                      variation: currentVariation,         // Store variation
+                    }
+                  : set
+              ),
+            };
+          }
+          return ex;
+        }),
       };
     });
   };
@@ -469,6 +490,45 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
     }
     
+    return null;
+  };
+  
+  // Get the last performance for a specific set, variation, and equipment
+  const getLastSetPerformance = (
+    exerciseId: string,
+    setNumber: number, // 1-indexed
+    equipmentType: 'DB' | 'BB' | 'KB' | 'Cable' | 'Free' | undefined,
+    variation: string | undefined
+  ): { weight: number; reps: number } | null => {
+    // Look at workout history in reverse chronological order
+    for (let i = workoutHistory.length - 1; i >= 0; i--) {
+      const workout = workoutHistory[i];
+
+      for (const workoutExercise of workout.exercises) {
+        if (workoutExercise.exerciseId === exerciseId) {
+          // Check if the set exists at the given index (setNumber - 1)
+          const targetSetIndex = setNumber - 1;
+          if (targetSetIndex >= 0 && targetSetIndex < workoutExercise.sets.length) {
+            const set = workoutExercise.sets[targetSetIndex];
+
+            // Check if the set was completed and matches the criteria
+            if (
+              set.completed &&
+              set.equipmentType === equipmentType &&
+              set.variation === variation
+            ) {
+              // Found the most recent matching completed set
+              return {
+                weight: set.weight,
+                reps: set.reps,
+              };
+            }
+          }
+        }
+      }
+    }
+
+    // No matching set found in history
     return null;
   };
   
@@ -567,6 +627,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     updateExerciseVariation,
     addExerciseVariation,
     getExerciseVariations,
+    getLastSetPerformance,
   };
   
   return <WorkoutContext.Provider value={value}>{children}</WorkoutContext.Provider>;
