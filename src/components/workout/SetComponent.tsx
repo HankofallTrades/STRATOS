@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { CheckCircle2 } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
 
 interface SetComponentProps {
   workoutExerciseId: string;
@@ -72,10 +73,40 @@ const SetComponent: React.FC<SetComponentProps> = ({
     onUpdate({ ...set, completed: !set.completed });
   };
   
-  const handleSuggestionClick = (suggestedWeight: number) => {
+  const handleSliderChange = (value: number[]) => {
+    const newWeight = value[0];
+    setWeight(newWeight);
+    onUpdate({ ...set, weight: newWeight });
+  };
+  
+  const handleSuggestionMarkerClick = (suggestedWeight: number) => {
     setWeight(suggestedWeight);
     onUpdate({ ...set, weight: suggestedWeight });
   };
+
+  const sliderMin = useMemo(() => {
+    if (suggestions.length > 0) {
+      return suggestions[0].weight;
+    }
+    return 0;
+  }, [suggestions]);
+
+  const sliderMax = useMemo(() => {
+    if (suggestions.length > 0) {
+      return suggestions[suggestions.length - 1].weight;
+    }
+    const exercise = useWorkout().getExercise(set.exerciseId);
+    return Math.max(50, Math.round((exercise?.oneRepMax || 50) / 0.5) * 0.5);
+  }, [suggestions, set.exerciseId, useWorkout]);
+
+  const suggestionMarkers = useMemo(() => {
+    if (sliderMax <= sliderMin) return [];
+    return suggestions.map(suggestion => ({
+      weight: suggestion.weight,
+      percentage: suggestion.percentage,
+      position: ((suggestion.weight - sliderMin) / (sliderMax - sliderMin)) * 100
+    }));
+  }, [suggestions, sliderMin, sliderMax]);
   
   return (
     <div className={`p-3 rounded-lg border ${set.completed ? 'bg-green-50 border-green-200' : 'bg-white'}`}>
@@ -136,21 +167,44 @@ const SetComponent: React.FC<SetComponentProps> = ({
         </div>
       </div>
       
-      {!set.completed && suggestions.length > 0 && (
-        <div className="mt-3">
-          <div className="flex flex-wrap gap-2">
-            {suggestions.map((suggestion) => (
-              <Button
-                key={suggestion.percentage}
-                variant="outline"
-                size="sm"
-                className="text-xs h-7 px-2 hover:bg-gray-50"
-                onClick={() => handleSuggestionClick(suggestion.weight)}
-              >
-                {suggestion.weight} kg ({suggestion.percentage}%)
-              </Button>
-            ))}
+      {!set.completed && (
+        <div className="mt-4 space-y-3">
+          <div className="px-8">
+            <Slider
+              value={[weight]}
+              onValueChange={handleSliderChange}
+              min={sliderMin}
+              max={sliderMax}
+              step={0.5}
+              disabled={set.completed}
+              aria-label="Weight Slider"
+              className="w-full"
+            />
           </div>
+          {suggestionMarkers.length > 0 && sliderMax > sliderMin && (
+            <div className="relative h-4 px-8">
+              <div className="relative w-full h-full">
+                <div className="absolute inset-x-[10px] h-full">
+                  {suggestionMarkers.map((marker) => (
+                    <div 
+                      key={marker.percentage}
+                      className="absolute text-center group cursor-pointer whitespace-nowrap"
+                      style={{ 
+                        left: `${marker.position}%`, 
+                        transform: 'translateX(-50%)'
+                      }}
+                      onClick={() => handleSuggestionMarkerClick(marker.weight)}
+                    >
+                      <div className="w-px h-1.5 bg-gray-300 group-hover:bg-primary mx-auto"></div>
+                      <span className="text-[10px] text-gray-500 group-hover:font-semibold">
+                        {marker.weight}kg ({marker.percentage}%)
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
       

@@ -455,7 +455,8 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const exercise = exercises.find((ex) => ex.id === exerciseId);
     if (!exercise || !exercise.oneRepMax) return [];
     
-    const percentages = [30, 40, 50, 60, 70, 75, 80, 85, 90, 95, 100];
+    // Use fewer percentages for slider suggestions
+    const percentages = [40, 50, 60, 70, 80, 90, 100]; 
     
     return percentages.map((percentage) => ({
       percentage,
