@@ -1,4 +1,4 @@
-
+import React from 'react';
 import { useState, useEffect } from "react";
 import { useWorkout } from "@/context/WorkoutContext";
 import { ExerciseSet, WeightSuggestion } from "@/types/workout";
@@ -12,9 +12,11 @@ interface SetComponentProps {
   workoutExerciseId: string;
   set: ExerciseSet;
   setNumber: number;
+  onUpdate: (updatedSet: ExerciseSet) => void;
+  onDelete: () => void;
 }
 
-const SetComponent = ({ workoutExerciseId, set, setNumber }: SetComponentProps) => {
+const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, setNumber, onUpdate, onDelete }) => {
   const { updateSet, completeSet, getWeightSuggestions } = useWorkout();
   
   const [weight, setWeight] = useState<number>(set.weight);
@@ -33,22 +35,22 @@ const SetComponent = ({ workoutExerciseId, set, setNumber }: SetComponentProps) 
   const handleWeightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseFloat(e.target.value) || 0;
     setWeight(value);
-    updateSet(workoutExerciseId, set.id, value, reps);
+    onUpdate({ ...set, weight: value });
   };
   
   const handleRepsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value, 10) || 0;
     setReps(value);
-    updateSet(workoutExerciseId, set.id, weight, value);
+    onUpdate({ ...set, reps: value });
   };
   
   const handleCompletedChange = () => {
-    completeSet(workoutExerciseId, set.id, !set.completed);
+    onUpdate({ ...set, completed: !set.completed });
   };
   
   const handleSuggestionClick = (suggestedWeight: number) => {
     setWeight(suggestedWeight);
-    updateSet(workoutExerciseId, set.id, suggestedWeight, reps);
+    onUpdate({ ...set, weight: suggestedWeight });
   };
   
   return (
@@ -121,6 +123,15 @@ const SetComponent = ({ workoutExerciseId, set, setNumber }: SetComponentProps) 
           </div>
         </div>
       )}
+      
+      <div className="flex items-center justify-end mt-3">
+        <button
+          onClick={onDelete}
+          className="p-2 text-destructive hover:bg-destructive/10 rounded"
+        >
+          Delete
+        </button>
+      </div>
     </div>
   );
 };

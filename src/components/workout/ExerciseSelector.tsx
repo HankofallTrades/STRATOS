@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useWorkout } from "@/context/WorkoutContext";
 import { Button } from "@/components/ui/button";
@@ -39,18 +38,18 @@ const ExerciseSelector = () => {
           <span>Add Exercise</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md dark:bg-gray-800 dark:border-gray-700">
         <DialogHeader>
-          <DialogTitle>Select Exercise</DialogTitle>
+          <DialogTitle className="dark:text-white">Select Exercise</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 pt-4">
           <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500 dark:text-gray-400" />
             <Input
               placeholder="Search exercises..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
+              className="pl-9 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
             />
           </div>
 
@@ -61,31 +60,31 @@ const ExerciseSelector = () => {
                   key={exercise.id}
                   variant="outline"
                   onClick={() => handleSelectExercise(exercise.id)}
-                  className="w-full justify-start h-auto py-3 px-4 font-normal hover:bg-gray-50"
+                  className="w-full justify-start h-auto py-3 px-4 font-normal hover:bg-gray-50 dark:border-gray-700 dark:text-white dark:hover:bg-gray-700"
                 >
                   {exercise.name}
                   {exercise.oneRepMax && (
-                    <span className="ml-auto text-xs text-gray-500">
+                    <span className="ml-auto text-xs text-gray-500 dark:text-gray-400">
                       1RM: {Math.round(exercise.oneRepMax)} kg
                     </span>
                   )}
                 </Button>
               ))
             ) : (
-              <p className="text-center text-gray-500 py-2">No matching exercises found</p>
+              <p className="text-center text-gray-500 dark:text-gray-400 py-2">No matching exercises found</p>
             )}
           </div>
 
           {isAddingNew ? (
-            <div className="p-4 border rounded-lg space-y-3">
-              <Label htmlFor="new-exercise">New Exercise Name</Label>
+            <div className="p-4 border rounded-lg space-y-3 dark:border-gray-700 dark:bg-gray-800">
+              <Label htmlFor="new-exercise" className="dark:text-white">New Exercise Name</Label>
               <div className="flex space-x-2">
                 <Input
                   id="new-exercise"
                   value={newExerciseName}
                   onChange={(e) => setNewExerciseName(e.target.value)}
                   placeholder="Enter exercise name"
-                  className="flex-1"
+                  className="flex-1 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 />
                 <Button 
                   variant="default" 
@@ -101,6 +100,7 @@ const ExerciseSelector = () => {
                     setIsAddingNew(false);
                     setNewExerciseName("");
                   }}
+                  className="dark:border-gray-700 dark:text-white dark:hover:bg-gray-700"
                 >
                   <X size={16} />
                 </Button>
@@ -109,7 +109,7 @@ const ExerciseSelector = () => {
           ) : (
             <Button
               variant="outline"
-              className="w-full"
+              className="w-full dark:border-gray-700 dark:text-white dark:hover:bg-gray-700"
               onClick={() => setIsAddingNew(true)}
             >
               <Plus size={16} className="mr-2" />
