@@ -1,4 +1,3 @@
-
 import { useWorkout } from "@/context/WorkoutContext";
 import { Button } from "@/components/ui/button";
 import { Plus, Save } from "lucide-react";
@@ -24,7 +23,7 @@ const WorkoutComponent = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Current Workout</h2>
+        <h2 className="text-xl font-semibold dark:text-white">Current Workout</h2>
         <Button 
           onClick={handleEndWorkout}
           variant="default"
@@ -45,8 +44,8 @@ const WorkoutComponent = () => {
           ))}
         </div>
       ) : (
-        <div className="text-center py-6 bg-gray-50 rounded-lg">
-          <p className="text-gray-500 mb-4">No exercises added yet</p>
+        <div className="text-center py-6 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          <p className="text-gray-500 dark:text-gray-400 mb-4">No exercises added yet</p>
         </div>
       )}
 

@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { useWorkout } from "@/context/WorkoutContext";
 import { Dumbbell, BarChart, Clock } from "lucide-react";
@@ -12,14 +11,14 @@ const Index = () => {
   return (
     <div className="container mx-auto p-4 max-w-3xl">
       <header className="flex flex-col items-center justify-between mb-8 text-center">
-        <h1 className="text-3xl md:text-4xl font-bold mb-2 text-fitnessBlue">Lift Smart</h1>
-        <p className="text-gray-600 mb-6">Your personal strength training companion</p>
+        <h1 className="text-3xl md:text-4xl font-bold mb-2 text-fitnessBlue dark:text-fitnessBlue">Lift Smart</h1>
+        <p className="text-gray-600 dark:text-gray-400 mb-6">Your personal strength training companion</p>
         
         <nav className="flex gap-4 mb-8">
           <Link to="/">
             <Button 
               variant="outline" 
-              className="flex items-center gap-2 border-fitnessBlue text-fitnessBlue hover:bg-fitnessBlue/10"
+              className="flex items-center gap-2 border-fitnessBlue text-fitnessBlue hover:bg-fitnessBlue/10 dark:border-fitnessBlue dark:text-fitnessBlue dark:hover:bg-fitnessBlue/20"
             >
               <Dumbbell size={18} />
               <span>Workout</span>
@@ -28,7 +27,7 @@ const Index = () => {
           <Link to="/analytics">
             <Button 
               variant="outline" 
-              className="flex items-center gap-2 border-fitnessIndigo text-fitnessIndigo hover:bg-fitnessIndigo/10"
+              className="flex items-center gap-2 border-fitnessIndigo text-fitnessIndigo hover:bg-fitnessIndigo/10 dark:border-fitnessIndigo dark:text-fitnessIndigo dark:hover:bg-fitnessIndigo/20"
             >
               <BarChart size={18} />
               <span>Analytics</span>
@@ -39,10 +38,10 @@ const Index = () => {
 
       <main>
         {!currentWorkout ? (
-          <div className="flex flex-col items-center justify-center py-12 px-4 bg-gray-50 rounded-lg shadow-sm">
+          <div className="flex flex-col items-center justify-center py-12 px-4 bg-gray-50 dark:bg-gray-800 rounded-lg shadow-sm">
             <Dumbbell size={64} className="text-fitnessBlue mb-6" />
-            <h2 className="text-2xl font-semibold mb-4">Ready to start your workout?</h2>
-            <p className="text-gray-600 mb-8 text-center">
+            <h2 className="text-2xl font-semibold mb-4 dark:text-white">Ready to start your workout?</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-8 text-center">
               Track your exercises, sets, and reps to monitor your progress over time.
             </p>
             <Button 
@@ -55,9 +54,9 @@ const Index = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="bg-gray-100 p-4 rounded-lg mb-6 flex items-center justify-center">
+            <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg mb-6 flex items-center justify-center">
               <Clock className="text-fitnessBlue mr-2" />
-              <span className="text-xl font-mono">{formatTime(workoutTime)}</span>
+              <span className="text-xl font-mono dark:text-white">{formatTime(workoutTime)}</span>
             </div>
             
             <WorkoutComponent />
