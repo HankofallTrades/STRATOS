@@ -1,8 +1,9 @@
-
 export interface Exercise {
   id: string;
   name: string;
   oneRepMax?: number;
+  equipmentType?: 'DB' | 'BB' | 'KB' | 'Cable' | 'Free';
+  variations?: string[];
 }
 
 export interface ExerciseSet {
