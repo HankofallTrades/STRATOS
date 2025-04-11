@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useWorkout } from "@/context/WorkoutContext";
-import { Dumbbell, BarChart, Clock } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Dumbbell, Clock } from "lucide-react";
 import { formatTime } from "@/utils/timeUtils";
 import WorkoutComponent from "@/components/workout/WorkoutComponent";
 
@@ -11,29 +10,8 @@ const Index = () => {
   return (
     <div className="container mx-auto p-4 max-w-3xl">
       <header className="flex flex-col items-center justify-between mb-8 text-center">
-        <h1 className="text-3xl md:text-4xl font-bold mb-2 text-fitnessBlue dark:text-fitnessBlue">Lift Smart</h1>
-        <p className="text-gray-600 dark:text-gray-400 mb-6">Your personal strength training companion</p>
-        
-        <nav className="flex gap-4 mb-8">
-          <Link to="/">
-            <Button 
-              variant="outline" 
-              className="flex items-center gap-2 border-fitnessBlue text-fitnessBlue hover:bg-fitnessBlue/10 dark:border-fitnessBlue dark:text-fitnessBlue dark:hover:bg-fitnessBlue/20"
-            >
-              <Dumbbell size={18} />
-              <span>Workout</span>
-            </Button>
-          </Link>
-          <Link to="/analytics">
-            <Button 
-              variant="outline" 
-              className="flex items-center gap-2 border-fitnessIndigo text-fitnessIndigo hover:bg-fitnessIndigo/10 dark:border-fitnessIndigo dark:text-fitnessIndigo dark:hover:bg-fitnessIndigo/20"
-            >
-              <BarChart size={18} />
-              <span>Analytics</span>
-            </Button>
-          </Link>
-        </nav>
+        <h1 className="text-3xl md:text-4xl font-bold mb-2 text-fitnessBlue dark:text-fitnessBlue">Stratos</h1>
+        <p className="text-gray-600 dark:text-gray-400 mb-6">Your personal health & fitness companion</p>
       </header>
 
       <main>
