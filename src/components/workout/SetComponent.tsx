@@ -32,7 +32,8 @@ const SetComponent: React.FC<SetComponentProps> = ({
     updateSet, 
     completeSet, 
     getWeightSuggestions,
-    getLastSetPerformance
+    getLastSetPerformance,
+    getExercise
   } = useWorkout();
   
   const [weight, setWeight] = useState<number>(set.weight);
@@ -91,13 +92,14 @@ const SetComponent: React.FC<SetComponentProps> = ({
     return 0;
   }, [suggestions]);
 
+  const exercise = useMemo(() => getExercise(set.exerciseId), [getExercise, set.exerciseId]);
+
   const sliderMax = useMemo(() => {
     if (suggestions.length > 0) {
       return suggestions[suggestions.length - 1].weight;
     }
-    const exercise = useWorkout().getExercise(set.exerciseId);
     return Math.max(50, Math.round((exercise?.oneRepMax || 50) / 0.5) * 0.5);
-  }, [suggestions, set.exerciseId, useWorkout]);
+  }, [suggestions, exercise]);
 
   const suggestionMarkers = useMemo(() => {
     if (sliderMax <= sliderMin) return [];
