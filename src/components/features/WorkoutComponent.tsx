@@ -5,9 +5,11 @@ import { addWorkoutToHistory } from "@/state/history/historySlice";
 import { Button } from "@/components/core/button";
 import { Plus, Save } from "lucide-react";
 import ExerciseSelector from "./ExerciseSelector";
-import WorkoutExerciseComponent from "./WorkoutExerciseComponent";
+import WorkoutExerciseContainer from "./WorkoutExerciseContainer";
 import { toast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/core/card";
+import { ScrollArea } from "@/components/core/scroll-area";
+import { Workout } from "@/lib/types/workout";
 
 const WorkoutComponent = () => {
   const dispatch = useAppDispatch();
@@ -51,7 +53,7 @@ const WorkoutComponent = () => {
       {currentWorkout.exercises.length > 0 ? (
         <div className="space-y-6">
           {currentWorkout.exercises.map((exercise) => (
-            <WorkoutExerciseComponent 
+            <WorkoutExerciseContainer 
               key={exercise.id} 
               workoutExercise={exercise} 
             />

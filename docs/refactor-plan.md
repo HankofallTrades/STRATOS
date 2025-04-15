@@ -222,7 +222,7 @@ The Lift Smart Workout App codebase is functional but has several areas where mo
 **Problem**: The `components/ui/` directory is a dumping ground for shadcn-ui components, many of which are unused or overly generic. Feature components like `WorkoutExerciseComponent` mix UI logic with state mutations, violating separation of concerns.
 
 **Plan**:
-- **Audit and Prune UI Components**:
+- **Audit and Prune UI Components**: [✅ Completed]
   - Analyze usage of `components/ui/` files (e.g., `carousel.tsx`, `menubar.tsx`) and remove unused ones to reduce bundle size.
   - Group related components (e.g., `dialog.tsx`, `alert-dialog.tsx`, `drawer.tsx`) into a `Dialog/` module with a unified export:
     ```ts
@@ -231,8 +231,8 @@ The Lift Smart Workout App codebase is functional but has several areas where mo
     export * from './AlertDialog';
     export * from './Drawer';
     ```
-  - Optimize `class-variance-authority` (cva) usage in components like `Button` and `Badge` to reduce runtime overhead by precomputing variants where possible.
-- **Refactor Feature Components**:
+  - Optimize `class-variance-authority` (cva) usage in components like `Button` and `Badge` to reduce runtime overhead by precomputing variants where possible. [✅ Verified - Already Optimized]
+- **Refactor Feature Components**: [✅ Completed - WorkoutExerciseComponent]
   - Split `WorkoutExerciseComponent.tsx` into:
     - `WorkoutExerciseView`: Pure UI component for rendering exercise details and sets.
     - `WorkoutExerciseContainer`: Handles state interactions (e.g., `addSetToExercise`, `updateSet`).
@@ -364,8 +364,8 @@ The Lift Smart Workout App codebase is functional but has several areas where mo
         );
       };
       ```
-  - Apply similar container/view splits to `WorkoutComponent`, `ExerciseSelector`, and `SetComponent`.
-- **Enhance Accessibility**:
+  - Apply similar container/view splits to `WorkoutComponent`, `ExerciseSelector`, and `SetComponent`. [🚧 In Progress / Deferred]
+- **Enhance Accessibility**: [✅ Completed - BottomNav]
   - Add ARIA attributes to interactive components (e.g., `BottomNav`, `Select` in `WorkoutExerciseComponent`).
   - Ensure keyboard navigation for all UI elements (e.g., `Enter` key support for buttons).
   - Example for `BottomNav`:
@@ -380,15 +380,17 @@ The Lift Smart Workout App codebase is functional but has several areas where mo
       <span className="text-xs mt-1">Analytics</span>
     </NavLink>
     ```
-- **Progressive Enhancement**:
+- **Progressive Enhancement**: [🚧 In Progress / Deferred]
   - Ensure UI components render meaningfully without JavaScript (e.g., fallback links in `BottomNav`).
   - Use `useIsMobile` hook to conditionally render mobile-friendly layouts (e.g., hide certain analytics charts on small screens).
 
 **Deliverables**:
-- Leaner `components/core/` directory with grouped primitives.
-- Feature components split into view and container patterns.
-- Improved accessibility with ARIA compliance and keyboard support.
-- Progressive enhancement for non-JS scenarios.
+- [✅] Leaner `components/core/` directory with grouped primitives.
+- [✅] `WorkoutExerciseComponent` split into view and container patterns.
+- [✅] Improved accessibility in `BottomNav` with ARIA compliance.
+- [ ] Keyboard support verification.
+- [ ] Progressive enhancement for non-JS scenarios (Deferred).
+- [ ] Container/View split for other components (Deferred).
 
 ---
 

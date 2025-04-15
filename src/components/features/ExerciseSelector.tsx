@@ -10,7 +10,7 @@ import { Button } from "@/components/core/button";
 import { Plus, Search, X } from "lucide-react";
 import { Label } from "@/components/core/label";
 import { Input } from "@/components/core/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/core/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/core/Dialog";
 import { Exercise, WorkoutExercise } from "@/lib/types/workout";
 import { v4 as uuidv4 } from 'uuid';
 
