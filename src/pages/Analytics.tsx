@@ -1,12 +1,13 @@
-
-import { useWorkout } from "@/context/WorkoutContext";
-import { formatTime } from "@/utils/timeUtils";
+import React from 'react';
+import { useWorkout } from '@/state/workout/WorkoutContext';
+import { formatTime } from '@/lib/utils/timeUtils';
 import { BarChart, Clock, Calendar, Dumbbell, Award } from "lucide-react";
 import { Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/core/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/core/card";
 import { useState } from "react";
-import { Exercise } from "@/types/workout";
+import { Exercise } from "@/lib/types/workout";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Bar } from 'recharts';
 
 const Analytics = () => {
   const { workoutHistory, exercises } = useWorkout();

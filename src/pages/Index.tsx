@@ -1,8 +1,8 @@
-import { Button } from "@/components/ui/button";
-import { useWorkout } from "@/context/WorkoutContext";
+import { Button } from "@/components/core/button";
+import { WorkoutProvider, useWorkout } from "@/state/workout/WorkoutContext";
 import { Dumbbell, Clock } from "lucide-react";
-import { formatTime } from "@/utils/timeUtils";
-import WorkoutComponent from "@/components/workout/WorkoutComponent";
+import { formatTime } from "@/lib/utils/timeUtils";
+import WorkoutComponent from "@/components/features/WorkoutComponent";
 
 const Index = () => {
   const { currentWorkout, startWorkout, workoutTime } = useWorkout();
