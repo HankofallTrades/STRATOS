@@ -1,11 +1,20 @@
 import { Button } from "@/components/core/button";
-import { WorkoutProvider, useWorkout } from "@/state/workout/WorkoutContext";
+// import { WorkoutProvider, useWorkout } from "@/state/workout/WorkoutContext"; // Remove old context import
+import { useAppSelector, useAppDispatch } from "@/hooks/redux"; // Import Redux hooks
+import { selectCurrentWorkout, selectWorkoutTime, startWorkout as startWorkoutAction } from "@/state/workout/workoutSlice"; // Import selectors and actions
 import { Dumbbell, Clock } from "lucide-react";
 import { formatTime } from "@/lib/utils/timeUtils";
 import WorkoutComponent from "@/components/features/WorkoutComponent";
 
 const Index = () => {
-  const { currentWorkout, startWorkout, workoutTime } = useWorkout();
+  // const { currentWorkout, startWorkout, workoutTime } = useWorkout(); // Remove old context usage
+  const dispatch = useAppDispatch();
+  const currentWorkout = useAppSelector(selectCurrentWorkout);
+  const workoutTime = useAppSelector(selectWorkoutTime);
+
+  const handleStartWorkout = () => {
+    dispatch(startWorkoutAction());
+  };
 
   return (
     <div className="container mx-auto p-4 max-w-3xl">
@@ -23,7 +32,7 @@ const Index = () => {
               Track your exercises, sets, and reps to monitor your progress over time.
             </p>
             <Button 
-              onClick={startWorkout} 
+              onClick={handleStartWorkout} // Use dispatch 
               size="lg" 
               className="bg-fitnessGreen hover:bg-fitnessGreen/90 text-white font-semibold px-8"
             >

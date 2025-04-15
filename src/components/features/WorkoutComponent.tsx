@@ -1,5 +1,7 @@
 import React from 'react';
-import { useWorkout } from "@/state/workout/WorkoutContext";
+import { useAppSelector, useAppDispatch } from "@/hooks/redux";
+import { selectCurrentWorkout, endWorkout as endWorkoutAction } from "@/state/workout/workoutSlice";
+import { addWorkoutToHistory } from "@/state/history/historySlice";
 import { Button } from "@/components/core/button";
 import { Plus, Save } from "lucide-react";
 import ExerciseSelector from "./ExerciseSelector";
@@ -8,14 +10,24 @@ import { toast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/core/card";
 
 const WorkoutComponent = () => {
-  const { currentWorkout, endWorkout } = useWorkout();
+  const dispatch = useAppDispatch();
+  const currentWorkout = useAppSelector(selectCurrentWorkout);
+  const workoutTime = useAppSelector((state) => state.workout.workoutTime);
 
   if (!currentWorkout) {
     return null;
   }
 
   const handleEndWorkout = () => {
-    endWorkout();
+    const completedWorkout = {
+      ...currentWorkout,
+      duration: workoutTime,
+      completed: true,
+    };
+
+    dispatch(endWorkoutAction());
+    dispatch(addWorkoutToHistory(completedWorkout));
+
     toast({
       title: "Workout Completed",
       description: "Your workout has been saved successfully!",

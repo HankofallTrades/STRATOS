@@ -1,14 +1,20 @@
 import React, { useState } from 'react';
-import { useWorkout } from "@/state/workout/WorkoutContext";
+// import { useWorkout } from "@/state/workout/WorkoutContext"; // Remove old context
+import { useAppSelector, useAppDispatch } from "@/hooks/redux"; // Import Redux hooks
+import { selectAllExercises, addExercise as addExerciseAction } from "@/state/exercise/exerciseSlice"; // Import exercise state/actions
+import { addExerciseToWorkout as addExerciseToWorkoutAction } from "@/state/workout/workoutSlice"; // Import workout actions
 import { Button } from "@/components/core/button";
 import { Plus, Search, X } from "lucide-react";
 import { Label } from "@/components/core/label";
 import { Input } from "@/components/core/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/core/dialog";
-import { Exercise } from "@/lib/types/workout";
+import { Exercise, WorkoutExercise } from "@/lib/types/workout";
+import { v4 as uuidv4 } from 'uuid'; // Import uuid
 
 const ExerciseSelector = () => {
-  const { exercises, addExerciseToWorkout, addExercise } = useWorkout();
+  // const { exercises, addExerciseToWorkout, addExercise } = useWorkout(); // Remove old context usage
+  const dispatch = useAppDispatch();
+  const exercises = useAppSelector(selectAllExercises);
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [newExerciseName, setNewExerciseName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -20,15 +26,26 @@ const ExerciseSelector = () => {
 
   const handleAddNew = () => {
     if (newExerciseName.trim()) {
-      addExercise(newExerciseName.trim());
+      // addExercise(newExerciseName.trim()); // Old context call
+      dispatch(addExerciseAction({ name: newExerciseName.trim() })); // Dispatch Redux action
       setNewExerciseName("");
       setIsAddingNew(false);
     }
   };
 
   const handleSelectExercise = (exerciseId: string) => {
-    addExerciseToWorkout(exerciseId);
-    setOpen(false);
+    const selectedExercise = exercises.find(ex => ex.id === exerciseId);
+    if (selectedExercise) {
+      const workoutExercisePayload: WorkoutExercise = {
+        id: uuidv4(), // Generate unique ID for this workout instance
+        exerciseId: selectedExercise.id,
+        exercise: selectedExercise, // Embed full exercise details
+        sets: [], // Start with empty sets
+      };
+      // addExerciseToWorkout(exerciseId); // Old context call
+      dispatch(addExerciseToWorkoutAction(workoutExercisePayload)); // Dispatch Redux action
+      setOpen(false);
+    }
   };
 
   return (

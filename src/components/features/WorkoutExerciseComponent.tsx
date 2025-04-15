@@ -1,5 +1,16 @@
 import React, { useState, useMemo } from 'react';
-import { useWorkout } from "@/state/workout/WorkoutContext";
+// import { useWorkout } from "@/state/workout/WorkoutContext"; // Remove old context
+import { useAppSelector, useAppDispatch } from "@/hooks/redux"; // Import Redux hooks
+import { 
+  addSetToExercise as addSetToExerciseAction, 
+  updateWorkoutExerciseEquipment as updateWorkoutExerciseEquipmentAction,
+  updateWorkoutExerciseVariation as updateWorkoutExerciseVariationAction,
+  deleteWorkoutExercise as deleteWorkoutExerciseAction
+} from "@/state/workout/workoutSlice"; // Import workout actions
+import { 
+  addExerciseVariation as addExerciseVariationAction, 
+  selectExerciseVariations 
+} from "@/state/exercise/exerciseSlice"; // Import exercise state/actions
 import { WorkoutExercise, ExerciseSet, Exercise } from "@/lib/types/workout";
 import { Button } from "@/components/core/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/core/card";
@@ -13,39 +24,69 @@ import { EquipmentType, EquipmentTypeEnum } from "@/lib/types/enums";
 
 interface WorkoutExerciseProps {
   workoutExercise: WorkoutExercise;
-  onDelete: (workoutExerciseId: string) => void;
+  // onDelete: (workoutExerciseId: string) => void; // Remove onDelete prop
 }
 
-const WorkoutExerciseComponent: React.FC<WorkoutExerciseProps> = ({ workoutExercise, onDelete }) => {
-  const { 
-    addSetToExercise, 
-    updateExerciseEquipment, 
-    updateExerciseVariation, 
-    addExerciseVariation, 
-    getExerciseVariations 
-  } = useWorkout();
+// const WorkoutExerciseComponent: React.FC<WorkoutExerciseProps> = ({ workoutExercise, onDelete }) => { // Adjust props
+const WorkoutExerciseComponent: React.FC<WorkoutExerciseProps> = ({ workoutExercise }) => {
+  // const { 
+  //   addSetToExercise, 
+  //   updateExerciseEquipment, 
+  //   updateExerciseVariation, 
+  //   addExerciseVariation, 
+  //   getExerciseVariations 
+  // } = useWorkout(); // Remove old context usage
+  const dispatch = useAppDispatch();
   
   const [editingVariation, setEditingVariation] = useState<boolean>(false);
   const [newVariation, setNewVariation] = useState<string>("");
 
+  // Get available variations from global exercise state
+  const availableVariations = useAppSelector(state => selectExerciseVariations(state, workoutExercise.exerciseId));
+
+  // Get current equipment/variation *from the specific workout exercise instance*
   const currentEquipmentType = workoutExercise.exercise.equipmentType;
-  const currentVariation = workoutExercise.exercise.variations?.[0];
-  const availableVariations = useMemo(() => getExerciseVariations(workoutExercise.exerciseId), [getExerciseVariations, workoutExercise.exerciseId]);
+  // Variation might be an array; get the currently selected one (assuming first)
+  const currentVariation = workoutExercise.exercise.variations?.[0]; 
 
   const handleAddNewVariation = () => {
     if (newVariation.trim() !== "") {
-      addExerciseVariation(workoutExercise.exerciseId, newVariation.trim());
-      updateExerciseVariation(workoutExercise.id, newVariation.trim());
+      // Add variation globally
+      dispatch(addExerciseVariationAction({ exerciseId: workoutExercise.exerciseId, variation: newVariation.trim() }));
+      // Select the new variation for *this* workout exercise instance
+      dispatch(updateWorkoutExerciseVariationAction({ workoutExerciseId: workoutExercise.id, variation: newVariation.trim() }));
       setNewVariation("");
       setEditingVariation(false);
     }
+  };
+
+  const handleEquipmentChange = (value: string) => {
+    dispatch(updateWorkoutExerciseEquipmentAction({ workoutExerciseId: workoutExercise.id, equipmentType: value as EquipmentType }));
+  };
+
+  const handleVariationChange = (value: string) => {
+    if (value === 'add_new') {
+      setEditingVariation(true);
+    } else {
+      dispatch(updateWorkoutExerciseVariationAction({ workoutExerciseId: workoutExercise.id, variation: value }));
+    }
+  };
+
+  const handleAddSet = () => {
+    dispatch(addSetToExerciseAction({ workoutExerciseId: workoutExercise.id, exerciseId: workoutExercise.exerciseId }));
+  };
+
+  const handleDeleteExercise = () => {
+    // onDelete(workoutExercise.id); // Old prop call
+    dispatch(deleteWorkoutExerciseAction(workoutExercise.id)); // Dispatch delete action
   };
 
   return (
     <Card className="mb-4">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-lg font-semibold">{workoutExercise.exercise.name}</CardTitle>
-        <Button variant="ghost" size="icon" onClick={() => onDelete(workoutExercise.id)}>
+        {/* <Button variant="ghost" size="icon" onClick={() => onDelete(workoutExercise.id)}> */}
+        <Button variant="ghost" size="icon" onClick={handleDeleteExercise}> {/* Use internal handler */}
           <Trash2 className="w-4 h-4 text-destructive" />
         </Button>
       </CardHeader>
@@ -54,8 +95,9 @@ const WorkoutExerciseComponent: React.FC<WorkoutExerciseProps> = ({ workoutExerc
           <div className="flex-1">
             <Label>Equipment</Label>
             <Select
-              value={currentEquipmentType}
-              onValueChange={(value) => updateExerciseEquipment(workoutExercise.id, value as EquipmentType)}
+              value={currentEquipmentType || ''} // Handle undefined case
+              // onValueChange={(value) => updateExerciseEquipment(workoutExercise.id, value as EquipmentType)}
+              onValueChange={handleEquipmentChange} // Use internal handler
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select equipment" />
@@ -70,19 +112,15 @@ const WorkoutExerciseComponent: React.FC<WorkoutExerciseProps> = ({ workoutExerc
           <div className="flex-1">
             <Label>Variation</Label>
             <Select
-              value={currentVariation}
-              onValueChange={(value) => {
-                if (value === 'add_new') {
-                  setEditingVariation(true);
-                } else {
-                  updateExerciseVariation(workoutExercise.id, value);
-                }
-              }}
+              value={currentVariation || ''} // Handle undefined case
+              // onValueChange={(value) => { ... }} // Old logic
+              onValueChange={handleVariationChange} // Use internal handler
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select variation" />
               </SelectTrigger>
               <SelectContent>
+                {/* Use availableVariations from selector */}
                 {availableVariations.map(variation => (
                   <SelectItem key={variation} value={variation}>{variation}</SelectItem>
                 ))}
@@ -106,14 +144,17 @@ const WorkoutExerciseComponent: React.FC<WorkoutExerciseProps> = ({ workoutExerc
         <Button 
           variant="outline" 
           size="sm" 
-          onClick={() => addSetToExercise(workoutExercise.id)} 
+          // onClick={() => addSetToExercise(workoutExercise.id)} 
+          onClick={handleAddSet} // Use internal handler
           className="mt-2 w-full"
         >
           <Plus className="w-4 h-4 mr-2" /> Add Set
         </Button>
       </CardContent>
 
+      {/* Dialog for adding variation remains largely the same, but uses handleAddNewVariation */}
       <Dialog open={editingVariation} onOpenChange={setEditingVariation}>
+        {/* ... Dialog content using handleAddNewVariation ... */}
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add New Variation for {workoutExercise.exercise.name}</DialogTitle>
