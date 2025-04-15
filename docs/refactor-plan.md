@@ -9,7 +9,7 @@ The Lift Smart Workout App codebase is functional but has several areas where mo
 
 ## Refactoring Plan for Lift Smart Workout App
 
-### 1. Project Structure and Organization
+### 1. Project Structure and Organization [✅ Completed]
 **Problem**: The directory structure is mostly sensible but could benefit from stricter separation of concerns and better grouping of related modules. The `components/ui` folder is bloated with too many files, and business logic is scattered across context, components, and pages.
 
 **Plan**:
@@ -54,8 +54,8 @@ The Lift Smart Workout App codebase is functional but has several areas where mo
 
 ---
 
-### 2. State Management
-**Problem**: `WorkoutContext.tsx` is a monolithic context handling too many responsibilities (exercise management, workout state, history, timers, local storage). It’s prone to bugs due to tight coupling and lacks scalability for future features like user authentication or cloud sync.
+### 2. State Management [✅ Completed]
+**Problem**: `WorkoutContext.tsx` is a monolithic context handling too many responsibilities (exercise management, workout state, history, timers, local storage). It's prone to bugs due to tight coupling and lacks scalability for future features like user authentication or cloud sync.
 
 **Plan**:
 - **Adopt Redux Toolkit (RTK)**:
@@ -159,7 +159,66 @@ The Lift Smart Workout App codebase is functional but has several areas where mo
 
 ---
 
-### 3. Component Modularity and UI Primitives
+### 3. Server State Management (Supabase & TanStack Query) [✅ Completed]
+**Problem**: Fetching and managing data from an external source like Supabase directly within Redux or component state can lead to boilerplate for handling loading, error, caching, and synchronization states. Mixing server cache state with global client state in Redux can increase complexity.
+
+**Plan**:
+- **Adopt TanStack Query (React Query)**:
+  - Introduce TanStack Query for managing asynchronous server state (data from Supabase).
+  - Use `useQuery` hook to fetch data like the list of exercises (`exercises`). TanStack Query will handle caching, background updates, and refetching automatically.
+  - Use `useMutation` hook for creating, updating, or deleting data in Supabase (e.g., adding a new exercise type). Mutations will handle server-side updates and provide mechanisms to invalidate relevant queries (`useQuery`) to refetch stale data.
+  - Example `useQuery` for exercises:
+    ```ts
+    // Assuming fetchExercisesFromDB() interacts with Supabase client
+    import { useQuery } from '@tanstack/react-query';
+    import { fetchExercisesFromDB } from '@/lib/integrations/supabase/exercises'; // Hypothetical path
+
+    function ExerciseSelector() {
+      const { data: exercises, isLoading, error } = useQuery({
+        queryKey: ['exercises'],
+        queryFn: fetchExercisesFromDB,
+      });
+      // ... use exercises, isLoading, error in component
+    }
+    ```
+  - Example `useMutation` for adding an exercise:
+    ```ts
+    import { useMutation, useQueryClient } from '@tanstack/react-query';
+    import { createExerciseInDB } from '@/lib/integrations/supabase/exercises'; // Hypothetical path
+
+    function ExerciseCreator() {
+      const queryClient = useQueryClient();
+      const mutation = useMutation({
+        mutationFn: createExerciseInDB,
+        onSuccess: () => {
+          // Invalidate and refetch the exercises list
+          queryClient.invalidateQueries({ queryKey: ['exercises'] });
+        },
+      });
+
+      const handleAddNew = (exerciseName: string) => {
+        mutation.mutate({ name: exerciseName /* other fields */ });
+      };
+      // ... UI for adding exercise
+    }
+    ```
+- **Separation from Redux**:
+  - Keep Redux focused on managing global *client* state (e.g., `currentWorkout`, UI state like theme or modals).
+  - Data fetched by TanStack Query can be passed to Redux actions if needed (e.g., adding a selected exercise *instance* to the `currentWorkout` slice), but the source data and its fetching/caching lifecycle are managed by TanStack Query.
+- **Setup**:
+  - Install `@tanstack/react-query`.
+  - Wrap the application root with `QueryClientProvider`.
+  - Define query keys and fetching functions for Supabase interactions.
+
+**Deliverables**:
+- TanStack Query integrated for managing Supabase server state.
+- Components refactored to use `useQuery` for fetching data (e.g., `ExerciseSelector`).
+- Components refactored to use `useMutation` for modifying Supabase data.
+- Clear separation between server state (TanStack Query) and client state (Redux).
+
+---
+
+### 4. Component Modularity and UI Primitives
 **Problem**: The `components/ui/` directory is a dumping ground for shadcn-ui components, many of which are unused or overly generic. Feature components like `WorkoutExerciseComponent` mix UI logic with state mutations, violating separation of concerns.
 
 **Plan**:
@@ -333,7 +392,7 @@ The Lift Smart Workout App codebase is functional but has several areas where mo
 
 ---
 
-### 4. Performance Optimization
+### 5. Performance Optimization
 **Problem**: The app has potential performance bottlenecks:
 - Large initial bundle size due to shadcn-ui and unused dependencies.
 - Inefficient state updates in `WorkoutContext` (e.g., deep cloning entire workout objects).
@@ -396,7 +455,7 @@ The Lift Smart Workout App codebase is functional but has several areas where mo
     ```
   - Store only deltas or use IndexedDB for larger datasets (e.g., workout history) with `idb-keyval`.
 - **Lazy Loading**:
-  - Lazy-load non-critical pages (`Analytics.tsx`, `Settings.tsx`) using React’s `lazy` and `Suspense`.
+  - Lazy-load non-critical pages (`Analytics.tsx`, `Settings.tsx`) using React's `lazy` and `Suspense`.
   - Example:
     ```ts
     // App.tsx
@@ -419,7 +478,7 @@ The Lift Smart Workout App codebase is functional but has several areas where mo
     ```
 - **Optimize Renders**:
   - Use `React.memo` for pure components (e.g., `SetComponent`, `BottomNav`).
-  - Avoid inline function props in render-heavy components (e.g., `WorkoutExerciseComponent`’s `onClick` handlers).
+  - Avoid inline function props in render-heavy components (e.g., `WorkoutExerciseComponent's `onClick` handlers).
   - Example:
     ```ts
     const SetComponent = React.memo(({ set, onUpdate, onDelete }: SetComponentProps) => {
@@ -439,7 +498,7 @@ The Lift Smart Workout App codebase is functional but has several areas where mo
 
 ---
 
-### 5. Type Safety and Error Handling
+### 6. Type Safety and Error Handling
 **Problem**: TypeScript usage is inconsistent:
 - Loose types in `tsconfig.app.json` (e.g., `strict: false`, `noImplicitAny: false`).
 - Missing error boundaries and robust error handling.
@@ -556,8 +615,8 @@ The Lift Smart Workout App codebase is functional but has several areas where mo
 
 ---
 
-### 6. Testing and Quality Assurance
-**Problem**: No tests are present, making refactoring risky. ESLint rules are too permissive (e.g., `no-unused-vars: off`), and there’s no CI pipeline for linting/testing.
+### 7. Testing and Quality Assurance
+**Problem**: No tests are present, making refactoring risky. ESLint rules are too permissive (e.g., `no-unused-vars: off`), and there's no CI pipeline for linting/testing.
 
 **Plan**:
 - **Add Testing Setup**:
@@ -684,7 +743,7 @@ The Lift Smart Workout App codebase is functional but has several areas where mo
 
 ---
 
-### 7. Supabase Integration and Data Persistence
+### 8. Supabase Integration and Data Persistence
 **Problem**: The app uses local storage, which is fragile for large datasets and lacks cross-device sync. Supabase is included but unused.
 
 **Plan**:
@@ -822,7 +881,7 @@ The Lift Smart Workout App codebase is functional but has several areas where mo
 
 ---
 
-### 8. Styling and Theming
+### 9. Styling and Theming
 **Problem**: Tailwind CSS is heavily used, but there are inconsistencies (e.g., inline styles in `App.css`, redundant dark mode overrides in `index.css`). Theming lacks scalability for future customization.
 
 **Plan**:
@@ -934,8 +993,8 @@ The Lift Smart Workout App codebase is functional but has several areas where mo
 
 ---
 
-### 9. Documentation and Developer Experience
-**Problem**: The `README.md` is generic and lacks setup instructions for testing, linting, or Supabase integration. There’s no inline documentation for complex logic.
+### 10. Documentation and Developer Experience
+**Problem**: The `README.md` is generic and lacks setup instructions for testing, linting, or Supabase integration. There's no inline documentation for complex logic.
 
 **Plan**:
 - **Update README**:
@@ -1036,7 +1095,7 @@ The Lift Smart Workout App codebase is functional but has several areas where mo
 
 ---
 
-### 10. Deployment and DevOps
+### 11. Deployment and DevOps
 **Problem**: No clear deployment pipeline or environment configuration. The `vite.config.ts` lacks optimization for production builds.
 
 **Plan**:
@@ -1153,15 +1212,16 @@ The Lift Smart Workout App codebase is functional but has several areas where mo
 | **Week 1: Planning**   | Audit codebase, finalize directory structure, set up RTK and testing | 2 days   |
 | **Week 2: Structure**  | Restructure directories, extract utilities, consolidate constants     | 3 days   |
 | **Week 3: State**      | Implement RTK slices, persist state, extract timer hook               | 3 days   |
-| **Week 4: Components** | Refactor UI components, split views/containers, enhance accessibility | 4 days   |
-| **Week 5: Performance**| Optimize bundle, state updates, local storage, lazy-load pages       | 3 days   |
-| **Week 6: Types**      | Enforce strict TS, add error boundaries, integrate Supabase           | 3 days   |
-| **Week 7: Testing**    | Write unit, integration, E2E tests, strengthen ESLint, set up CI     | 4 days   |
-| **Week 8: Supabase**   | Define schema, migrate data, implement offline-first sync             | 3 days   |
-| **Week 9: Styling**    | Consolidate CSS, enhance theming, apply atomic design                 | 3 days   |
-| **Week 10: Docs/DevOps**| Update README, add JSDoc, set up Storybook, optimize deployment      | 3 days   |
+| **Week 4: Server State** | Integrate TanStack Query, refactor data fetching/mutations            | 3 days   |
+| **Week 5: Components** | Refactor UI components, split views/containers, enhance accessibility | 4 days   |
+| **Week 6: Performance**| Optimize bundle, state updates, local storage, lazy-load pages       | 3 days   |
+| **Week 7: Types**      | Enforce strict TS, add error boundaries, integrate Supabase           | 3 days   |
+| **Week 8: Testing**    | Write unit, integration, E2E tests, strengthen ESLint, set up CI     | 4 days   |
+| **Week 9: Supabase**   | Define schema, migrate data, implement offline-first sync             | 3 days   |
+| **Week 10: Styling**    | Consolidate CSS, enhance theming, apply atomic design                 | 3 days   |
+| **Week 11: Docs/DevOps**| Update README, add JSDoc, set up Storybook, optimize deployment      | 3 days   |
 
-**Total Duration**: ~10 weeks (assuming 1 developer, 40 hours/week)
+**Total Duration**: ~11 weeks (assuming 1 developer, 40 hours/week)
 
 ---
 

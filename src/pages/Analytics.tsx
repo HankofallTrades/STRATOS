@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 // import { useWorkout } from '@/state/workout/WorkoutContext'; // Remove old context
 import { useAppSelector } from "@/hooks/redux"; // Import Redux hooks
 import { selectWorkoutHistory } from "@/state/history/historySlice"; // Import history selector
-import { selectAllExercises } from "@/state/exercise/exerciseSlice"; // Import exercise selector
+// import { selectAllExercises } from "@/state/exercise/exerciseSlice"; // Remove exercise selector import
+import { useQuery } from '@tanstack/react-query'; // Add TanStack Query import
+import { fetchExercisesFromDB } from '@/lib/integrations/supabase/exercises'; // Add Supabase function import
 import { formatTime } from '@/lib/utils/timeUtils';
 import { BarChart, Clock, Calendar, Dumbbell, Award } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -15,7 +17,13 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 const Analytics = () => {
   // const { workoutHistory, exercises } = useWorkout(); // Remove old context usage
   const workoutHistory = useAppSelector(selectWorkoutHistory);
-  const exercises = useAppSelector(selectAllExercises);
+  // const exercises = useAppSelector(selectAllExercises); // Removed
+
+  // Fetch exercises using TanStack Query
+  const { data: exercises = [], isLoading: isLoadingExercises, error: errorExercises } = useQuery({
+    queryKey: ['exercises'],
+    queryFn: fetchExercisesFromDB,
+  });
   
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
 
@@ -45,6 +53,7 @@ const Analytics = () => {
     }
   });
 
+  // Find the most common exercise using the fetched data
   const mostCommonExercise = exercises.find(ex => ex.id === mostCommonExerciseId);
 
   // Get exercise history (to show progress for a specific exercise)
@@ -156,14 +165,20 @@ const Analytics = () => {
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold">
-                {mostCommonExercise ? mostCommonExercise.name : "None"}
+                {/* Display loading/error state if needed, or just wait for data */}
+                {isLoadingExercises ? 'Loading...' : (mostCommonExercise ? mostCommonExercise.name : "None")}
               </p>
             </CardContent>
           </Card>
         </div>
 
         <h2 className="text-xl font-semibold mb-4">Exercise Progress</h2>
-        {exercises.length > 0 ? (
+        {/* Handle loading/error states for the exercise selection */}
+        {isLoadingExercises ? (
+           <p className="text-gray-500 italic">Loading exercises...</p>
+        ) : errorExercises ? (
+           <p className="text-red-500 italic">Error loading exercises.</p>
+        ) : exercises.length > 0 ? (
           <div className="space-y-4">
             <div className="bg-gray-50 p-4 rounded-lg">
               <label className="block text-sm font-medium mb-2">Select an exercise to view progress</label>
@@ -188,11 +203,12 @@ const Analytics = () => {
               <Card>
                 <CardHeader>
                   <CardTitle>{selectedExercise.name}</CardTitle>
-                  <CardDescription>
+                  {/* Commented out 1RM display as it's not directly available on Exercise type anymore */}
+                  {/* <CardDescription>
                     {selectedExercise.oneRepMax 
                       ? `Estimated 1RM: ${Math.round(selectedExercise.oneRepMax)} kg` 
                       : "No 1RM data available yet"}
-                  </CardDescription>
+                  </CardDescription> */}
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
@@ -212,11 +228,12 @@ const Analytics = () => {
             )}
           </div>
         ) : (
-          <p className="text-gray-500 italic">No exercises available yet. Start a workout to track your progress!</p>
+          <p className="text-gray-500 italic">No exercises defined yet. Add some via the workout screen.</p>
         )}
 
         <div className="mt-8">
           <h2 className="text-xl font-semibold mb-4">Recent Workouts</h2>
+          {/* Handle cases where exercises might still be loading */}
           {workoutHistory.length > 0 ? (
             <div className="space-y-4">
               {[...workoutHistory].slice(0, 5).map((workout, index) => (
@@ -233,10 +250,11 @@ const Analytics = () => {
                   <CardContent>
                     <div className="space-y-2">
                       {workout.exercises.map((ex, i) => {
+                        // Find exercise name using the fetched data
                         const exercise = exercises.find(e => e.id === ex.exerciseId);
                         return (
                           <div key={i} className="text-sm">
-                            <p className="font-medium">{exercise?.name || "Unknown exercise"}</p>
+                            <p className="font-medium">{isLoadingExercises ? 'Loading...' : (exercise?.name || "Unknown exercise")}</p>
                             <p className="text-gray-600">
                               {ex.sets.filter(s => s.completed).length} sets completed
                             </p>
