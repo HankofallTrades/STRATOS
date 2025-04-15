@@ -3,7 +3,10 @@ import React, { useState } from 'react';
 // import { useAppSelector, useAppDispatch } from "@/hooks/redux";
 // import { selectAllExercises, addExercise as addExerciseAction } from "@/state/exercise/exerciseSlice";
 import { useAppDispatch } from "@/hooks/redux"; // Keep dispatch for adding to workout
-import { addExerciseToWorkout as addExerciseToWorkoutAction } from "@/state/workout/workoutSlice"; // Keep workout actions
+import { 
+    addExerciseToWorkout as addExerciseToWorkoutAction,
+    addSetToExercise // Corrected: Import action to add a set
+} from "@/state/workout/workoutSlice"; // Keep workout actions
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'; // Add TanStack Query imports
 import { fetchExercisesFromDB, createExerciseInDB } from '@/lib/integrations/supabase/exercises'; // Add Supabase function imports
 import { Button } from "@/components/core/button";
@@ -62,15 +65,25 @@ const ExerciseSelector = () => {
   const handleSelectExercise = (exerciseId: string) => {
     const selectedExercise = exercises.find(ex => ex.id === exerciseId);
     if (selectedExercise) {
+      const newWorkoutExerciseId = uuidv4(); // Generate ID once
       const workoutExercisePayload: WorkoutExercise = {
-        id: uuidv4(),
+        id: newWorkoutExerciseId, // Use generated ID
         exerciseId: selectedExercise.id,
         exercise: selectedExercise,
         equipmentType: selectedExercise.default_equipment_type as EquipmentType | undefined,
-        sets: [],
+        sets: [], // Start with empty sets initially
       };
       // Dispatch to add to the *current workout* state (client state)
       dispatch(addExerciseToWorkoutAction(workoutExercisePayload));
+
+      // Dispatch to add the first default set immediately after
+      dispatch(addSetToExercise({ // Corrected: Use the correct action
+        workoutExerciseId: newWorkoutExerciseId, // Use the same ID
+        exerciseId: selectedExercise.id // Add the missing exerciseId
+        // Optionally provide default set values here if the reducer doesn't handle defaults
+        // set: { id: uuidv4(), weight: 0, reps: 0, completed: false } 
+      }));
+
       setOpen(false);
     }
   };
