@@ -8,7 +8,7 @@ import { Plus } from 'lucide-react';
 import SetComponent from './SetComponent'; // Assuming SetComponent exists in the same directory
 
 interface WorkoutExerciseViewProps {
-  workoutExercise: { id: string; exerciseId: string; exercise: Exercise; sets: ExerciseSet[] }; // Added exerciseId here based on error L86
+  workoutExercise: { id: string; exerciseId: string; exercise: Exercise; sets: ExerciseSet[]; equipmentType?: EquipmentType }; // Added equipmentType
   variations: string[];
   equipmentTypes: Readonly<EquipmentType[]>; // Use readonly array
   lastPerformance: { weight: number; reps: number } | null;
@@ -37,7 +37,7 @@ export const WorkoutExerciseView = ({
       <CardTitle className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
         <div className="flex items-center gap-2 flex-wrap"> {/* Added flex-wrap */}
           {/* Use default_equipment_type and handle potential null/undefined */}
-          <Select value={workoutExercise.exercise.default_equipment_type ?? undefined} onValueChange={(value) => onEquipmentChange(value as EquipmentType)}>
+          <Select value={workoutExercise.equipmentType ?? undefined} onValueChange={(value) => onEquipmentChange(value as EquipmentType)}>
             <SelectTrigger className="w-[100px]">
               <SelectValue placeholder="Equipment" />
             </SelectTrigger>
