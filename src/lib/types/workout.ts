@@ -27,7 +27,7 @@ export interface WorkoutExercise {
 
 export interface Workout {
   id: string;
-  date: Date;
+  date: string; // Store date as ISO string
   duration: number; // in seconds
   exercises: WorkoutExercise[];
   completed: boolean;

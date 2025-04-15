@@ -1,6 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { ExerciseSet, WeightSuggestion } from "@/lib/types/workout";
-import { useWorkout } from "@/state/workout/WorkoutContext";
+import React, { useState, useEffect, useCallback } from 'react';
+import { ExerciseSet, WeightSuggestion, Exercise } from "@/lib/types/workout";
+// import { useWorkout } from "@/state/workout/WorkoutContext"; // Remove old context
+import { useAppSelector, useAppDispatch } from "@/hooks/redux"; // Import Redux hooks
+import { selectAllExercises } from "@/state/exercise/exerciseSlice"; // Import exercise selector
+import { 
+  updateSet as updateSetAction, 
+  deleteSet as deleteSetAction, 
+  completeSet as completeSetAction 
+} from "@/state/workout/workoutSlice"; // Import workout actions
 import { Input } from "@/components/core/input";
 import { Button } from "@/components/core/button";
 import { Checkbox } from "@/components/core/checkbox";
@@ -17,13 +24,17 @@ interface SetComponentProps {
 }
 
 const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, setIndex, exerciseId }) => {
-  const { updateSet, deleteSet, completeSet, exercises } = useWorkout();
+  // const { updateSet, deleteSet, completeSet, exercises } = useWorkout(); // Remove old context usage
+  const dispatch = useAppDispatch();
+  const exercises = useAppSelector(selectAllExercises); // Get exercises from Redux
+
   const [localWeight, setLocalWeight] = useState(set.weight.toString());
   const [localReps, setLocalReps] = useState(set.reps.toString());
   const [isCompleted, setIsCompleted] = useState(set.completed);
   const [suggestions, setSuggestions] = useState<WeightSuggestion[]>([]);
   
-  const calculateInitialSliderValue = (currentWeight: number, currentSuggestions: WeightSuggestion[]): number => {
+  // useCallback for helper function to memoize it based on dependencies
+  const calculateInitialSliderValue = useCallback((currentWeight: number, currentSuggestions: WeightSuggestion[]): number => {
     if (currentSuggestions.length === 0) return 0;
     let closestPercentage = currentSuggestions[0].percentage;
     let minDiff = Infinity;
@@ -35,30 +46,41 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
       }
     });
     return closestPercentage;
-  }
+  }, []); // Empty array means it only calculates once unless component remounts
+
   const [sliderValue, setSliderValue] = useState<number>(() => calculateInitialSliderValue(set.weight, []));
 
+  // Effect to calculate suggestions when exerciseId or global exercises change
   useEffect(() => {
-    const newSuggestions = getWeightSuggestions(exerciseId, exercises);
-    setSuggestions(newSuggestions);
-    setSliderValue(calculateInitialSliderValue(parseFloat(localWeight) || set.weight, newSuggestions));
-  }, [exerciseId, exercises]);
+    // Ensure exercises are loaded before calculating
+    if (exercises && exercises.length > 0) {
+        const newSuggestions = getWeightSuggestions(exerciseId, exercises);
+        setSuggestions(newSuggestions);
+        // Recalculate slider value based on new suggestions and current weight
+        setSliderValue(calculateInitialSliderValue(parseFloat(localWeight) || set.weight, newSuggestions));
+    }
+  }, [exerciseId, exercises, calculateInitialSliderValue, localWeight, set.weight]); // Add exercises from Redux
 
+  // Effect to debounce weight/reps updates
   useEffect(() => {
     const handler = setTimeout(() => {
       const weight = parseFloat(localWeight) || 0;
       const reps = parseInt(localReps) || 0;
+      // Only dispatch if the value actually changed from the prop
       if (weight !== set.weight || reps !== set.reps) {
-        updateSet(workoutExerciseId, set.id, weight, reps);
+        // updateSet(workoutExerciseId, set.id, weight, reps); // Old context call
+        dispatch(updateSetAction({ workoutExerciseId, setId: set.id, weight, reps })); // Dispatch Redux action
       }
     }, 500);
 
     return () => clearTimeout(handler);
-  }, [localWeight, localReps, workoutExerciseId, set.id, set.weight, set.reps, updateSet]);
+    // Add dispatch to dependency array
+  }, [localWeight, localReps, workoutExerciseId, set.id, set.weight, set.reps, dispatch]); 
 
+  // Effect to update slider when local weight changes
   useEffect(() => {
     setSliderValue(calculateInitialSliderValue(parseFloat(localWeight) || 0, suggestions));
-  }, [localWeight, suggestions]);
+  }, [localWeight, suggestions, calculateInitialSliderValue]);
 
   const handleSliderChange = (value: number[]) => {
     const percentage = value[0];
@@ -66,21 +88,30 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
     const suggestedWeight = suggestions.find(s => s.percentage === percentage)?.weight;
     if (suggestedWeight !== undefined) {
       setLocalWeight(suggestedWeight.toString());
+      // Optionally trigger the update dispatch immediately or rely on the debounce effect
     }
   };
 
-  const handleCompletionChange = (checked: boolean) => {
-    const isNowCompleted = !!checked;
+  const handleCompletionChange = (checked: boolean | 'indeterminate') => {
+    const isNowCompleted = !!checked; // Ensure boolean
     setIsCompleted(isNowCompleted);
-    completeSet(workoutExerciseId, set.id, isNowCompleted);
+    // completeSet(workoutExerciseId, set.id, isNowCompleted); // Old context call
+    dispatch(completeSetAction({ workoutExerciseId, setId: set.id, completed: isNowCompleted })); // Dispatch Redux action
   };
 
+  const handleDelete = () => {
+    // deleteSet(workoutExerciseId, set.id); // Old context call
+    dispatch(deleteSetAction({ workoutExerciseId, setId: set.id })); // Dispatch Redux action
+  };
+
+  // Effect to reset local state if the underlying set prop changes from parent
   useEffect(() => {
     setLocalWeight(set.weight.toString());
     setLocalReps(set.reps.toString());
     setIsCompleted(set.completed);
+    // Recalculate slider based on potentially new set weight and existing suggestions
     setSliderValue(calculateInitialSliderValue(set.weight, suggestions));
-  }, [set.weight, set.reps, set.completed, suggestions]);
+  }, [set.weight, set.reps, set.completed, suggestions, calculateInitialSliderValue]);
 
   return (
     <div className="flex items-center space-x-2 mb-2 p-2 border rounded bg-card text-card-foreground relative group">
@@ -116,7 +147,8 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
           <Slider
             min={suggestions[0]?.percentage ?? 0}
             max={suggestions[suggestions.length - 1]?.percentage ?? 100}
-            step={suggestions.length > 1 ? (suggestions[1].percentage - suggestions[0].percentage) : (suggestions.length === 1 ? suggestions[0].percentage : 10)}
+            // Calculate step dynamically based on suggestions if possible
+            step={suggestions.length > 1 ? (suggestions[1].percentage - suggestions[0].percentage) : (suggestions.length === 1 ? suggestions[0].percentage : 10)} 
             value={[sliderValue]}
             onValueChange={handleSliderChange}
             className="w-full"
@@ -125,8 +157,9 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
           />
           <span className="text-xs text-muted-foreground text-center block mt-1">
             {suggestions.length > 0 ? 
+             // Display weight corresponding to the current slider percentage
              `${sliderValue}% (${suggestions.find(s=>s.percentage === sliderValue)?.weight ?? '-'}kg)` : 
-             'No 1RM data'
+             'No 1RM data' // Or calculate based on current weight?
             }
           </span>
         </div>
@@ -140,7 +173,8 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
       <Button 
         variant="ghost" 
         size="icon" 
-        onClick={() => deleteSet(workoutExerciseId, set.id)} 
+        // onClick={() => deleteSet(workoutExerciseId, set.id)} 
+        onClick={handleDelete} // Use internal handler
         className="w-8 h-8 absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
         aria-label="Delete Set"
       >

@@ -1,16 +1,22 @@
-import React from 'react';
-import { useWorkout } from '@/state/workout/WorkoutContext';
+import React, { useState } from 'react';
+// import { useWorkout } from '@/state/workout/WorkoutContext'; // Remove old context
+import { useAppSelector } from "@/hooks/redux"; // Import Redux hooks
+import { selectWorkoutHistory } from "@/state/history/historySlice"; // Import history selector
+import { selectAllExercises } from "@/state/exercise/exerciseSlice"; // Import exercise selector
 import { formatTime } from '@/lib/utils/timeUtils';
 import { BarChart, Clock, Calendar, Dumbbell, Award } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/core/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/core/card";
-import { useState } from "react";
+// import { useState } from "react"; // Already imported above
 import { Exercise } from "@/lib/types/workout";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Bar } from 'recharts';
 
 const Analytics = () => {
-  const { workoutHistory, exercises } = useWorkout();
+  // const { workoutHistory, exercises } = useWorkout(); // Remove old context usage
+  const workoutHistory = useAppSelector(selectWorkoutHistory);
+  const exercises = useAppSelector(selectAllExercises);
+  
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
 
   // Calculate total workouts, total time, and average workout duration
@@ -70,8 +76,9 @@ const Analytics = () => {
   };
 
   // Format date for display
-  const formatDate = (date: Date): string => {
-    return new Date(date).toLocaleDateString();
+  const formatDate = (dateInput: Date | string): string => {
+    const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+    return date.toLocaleDateString();
   };
 
   return (
@@ -212,11 +219,11 @@ const Analytics = () => {
           <h2 className="text-xl font-semibold mb-4">Recent Workouts</h2>
           {workoutHistory.length > 0 ? (
             <div className="space-y-4">
-              {[...workoutHistory].reverse().slice(0, 5).map((workout, index) => (
+              {[...workoutHistory].slice(0, 5).map((workout, index) => (
                 <Card key={index}>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-lg flex justify-between">
-                      <span>Workout on {formatDate(new Date(workout.date))}</span>
+                      <span>Workout on {formatDate(workout.date)}</span>
                       <span className="text-sm font-normal flex items-center">
                         <Clock className="mr-1 h-4 w-4" />
                         {formatTime(workout.duration)}
