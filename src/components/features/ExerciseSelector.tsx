@@ -12,6 +12,7 @@ import { Label } from "@/components/core/label";
 import { Input } from "@/components/core/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/core/Dialog";
 import { Exercise, WorkoutExercise } from "@/lib/types/workout";
+import { EquipmentType } from '@/lib/types/enums';
 import { v4 as uuidv4 } from 'uuid';
 
 const ExerciseSelector = () => {
@@ -65,6 +66,7 @@ const ExerciseSelector = () => {
         id: uuidv4(),
         exerciseId: selectedExercise.id,
         exercise: selectedExercise,
+        equipmentType: selectedExercise.default_equipment_type as EquipmentType | undefined,
         sets: [],
       };
       // Dispatch to add to the *current workout* state (client state)

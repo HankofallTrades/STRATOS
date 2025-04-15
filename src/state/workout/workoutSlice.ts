@@ -100,7 +100,7 @@ const workoutSlice = createSlice({
             (ex) => ex.id === action.payload.workoutExerciseId
         );
         if (workoutExercise) {
-            workoutExercise.exercise.equipmentType = action.payload.equipmentType;
+            workoutExercise.equipmentType = action.payload.equipmentType;
             // Optionally update equipment on all sets? Or handle in SetComponent?
         }
     },
@@ -110,16 +110,8 @@ const workoutSlice = createSlice({
             (ex) => ex.id === action.payload.workoutExerciseId
         );
         if (workoutExercise) {
-            // Variations are stored as an array, typically we track the *selected* one for the workout.
-            // This assumes we are setting the first (or only) variation for this instance.
-            // A more complex setup might be needed if multiple variations are relevant per workout instance.
-            if (!workoutExercise.exercise.variations) {
-                workoutExercise.exercise.variations = [];
-            }
-            // For simplicity, let's assume the payload variation is the *selected* one.
-            // We might replace the array or just ensure it exists.
-            workoutExercise.exercise.variations = [action.payload.variation]; // Simplistic: sets the current variation
-            // Optionally update variation on all sets?
+            // Update the variation property on the WorkoutExercise instance
+            workoutExercise.variation = action.payload.variation;
         }
     },
     // TODO: Add reducer for deleting a WorkoutExercise from currentWorkout
