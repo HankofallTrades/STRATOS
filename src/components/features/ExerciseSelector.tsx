@@ -1,49 +1,74 @@
 import React, { useState } from 'react';
-// import { useWorkout } from "@/state/workout/WorkoutContext"; // Remove old context
-import { useAppSelector, useAppDispatch } from "@/hooks/redux"; // Import Redux hooks
-import { selectAllExercises, addExercise as addExerciseAction } from "@/state/exercise/exerciseSlice"; // Import exercise state/actions
-import { addExerciseToWorkout as addExerciseToWorkoutAction } from "@/state/workout/workoutSlice"; // Import workout actions
+// Remove Redux imports for exercise list management
+// import { useAppSelector, useAppDispatch } from "@/hooks/redux";
+// import { selectAllExercises, addExercise as addExerciseAction } from "@/state/exercise/exerciseSlice";
+import { useAppDispatch } from "@/hooks/redux"; // Keep dispatch for adding to workout
+import { addExerciseToWorkout as addExerciseToWorkoutAction } from "@/state/workout/workoutSlice"; // Keep workout actions
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'; // Add TanStack Query imports
+import { fetchExercisesFromDB, createExerciseInDB } from '@/lib/integrations/supabase/exercises'; // Add Supabase function imports
 import { Button } from "@/components/core/button";
 import { Plus, Search, X } from "lucide-react";
 import { Label } from "@/components/core/label";
 import { Input } from "@/components/core/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/core/dialog";
 import { Exercise, WorkoutExercise } from "@/lib/types/workout";
-import { v4 as uuidv4 } from 'uuid'; // Import uuid
+import { v4 as uuidv4 } from 'uuid';
 
 const ExerciseSelector = () => {
-  // const { exercises, addExerciseToWorkout, addExercise } = useWorkout(); // Remove old context usage
   const dispatch = useAppDispatch();
-  const exercises = useAppSelector(selectAllExercises);
+  const queryClient = useQueryClient(); // Get query client instance
+
+  // State for UI control remains the same
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [newExerciseName, setNewExerciseName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [open, setOpen] = useState(false);
 
+  // Fetch exercises using useQuery
+  const { data: exercises = [], isLoading, error } = useQuery({
+    queryKey: ['exercises'],
+    queryFn: fetchExercisesFromDB,
+  });
+
+  // Mutation for adding a new exercise
+  const mutation = useMutation({
+    mutationFn: createExerciseInDB,
+    onSuccess: () => {
+      // Invalidate and refetch the exercises list on success
+      queryClient.invalidateQueries({ queryKey: ['exercises'] });
+      setNewExerciseName("");
+      setIsAddingNew(false);
+    },
+    onError: (err) => {
+      console.error("Error adding exercise:", err);
+      // TODO: Show error to user (e.g., using a toast)
+    },
+  });
+
+  // Filtering logic remains similar, uses data from useQuery
   const filteredExercises = exercises.filter((exercise) =>
     exercise.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleAddNew = () => {
     if (newExerciseName.trim()) {
-      // addExercise(newExerciseName.trim()); // Old context call
-      dispatch(addExerciseAction({ name: newExerciseName.trim() })); // Dispatch Redux action
-      setNewExerciseName("");
-      setIsAddingNew(false);
+      // Use mutation to add the new exercise
+      mutation.mutate({ name: newExerciseName.trim() });
     }
   };
 
+  // handleSelectExercise remains mostly the same, uses data from useQuery
   const handleSelectExercise = (exerciseId: string) => {
     const selectedExercise = exercises.find(ex => ex.id === exerciseId);
     if (selectedExercise) {
       const workoutExercisePayload: WorkoutExercise = {
-        id: uuidv4(), // Generate unique ID for this workout instance
+        id: uuidv4(),
         exerciseId: selectedExercise.id,
-        exercise: selectedExercise, // Embed full exercise details
-        sets: [], // Start with empty sets
+        exercise: selectedExercise,
+        sets: [],
       };
-      // addExerciseToWorkout(exerciseId); // Old context call
-      dispatch(addExerciseToWorkoutAction(workoutExercisePayload)); // Dispatch Redux action
+      // Dispatch to add to the *current workout* state (client state)
+      dispatch(addExerciseToWorkoutAction(workoutExercisePayload));
       setOpen(false);
     }
   };
@@ -72,7 +97,11 @@ const ExerciseSelector = () => {
           </div>
 
           <div className="max-h-60 overflow-y-auto space-y-2">
-            {filteredExercises.length > 0 ? (
+            {isLoading ? (
+              <p className="text-center text-gray-500 dark:text-gray-400 py-2">Loading exercises...</p>
+            ) : error ? (
+              <p className="text-center text-red-500 dark:text-red-400 py-2">Error loading exercises.</p>
+            ) : filteredExercises.length > 0 ? (
               filteredExercises.map((exercise) => (
                 <Button
                   key={exercise.id}
@@ -81,11 +110,12 @@ const ExerciseSelector = () => {
                   className="w-full justify-start h-auto py-3 px-4 font-normal hover:bg-gray-50 dark:border-gray-700 dark:text-white dark:hover:bg-gray-700"
                 >
                   {exercise.name}
-                  {exercise.oneRepMax && (
+                  {/* TODO: Decide if 1RM should come from server or be calculated client-side */}
+                  {/* {exercise.oneRepMax && (
                     <span className="ml-auto text-xs text-gray-500 dark:text-gray-400">
                       1RM: {Math.round(exercise.oneRepMax)} kg
                     </span>
-                  )}
+                  )} */}
                 </Button>
               ))
             ) : (
@@ -103,14 +133,15 @@ const ExerciseSelector = () => {
                   onChange={(e) => setNewExerciseName(e.target.value)}
                   placeholder="Enter exercise name"
                   className="flex-1 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  disabled={mutation.isPending} // Disable input while adding
                 />
-                <Button 
-                  variant="default" 
+                <Button
+                  variant="default"
                   className="bg-fitnessGreen hover:bg-fitnessGreen/90"
                   onClick={handleAddNew}
-                  disabled={!newExerciseName.trim()}
+                  disabled={!newExerciseName.trim() || mutation.isPending} // Disable button while adding
                 >
-                  Add
+                  {mutation.isPending ? 'Adding...' : 'Add'}
                 </Button>
                 <Button
                   variant="outline"
@@ -119,10 +150,14 @@ const ExerciseSelector = () => {
                     setNewExerciseName("");
                   }}
                   className="dark:border-gray-700 dark:text-white dark:hover:bg-gray-700"
+                  disabled={mutation.isPending} // Disable button while adding
                 >
                   <X size={16} />
                 </Button>
               </div>
+              {mutation.isError && (
+                <p className="text-sm text-red-500 dark:text-red-400">Failed to add exercise.</p>
+              )}
             </div>
           ) : (
             <Button

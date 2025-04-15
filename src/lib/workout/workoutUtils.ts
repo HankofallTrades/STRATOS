@@ -11,11 +11,10 @@ export const calculateOneRepMax = (weight: number, reps: number): number => {
 };
 
 // Get weight suggestions based on 1RM
-export const getWeightSuggestions = (exerciseId: string, exercises: Exercise[]): WeightSuggestion[] => {
-  const exercise = exercises.find((ex) => ex.id === exerciseId);
-  if (!exercise || !exercise.oneRepMax) return [];
+export const getWeightSuggestions = (oneRepMax: number | null | undefined): WeightSuggestion[] => {
+  // If no 1RM is provided or it's zero/negative, return empty suggestions
+  if (!oneRepMax || oneRepMax <= 0) return [];
 
-  const oneRepMax = exercise.oneRepMax;
   const suggestions: WeightSuggestion[] = [];
   const percentages = [0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.65, 0.6];
 

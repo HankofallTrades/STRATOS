@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ExerciseSet, WeightSuggestion, Exercise } from "@/lib/types/workout";
 // import { useWorkout } from "@/state/workout/WorkoutContext"; // Remove old context
-import { useAppSelector, useAppDispatch } from "@/hooks/redux"; // Import Redux hooks
-import { selectAllExercises } from "@/state/exercise/exerciseSlice"; // Import exercise selector
+import { useAppDispatch } from "@/hooks/redux"; // Keep dispatch
 import { 
   updateSet as updateSetAction, 
   deleteSet as deleteSetAction, 
@@ -21,12 +20,12 @@ interface SetComponentProps {
   set: ExerciseSet;
   setIndex: number;
   exerciseId: string;
+  oneRepMax?: number | null; // Add optional prop for 1RM
 }
 
-const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, setIndex, exerciseId }) => {
+const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, setIndex, exerciseId, oneRepMax }) => {
   // const { updateSet, deleteSet, completeSet, exercises } = useWorkout(); // Remove old context usage
   const dispatch = useAppDispatch();
-  const exercises = useAppSelector(selectAllExercises); // Get exercises from Redux
 
   const [localWeight, setLocalWeight] = useState(set.weight.toString());
   const [localReps, setLocalReps] = useState(set.reps.toString());
@@ -50,16 +49,20 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
 
   const [sliderValue, setSliderValue] = useState<number>(() => calculateInitialSliderValue(set.weight, []));
 
-  // Effect to calculate suggestions when exerciseId or global exercises change
+  // Effect to calculate suggestions when oneRepMax changes
   useEffect(() => {
-    // Ensure exercises are loaded before calculating
-    if (exercises && exercises.length > 0) {
-        const newSuggestions = getWeightSuggestions(exerciseId, exercises);
+    // Calculate suggestions only if oneRepMax is available and greater than 0
+    if (oneRepMax && oneRepMax > 0) {
+        const newSuggestions = getWeightSuggestions(oneRepMax); // Pass 1RM directly
         setSuggestions(newSuggestions);
-        // Recalculate slider value based on new suggestions and current weight
         setSliderValue(calculateInitialSliderValue(parseFloat(localWeight) || set.weight, newSuggestions));
+    } else {
+        // If no 1RM, clear suggestions
+        setSuggestions([]);
+        setSliderValue(0); // Reset slider
     }
-  }, [exerciseId, exercises, calculateInitialSliderValue, localWeight, set.weight]); // Add exercises from Redux
+  // Update dependency array: use oneRepMax instead of exercises
+  }, [oneRepMax, calculateInitialSliderValue, localWeight, set.weight]); 
 
   // Effect to debounce weight/reps updates
   useEffect(() => {
