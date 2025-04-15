@@ -27,8 +27,9 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
   // const { updateSet, deleteSet, completeSet, exercises } = useWorkout(); // Remove old context usage
   const dispatch = useAppDispatch();
 
-  const [localWeight, setLocalWeight] = useState(set.weight.toString());
-  const [localReps, setLocalReps] = useState(set.reps.toString());
+  // Initialize weight/reps as empty string if set is not completed and value is 0
+  const [localWeight, setLocalWeight] = useState(() => (set.completed || set.weight !== 0) ? set.weight.toString() : '');
+  const [localReps, setLocalReps] = useState(() => (set.completed || set.reps !== 0) ? set.reps.toString() : '');
   const [isCompleted, setIsCompleted] = useState(set.completed);
   const [suggestions, setSuggestions] = useState<WeightSuggestion[]>([]);
   
@@ -47,58 +48,55 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
     return closestPercentage;
   }, []); // Empty array means it only calculates once unless component remounts
 
-  const [sliderValue, setSliderValue] = useState<number>(() => calculateInitialSliderValue(set.weight, []));
+  // Calculate initial slider value based on initial localWeight state
+  const initialSliderWeight = (set.completed || set.weight !== 0) ? set.weight : 0;
+  const [sliderValue, setSliderValue] = useState<number>(() => calculateInitialSliderValue(initialSliderWeight, []));
 
-  // Effect to calculate suggestions when oneRepMax changes
+  // Effect to calculate suggestions when 1RM is available
   useEffect(() => {
-    // Calculate suggestions only if oneRepMax is available and greater than 0
     if (oneRepMax && oneRepMax > 0) {
-        const newSuggestions = getWeightSuggestions(oneRepMax); // Pass 1RM directly
+        const newSuggestions = getWeightSuggestions(oneRepMax);
         setSuggestions(newSuggestions);
-        setSliderValue(calculateInitialSliderValue(parseFloat(localWeight) || set.weight, newSuggestions));
+        // DO NOT set slider value here
     } else {
-        // If no 1RM, clear suggestions
         setSuggestions([]);
-        setSliderValue(0); // Reset slider
+        // DO NOT set slider value here
     }
-  // Update dependency array: use oneRepMax instead of exercises
-  }, [oneRepMax, calculateInitialSliderValue, localWeight, set.weight]); 
+  // Only depends on oneRepMax
+  }, [oneRepMax]); 
 
-  // Effect to debounce weight/reps updates
+  // Effect to update slider position ONLY when suggestions change (to set initial position)
   useEffect(() => {
-    const handler = setTimeout(() => {
-      const weight = parseFloat(localWeight) || 0;
-      const reps = parseInt(localReps) || 0;
-      // Only dispatch if the value actually changed from the prop
-      if (weight !== set.weight || reps !== set.reps) {
-        // updateSet(workoutExerciseId, set.id, weight, reps); // Old context call
-        dispatch(updateSetAction({ workoutExerciseId, setId: set.id, weight, reps })); // Dispatch Redux action
-      }
-    }, 500);
-
-    return () => clearTimeout(handler);
-    // Add dispatch to dependency array
-  }, [localWeight, localReps, workoutExerciseId, set.id, set.weight, set.reps, dispatch]); 
-
-  // Effect to update slider when local weight changes
-  useEffect(() => {
-    setSliderValue(calculateInitialSliderValue(parseFloat(localWeight) || 0, suggestions));
+    // Convert localWeight to number for calculation, default to 0 if empty/invalid
+    const currentWeight = parseFloat(localWeight) || 0; 
+    const newSliderPercentage = calculateInitialSliderValue(currentWeight, suggestions);
+    
+    // Only update if the calculated percentage is different from the current slider value
+    if (newSliderPercentage !== sliderValue) {
+      setSliderValue(newSliderPercentage);
+    }
+  // Dependencies: Recalculate slider ONLY when suggestions array changes (or component mounts)
   }, [localWeight, suggestions, calculateInitialSliderValue]);
 
   const handleSliderChange = (value: number[]) => {
     const percentage = value[0];
-    setSliderValue(percentage);
-    const suggestedWeight = suggestions.find(s => s.percentage === percentage)?.weight;
-    if (suggestedWeight !== undefined) {
-      setLocalWeight(suggestedWeight.toString());
-      // Optionally trigger the update dispatch immediately or rely on the debounce effect
-    }
+    setSliderValue(percentage); // Keep state in sync with slider
   };
 
   const handleCompletionChange = (checked: boolean | 'indeterminate') => {
     const isNowCompleted = !!checked; // Ensure boolean
     setIsCompleted(isNowCompleted);
-    // completeSet(workoutExerciseId, set.id, isNowCompleted); // Old context call
+
+    // If marking as completed, first update the weight and reps
+    if (isNowCompleted) {
+      const weight = parseFloat(localWeight) || 0;
+      const reps = parseInt(localReps) || 0;
+      // Only dispatch update if values differ from original set state or haven't been saved yet
+      // (Or simply always dispatching might be fine, Redux handles redundancy if needed)
+      dispatch(updateSetAction({ workoutExerciseId, setId: set.id, weight, reps }));
+    }
+    
+    // Then, update the completion status
     dispatch(completeSetAction({ workoutExerciseId, setId: set.id, completed: isNowCompleted })); // Dispatch Redux action
   };
 
@@ -106,15 +104,6 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
     // deleteSet(workoutExerciseId, set.id); // Old context call
     dispatch(deleteSetAction({ workoutExerciseId, setId: set.id })); // Dispatch Redux action
   };
-
-  // Effect to reset local state if the underlying set prop changes from parent
-  useEffect(() => {
-    setLocalWeight(set.weight.toString());
-    setLocalReps(set.reps.toString());
-    setIsCompleted(set.completed);
-    // Recalculate slider based on potentially new set weight and existing suggestions
-    setSliderValue(calculateInitialSliderValue(set.weight, suggestions));
-  }, [set.weight, set.reps, set.completed, suggestions, calculateInitialSliderValue]);
 
   return (
     <div className="border rounded bg-card text-card-foreground p-3 mb-2 space-y-3 group relative min-h-[120px] sm:min-h-[90px]"> {/* Added min-height for consistency */}
