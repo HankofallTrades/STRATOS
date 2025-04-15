@@ -117,72 +117,109 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
   }, [set.weight, set.reps, set.completed, suggestions, calculateInitialSliderValue]);
 
   return (
-    <div className="flex items-center space-x-2 mb-2 p-2 border rounded bg-card text-card-foreground relative group">
-      <span className="font-medium w-6 text-center text-muted-foreground">{setIndex + 1}</span>
-      <div className="flex flex-col items-center w-20">
-        <Label htmlFor={`weight-${set.id}`} className="sr-only">Weight</Label>
-        <Input 
-          id={`weight-${set.id}`} 
-          type="number" 
-          value={localWeight}
-          onChange={(e) => setLocalWeight(e.target.value)}
-          className="h-8 text-center no-arrows"
-          placeholder="kg"
-          aria-label="Weight"
-        />
-         <span className="text-xs text-muted-foreground">kg</span>
+    <div className="border rounded bg-card text-card-foreground p-3 mb-2 space-y-3 group relative min-h-[120px] sm:min-h-[90px]"> {/* Added min-height for consistency */}
+      {/* Top Row: Using CSS Grid for Layout - Simplified Columns */}
+      <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 sm:gap-x-3 w-full"> {/* Simplified grid cols */} 
+          {/* Set Index (Grid Col 1 - Left) */}
+          <span className="font-medium w-6 text-center text-muted-foreground pt-7 sm:pt-0 flex-shrink-0">{setIndex + 1}</span>
+
+          {/* Wrapper for Centered Input Elements (Grid Col 2 - Middle, takes remaining space) */}
+          {/* Use place-self-center on the wrapper */} 
+          <div className="flex items-start sm:items-center space-x-2 sm:space-x-3 flex-shrink-0 place-self-center"> 
+              {/* Weight Input Group */}
+              <div className="flex flex-col items-start flex-shrink-0 w-20">
+                  <Label htmlFor={`weight-${set.id}`} className="text-xs text-muted-foreground mb-1 truncate">Weight (kg)</Label>
+                  <Input 
+                    id={`weight-${set.id}`} 
+                    type="number" 
+                    value={localWeight}
+                    onChange={(e) => setLocalWeight(e.target.value)}
+                    className="h-9 w-full text-center no-arrows" // Use full width of container
+                    placeholder="0"
+                    aria-label="Weight in kilograms"
+                  />
+              </div>
+
+              <span className="text-muted-foreground self-center pt-6 sm:pt-0 sm:self-end sm:pb-2">x</span> 
+
+              {/* Reps Input Group */}
+              <div className="flex flex-col items-start flex-shrink-0 w-20">
+                  <Label htmlFor={`reps-${set.id}`} className="text-xs text-muted-foreground mb-1">Reps</Label>
+                  <Input 
+                    id={`reps-${set.id}`} 
+                    type="number" 
+                    value={localReps}
+                    onChange={(e) => setLocalReps(e.target.value)}
+                    className="h-9 w-full text-center no-arrows" // Use full width of container
+                    placeholder="0"
+                    aria-label="Repetitions"
+                  />
+              </div>
+          </div>
+          {/* End Wrapper for Centered Input Elements */}
+
+          {/* Removed 3rd Grid Column */} 
+
       </div>
-      <span className="text-muted-foreground">x</span>
-      <div className="flex flex-col items-center w-20">
-        <Label htmlFor={`reps-${set.id}`} className="sr-only">Reps</Label>
-        <Input 
-          id={`reps-${set.id}`} 
-          type="number" 
-          value={localReps}
-          onChange={(e) => setLocalReps(e.target.value)}
-          className="h-8 text-center no-arrows"
-          placeholder="Reps"
-          aria-label="Reps"
-        />
-         <span className="text-xs text-muted-foreground">reps</span>
+      {/* End Top Row */}
+
+      {/* Action Buttons Container (Absolutely Positioned - Aligned Horizontally) */}
+      {/* Stays the same, positioned relative to the main card */}
+      <div className="absolute top-3 right-3 flex items-center space-x-2"> 
+          {/* Completion Checkbox Group (Checkbox + Label) */}
+          <div className="flex flex-col items-center text-center flex-shrink-0">
+              <Checkbox 
+                  id={`completed-${set.id}`}
+                  checked={isCompleted}
+                  onCheckedChange={handleCompletionChange}
+                  className="w-6 h-6" 
+                  aria-label="Mark set as completed"
+              />
+              <Label htmlFor={`completed-${set.id}`} className="text-xs text-muted-foreground mt-1 cursor-pointer">Done</Label>
+          </div>
+          {/* Delete Button (Now part of the absolute container, always visible on hover of card) */}
+          <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={handleDelete}
+              className="w-7 h-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive" 
+              aria-label="Delete Set"
+          >
+              <Trash2 className="w-4 h-4" />
+          </Button>
       </div>
-       <div className="flex-1 px-2">
-          <Slider
-            min={suggestions[0]?.percentage ?? 0}
-            max={suggestions[suggestions.length - 1]?.percentage ?? 100}
-            // Calculate step dynamically based on suggestions if possible
-            step={suggestions.length > 1 ? (suggestions[1].percentage - suggestions[0].percentage) : (suggestions.length === 1 ? suggestions[0].percentage : 10)} 
-            value={[sliderValue]}
-            onValueChange={handleSliderChange}
-            className="w-full"
-            disabled={suggestions.length === 0}
-            aria-label="Weight Suggestion Slider"
-          />
-          <span className="text-xs text-muted-foreground text-center block mt-1">
-            {suggestions.length > 0 ? 
-             // Display weight corresponding to the current slider percentage
-             `${sliderValue}% (${suggestions.find(s=>s.percentage === sliderValue)?.weight ?? '-'}kg)` : 
-             'No 1RM data' // Or calculate based on current weight?
-            }
-          </span>
-        </div>
-      <Checkbox 
-        id={`completed-${set.id}`}
-        checked={isCompleted}
-        onCheckedChange={handleCompletionChange}
-        className="w-5 h-5 mr-2"
-        aria-label="Mark set as completed"
-      />
-      <Button 
-        variant="ghost" 
-        size="icon" 
-        // onClick={() => deleteSet(workoutExerciseId, set.id)} 
-        onClick={handleDelete} // Use internal handler
-        className="w-8 h-8 absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
-        aria-label="Delete Set"
-      >
-        <Trash2 className="w-4 h-4" />
-      </Button>
+      {/* End Action Buttons Container */}
+
+      {/* Bottom Row/Section: Slider - Keep centering */}
+      {oneRepMax && oneRepMax > 0 ? (
+          suggestions.length > 0 ? (
+            <div className="pt-2 space-y-1 max-w-xs mx-auto"> 
+                <Label className="text-xs text-muted-foreground">Adjust Weight (% 1RM)</Label>
+                <Slider
+                    min={suggestions[0]?.percentage ?? 0}
+                    max={suggestions[suggestions.length - 1]?.percentage ?? 100}
+                    // Calculate step dynamically based on suggestions if possible
+                    step={suggestions.length > 1 ? (suggestions[1].percentage - suggestions[0].percentage) : (suggestions.length === 1 ? suggestions[0].percentage : 5)} // Default step 5 if only one suggestion or weird data
+                    value={[sliderValue]}
+                    onValueChange={handleSliderChange}
+                    className="w-full cursor-pointer"
+                    aria-label="Weight Suggestion Slider"
+                />
+                <span className="text-xs text-muted-foreground text-center block">
+                  {/* Display weight corresponding to the current slider percentage */}
+                  {`${sliderValue}% (${suggestions.find(s=>s.percentage === sliderValue)?.weight?.toFixed(1) ?? '-'}kg)`}
+                </span>
+            </div>
+          ) : (
+             <div className="pt-2 text-center"> 
+                <span className="text-xs text-muted-foreground italic">Calculating suggestions...</span>
+             </div>
+          )
+      ) : (
+           <div className="pt-1 text-center max-w-xs mx-auto"> 
+              <span className="text-xs text-muted-foreground italic">Enter Exercise 1RM for suggestions</span>
+           </div>
+      )}
     </div>
   );
 };
