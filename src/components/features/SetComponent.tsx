@@ -11,10 +11,14 @@ import {
 import { Input } from "@/components/core/input";
 import { Button } from "@/components/core/button";
 import { Checkbox } from "@/components/core/checkbox";
-import { Label } from "@/components/core/label";
 import { Trash2 } from "lucide-react";
-import { Slider } from "@/components/core/slider";
+// import { Slider } from "@/components/core/slider"; // Commented out slider for now
 import { getWeightSuggestions } from "@/lib/workout/workoutUtils";
+import {
+  TableRow,
+  TableCell,
+} from "@/components/core/table"; // ADD TableRow and TableCell imports
+import { cn } from "@/lib/utils/cn"; // Corrected import path again
 
 interface SetComponentProps {
   workoutExerciseId: string;
@@ -37,72 +41,69 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
   const [localWeight, setLocalWeight] = useState(() => (set.completed || set.weight !== 0) ? set.weight.toString() : '');
   const [localReps, setLocalReps] = useState(() => (set.completed || set.reps !== 0) ? set.reps.toString() : '');
   const [isCompleted, setIsCompleted] = useState(set.completed);
-  const [suggestions, setSuggestions] = useState<WeightSuggestion[]>([]);
+  // const [suggestions, setSuggestions] = useState<WeightSuggestion[]>([]); // Commented out slider state
+  // const [sliderValue, setSliderValue] = useState<number>(() => calculateInitialSliderValue(initialSliderWeight, [])); // Commented out slider state
   
   // useCallback for helper function to memoize it based on dependencies
-  const calculateInitialSliderValue = useCallback((currentWeight: number, currentSuggestions: WeightSuggestion[]): number => {
-    if (currentSuggestions.length === 0) return 0;
-    let closestPercentage = currentSuggestions[0].percentage;
-    let minDiff = Infinity;
-    currentSuggestions.forEach(s => {
-      const diff = Math.abs(s.weight - currentWeight);
-      if (diff < minDiff) {
-        minDiff = diff;
-        closestPercentage = s.percentage;
-      }
-    });
-    return closestPercentage;
-  }, []); // Empty array means it only calculates once unless component remounts
+  // const calculateInitialSliderValue = useCallback((currentWeight: number, currentSuggestions: WeightSuggestion[]): number => {
+  //   if (currentSuggestions.length === 0) return 0;
+  //   let closestPercentage = currentSuggestions[0].percentage;
+  //   let minDiff = Infinity;
+  //   currentSuggestions.forEach(s => {
+  //     const diff = Math.abs(s.weight - currentWeight);
+  //     if (diff < minDiff) {
+  //       minDiff = diff;
+  //       closestPercentage = s.percentage;
+  //     }
+  //   });
+  //   return closestPercentage;
+  // }, []); // Empty array means it only calculates once unless component remounts
 
   // Calculate initial slider value based on initial localWeight state
-  const initialSliderWeight = (set.completed || set.weight !== 0) ? set.weight : 0;
-  const [sliderValue, setSliderValue] = useState<number>(() => calculateInitialSliderValue(initialSliderWeight, []));
+  // const initialSliderWeight = (set.completed || set.weight !== 0) ? set.weight : 0;
+  // const [sliderValue, setSliderValue] = useState<number>(() => calculateInitialSliderValue(initialSliderWeight, []));
 
   // Effect to calculate suggestions when 1RM is available
-  useEffect(() => {
-    if (oneRepMax && oneRepMax > 0) {
-        const newSuggestions = getWeightSuggestions(oneRepMax);
-        setSuggestions(newSuggestions);
-        // DO NOT set slider value here
-    } else {
-        setSuggestions([]);
-        // DO NOT set slider value here
-    }
-  // Only depends on oneRepMax
-  }, [oneRepMax]); 
+  // useEffect(() => {
+  //   if (oneRepMax && oneRepMax > 0) {
+  //       const newSuggestions = getWeightSuggestions(oneRepMax);
+  //       setSuggestions(newSuggestions);
+  //       // DO NOT set slider value here
+  //   } else {
+  //       setSuggestions([]);
+  //       // DO NOT set slider value here
+  //   }
+  // // Only depends on oneRepMax
+  // }, [oneRepMax]); 
 
   // Effect to update slider position ONLY when suggestions change (to set initial position)
-  useEffect(() => {
-    // Convert localWeight to number for calculation, default to 0 if empty/invalid
-    const currentWeight = parseFloat(localWeight) || 0; 
-    const newSliderPercentage = calculateInitialSliderValue(currentWeight, suggestions);
-    
-    // Only update if the calculated percentage is different from the current slider value
-    if (newSliderPercentage !== sliderValue) {
-      setSliderValue(newSliderPercentage);
-    }
-  // Dependencies: Recalculate slider ONLY when suggestions array changes (or component mounts)
-  }, [localWeight, suggestions, calculateInitialSliderValue]);
+  // useEffect(() => {
+  //   // Convert localWeight to number for calculation, default to 0 if empty/invalid
+  //   const currentWeight = parseFloat(localWeight) || 0; 
+  //   const newSliderPercentage = calculateInitialSliderValue(currentWeight, suggestions);
+  //   
+  //   // Only update if the calculated percentage is different from the current slider value
+  //   if (newSliderPercentage !== sliderValue) {
+  //     setSliderValue(newSliderPercentage);
+  //   }
+  // // Dependencies: Recalculate slider ONLY when suggestions array changes (or component mounts)
+  // }, [localWeight, suggestions, calculateInitialSliderValue]);
 
-  const handleSliderChange = (value: number[]) => {
-    const percentage = value[0];
-    setSliderValue(percentage); // Keep state in sync with slider
-  };
+  // const handleSliderChange = (value: number[]) => {
+  //   const percentage = value[0];
+  //   setSliderValue(percentage); // Keep state in sync with slider
+  // };
 
   const handleCompletionChange = (checked: boolean | 'indeterminate') => {
-    const isNowCompleted = !!checked; // Ensure boolean
+    const isNowCompleted = !!checked;
     setIsCompleted(isNowCompleted);
 
-    // If marking as completed, first update the weight and reps
     if (isNowCompleted) {
       const weight = parseFloat(localWeight) || 0;
       const reps = parseInt(localReps) || 0;
-      // Only dispatch update if values differ from original set state or haven't been saved yet
-      // (Or simply always dispatching might be fine, Redux handles redundancy if needed)
       dispatch(updateSetAction({ workoutExerciseId, setId: set.id, weight, reps }));
     }
     
-    // Then, update the completion status
     dispatch(completeSetAction({ workoutExerciseId, setId: set.id, completed: isNowCompleted })); // Dispatch Redux action
   };
 
@@ -111,88 +112,81 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
     dispatch(deleteSetAction({ workoutExerciseId, setId: set.id })); // Dispatch Redux action
   };
 
+  // Render as a TableRow
   return (
-    <div className="border rounded bg-card text-card-foreground p-3 mb-2 space-y-3 group relative min-h-[120px] sm:min-h-[90px]"> {/* Added min-height for consistency */}
-      {/* Top Row: Using CSS Grid for Layout - Simplified Columns */}
-      <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 sm:gap-x-3 w-full mb-1"> {/* Add mb-1 for spacing */}
-          {/* Set Index (Grid Col 1 - Left) */}
-          <span className="font-medium w-6 text-center text-muted-foreground pt-7 sm:pt-0 flex-shrink-0">{setIndex + 1}</span>
-
-          {/* Wrapper for Centered Input Elements (Grid Col 2 - Middle, takes remaining space) */}
-          {/* Use place-self-center on the wrapper */} 
-          <div className="flex items-start sm:items-center space-x-2 sm:space-x-3 flex-shrink-0 place-self-center"> 
-              {/* Weight Input Group */}
-              <div className="flex flex-col items-start flex-shrink-0 w-20">
-                  <Label htmlFor={`weight-${set.id}`} className="text-xs text-muted-foreground mb-1 truncate">Weight (kg)</Label>
-                  <Input 
-                    id={`weight-${set.id}`} 
-                    type="number" 
-                    value={localWeight}
-                    onChange={(e) => setLocalWeight(e.target.value)}
-                    className="h-9 w-full text-center no-arrows" // Use full width of container
-                    placeholder="0"
-                    aria-label="Weight in kilograms"
-                  />
-              </div>
-
-              <span className="text-muted-foreground self-center pt-6 sm:pt-0 sm:self-end sm:pb-2">x</span> 
-
-              {/* Reps Input Group */}
-              <div className="flex flex-col items-start flex-shrink-0 w-20">
-                  <Label htmlFor={`reps-${set.id}`} className="text-xs text-muted-foreground mb-1">Reps</Label>
-                  <Input 
-                    id={`reps-${set.id}`} 
-                    type="number" 
-                    value={localReps}
-                    onChange={(e) => setLocalReps(e.target.value)}
-                    className="h-9 w-full text-center no-arrows" // Use full width of container
-                    placeholder="0"
-                    aria-label="Repetitions"
-                  />
-              </div>
-          </div>
-          {/* End Wrapper for Centered Input Elements */}
-
-          {/* Removed 3rd Grid Column */} 
-
-      </div>
-      {/* End Top Row */}
-
-      {/* Previous Performance Display - Added below the inputs */} 
-      {previousPerformance && (
-          <div className="text-center text-xs text-muted-foreground -mt-1"> {/* Negative margin to pull up slightly */} 
-              Last: {previousPerformance.weight}kg x {previousPerformance.reps} reps
-          </div>
+    <TableRow 
+      key={set.id} 
+      className={cn(
+        "group", // Keep existing group class
+        isCompleted && "bg-green-100 dark:bg-green-900/30" // Conditionally add green background
       )}
+    >
+      {/* Set Index Cell */}
+      <TableCell className="font-medium text-center w-[50px]">{setIndex + 1}</TableCell>
 
-      {/* Action Buttons Container (Absolutely Positioned - Aligned Horizontally) */}
-      {/* Stays the same, positioned relative to the main card */}
-      <div className="absolute top-3 right-3 flex items-center space-x-2"> 
-          {/* Completion Checkbox Group (Checkbox + Label) */}
-          <div className="flex flex-col items-center text-center flex-shrink-0">
-              <Checkbox 
+      {/* Previous Performance Cell */}
+      <TableCell className="text-center text-xs text-muted-foreground w-[100px]">
+        {previousPerformance ? `${previousPerformance.weight}kg x ${previousPerformance.reps}` : '-'}
+      </TableCell>
+
+      {/* Weight Input Cell */}
+      <TableCell className="w-[100px]">
+        <Input
+          id={`weight-${set.id}`}
+          type="number"
+          value={localWeight}
+          onChange={(e) => setLocalWeight(e.target.value)}
+          className="h-9 w-full text-center no-arrows"
+          placeholder="0"
+          aria-label="Weight in kilograms"
+          disabled={isCompleted} // Optionally disable when completed
+        />
+      </TableCell>
+
+      {/* Reps Input Cell */}
+      <TableCell className="w-[100px]">
+        <Input
+          id={`reps-${set.id}`}
+          type="number"
+          value={localReps}
+          onChange={(e) => setLocalReps(e.target.value)}
+          className="h-9 w-full text-center no-arrows"
+          placeholder="0"
+          aria-label="Repetitions"
+          disabled={isCompleted} // Optionally disable when completed
+        />
+      </TableCell>
+
+      {/* Actions Cell (Checkbox + Delete Button) */}
+      <TableCell className="text-right w-[100px]">
+         <div className="flex items-center justify-end space-x-2">
+             <Checkbox
                   id={`completed-${set.id}`}
                   checked={isCompleted}
                   onCheckedChange={handleCompletionChange}
-                  className="w-6 h-6" 
+                  className="w-5 h-5" // Slightly smaller checkbox
                   aria-label="Mark set as completed"
               />
-              <Label htmlFor={`completed-${set.id}`} className="text-xs text-muted-foreground mt-1 cursor-pointer">Done</Label>
-          </div>
-          {/* Delete Button (Now part of the absolute container, always visible on hover of card) */}
-          <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={handleDelete}
-              className="w-7 h-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive" 
-              aria-label="Delete Set"
-          >
-              <Trash2 className="w-4 h-4" />
-          </Button>
-      </div>
-      {/* End Action Buttons Container */}
+              <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleDelete}
+                   // Make delete always visible or visible on row hover
+                  className="w-7 h-7 text-muted-foreground hover:text-destructive opacity-50 group-hover:opacity-100 transition-opacity"
+                  aria-label="Delete Set"
+              >
+                  <Trash2 className="w-4 h-4" />
+              </Button>
+         </div>
+      </TableCell>
 
-      {/* Bottom Row/Section: Slider - Keep centering */}
+      {/* Commented out the original structure and slider */}
+      {/*
+      <div className="border rounded bg-card text-card-foreground p-3 mb-2 space-y-3 group relative min-h-[120px] sm:min-h-[90px]">
+          // ... original complex layout ...
+      </div>
+      */}
+      {/* Slider section commented out
       {oneRepMax && oneRepMax > 0 ? (
           suggestions.length > 0 ? (
             <div className="pt-2 space-y-1 max-w-xs mx-auto"> 
@@ -208,7 +202,7 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
                     aria-label="Weight Suggestion Slider"
                 />
                 <span className="text-xs text-muted-foreground text-center block">
-                  {/* Display weight corresponding to the current slider percentage */}
+                  // Display weight corresponding to the current slider percentage
                   {`${sliderValue}% (${suggestions.find(s=>s.percentage === sliderValue)?.weight?.toFixed(1) ?? '-'}kg)`}
                 </span>
             </div>
@@ -222,7 +216,8 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
               <span className="text-xs text-muted-foreground italic">Enter Exercise 1RM for suggestions</span>
            </div>
       )}
-    </div>
+      */}
+    </TableRow>
   );
 };
 
