@@ -12,17 +12,36 @@ import { ScrollArea } from "@/components/core/scroll-area";
 import { supabase } from '@/lib/integrations/supabase/client';
 import { Workout, WorkoutExercise, ExerciseSet } from "@/lib/types/workout";
 import { TablesInsert } from '@/lib/integrations/supabase/types';
+import { useNavigate } from 'react-router-dom';
 
 const WorkoutComponent = () => {
   const dispatch = useAppDispatch();
   const currentWorkout = useAppSelector(selectCurrentWorkout);
   const workoutTime = useAppSelector((state) => state.workout.workoutTime);
+  const navigate = useNavigate();
 
   if (!currentWorkout) {
     return null;
   }
 
   const handleEndWorkout = async () => {
+    const workoutToPotentiallySave = currentWorkout; 
+    
+    if (!workoutToPotentiallySave) return;
+
+    const hasCompletedSets = workoutToPotentiallySave.exercises.some(ex => ex.sets.some(set => set.completed));
+    
+    if (!hasCompletedSets) {
+        toast({
+            title: "Empty Workout",
+            description: "Workout discarded as no sets were completed.",
+            variant: "default",
+        });
+        dispatch(endWorkoutAction());
+        navigate('/');
+        return;
+    }
+
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
@@ -35,19 +54,9 @@ const WorkoutComponent = () => {
         return;
     }
 
-    const hasCompletedSets = currentWorkout.exercises.some(ex => ex.sets.some(set => set.completed));
-    if (!hasCompletedSets) {
-        toast({
-            title: "Empty Workout",
-            description: "No completed sets to save. Please complete some sets before ending the workout.",
-            variant: "default",
-        });
-        return;
-    }
-
     const workoutDataForDb: TablesInsert<'workouts'> = {
         user_id: user.id,
-        date: currentWorkout.date,
+        date: workoutToPotentiallySave.date,
         duration_seconds: Math.round(workoutTime),
         completed: true,
     };
@@ -65,7 +74,7 @@ const WorkoutComponent = () => {
 
         const workoutId = savedWorkout.id;
 
-        const workoutExercisesDataForDb: TablesInsert<'workout_exercises'>[] = currentWorkout.exercises
+        const workoutExercisesDataForDb: TablesInsert<'workout_exercises'>[] = workoutToPotentiallySave.exercises
           .filter(exercise => exercise.sets.some(set => set.completed))
           .map((exercise, index) => ({
             workout_id: workoutId,
@@ -74,11 +83,11 @@ const WorkoutComponent = () => {
         }));
 
         if (workoutExercisesDataForDb.length === 0) {
-             console.warn("Workout save aborted: No exercises with completed sets found.");
+             console.warn("Workout save aborted: No exercises with completed sets found after filtering.");
              toast({
-                title: "Empty Workout",
-                description: "No completed sets were found to save.",
-                variant: "default",
+                title: "Save Issue",
+                description: "Could not find exercises with completed sets to save.",
+                variant: "destructive",
              });
              return;
         }
@@ -93,7 +102,7 @@ const WorkoutComponent = () => {
         }
 
         const exerciseSetsDataForDb: TablesInsert<'exercise_sets'>[] = [];
-        currentWorkout.exercises.forEach((exercise) => {
+        workoutToPotentiallySave.exercises.forEach((exercise) => {
             const savedWorkoutExercise = savedWorkoutExercises.find(
                 swe => swe.exercise_id === exercise.exerciseId && swe.workout_id === workoutId
             );
@@ -130,11 +139,11 @@ const WorkoutComponent = () => {
         }
 
         const completedWorkoutForState: Workout = {
-            ...currentWorkout,
+            ...workoutToPotentiallySave,
             id: workoutId,
             duration: Math.round(workoutTime),
             completed: true,
-            exercises: currentWorkout.exercises
+            exercises: workoutToPotentiallySave.exercises
                 .map(woEx => {
                     const savedWoEx = savedWorkoutExercises.find(swe => swe.exercise_id === woEx.exerciseId && swe.workout_id === workoutId);
                     if (!savedWoEx) return null;
@@ -146,7 +155,7 @@ const WorkoutComponent = () => {
                         sets: woEx.sets.filter(set => set.completed),
                     };
                 })
-                .filter(woEx => woEx !== null),
+                .filter(woEx => woEx !== null && woEx.sets.length > 0),
         };
 
         dispatch(endWorkoutAction());
@@ -156,6 +165,8 @@ const WorkoutComponent = () => {
             title: "Workout Saved",
             description: "Your workout has been successfully saved to your profile.",
         });
+
+        navigate('/');
 
     } catch (error: any) {
         console.error("Error saving workout:", error);

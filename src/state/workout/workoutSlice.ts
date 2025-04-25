@@ -32,7 +32,7 @@ const workoutSlice = createSlice({
       if (state.currentWorkout) {
         state.currentWorkout.completed = true;
         state.currentWorkout.duration = state.workoutTime;
-        // Logic to add to history will be handled in historySlice or via thunk
+        state.currentWorkout = null;
       }
     },
     addExerciseToWorkout(state, action: PayloadAction<WorkoutExercise>) {
@@ -145,5 +145,19 @@ export const {
 export const selectCurrentWorkout = (state: RootState) => state.workout.currentWorkout;
 export const selectWorkoutTime = (state: RootState) => state.workout.workoutTime;
 export const selectIsWorkoutActive = (state: RootState) => state.workout.currentWorkout !== null && !state.workout.currentWorkout.completed;
+
+// --- Placeholder Selectors (TODO: Move to workoutSlice.ts and implement properly) ---
+// export const selectLastPerformanceForExercise = (state: RootState, exerciseId: string): { weight: number; reps: number } | null => {
+//   console.warn(`Placeholder selector used for selectLastPerformanceForExercise (exerciseId: ${exerciseId})`);
+//   // Actual logic will query workoutHistory slice
+//   return null;
+// };
+
+export const selectOneRepMaxForExercise = (state: RootState, exerciseId: string): number | null => {
+  console.warn(`Placeholder selector used for selectOneRepMaxForExercise (exerciseId: ${exerciseId})`);
+  // Actual logic might query user_exercise_stats or calculate from history
+  return null;
+};
+// --- End Placeholder Selectors ---
 
 export default workoutSlice.reducer; 
