@@ -26,6 +26,7 @@ export interface ExerciseSet {
  */
 export interface WorkoutExercise {
   id: string; // Unique ID for this instance in the workout
+  workoutId?: string; // Foreign key to the workout this instance belongs to
   exerciseId: string; // Foreign key to the main Exercise definition
   exercise: Exercise; // Embed the core exercise details (using updated Exercise type)
   equipmentType?: EquipmentType; // Equipment used for *this workout instance*

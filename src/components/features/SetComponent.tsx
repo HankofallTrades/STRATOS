@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ExerciseSet, WeightSuggestion, Exercise } from "@/lib/types/workout";
 // import { useWorkout } from "@/state/workout/WorkoutContext"; // Remove old context
-import { useAppDispatch } from "@/hooks/redux"; // Keep dispatch
+import { useAppDispatch, useAppSelector } from "@/hooks/redux"; // ADD useAppSelector import
+import { selectLastPerformanceForSet } from "@/state/history/historySlice"; // ADD selector import
 import { 
   updateSet as updateSetAction, 
   deleteSet as deleteSetAction, 
@@ -26,6 +27,11 @@ interface SetComponentProps {
 const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, setIndex, exerciseId, oneRepMax }) => {
   // const { updateSet, deleteSet, completeSet, exercises } = useWorkout(); // Remove old context usage
   const dispatch = useAppDispatch();
+
+  // ADDED: Hook call to get previous performance for this set
+  const previousPerformance = useAppSelector(state => 
+    selectLastPerformanceForSet(state, exerciseId, setIndex)
+  );
 
   // Initialize weight/reps as empty string if set is not completed and value is 0
   const [localWeight, setLocalWeight] = useState(() => (set.completed || set.weight !== 0) ? set.weight.toString() : '');
@@ -108,7 +114,7 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
   return (
     <div className="border rounded bg-card text-card-foreground p-3 mb-2 space-y-3 group relative min-h-[120px] sm:min-h-[90px]"> {/* Added min-height for consistency */}
       {/* Top Row: Using CSS Grid for Layout - Simplified Columns */}
-      <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 sm:gap-x-3 w-full"> {/* Simplified grid cols */} 
+      <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 sm:gap-x-3 w-full mb-1"> {/* Add mb-1 for spacing */}
           {/* Set Index (Grid Col 1 - Left) */}
           <span className="font-medium w-6 text-center text-muted-foreground pt-7 sm:pt-0 flex-shrink-0">{setIndex + 1}</span>
 
@@ -151,6 +157,13 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
 
       </div>
       {/* End Top Row */}
+
+      {/* Previous Performance Display - Added below the inputs */} 
+      {previousPerformance && (
+          <div className="text-center text-xs text-muted-foreground -mt-1"> {/* Negative margin to pull up slightly */} 
+              Last: {previousPerformance.weight}kg x {previousPerformance.reps} reps
+          </div>
+      )}
 
       {/* Action Buttons Container (Absolutely Positioned - Aligned Horizontally) */}
       {/* Stays the same, positioned relative to the main card */}

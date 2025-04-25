@@ -66,4 +66,39 @@ export const selectLastPerformance = (state: RootState, exerciseId: string): { w
   return null; // No performance found
 };
 
+/**
+ * Selects the weight and reps for a specific set index of a given exercise 
+ * from the most recent workout in history where that set was completed.
+ */
+export const selectLastPerformanceForSet = (
+    state: RootState,
+    exerciseId: string,
+    setIndex: number // Use 0-based index
+  ): { weight: number; reps: number } | null => {
+    // Iterate history from newest (index 0) to oldest
+    for (const workout of state.history.workoutHistory) {
+      // Find the specific exercise within this workout
+      const workoutExercise = workout.exercises.find(
+        (woEx) => woEx.exerciseId === exerciseId
+      );
+  
+      if (workoutExercise) {
+        // Check if a set exists at the specified index (setIndex)
+        // Note: setIndex corresponds to the array index, not necessarily set_number if sets were deleted.
+        // We assume the order in state matches the intended set order.
+        if (setIndex >= 0 && setIndex < workoutExercise.sets.length) {
+          const targetSet = workoutExercise.sets[setIndex];
+          // Ensure the set was completed
+          if (targetSet && targetSet.completed) {
+            // Found the most recent completed performance for this specific set index
+            return { weight: targetSet.weight, reps: targetSet.reps };
+          }
+        }
+      }
+    }
+  
+    // If no matching completed set was found in history
+    return null;
+  };
+
 export default historySlice.reducer; 
