@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 // TanStack Query
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+// Redux hook
+import { useAppSelector } from '@/hooks/redux';
+// Selector
+import { selectLastPerformanceForSet } from '@/state/history/historySlice';
 import { Exercise, ExerciseSet } from '@/lib/types/workout';
 import { EquipmentType } from '@/lib/types/enums'; // Correct import path
 import { Button } from '@/components/core/button';
@@ -242,17 +246,19 @@ export const WorkoutExerciseView = ({
       <CardContent>
         <div className="space-y-4">
           {/* Sets List */}
-          {workoutExercise.sets.map((set, index) => (
-            <SetComponent
-              key={set.id}
-              workoutExerciseId={workoutExercise.id}
-              // Pass the currently selected variation (which defaults to Standard)
-              set={{...set, variation: selectedVariation ?? DEFAULT_VARIATION }}
-              setIndex={index}
-              exerciseId={workoutExercise.exerciseId}
-              oneRepMax={oneRepMax}
-            />
-          ))}
+          {workoutExercise.sets.map((set, index) => {
+            return (
+              <SetComponent
+                key={set.id}
+                workoutExerciseId={workoutExercise.id}
+                // Pass the currently selected variation (which defaults to Standard)
+                set={{...set, variation: selectedVariation ?? DEFAULT_VARIATION }}
+                setIndex={index}
+                exerciseId={workoutExercise.exerciseId}
+                oneRepMax={oneRepMax} // Pass 1RM down
+              />
+            );
+          })}
           {/* Add Set Button */}
           <Button variant="outline" className="w-full border-dashed dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700" onClick={onAddSet}>
             <Plus size={16} className="mr-2" />
