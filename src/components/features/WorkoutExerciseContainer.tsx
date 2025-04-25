@@ -1,64 +1,209 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAppSelector, useAppDispatch } from "@/hooks/redux";
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/lib/integrations/supabase/client';
 import {
   addSetToExercise as addSetToExerciseAction,
   updateWorkoutExerciseEquipment as updateWorkoutExerciseEquipmentAction,
   updateWorkoutExerciseVariation as updateWorkoutExerciseVariationAction,
   deleteWorkoutExercise as deleteWorkoutExerciseAction,
-  selectOneRepMaxForExercise, 
+  selectOneRepMaxForExercise,
 } from "@/state/workout/workoutSlice";
-import {
-  addExerciseVariation as addExerciseVariationAction,
-  selectExerciseVariations,
-} from "@/state/exercise/exerciseSlice";
 import { WorkoutExercise, ExerciseSet, Exercise } from "@/lib/types/workout";
 import { EquipmentType, EquipmentTypeEnum } from "@/lib/types/enums";
-import { selectLastPerformance } from '@/state/history/historySlice';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/core/Dialog"; // Corrected casing
+import { addExerciseVariationToDB, fetchExerciseVariationsFromDB } from '@/lib/integrations/supabase/exercises';
+import { fetchLastWorkoutExerciseInstanceFromDB } from '@/lib/integrations/supabase/history';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/core/Dialog";
 import { Input } from "@/components/core/input";
 import { Label } from "@/components/core/label";
 import { Button } from "@/components/core/button";
 import { Check, X as XIcon } from "lucide-react";
-import { WorkoutExerciseView } from './WorkoutExerciseView'; // Import the View component
-import { RootState } from '@/state/store'; // Import RootState for placeholder selectors
+import { WorkoutExerciseView } from './WorkoutExerciseView';
 
-interface WorkoutExerciseContainerProps { // Renamed interface
+interface WorkoutExerciseContainerProps {
   workoutExercise: WorkoutExercise;
 }
 
 export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> = ({ workoutExercise }) => {
   const dispatch = useAppDispatch();
+  const queryClient = useQueryClient();
+  const exerciseId = workoutExercise.exerciseId;
+  const DEFAULT_VARIATION = 'Standard';
 
-  const [editingVariation, setEditingVariation] = useState<boolean>(false);
-  const [newVariation, setNewVariation] = useState<string>("");
+  const [userId, setUserId] = useState<string | null>(null);
+  useEffect(() => {
+      const fetchUser = async () => {
+          const { data: { user } } = await supabase.auth.getUser();
+          console.log("Fetched User ID:", user?.id);
+          setUserId(user?.id ?? null);
+      };
+      fetchUser();
+  }, []);
 
-  // --- Selectors --- 
-  const availableVariations = useAppSelector(state => selectExerciseVariations(state, workoutExercise.exerciseId));
-  // Use placeholder selectors for now
-  const lastPerformance = useAppSelector(state => selectLastPerformance(state, workoutExercise.exerciseId));
+  const [selectedVariation, setSelectedVariation] = useState<string | undefined>(
+    workoutExercise.sets.filter(s => s.variation).at(-1)?.variation ?? DEFAULT_VARIATION
+  );
+  const [isAddingVariation, setIsAddingVariation] = useState(false);
+  const [newVariationName, setNewVariationName] = useState('');
+
+  const { data: variations = [DEFAULT_VARIATION], isLoading: isLoadingVariations, error: variationsError } = useQuery({
+    queryKey: ['exerciseVariations', exerciseId],
+    queryFn: () => fetchExerciseVariationsFromDB(exerciseId),
+    enabled: !!exerciseId,
+    placeholderData: [DEFAULT_VARIATION],
+    select: (data) => [DEFAULT_VARIATION, ...data.filter(v => v !== DEFAULT_VARIATION)],
+  });
+
+  const { data: historicalSets, isLoading: isLoadingHistory } = useQuery({
+    queryKey: [
+        'lastPerformance',
+        userId,
+        exerciseId,
+        workoutExercise.equipmentType,
+        selectedVariation
+    ],
+    queryFn: () => {
+        console.log('Querying history with params:', {
+            userId,
+            exerciseId,
+            equipmentType: workoutExercise.equipmentType,
+            selectedVariation
+        });
+        if (!userId || !exerciseId) {
+            console.log("History query skipped: userId or exerciseId missing.");
+            return null; 
+        }
+        return fetchLastWorkoutExerciseInstanceFromDB(
+            userId,
+            exerciseId,
+            workoutExercise.equipmentType,
+            selectedVariation
+        );
+    },
+    enabled: !!userId && !!exerciseId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const addVariationMutation = useMutation({
+    mutationFn: ({ exerciseId, variationName }: { exerciseId: string; variationName: string }) =>
+      addExerciseVariationToDB(exerciseId, variationName),
+    onSuccess: (newVariationData) => {
+      queryClient.invalidateQueries({ queryKey: ['exerciseVariations', exerciseId] });
+      setNewVariationName('');
+      setIsAddingVariation(false);
+      setSelectedVariation(newVariationData.variation_name);
+      dispatch(updateWorkoutExerciseVariationAction({ workoutExerciseId: workoutExercise.id, variation: newVariationData.variation_name }));
+    },
+    onError: (error) => {
+      console.error("Error adding variation:", error);
+    },
+  });
+
+  const overallLastPerformance = useMemo(() => {
+    if (!historicalSets || historicalSets.length === 0) return null;
+    return historicalSets.reduce((max: { weight: number; reps: number } | null, set) => {
+        if (!max || set.weight > max.weight || (set.weight === max.weight && set.reps > max.reps)) {
+            return { weight: set.weight, reps: set.reps };
+        }
+        return max;
+    }, null);
+  }, [historicalSets]);
+
+  const historicalSetPerformances = useMemo(() => {
+    if (!historicalSets) return [];
+    const maxSets = workoutExercise.sets.length;
+    const performances: Array<{ weight: number; reps: number } | null> = Array(maxSets).fill(null);
+    historicalSets.forEach(set => {
+        const index = set.set_number - 1;
+        if (index >= 0 && index < maxSets) {
+            performances[index] = { weight: set.weight, reps: set.reps };
+        }
+    });
+    return performances;
+  }, [historicalSets, workoutExercise.sets.length]);
+
   const oneRepMax = useAppSelector(state => selectOneRepMaxForExercise(state, workoutExercise.exerciseId));
-  // Get equipment types from enum
   const equipmentTypes = Object.values(EquipmentTypeEnum);
 
-  // --- Event Handlers --- 
-  const handleAddNewVariation = () => {
-    if (newVariation.trim() !== "") {
-      dispatch(addExerciseVariationAction({ exerciseId: workoutExercise.exerciseId, variation: newVariation.trim() }));
-      dispatch(updateWorkoutExerciseVariationAction({ workoutExerciseId: workoutExercise.id, variation: newVariation.trim() }));
-      setNewVariation("");
-      setEditingVariation(false);
-    }
-  };
+  useEffect(() => {
+    const lastSetVariationInCurrentWorkout = workoutExercise.sets.filter(s => s.variation).at(-1)?.variation;
 
-  const handleEquipmentChange = (value: EquipmentType) => { // Type corrected
+    let targetVariation: string | undefined = DEFAULT_VARIATION;
+
+    if (lastSetVariationInCurrentWorkout && variations.includes(lastSetVariationInCurrentWorkout)) {
+      targetVariation = lastSetVariationInCurrentWorkout;
+    }
+    else if (selectedVariation && variations.includes(selectedVariation)) {
+        targetVariation = selectedVariation;
+    }
+
+    if (selectedVariation !== targetVariation) {
+        setSelectedVariation(targetVariation);
+        dispatch(updateWorkoutExerciseVariationAction({ workoutExerciseId: workoutExercise.id, variation: targetVariation }));
+    }
+    else if (!selectedVariation && variations.includes(DEFAULT_VARIATION)) {
+       setSelectedVariation(DEFAULT_VARIATION);
+       dispatch(updateWorkoutExerciseVariationAction({ workoutExerciseId: workoutExercise.id, variation: DEFAULT_VARIATION }));
+    }
+
+  }, [variations, workoutExercise.sets, selectedVariation, dispatch, workoutExercise.id]);
+
+  const handleEquipmentChange = (value: EquipmentType) => {
     dispatch(updateWorkoutExerciseEquipmentAction({ workoutExerciseId: workoutExercise.id, equipmentType: value }));
   };
 
   const handleVariationChange = (value: string) => {
     if (value === 'add_new') {
-      setEditingVariation(true);
+      setIsAddingVariation(true);
+      setSelectedVariation(undefined);
     } else {
+      setIsAddingVariation(false);
+      setSelectedVariation(value);
       dispatch(updateWorkoutExerciseVariationAction({ workoutExerciseId: workoutExercise.id, variation: value }));
+    }
+  };
+
+  const handleSaveNewVariation = () => {
+    if (newVariationName.trim() && newVariationName.trim().toLowerCase() !== DEFAULT_VARIATION.toLowerCase() && exerciseId) {
+      const variationExists = variations.some(v => v.toLowerCase() === newVariationName.trim().toLowerCase());
+      if (variationExists) {
+          console.warn(`Variation "${newVariationName.trim()}" already exists.`);
+          const existingVariation = variations.find(v => v.toLowerCase() === newVariationName.trim().toLowerCase());
+          if (existingVariation) {
+              setSelectedVariation(existingVariation);
+              setIsAddingVariation(false);
+              setNewVariationName('');
+              dispatch(updateWorkoutExerciseVariationAction({ workoutExerciseId: workoutExercise.id, variation: existingVariation }));
+          }
+          return;
+      }
+      if (userId) {
+        addVariationMutation.mutate({ exerciseId, variationName: newVariationName.trim() });
+      } else {
+        console.error("Cannot save variation: User ID not found.");
+      }
+    } else if (newVariationName.trim().toLowerCase() === DEFAULT_VARIATION.toLowerCase()) {
+        console.warn("'Standard' variation cannot be added explicitly.");
+        setSelectedVariation(DEFAULT_VARIATION);
+        setIsAddingVariation(false);
+        setNewVariationName('');
+        dispatch(updateWorkoutExerciseVariationAction({ workoutExerciseId: workoutExercise.id, variation: DEFAULT_VARIATION }));
+    }
+  };
+
+  const handleCancelAddVariation = () => {
+    setIsAddingVariation(false);
+    setNewVariationName('');
+    if (!selectedVariation && variations.includes(DEFAULT_VARIATION)) {
+        setSelectedVariation(DEFAULT_VARIATION);
+        dispatch(updateWorkoutExerciseVariationAction({ workoutExerciseId: workoutExercise.id, variation: DEFAULT_VARIATION }));
+    } else if (selectedVariation) {
+    } else {
+        const firstAvailable = variations[0];
+         if (firstAvailable) {
+             setSelectedVariation(firstAvailable);
+             dispatch(updateWorkoutExerciseVariationAction({ workoutExerciseId: workoutExercise.id, variation: firstAvailable }));
+         }
     }
   };
 
@@ -66,58 +211,37 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
     dispatch(addSetToExerciseAction({ workoutExerciseId: workoutExercise.id, exerciseId: workoutExercise.exerciseId }));
   };
 
-  // Delete handler remains for the exercise itself, triggered elsewhere (e.g., WorkoutComponent)
-  // const handleDeleteExercise = () => {
-  //   dispatch(deleteWorkoutExerciseAction(workoutExercise.id));
-  // };
+  if (variationsError) {
+      console.error("Variation fetch error:", variationsError);
+  }
 
-  // --- Render --- 
+  useEffect(() => {
+    console.log('Fetched historical sets:', historicalSets);
+  }, [historicalSets]);
+
   return (
     <>
-      {/* Pass data and handlers down to the View component */}
       <WorkoutExerciseView
         workoutExercise={workoutExercise}
         equipmentTypes={equipmentTypes}
-        lastPerformance={lastPerformance}
-        oneRepMax={oneRepMax} // Pass 1RM down
+        overallLastPerformance={overallLastPerformance}
+        historicalSetPerformances={historicalSetPerformances}
+        oneRepMax={oneRepMax}
         onAddSet={handleAddSet}
         onEquipmentChange={handleEquipmentChange}
+        variations={variations}
+        selectedVariation={selectedVariation}
+        isAddingVariation={isAddingVariation}
+        newVariationName={newVariationName}
+        isLoadingVariations={isLoadingVariations}
+        addVariationMutationStatus={addVariationMutation.status}
         onVariationChange={handleVariationChange}
-        // No onSetUpdate or onSetDelete needed here
+        onNewVariationNameChange={setNewVariationName}
+        onSaveNewVariation={handleSaveNewVariation}
+        onCancelAddVariation={handleCancelAddVariation}
       />
-
-      {/* Keep the Dialog for adding variation within the Container */}
-      <Dialog open={editingVariation} onOpenChange={setEditingVariation}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add New Variation for {workoutExercise.exercise.name}</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <Label htmlFor={`new-variation-${workoutExercise.id}`}>Variation Name</Label> {/* Unique ID */}
-            {/* Temporarily comment out Input to isolate the error */}
-             <Input
-               id={`new-variation-${workoutExercise.id}`} 
-               value={newVariation}
-               onChange={(e) => setNewVariation(e.target.value)}
-               placeholder="e.g., Close Grip"
-             /> 
-            {/* <div>Input Placeholder</div> */}
-          </div>
-          <DialogFooter>
-             <Button variant="outline" onClick={() => setEditingVariation(false)}>
-               <XIcon className="w-4 h-4 mr-2"/>
-               <span>Cancel</span>
-             </Button>
-             <Button onClick={handleAddNewVariation} disabled={!newVariation.trim()}>
-               <Check className="w-4 h-4 mr-2"/>
-               <span>Add Variation</span>
-             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   );
 };
 
-// Update the export name
 export default WorkoutExerciseContainer;
