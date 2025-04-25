@@ -66,8 +66,8 @@ const Analytics = () => {
   
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
   const [processedHistory, setProcessedHistory] = useState<ProcessedHistory>({});
-  const [filterOptions, setFilterOptions] = useState<FilterOptions>({ variations: [], equipmentTypes: [] });
-  const [selectedFilters, setSelectedFilters] = useState<SelectedFilters>({ variations: [], equipmentTypes: [] });
+  const [allCombinationKeys, setAllCombinationKeys] = useState<string[]>([]);
+  const [activeCombinationKeys, setActiveCombinationKeys] = useState<string[]>([]);
 
   // Recalculate statistics based on Redux state
   const stats = useMemo(() => {
@@ -104,18 +104,18 @@ const Analytics = () => {
   useEffect(() => {
     if (!selectedExercise || workoutHistory.length === 0) {
       setProcessedHistory({});
-      setFilterOptions({ variations: [], equipmentTypes: [] });
-      setSelectedFilters({ variations: [], equipmentTypes: [] });
+      // Reset new state variables
+      setAllCombinationKeys([]);
+      setActiveCombinationKeys([]);
       return;
     }
 
     const history: ProcessedHistory = {};
     const uniqueVariations = new Set<string>();
     const uniqueEquipmentTypes = new Set<string>();
-    let defaultVariation: string | null = null;
-    let defaultEquipment: string | null = null;
     let mostFrequentKey: string | null = null;
     const keyFrequency: Record<string, number> = {};
+    const currentAllKeys = new Set<string>();
 
 
     workoutHistory.forEach(workout => {
@@ -136,6 +136,7 @@ const Analytics = () => {
               uniqueEquipmentTypes.add(setEq || 'Default');
 
               const combinationKey = getCombinationKey(setVar, setEq);
+              currentAllKeys.add(combinationKey);
               
               if (!history[combinationKey]) {
                 history[combinationKey] = [];
@@ -174,28 +175,12 @@ const Analytics = () => {
         }
     });
     
-    // Extract default var/eq from the most frequent key
-    if (mostFrequentKey) {
-        const [defVar, defEq] = mostFrequentKey.split('|');
-        defaultVariation = defVar === 'Default' ? null : defVar;
-        defaultEquipment = defEq === 'Default' ? null : defEq;
-    }
-
-
     setProcessedHistory(history);
-    const variationsArray = Array.from(uniqueVariations).sort();
-    const equipmentTypesArray = Array.from(uniqueEquipmentTypes).sort();
-    setFilterOptions({ 
-        variations: variationsArray, 
-        equipmentTypes: equipmentTypesArray 
-    });
+    const sortedAllKeys = Array.from(currentAllKeys).sort();
+    setAllCombinationKeys(sortedAllKeys);
     
     // Set default selected filters based on the most frequent combination
-     setSelectedFilters({
-        variations: defaultVariation ? [defaultVariation] : (variationsArray.includes('Default') ? ['Default'] : []),
-        equipmentTypes: defaultEquipment ? [defaultEquipment] : (equipmentTypesArray.includes('Default') ? ['Default'] : []),
-     });
-
+    setActiveCombinationKeys(mostFrequentKey ? [mostFrequentKey] : []);
 
   }, [selectedExercise, workoutHistory]);
 
@@ -206,37 +191,19 @@ const Analytics = () => {
     return `${date.getMonth() + 1}/${date.getDate()}`;
   };
   
-  // Handle filter changes
-  const handleFilterChange = (type: 'variations' | 'equipmentTypes', value: string, checked: boolean) => {
-      setSelectedFilters(prev => ({
-          ...prev,
-          [type]: checked 
-              ? [...prev[type], value] // Add value if checked
-              : prev[type].filter(item => item !== value) // Remove value if unchecked
-      }));
-  };
-
   // Filter data based on selected filters for the chart
   const chartData = useMemo(() => {
       const filteredData: ProcessedHistory = {};
-      const activeCombinationKeys = new Set<string>();
-
-      // Determine all combinations matching selected filters
-      selectedFilters.variations.forEach(v => {
-          selectedFilters.equipmentTypes.forEach(e => {
-              activeCombinationKeys.add(getCombinationKey(v === 'Default' ? null : v, e === 'Default' ? null : e));
-          });
-      });
 
       // Include data for active combinations
        Object.entries(processedHistory).forEach(([key, dataPoints]) => {
-            if (activeCombinationKeys.has(key)) {
+            if (activeCombinationKeys.includes(key)) {
                 filteredData[key] = dataPoints;
             }
        });
 
       return filteredData;
-  }, [processedHistory, selectedFilters]);
+  }, [processedHistory, activeCombinationKeys]);
 
   // Define colors for chart lines (add more if needed)
   const lineColors = [
@@ -381,52 +348,10 @@ const Analytics = () => {
 
                 {selectedExercise && (
                   <div>
-                    <h3 className="text-lg font-medium mb-4">Filters</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        {/* Variation Filters */}
-                         <div>
-                             <h4 className="text-md font-semibold mb-3">Variations</h4>
-                             <div className="space-y-2">
-                                 {filterOptions.variations.length > 0 ? filterOptions.variations.map(variation => (
-                                     <div key={variation} className="flex items-center space-x-2">
-                                         <Checkbox 
-                                             id={`var-${variation}`} 
-                                             checked={selectedFilters.variations.includes(variation)}
-                                             onCheckedChange={(checked) => handleFilterChange('variations', variation, !!checked)}
-                                         />
-                                         <Label htmlFor={`var-${variation}`} className="cursor-pointer">
-                                             {variation}
-                                         </Label>
-                                     </div>
-                                 )) : <p className="text-sm text-gray-500 italic">No variations recorded.</p>}
-                             </div>
-                         </div>
-
-                        {/* Equipment Type Filters */}
-                         <div>
-                             <h4 className="text-md font-semibold mb-3">Equipment Types</h4>
-                             <div className="space-y-2">
-                                 {filterOptions.equipmentTypes.length > 0 ? filterOptions.equipmentTypes.map(eqType => (
-                                     <div key={eqType} className="flex items-center space-x-2">
-                                         <Checkbox 
-                                             id={`eq-${eqType}`} 
-                                             checked={selectedFilters.equipmentTypes.includes(eqType)}
-                                             onCheckedChange={(checked) => handleFilterChange('equipmentTypes', eqType, !!checked)}
-                                         />
-                                         <Label htmlFor={`eq-${eqType}`} className="cursor-pointer">
-                                             {eqType}
-                                         </Label>
-                                     </div>
-                                 )) : <p className="text-sm text-gray-500 italic">No equipment types recorded.</p>}
-                             </div>
-                         </div>
-                    </div>
-
-
                     <h3 className="text-lg font-medium mb-4 flex items-center">
                        <TrendingUp className="mr-2 h-5 w-5" /> Estimated 1RM Progression
                     </h3>
-                    {Object.keys(chartData).length > 0 ? (
+                    {Object.keys(processedHistory).length > 0 ? (
                        <ResponsiveContainer width="100%" height={400}>
                            <LineChart margin={{ top: 5, right: 20, left: 20, bottom: 5 }}> {/* Increased left margin */}
                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(229, 231, 235, 0.25)" /> {/* Lighter grid lines with 25% opacity */}
@@ -450,20 +375,57 @@ const Analytics = () => {
                                     labelFormatter={(label) => `Date: ${formatDate(label)}`} // Format tooltip label
                                     contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.8)', borderRadius: '4px', border: '1px solid #ccc' }}
                                />
-                               <Legend />
-                               {Object.entries(chartData).map(([key, dataPoints], index) => (
-                                   <Line 
-                                       key={key} 
-                                       type="monotone" 
-                                       data={dataPoints} 
-                                       dataKey="e1RM" 
-                                       name={key.replace('|', ' - ')} // Make legend name more readable
-                                       stroke={lineColors[index % lineColors.length]} // Cycle through colors
-                                       strokeWidth={2}
-                                       dot={{ r: 4 }}
-                                       activeDot={{ r: 6 }} 
-                                   />
-                               ))}
+                               <Legend 
+                                  // Handle clicks on legend items
+                                  onClick={(data) => {
+                                      // The 'value' directly holds the display name (e.g., "Default - Barbell")
+                                      const key = data.value.replace(' - ', '|'); // Reconstruct the original key from the value
+                                      setActiveCombinationKeys(prevKeys => 
+                                          prevKeys.includes(key) 
+                                              ? prevKeys.filter(k => k !== key) // Remove if already active
+                                              : [...prevKeys, key] // Add if inactive
+                                      );
+                                  }}
+                                  // Format legend item text style
+                                  formatter={(value, entry) => {
+                                      // 'value' is the display name (e.g., "Default - Barbell")
+                                      const key = value.replace(' - ', '|'); // Reconstruct the original key
+                                      const isActive = activeCombinationKeys.includes(key);
+                                      const color = isActive ? entry.color : '#9ca3af'; // Use assigned line color for active, gray for inactive
+                                      // Apply cursor pointer to indicate clickability
+                                      return <span style={{ color, cursor: 'pointer' }}>{value}</span>;
+                                  }}
+                                  // Provide payload for all possible items
+                                  payload={
+                                      allCombinationKeys.map((key, index) => ({
+                                          id: key,
+                                          type: 'line',
+                                          value: key.replace('|', ' - '), // Display name for legend
+                                          color: lineColors[index % lineColors.length], // Assign color based on full list
+                                          // Removed the nested payload object as it's not needed here
+                                      }))
+                                  }
+                                  wrapperStyle={{ paddingTop: '20px' }} // Add some space above the legend
+                               />
+                               {Object.entries(chartData).map(([key, dataPoints]) => {
+                                    // Find the original index of the key in allCombinationKeys for consistent color mapping
+                                    const colorIndex = allCombinationKeys.indexOf(key); 
+                                    // Only render lines for active keys (redundant check, but safe)
+                                    if (!activeCombinationKeys.includes(key)) return null; 
+                                    return (
+                                        <Line 
+                                            key={key} 
+                                            type="monotone" 
+                                            data={dataPoints} 
+                                            dataKey="e1RM" 
+                                            name={key.replace('|', ' - ')} // Make legend name more readable
+                                            stroke={lineColors[colorIndex % lineColors.length]} // Use consistent color index
+                                            strokeWidth={2}
+                                            dot={{ r: 4 }}
+                                            activeDot={{ r: 6 }} 
+                                        />
+                                    );
+                               })}
                            </LineChart>
                        </ResponsiveContainer>
                     ) : (
