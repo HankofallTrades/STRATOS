@@ -37,7 +37,9 @@ const workoutSlice = createSlice({
     },
     addExerciseToWorkout(state, action: PayloadAction<WorkoutExercise>) {
         if (state.currentWorkout) {
-            state.currentWorkout.exercises.push(action.payload);
+            if (!state.currentWorkout.exercises.some(ex => ex.exerciseId === action.payload.exerciseId)) {
+                state.currentWorkout.exercises.push(action.payload);
+            }
         }
     },
     addSetToExercise(state, action: PayloadAction<{ workoutExerciseId: string; exerciseId: string }>) {
@@ -47,38 +49,57 @@ const workoutSlice = createSlice({
       );
       if (!workoutExercise) return;
 
-      // Create a new set, potentially copying weight from the last set
+      // Create a new set, potentially copying weight/reps/variation/equipment from the last set
       const lastSet = workoutExercise.sets.at(-1);
       const newSet: ExerciseSet = {
         id: uuidv4(),
         weight: lastSet?.weight ?? 0,
-        reps: lastSet?.reps ?? 0, // Or default to 0
+        reps: lastSet?.reps ?? 0,
         exerciseId: action.payload.exerciseId,
         completed: false,
+        variation: lastSet?.variation ?? workoutExercise.variation ?? 'Standard', 
+        equipmentType: lastSet?.equipmentType ?? workoutExercise.equipmentType, // Use workoutExercise equipment as fallback
       };
       workoutExercise.sets.push(newSet);
     },
-    updateSet(state, action: PayloadAction<{ workoutExerciseId: string; setId: string; weight: number; reps: number }>) {
-        if (!state.currentWorkout) return;
-        const workoutExercise = state.currentWorkout.exercises.find(
-          (ex) => ex.id === action.payload.workoutExerciseId
-        );
-        if (!workoutExercise) return;
-        const set = workoutExercise.sets.find((s) => s.id === action.payload.setId);
-        if (set) {
-          set.weight = action.payload.weight;
-          set.reps = action.payload.reps;
+    updateSet(
+      state,
+      action: PayloadAction<{
+        workoutExerciseId: string;
+        setId: string;
+        weight: number;
+        reps: number;
+        variation?: string | null; // Add optional variation
+        equipmentType?: EquipmentType | null; // Add optional equipmentType
+      }>
+    ) {
+      if (!state.currentWorkout) return;
+      const workoutExercise = state.currentWorkout.exercises.find(
+        (ex) => ex.id === action.payload.workoutExerciseId
+      );
+      if (!workoutExercise) return;
+      const set = workoutExercise.sets.find((s) => s.id === action.payload.setId);
+      if (set) {
+        set.weight = action.payload.weight;
+        set.reps = action.payload.reps;
+        if (action.payload.variation !== undefined) {
+            set.variation = action.payload.variation ?? undefined; // Handle null
         }
+        if (action.payload.equipmentType !== undefined) {
+             set.equipmentType = action.payload.equipmentType ?? undefined; // Handle null
+        }
+      }
     },
     deleteSet(state, action: PayloadAction<{ workoutExerciseId: string; setId: string }>) {
         if (!state.currentWorkout) return;
         const workoutExercise = state.currentWorkout.exercises.find(
-          (ex) => ex.id === action.payload.workoutExerciseId
+            (ex) => ex.id === action.payload.workoutExerciseId
         );
-        if (!workoutExercise) return;
-        workoutExercise.sets = workoutExercise.sets.filter((s) => s.id !== action.payload.setId);
+        if (workoutExercise) {
+            workoutExercise.sets = workoutExercise.sets.filter((s) => s.id !== action.payload.setId);
+        }
     },
-    completeSet(state, action: PayloadAction<{ workoutExerciseId: string; setId: string; completed: boolean }>){
+    completeSet(state, action: PayloadAction<{ workoutExerciseId: string; setId: string; completed: boolean }>) {
         if (!state.currentWorkout) return;
         const workoutExercise = state.currentWorkout.exercises.find(
             (ex) => ex.id === action.payload.workoutExerciseId
@@ -100,8 +121,14 @@ const workoutSlice = createSlice({
             (ex) => ex.id === action.payload.workoutExerciseId
         );
         if (workoutExercise) {
+            // Update the parent workoutExercise object
             workoutExercise.equipmentType = action.payload.equipmentType;
-            // Optionally update equipment on all sets? Or handle in SetComponent?
+            // Propagate the change to non-completed sets
+            workoutExercise.sets.forEach(set => {
+                if (!set.completed) {
+                    set.equipmentType = action.payload.equipmentType;
+                }
+            });
         }
     },
     updateWorkoutExerciseVariation(state, action: PayloadAction<{ workoutExerciseId: string; variation: string }>) {
@@ -110,11 +137,16 @@ const workoutSlice = createSlice({
             (ex) => ex.id === action.payload.workoutExerciseId
         );
         if (workoutExercise) {
-            // Update the variation property on the WorkoutExercise instance
+             // Update the parent workoutExercise object
             workoutExercise.variation = action.payload.variation;
+             // Propagate the change to non-completed sets
+            workoutExercise.sets.forEach(set => {
+                if (!set.completed) {
+                    set.variation = action.payload.variation;
+                }
+            });
         }
     },
-    // TODO: Add reducer for deleting a WorkoutExercise from currentWorkout
     deleteWorkoutExercise(state, action: PayloadAction<string>) { // workoutExerciseId
         if (state.currentWorkout) {
             state.currentWorkout.exercises = state.currentWorkout.exercises.filter(
@@ -122,8 +154,6 @@ const workoutSlice = createSlice({
             );
         }
     },
-    // TODO: Add reducers for updating equipment/variation within the workout context if needed
-    // updateExerciseEquipment, updateExerciseVariation
   },
 });
 

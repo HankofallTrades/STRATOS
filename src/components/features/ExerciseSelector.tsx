@@ -71,6 +71,7 @@ const ExerciseSelector = () => {
         exerciseId: selectedExercise.id,
         exercise: selectedExercise,
         equipmentType: selectedExercise.default_equipment_type as EquipmentType | undefined,
+        variation: 'Standard',
         sets: [], // Start with empty sets initially
       };
       // Dispatch to add to the *current workout* state (client state)
