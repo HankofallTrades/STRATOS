@@ -20,14 +20,14 @@ const Index = () => {
     <div className="container mx-auto p-4 max-w-3xl">
       <header className="flex flex-col items-center justify-between mb-8 text-center">
         <h1 className="text-3xl md:text-4xl font-bold mb-2 text-fitnessBlue dark:text-fitnessBlue">Stratos</h1>
-        <p className="text-gray-600 dark:text-gray-400 mb-6">Your personal health & fitness companion</p>
+        <p className="text-gray-600 dark:text-gray-400 mb-6">Take your health & fitness to new heights</p>
       </header>
 
       <main>
         {!currentWorkout ? (
           <div className="flex flex-col items-center justify-center py-12 px-4 bg-gray-50 dark:bg-gray-800 rounded-lg shadow-sm">
             <Dumbbell size={64} className="text-fitnessBlue mb-6" />
-            <h2 className="text-2xl font-semibold mb-4 dark:text-white">Ready to start your workout?</h2>
+            <h2 className="text-2xl font-semibold mb-4 dark:text-white">Ready to start your session?</h2>
             <p className="text-gray-600 dark:text-gray-400 mb-8 text-center">
               Track your exercises, sets, and reps to monitor your progress over time.
             </p>
