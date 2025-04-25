@@ -4,7 +4,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 // Redux hook
 import { useAppSelector } from '@/hooks/redux';
 // Selector
-import { selectLastPerformanceForSet } from '@/state/history/historySlice';
 import { Exercise, ExerciseSet } from '@/lib/types/workout';
 import { EquipmentType } from '@/lib/types/enums'; // Correct import path
 import { Button } from '@/components/core/button';
@@ -17,6 +16,15 @@ import SetComponent from './SetComponent'; // Assuming SetComponent exists in th
 // Import Supabase functions
 import { addExerciseVariationToDB, fetchExerciseVariationsFromDB } from '@/lib/integrations/supabase/exercises';
 import { Input } from '@/components/core/input'; // Import Input component
+// ADD Table component imports
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/core/table";
 
 interface WorkoutExerciseViewProps {
   workoutExercise: { id: string; exerciseId: string; exercise: Exercise; sets: ExerciseSet[]; equipmentType?: EquipmentType }; // Added equipmentType
@@ -243,26 +251,39 @@ export const WorkoutExerciseView = ({
           )}
         </CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {/* Sets List */}
-          {workoutExercise.sets.map((set, index) => {
-            return (
-              <SetComponent
-                key={set.id}
-                workoutExerciseId={workoutExercise.id}
-                // Pass the currently selected variation (which defaults to Standard)
-                set={{...set, variation: selectedVariation ?? DEFAULT_VARIATION }}
-                setIndex={index}
-                exerciseId={workoutExercise.exerciseId}
-                oneRepMax={oneRepMax} // Pass 1RM down
-              />
-            );
-          })}
-          {/* Add Set Button */}
-          <Button variant="outline" className="w-full border-dashed dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700" onClick={onAddSet}>
-            <Plus size={16} className="mr-2" />
-            Add Set
+      <CardContent className="pt-0">
+        <Table>
+           {/* Optional: Add a caption if desired */}
+           {/* <TableCaption>Recent sets for {workoutExercise.exercise.name}.</TableCaption> */}
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[50px] text-center">Set</TableHead>
+              <TableHead className="w-[100px] text-center">Previous</TableHead>
+              <TableHead className="w-[100px] text-center">Weight (kg)</TableHead>
+              <TableHead className="w-[100px] text-center">Reps</TableHead>
+              <TableHead className="w-[100px] text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {workoutExercise.sets.map((set, index) => {
+              // Pass all required props to SetComponent, including oneRepMax
+              return (
+                <SetComponent
+                  key={set.id} // React key
+                  workoutExerciseId={workoutExercise.id}
+                  set={set}
+                  setIndex={index}
+                  exerciseId={workoutExercise.exerciseId}
+                  oneRepMax={oneRepMax} // Pass oneRepMax down
+                />
+              );
+            })}
+          </TableBody>
+        </Table>
+
+        <div className="mt-4">
+          <Button onClick={onAddSet} variant="outline" size="sm">
+            <Plus className="mr-2 h-4 w-4" /> Add Set
           </Button>
         </div>
       </CardContent>
