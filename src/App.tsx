@@ -7,50 +7,62 @@ import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { store, persistor } from './state/store';
 import { ThemeProvider } from "next-themes";
+import BottomNav from "@/components/layout/BottomNav";
+import ProtectedRoute from "@/components/layout/ProtectedRoute";
 import Index from "./pages/Index";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
-import BottomNav from "@/components/layout/BottomNav";
+import LoginPage from "./pages/LoginPage";
+import WaitlistPage from "./pages/WaitlistPage";
 import { useWorkoutTimer } from './hooks/useWorkoutTimer';
 
 const queryClient = new QueryClient();
 
-// New component to contain the main application logic and hook call
-const AppContent = () => {
-  useWorkoutTimer(); // Call the hook within a child of the Provider
-
+// Main Application Layout (for authenticated users)
+const MainAppLayout = () => {
+  useWorkoutTimer(); // Example: Call hooks needed only when logged in
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <Router>
-            <div className="pb-20">
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/analytics" element={<Analytics />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </div>
-            <BottomNav />
-          </Router>
-        </TooltipProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+    <div className="pb-20"> {/* Padding for BottomNav */}
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/analytics" element={<Analytics />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+      <BottomNav />
+    </div>
   );
-}
+};
 
-// App component now only sets up the top-level providers
+// App component sets up providers and routes
 const App = () => {
-  // useWorkoutTimer(); // Move hook call to AppContent
-
   return (
     <Provider store={store}>
-      <PersistGate loading={null} persistor={persistor}>
-        <AppContent /> {/* Render the new content component */} 
+      <PersistGate loading={null} persistor={persistor}> {/* Consider a loading indicator here */}
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <Router>
+              <Routes>
+                {/* Public Routes */}
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/waitlist" element={<WaitlistPage />} />
+
+                {/* Protected Routes */}
+                <Route
+                  path="/*" // Match all routes not matched above
+                  element={
+                    <ProtectedRoute>
+                      <MainAppLayout />
+                    </ProtectedRoute>
+                  }
+                />
+              </Routes>
+            </Router>
+          </TooltipProvider>
+        </ThemeProvider>
       </PersistGate>
     </Provider>
   );
