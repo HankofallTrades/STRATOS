@@ -90,11 +90,14 @@ const ExerciseSelector = () => {
   };
 
   return (
+    // Added wrapper div for right alignment
+    <div className="flex justify-end">
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="w-full bg-fitnessBlue hover:bg-fitnessBlue/90 flex items-center gap-2">
+          {/* Modified Button for icon-only, circular look */}
+          <Button variant="outline" size="icon" className="bg-fitnessBlue hover:bg-fitnessBlue/90">
           <Plus size={18} />
-          <span>Add Exercise</span>
+            {/* Removed text span */}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md dark:bg-gray-800 dark:border-gray-700">
@@ -188,6 +191,7 @@ const ExerciseSelector = () => {
         </div>
       </DialogContent>
     </Dialog>
+    </div> // End wrapper div
   );
 };
 
