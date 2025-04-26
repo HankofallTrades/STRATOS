@@ -1,22 +1,21 @@
 import React, { useState, useMemo, useEffect } from 'react';
-// import { useWorkout } from '@/state/workout/WorkoutContext'; // Remove old context
 import { useAppSelector } from "@/hooks/redux"; // Import Redux hooks
-import { selectWorkoutHistory } from "@/state/history/historySlice"; // Import history selector
-// import { selectAllExercises } from "@/state/exercise/exerciseSlice"; // Remove exercise selector import
+import { selectWorkoutHistory } from "@/state/history/historySlice"; // Restore history slice import for stats calculation
 import { useQuery } from '@tanstack/react-query'; // Add TanStack Query import
 import { fetchExercisesFromDB } from '@/lib/integrations/supabase/exercises'; // Add Supabase function import
+import { fetchMaxE1RMHistory } from '@/lib/integrations/supabase/history'; // Import the new history fetcher
+import { supabase } from "@/lib/integrations/supabase/client"; // Import supabase client
 import { formatTime } from '@/lib/utils/timeUtils';
-import { calculateE1RM } from '@/lib/utils/workoutUtils'; // Import e1RM calculation
 import { BarChart, Clock, Calendar, Dumbbell, Award, TrendingUp } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/core/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/core/card";
-// import { useState } from "react"; // Already imported above
 import { Exercise, ExerciseSet, Workout, WorkoutExercise } from "@/lib/types/workout";
 import { EquipmentType } from "@/lib/types/enums"; // Import EquipmentType
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Bar } from 'recharts';
 import { Checkbox } from "@/components/core/checkbox"; // Import Checkbox
 import { Label } from "@/components/core/label"; // Import Label
+import { DailyMaxE1RM } from '@/lib/types/analytics'; // Import the type for RPC result
 
 // Define the structure for processed data points
 interface DataPoint {
@@ -43,10 +42,15 @@ interface SelectedFilters {
   equipmentTypes: string[];
 }
 
+// Define the structure for the chart data (grouped by combination)
+interface ChartData {
+  [combinationKey: string]: { workout_date: string; max_e1rm: number }[]; // Key: "Variation|EquipmentType"
+}
+
 // Helper function to create a unique key for combination
 const getCombinationKey = (
     variation?: string | null, 
-    equipmentType?: EquipmentType | string | null
+    equipmentType?: string | null // Now just string as returned from DB
 ): string => {
     const varPart = variation || 'Default';
     const eqPart = equipmentType || 'Default';
@@ -54,29 +58,89 @@ const getCombinationKey = (
 };
 
 const Analytics = () => {
-  // const { workoutHistory, exercises } = useWorkout(); // Remove old context usage
+  // Get workout history for stats calculation
   const workoutHistory = useAppSelector(selectWorkoutHistory);
-  // const exercises = useAppSelector(selectAllExercises); // Removed
+  
+  // Fetch user ID directly
+  const [userId, setUserId] = useState<string | null>(null);
+  useEffect(() => {
+      const fetchUser = async () => {
+          const { data: { user }, error } = await supabase.auth.getUser();
+          if (error) {
+              console.error("Error fetching user for analytics:", error);
+          } else {
+              setUserId(user?.id ?? null);
+          }
+      };
+      fetchUser();
+  }, []); // Run once on mount
 
-  // Fetch exercises using TanStack Query
+  // Fetch list of all exercises for the dropdown selector
   const { data: exercises = [], isLoading: isLoadingExercises, error: errorExercises } = useQuery({
     queryKey: ['exercises'],
     queryFn: fetchExercisesFromDB,
   });
   
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
-  const [processedHistory, setProcessedHistory] = useState<ProcessedHistory>({});
   const [allCombinationKeys, setAllCombinationKeys] = useState<string[]>([]);
   const [activeCombinationKeys, setActiveCombinationKeys] = useState<string[]>([]);
 
-  // Recalculate statistics based on Redux state
+  // Fetch max e1RM history using TanStack Query and the Supabase function
+  const { 
+      data: maxE1RMHistory = [], 
+      isLoading: isLoadingHistory, 
+      error: errorHistory 
+  } = useQuery({
+      queryKey: ['maxE1RMHistory', selectedExercise?.id, userId],
+      queryFn: async () => {
+          if (!userId || !selectedExercise?.id) return []; 
+          return fetchMaxE1RMHistory(userId, selectedExercise.id);
+      },
+      enabled: !!userId && !!selectedExercise?.id, // Only run query when user and exercise are selected
+      staleTime: 5 * 60 * 1000, // Cache data for 5 minutes
+  });
+
+  // Process the fetched maxE1RMHistory to group by combination and update keys
+  useEffect(() => {
+      if (!maxE1RMHistory || maxE1RMHistory.length === 0) {
+          setAllCombinationKeys([]);
+          setActiveCombinationKeys([]);
+          return;
+      }
+
+      const uniqueKeys = new Set<string>();
+      const keyFrequency: Record<string, number> = {};
+
+      maxE1RMHistory.forEach(item => {
+          const key = getCombinationKey(item.variation, item.equipment_type);
+          uniqueKeys.add(key);
+          keyFrequency[key] = (keyFrequency[key] || 0) + 1;
+      });
+
+      const sortedKeys = Array.from(uniqueKeys).sort();
+      setAllCombinationKeys(sortedKeys);
+
+      // Find the most frequent key to activate by default
+      let mostFrequentKey: string | null = null;
+      let maxFreq = 0;
+      Object.entries(keyFrequency).forEach(([key, freq]) => {
+          if (freq > maxFreq) {
+              maxFreq = freq;
+              mostFrequentKey = key;
+          }
+      });
+      
+      setActiveCombinationKeys(mostFrequentKey ? [mostFrequentKey] : (sortedKeys.length > 0 ? [sortedKeys[0]] : []));
+  }, [maxE1RMHistory]); 
+
+  // Recalculate OVERALL stats based on Redux state 
   const stats = useMemo(() => {
-    const totalWorkouts = workoutHistory.length;
-    const totalTime = workoutHistory.reduce((sum, workout) => sum + workout.duration, 0);
+    const totalWorkouts = workoutHistory?.length ?? 0; 
+    const totalTime = workoutHistory?.reduce((sum, workout) => sum + workout.duration, 0) ?? 0;
     const averageTime = totalWorkouts > 0 ? totalTime / totalWorkouts : 0;
 
     const exerciseCounts: Record<string, number> = {};
-    workoutHistory.forEach(workout => {
+    workoutHistory?.forEach(workout => {
       workout.exercises.forEach(ex => {
         exerciseCounts[ex.exerciseId] = (exerciseCounts[ex.exerciseId] || 0) + 1;
       });
@@ -92,97 +156,13 @@ const Analytics = () => {
     });
     
     return { totalWorkouts, totalTime, averageTime, mostCommonExerciseId };
-  }, [workoutHistory]);
+  }, [workoutHistory]); 
 
-  // Find the most common exercise using the fetched data and calculated stats
+  // Find the most common exercise name (remains unchanged)
   const mostCommonExercise = useMemo(() => {
       if (isLoadingExercises || !exercises) return null;
       return exercises.find(ex => ex.id === stats.mostCommonExerciseId);
   }, [exercises, stats.mostCommonExerciseId, isLoadingExercises]);
-
-  // Process exercise history when selected exercise or workout history changes
-  useEffect(() => {
-    if (!selectedExercise || workoutHistory.length === 0) {
-      setProcessedHistory({});
-      // Reset new state variables
-      setAllCombinationKeys([]);
-      setActiveCombinationKeys([]);
-      return;
-    }
-
-    const history: ProcessedHistory = {};
-    const uniqueVariations = new Set<string>();
-    const uniqueEquipmentTypes = new Set<string>();
-    let mostFrequentKey: string | null = null;
-    const keyFrequency: Record<string, number> = {};
-    const currentAllKeys = new Set<string>();
-
-
-    workoutHistory.forEach(workout => {
-      workout.exercises.forEach((workoutEx: WorkoutExercise) => {
-        if (workoutEx.exerciseId === selectedExercise.id) {
-           // Use workout-level defaults if available
-           const workoutVar = workoutEx.variation;
-           const workoutEq = workoutEx.equipmentType;
-
-          workoutEx.sets.forEach((set: ExerciseSet) => {
-            if (set.completed && set.weight > 0 && set.reps > 0) {
-              const setVar = set.variation ?? workoutVar; // Set overrides workout
-              const setEq = set.equipmentType ?? workoutEq; // Set overrides workout
-              const e1RM = calculateE1RM(set.weight, set.reps);
-
-              // Add to unique sets for filtering
-              uniqueVariations.add(setVar || 'Default'); 
-              uniqueEquipmentTypes.add(setEq || 'Default');
-
-              const combinationKey = getCombinationKey(setVar, setEq);
-              currentAllKeys.add(combinationKey);
-              
-              if (!history[combinationKey]) {
-                history[combinationKey] = [];
-              }
-
-              // Add data point if e1RM is valid
-              if (e1RM > 0) {
-                  history[combinationKey].push({
-                    date: workout.date, // Use the workout date string directly
-                    e1RM: e1RM,
-                    variation: setVar,
-                    equipmentType: setEq,
-                  });
-              }
-              
-              // Track frequency to find the default display
-              keyFrequency[combinationKey] = (keyFrequency[combinationKey] || 0) + 1;
-
-            }
-          });
-        }
-      });
-    });
-
-    // Sort data points within each combination by date
-    Object.keys(history).forEach(key => {
-      history[key].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    });
-    
-    // Determine the most frequent combination to select by default
-    let maxFreq = 0;
-    Object.entries(keyFrequency).forEach(([key, freq]) => {
-        if (freq > maxFreq) {
-            maxFreq = freq;
-            mostFrequentKey = key;
-        }
-    });
-    
-    setProcessedHistory(history);
-    const sortedAllKeys = Array.from(currentAllKeys).sort();
-    setAllCombinationKeys(sortedAllKeys);
-    
-    // Set default selected filters based on the most frequent combination
-    setActiveCombinationKeys(mostFrequentKey ? [mostFrequentKey] : []);
-
-  }, [selectedExercise, workoutHistory]);
 
   // Format date for XAxis
   const formatAxisDate = (dateString: string): string => {
@@ -191,19 +171,29 @@ const Analytics = () => {
     return `${date.getMonth() + 1}/${date.getDate()}`;
   };
   
-  // Filter data based on selected filters for the chart
-  const chartData = useMemo(() => {
-      const filteredData: ProcessedHistory = {};
+  // Prepare data for the chart, grouped by combination key
+  const chartData = useMemo((): ChartData => {
+      const groupedData: ChartData = {};
 
-      // Include data for active combinations
-       Object.entries(processedHistory).forEach(([key, dataPoints]) => {
-            if (activeCombinationKeys.includes(key)) {
-                filteredData[key] = dataPoints;
-            }
-       });
+      maxE1RMHistory.forEach(item => {
+          const key = getCombinationKey(item.variation, item.equipment_type);
+          if (!groupedData[key]) {
+              groupedData[key] = [];
+          }
+          // Add the data point (date and max_e1rm)
+          groupedData[key].push({ 
+              workout_date: item.workout_date, 
+              max_e1rm: item.max_e1rm 
+          });
+      });
 
-      return filteredData;
-  }, [processedHistory, activeCombinationKeys]);
+      // Sort data points within each combination by date
+      Object.keys(groupedData).forEach(key => {
+          groupedData[key].sort((a, b) => new Date(a.workout_date).getTime() - new Date(b.workout_date).getTime());
+      });
+
+      return groupedData;
+  }, [maxE1RMHistory]);
 
   // Define colors for chart lines (add more if needed)
   const lineColors = [
@@ -330,75 +320,76 @@ const Analytics = () => {
                     <h3 className="text-lg font-medium mb-4 flex items-center">
                        <TrendingUp className="mr-2 h-5 w-5" /> Estimated 1RM Progression
                     </h3>
-                    {Object.keys(processedHistory).length > 0 ? (
+                    {/* Add Loading/Error states for history query */}
+                    {isLoadingHistory ? (
+                       <p className="text-gray-500 italic text-center py-10">Loading history...</p> 
+                    ) : errorHistory ? (
+                       <p className="text-red-500 italic text-center py-10">Error loading history: {errorHistory.message}</p> 
+                    ) : maxE1RMHistory.length > 0 && Object.keys(chartData).length > 0 ? ( // Check if there's processed data
                        <ResponsiveContainer width="100%" height={400}>
-                           <LineChart margin={{ top: 5, right: 20, left: 20, bottom: 5 }}> {/* Increased left margin */}
-                               <CartesianGrid strokeDasharray="3 3" stroke="rgba(229, 231, 235, 0.25)" /> {/* Lighter grid lines with 25% opacity */}
+                           {/* Use the derived chartData */}
+                           <LineChart margin={{ top: 5, right: 20, left: 20, bottom: 5 }}> 
+                               <CartesianGrid strokeDasharray="3 3" stroke="rgba(229, 231, 235, 0.25)" /> 
+                               {/* Update XAxis dataKey */}
                                <XAxis 
-                                   dataKey="date" 
+                                   dataKey="workout_date" 
                                    tickFormatter={formatAxisDate} 
-                                   // Find the dates from all visible series for the domain
                                    domain={['dataMin', 'dataMax']}
-                                   type="category" // Treat date strings as categories initially
+                                   type="category" 
                                    allowDuplicatedCategory={true}
                                    tick={{ fontSize: 12 }}
-                                   padding={{ left: 10, right: 10 }} // Add padding
+                                   padding={{ left: 10, right: 10 }} 
                                />
                                <YAxis 
-                                   label={{ value: 'e1RM (kg)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle' }, dx: -10 }} // Added Y-axis label
+                                   // Rename label, use max_e1rm
+                                   label={{ value: 'Max e1RM (kg)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle' }, dx: -10 }} 
                                    tick={{ fontSize: 12 }}
-                                   domain={['auto', 'auto']} // Auto-adjust Y-axis domain
+                                   domain={['auto', 'auto']} 
+                                   dataKey="max_e1rm" // Point YAxis to the correct data key implicitly if needed
                                />
                                <Tooltip 
-                                    formatter={(value: number, name: string, props) => [`${value} kg`, name]} 
-                                    labelFormatter={(label) => `Date: ${formatDate(label)}`} // Format tooltip label
+                                    // Update formatter to use max_e1rm
+                                    formatter={(value: number, name: string, props) => [`${value.toFixed(1)} kg`, name]} // Format to 1 decimal place
+                                    labelFormatter={(label) => `Date: ${formatDate(label)}`} 
                                     contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.8)', borderRadius: '4px', border: '1px solid #ccc' }}
                                />
+                               {/* Legend logic remains largely the same, using allCombinationKeys and activeCombinationKeys */}
                                <Legend 
-                                  // Handle clicks on legend items
                                   onClick={(data) => {
-                                      // The 'value' directly holds the display name (e.g., "Default - Barbell")
-                                      const key = data.value.replace(' - ', '|'); // Reconstruct the original key from the value
+                                      const key = data.value.replace(' - ', '|'); 
                                       setActiveCombinationKeys(prevKeys => 
-                                          prevKeys.includes(key) 
-                                              ? prevKeys.filter(k => k !== key) // Remove if already active
-                                              : [...prevKeys, key] // Add if inactive
+                                          prevKeys.includes(key) ? prevKeys.filter(k => k !== key) : [...prevKeys, key]
                                       );
                                   }}
-                                  // Format legend item text style
                                   formatter={(value, entry) => {
-                                      // 'value' is the display name (e.g., "Default - Barbell")
-                                      const key = value.replace(' - ', '|'); // Reconstruct the original key
+                                      const key = value.replace(' - ', '|'); 
                                       const isActive = activeCombinationKeys.includes(key);
-                                      const color = isActive ? entry.color : '#9ca3af'; // Use assigned line color for active, gray for inactive
-                                      // Apply cursor pointer to indicate clickability
+                                      const color = isActive ? entry.color : '#9ca3af'; 
                                       return <span style={{ color, cursor: 'pointer' }}>{value}</span>;
                                   }}
-                                  // Provide payload for all possible items
                                   payload={
                                       allCombinationKeys.map((key, index) => ({
                                           id: key,
                                           type: 'line',
-                                          value: key.replace('|', ' - '), // Display name for legend
-                                          color: lineColors[index % lineColors.length], // Assign color based on full list
-                                          // Removed the nested payload object as it's not needed here
+                                          value: key.replace('|', ' - '), 
+                                          color: lineColors[index % lineColors.length], 
                                       }))
                                   }
-                                  wrapperStyle={{ paddingTop: '20px' }} // Add some space above the legend
+                                  wrapperStyle={{ paddingTop: '20px' }} 
                                />
+                               {/* Map over the chartData (grouped data) */}
                                {Object.entries(chartData).map(([key, dataPoints]) => {
-                                    // Find the original index of the key in allCombinationKeys for consistent color mapping
                                     const colorIndex = allCombinationKeys.indexOf(key); 
-                                    // Only render lines for active keys (redundant check, but safe)
+                                    // Only render lines for active keys
                                     if (!activeCombinationKeys.includes(key)) return null; 
                                     return (
                                         <Line 
                                             key={key} 
                                             type="monotone" 
-                                            data={dataPoints} 
-                                            dataKey="e1RM" 
-                                            name={key.replace('|', ' - ')} // Make legend name more readable
-                                            stroke={lineColors[colorIndex % lineColors.length]} // Use consistent color index
+                                            data={dataPoints} // Use the grouped data points
+                                            dataKey="max_e1rm" // Use the correct data key
+                                            name={key.replace('|', ' - ')} 
+                                            stroke={lineColors[colorIndex % lineColors.length]} 
                                             strokeWidth={2}
                                             dot={{ r: 4 }}
                                             activeDot={{ r: 6 }} 
@@ -408,8 +399,9 @@ const Analytics = () => {
                            </LineChart>
                        </ResponsiveContainer>
                     ) : (
+                      // Updated message for no data after successful fetch
                       <p className="text-gray-500 italic text-center py-10">
-                          No data available for the selected exercise and filters. Complete some sets!
+                          No estimated 1RM history found for this exercise. Complete some sets!
                       </p>
                     )}
                   </div>
