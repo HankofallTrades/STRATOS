@@ -238,27 +238,6 @@ const Analytics = () => {
       <header className="flex flex-col items-center justify-between mb-8 text-center">
         <h1 className="text-3xl md:text-4xl font-bold mb-2 text-fitnessIndigo">Your Analytics</h1>
         <p className="text-gray-600 mb-6">Track your progress and visualize your gains</p>
-        
-        <nav className="flex gap-4 mb-8">
-          <Link to="/">
-            <Button 
-              variant="outline" 
-              className="flex items-center gap-2 border-fitnessBlue text-fitnessBlue hover:bg-fitnessBlue/10"
-            >
-              <Dumbbell size={18} />
-              <span>Workout</span>
-            </Button>
-          </Link>
-          <Link to="/analytics">
-            <Button 
-              variant="outline" 
-              className="flex items-center gap-2 border-fitnessIndigo text-fitnessIndigo hover:bg-fitnessIndigo/10"
-            >
-              <BarChart size={18} />
-              <span>Analytics</span>
-            </Button>
-          </Link>
-        </nav>
       </header>
 
       <main>
