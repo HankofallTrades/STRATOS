@@ -1,5 +1,6 @@
 import { supabase } from './client';
 import { EquipmentType } from '@/lib/types/enums';
+import { DailyMaxE1RM } from '@/lib/types/analytics';
 
 /**
  * Fetches the completed sets from the most recent workout instance
@@ -82,4 +83,38 @@ export const fetchLastWorkoutExerciseInstanceFromDB = async (
     console.error("Error fetching last workout exercise instance:", error);
     return null;
   }
-}; 
+};
+
+// Function to fetch the pre-calculated max e1RM history from Supabase RPC
+export async function fetchMaxE1RMHistory(userId: string, exerciseId: string): Promise<DailyMaxE1RM[]> {
+  // Basic validation
+  if (!userId || !exerciseId) {
+    console.warn("User ID or Exercise ID missing for fetchMaxE1RMHistory call");
+    return []; // Return empty array if IDs are missing
+  }
+
+  // Call the Supabase RPC function (without generic type argument)
+  const { data, error } = await supabase.rpc('get_exercise_max_e1rm_history', {
+    p_user_id: userId,
+    p_exercise_id: exerciseId,
+  });
+
+  // Handle potential errors during the RPC call
+  if (error) {
+    console.error('Error fetching max e1RM history from Supabase RPC:', error);
+    throw new Error(`Supabase RPC Error: ${error.message}`);
+  }
+
+  // Explicitly cast the result to the expected array type after checking for null/undefined
+  const results = (data as any[] | null) ?? [];
+
+  // Map and ensure date is string
+  const formattedData = results.map((item: any) => ({
+    workout_date: String(item.workout_date), // Ensure date is string
+    variation: item.variation,
+    equipment_type: item.equipment_type,
+    max_e1rm: item.max_e1rm,
+  }));
+
+  return formattedData as DailyMaxE1RM[]; // Final cast for return type safety
+} 
