@@ -19,68 +19,67 @@ export const fetchLastWorkoutExerciseInstanceFromDB = async (
   variation: string | undefined | null
 ): Promise<{ weight: number; reps: number; set_number: number }[] | null> => {
   const targetVariation = variation || 'Standard';
+  const targetEquipmentType = equipmentType ?? null; // Handle null equipment type explicitly
 
   try {
-    // Find the most recent workout_id that contains the exercise with matching completed sets
-    const { data: workoutExerciseData, error: workoutExerciseError } = await supabase
-      .from('workout_exercises')
-      .select(`
-        id,
-        workout_id,
-        workouts!inner ( date ),
-        exercise_sets!inner ( * )
-      `)
-      .eq('exercise_id', exerciseId)
-      .eq('workouts.user_id', userId) // Ensure it belongs to the user
-      .eq('exercise_sets.completed', true)
-      // Handle equipment matching (null/undefined matches null/undefined)
-      .filter('exercise_sets.equipment_type', equipmentType ? 'eq' : 'is', equipmentType ?? null)
-       // Handle variation matching (treat null/undefined as 'Standard')
+    // Step 1: Find the most recent workout_id containing the exercise for the user
+    // We only need the workout_id, and we look for any completed set of the exercise
+    const { data: lastWorkoutIdData, error: lastWorkoutIdError } = await supabase
+      .from('workouts')
+      .select('id, date, workout_exercises!inner(exercise_id, exercise_sets!inner(completed))')
+      .eq('user_id', userId)
+      .eq('workout_exercises.exercise_id', exerciseId)
+      .eq('workout_exercises.exercise_sets.completed', true) // Ensure at least one completed set exists for the exercise in the workout
+      .order('date', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (lastWorkoutIdError) throw lastWorkoutIdError;
+    if (!lastWorkoutIdData) return null; // No previous workout found for this user/exercise
+
+    const lastWorkoutId = lastWorkoutIdData.id;
+
+    // Step 2: Fetch all completed sets from that specific workout_id matching all criteria
+    const { data: historicalSetsData, error: historicalSetsError } = await supabase
+      .from('exercise_sets')
+      .select('weight, reps, set_number, variation, equipment_type, workout_exercises!inner(exercise_id, workout_id)')
+      .eq('workout_exercises.workout_id', lastWorkoutId) // Filter by the workout_id found in step 1
+      .eq('workout_exercises.exercise_id', exerciseId) // Filter by exercise_id
+      .eq('completed', true) // Only completed sets
+      // Filter by equipment type (handle null)
+      .filter('equipment_type', targetEquipmentType === null ? 'is' : 'eq', targetEquipmentType)
+      // Filter by variation (handle 'Standard' meaning Standard, null, or empty)
       .filter(
-        'exercise_sets.variation', 
+        'variation',
         targetVariation === 'Standard' ? 'in' : 'eq',
-        targetVariation === 'Standard' ? '("Standard", "", null)' : targetVariation // Match 'Standard', empty string or NULL if target is Standard
+        targetVariation === 'Standard' ? '("Standard", "", null)' : targetVariation
       )
-      .order('date', { foreignTable: 'workouts', ascending: false })
-      .limit(1) // Limit to the most recent workout_exercise instance matching criteria
-      .maybeSingle(); // Use maybeSingle as there might be no matching workout
+      .order('set_number', { ascending: true }); // Order the results by set number
 
-    if (workoutExerciseError) throw workoutExerciseError;
-    if (!workoutExerciseData) return null; // No matching workout exercise found
+    if (historicalSetsError) throw historicalSetsError;
+    if (!historicalSetsData || historicalSetsData.length === 0) return null; // No sets matching criteria in that specific workout
 
-    // Now fetch all completed sets for *that specific* workout_exercise_id, matching the criteria again
-    // This ensures we get all sets from that single instance, even if some didn't match the initial filter variation/equipment
-    // (e.g., if the filter found the instance based on one set, but we want all completed sets from it)
-    // EDIT: Actually, the previous query ALREADY filters the inner exercise_sets. So we just need to format the result.
-
-    // Filter the returned sets again in code to be absolutely sure they match the exact criteria
-    // because the DB filter for 'Standard' might be slightly broad ('in' ("Standard", "", null))
-    const matchingSets = workoutExerciseData.exercise_sets.filter(set => {
+    // Filter again in code just to be certain, especially for the 'Standard' variation case
+     const matchingSets = historicalSetsData.filter(set => {
         const setVariation = set.variation || 'Standard';
-        const equipmentMatch = set.equipment_type === equipmentType;
+        // Important: Check against targetEquipmentType which handles null correctly
+        const equipmentMatch = set.equipment_type === targetEquipmentType;
         const variationMatch = setVariation === targetVariation;
-        return set.completed && equipmentMatch && variationMatch;
+        return equipmentMatch && variationMatch; // No need to check completed again, query did that
     });
 
-    if (matchingSets.length === 0) {
-      // This might happen if the workout instance was found based on a set matching the `in` filter for Standard,
-      // but not the *exact* equipment type match needed. 
-      return null; 
-    }
-
-    // Format the result
-    const formattedSets = matchingSets
-      .map(set => ({
-        weight: set.weight,
-        reps: set.reps,
-        set_number: set.set_number,
-      }))
-      .sort((a, b) => a.set_number - b.set_number); // Ensure sets are ordered by set_number
+    // Format the final result
+    const formattedSets = matchingSets.map(set => ({
+      weight: set.weight,
+      reps: set.reps,
+      set_number: set.set_number,
+    }));
+    // No need to sort again, query did that
 
     return formattedSets.length > 0 ? formattedSets : null;
 
   } catch (error) {
-    console.error("Error fetching last workout exercise instance:", error);
+    console.error("Error fetching last workout exercise instance (revised):", error);
     return null;
   }
 };
