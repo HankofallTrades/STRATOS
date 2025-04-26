@@ -179,17 +179,10 @@ const WorkoutComponent = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 flex flex-col h-full">
+      <div className="flex-grow space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold dark:text-white">Current Workout</h2>
-        <Button 
-          onClick={handleEndWorkout}
-          variant="default"
-          className="bg-fitnessGreen hover:bg-fitnessGreen/90 flex items-center gap-2"
-        >
-          <Save size={16} />
-          <span>End Workout</span>
-        </Button>
       </div>
 
       {currentWorkout.exercises.length > 0 ? (
@@ -207,8 +200,18 @@ const WorkoutComponent = () => {
         </div>
       )}
 
-      <div className="pt-4">
         <ExerciseSelector />
+      </div>
+
+      <div className="mt-auto pt-4 flex justify-center">
+        <Button
+          onClick={handleEndWorkout}
+          variant="default"
+          className="max-w-1/2 bg-fitnessGreen hover:bg-fitnessGreen/90 flex items-center justify-center gap-2"
+        >
+          <Save size={16} />
+          <span>End Workout</span>
+        </Button>
       </div>
     </div>
   );
