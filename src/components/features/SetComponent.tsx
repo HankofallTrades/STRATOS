@@ -58,7 +58,7 @@ const PerformanceIndicator: React.FC<{
   return (
     <IconComponent
       size={16}
-      className={cn("absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none", colorClass)}
+      className={cn("absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none", colorClass)}
       aria-hidden="true"
     />
   );
@@ -165,8 +165,10 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
             onChange={handleWeightChange}
             onBlur={() => handleBlur('weight')}
             className={cn(
-              "h-9 w-full text-center no-arrows",
-              showWeightIndicator && "pl-8"
+              "h-9 w-full",
+              "text-center",
+              "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+              showWeightIndicator && "px-8"
             )}
             placeholder={previousPerformance ? String(previousPerformance.weight) : '0'}
             aria-label="Weight in kilograms"
@@ -189,8 +191,10 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
             onChange={handleRepsChange}
             onBlur={() => handleBlur('reps')}
             className={cn(
-              "h-9 w-full text-center no-arrows",
-              showRepsIndicator && "pl-8"
+              "h-9 w-full",
+              "text-center",
+              "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+              showRepsIndicator && "px-8"
             )}
             placeholder={previousPerformance ? String(previousPerformance.reps) : '0'}
             aria-label="Repetitions"
