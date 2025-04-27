@@ -52,9 +52,54 @@ const getCombinationKey = (
     variation?: string | null, 
     equipmentType?: string | null // Now just string as returned from DB
 ): string => {
-    const varPart = variation || 'Default';
+    // Treat null, undefined, empty string, or "Standard" as 'Default' variation key
+    const varPart = (!variation || variation.toLowerCase() === 'standard') ? 'Default' : variation;
     const eqPart = equipmentType || 'Default';
     return `${varPart}|${eqPart}`;
+};
+
+// Format date for display (e.g., in Tooltip)
+const formatDate = (dateInput: Date | string): string => {
+  const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+  // Ensure the date is valid before formatting
+  if (isNaN(date.getTime())) {
+      return "Invalid Date";
+  }
+  return date.toLocaleDateString(undefined, { // Use locale-sensitive formatting
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+  }); 
+};
+
+// Custom Tooltip Component
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    const dataPoint = payload[0]; // We focus on the first item in the payload array
+    const name = dataPoint.name; // Now "Variation - EquipmentType"
+    const value = dataPoint.value; // max_e1rm
+    const date = label; // workout_date passed as label
+
+    // Split by hyphen now
+    const parts = name.split(' - ');
+    const variation = parts[0] || 'Unknown'; 
+    const equipmentType = parts[1] || 'Unknown';
+
+    // Handle display names for "Default" (which now covers null/undefined/"Standard" variation)
+    const variationDisplay = variation === 'Default' ? 'Standard' : variation;
+    const equipmentDisplay = equipmentType === 'Default' ? 'Default' : equipmentType; // Keep displaying 'Default' if that's the key part
+
+    return (
+      <div className="custom-tooltip bg-white p-3 border border-gray-300 rounded shadow-lg text-sm"> {/* Added more padding and shadow */}
+        <p className="label font-semibold mb-1">{`Date: ${formatDate(date)}`}</p>
+        <p className="intro text-fitnessIndigo font-medium">{`Est. 1RM: ${value.toFixed(1)} kg`}</p> {/* Added color */}
+        <p className="desc text-gray-700">{`Variation: ${variationDisplay}`}</p>
+        <p className="desc text-gray-700">{`Equipment: ${equipmentDisplay}`}</p>
+      </div>
+    );
+  }
+
+  return null;
 };
 
 const Analytics = () => {
@@ -117,7 +162,20 @@ const Analytics = () => {
           keyFrequency[key] = (keyFrequency[key] || 0) + 1;
       });
 
-      const sortedKeys = Array.from(uniqueKeys).sort();
+      // Sort keys: prioritize "Default" variations, then sort alphabetically
+      const sortedKeys = Array.from(uniqueKeys).sort((a, b) => {
+          const aIsDefault = a.startsWith('Default|');
+          const bIsDefault = b.startsWith('Default|');
+
+          if (aIsDefault && !bIsDefault) {
+              return -1; // a comes first
+          }
+          if (!aIsDefault && bIsDefault) {
+              return 1; // b comes first
+          }
+          // If both are default or both are not, sort alphabetically
+          return a.localeCompare(b);
+      });
       setAllCombinationKeys(sortedKeys);
 
       // Find the most frequent key to activate by default
@@ -208,20 +266,6 @@ const Analytics = () => {
     "#FF8042", 
     "#a4de6c",
   ];
-
-  // Format date for display (e.g., in Tooltip)
-  const formatDate = (dateInput: Date | string): string => {
-    const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
-    // Ensure the date is valid before formatting
-    if (isNaN(date.getTime())) {
-        return "Invalid Date";
-    }
-    return date.toLocaleDateString(undefined, { // Use locale-sensitive formatting
-        year: 'numeric', 
-        month: 'short', 
-        day: 'numeric' 
-    }); 
-  };
 
   return (
     <div className="container mx-auto p-4 max-w-4xl"> {/* Increased max-width */}
@@ -347,11 +391,10 @@ const Analytics = () => {
                                    domain={['auto', 'auto']} 
                                    dataKey="max_e1rm" // Point YAxis to the correct data key implicitly if needed
                                />
+                               {/* Use the custom tooltip */}
                                <Tooltip 
-                                    // Update formatter to use max_e1rm
-                                    formatter={(value: number, name: string, props) => [`${value.toFixed(1)} kg`, name]} // Format to 1 decimal place
-                                    labelFormatter={(label) => `Date: ${formatDate(label)}`} 
-                                    contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.8)', borderRadius: '4px', border: '1px solid #ccc' }}
+                                    content={<CustomTooltip />} // Use the custom component
+                                    cursor={{ stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '3 3' }} // Customize cursor
                                />
                                {/* Legend logic remains largely the same, using allCombinationKeys and activeCombinationKeys */}
                                <Legend 
