@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
+import { motion } from 'framer-motion';
 // TanStack Query - Removed hooks, just keep types if needed
 // import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MutationStatus } from '@tanstack/react-query'; // Keep MutationStatus type
@@ -6,7 +7,7 @@ import { MutationStatus } from '@tanstack/react-query'; // Keep MutationStatus t
 // import { useAppSelector } from '@/hooks/redux';
 // Selector
 import { Exercise, ExerciseSet } from '@/lib/types/workout';
-import { EquipmentType } from '@/lib/types/enums'; // Correct import path
+import { EquipmentType, EquipmentTypeEnum } from '@/lib/types/enums'; // Correct import path
 import { Button } from '@/components/core/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/core/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/core/card';
@@ -24,6 +25,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/core/table";
+
+// Add map for display names
+const equipmentTypeDisplayNames: Record<EquipmentType, string> = {
+  [EquipmentTypeEnum.BB]: 'Barbell',
+  [EquipmentTypeEnum.DB]: 'Dumbbell',
+  [EquipmentTypeEnum.KB]: 'Kettlebell',
+  [EquipmentTypeEnum.Cable]: 'Cable',
+  [EquipmentTypeEnum.Free]: 'Bodyweight', // Or 'Free Weight'? Let's use Bodyweight for now
+};
 
 // Define props passed from WorkoutExerciseContainer
 interface WorkoutExerciseViewProps {
@@ -48,6 +58,9 @@ interface WorkoutExerciseViewProps {
 }
 
 const DEFAULT_VARIATION = 'Standard'; // Define default variation
+// Swipe constants
+const SWIPE_THRESHOLD = -60; // Pixels to swipe left to reveal
+const REVEAL_WIDTH = 75; // Width of the revealed delete button area
 
 // Helper function for formatting previous performance
 const formatPrevious = (perf: { weight: number; reps: number } | null): string => {
@@ -79,13 +92,47 @@ export const WorkoutExerciseView = ({
   // Removed state: selectedVariation, isAddingVariation, newVariationName
   // Removed queryClient
   const exerciseId = workoutExercise.exerciseId;
-  // Removed TanStack Query hooks (useQuery, useMutation)
-  // Removed useEffect hook
+  const [revealedItemId, setRevealedItemId] = useState<string | null>(null); // 'title' or set.id
 
-  // --- Handlers (now passed as props or simplified) ---
-  // handleVariationChange is now directly `onVariationChange` prop
-  // handleSaveNewVariation is now `onSaveNewVariation` prop
-  // handleCancelAddVariation is now `onCancelAddVariation` prop
+  // --- Handlers ---
+  const handleReveal = (id: string) => {
+    setRevealedItemId(id);
+  };
+  const handleHide = () => {
+    setRevealedItemId(null);
+  };
+
+  const handleTitleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: { offset: { x: number; y: number; }; velocity: { x: number; y: number; }; }) => {
+    if (info.offset.x < SWIPE_THRESHOLD) {
+      handleReveal('title');
+    } else if (info.offset.x > SWIPE_THRESHOLD / 2) { // Allow snapping back if not dragged far enough or dragged back right
+      handleHide();
+    }
+    // If dragged between threshold and half-threshold, let animation snap based on current state
+  };
+
+  const handleDeleteExerciseClick = () => {
+    onDeleteExercise();
+    handleHide(); // Hide the button after clicking
+  };
+
+  // --- Memos ---
+  const sortedEquipmentTypes = useMemo(() => {
+    const defaultType = workoutExercise.exercise.default_equipment_type;
+    if (!defaultType || !equipmentTypes.includes(defaultType as EquipmentType)) {
+      return equipmentTypes; // Return original if no default or default not in list
+    }
+
+    const sorted = [...equipmentTypes];
+    const index = sorted.indexOf(defaultType as EquipmentType);
+
+    // Should always be found based on the includes check, but double-check
+    if (index > -1) {
+      sorted.splice(index, 1); // Remove from current position
+      sorted.unshift(defaultType as EquipmentType); // Add to the beginning
+    }
+    return sorted;
+  }, [equipmentTypes, workoutExercise.exercise.default_equipment_type]);
 
   // --- Render ---
   // Removed variationsError check (handled in container)
@@ -96,102 +143,137 @@ export const WorkoutExerciseView = ({
 
   return (
     <Card className="w-full"> {/* Ensure card takes full width */}
-      <CardHeader className="p-2 sm:p-4"> {/* Reduced padding */}
-        {/* Use justify-between on sm+, increased text size */}
-        <CardTitle className="relative flex flex-col sm:flex-row sm:justify-between items-center gap-1 sm:gap-2 text-lg sm:text-xl">
-          {/* New outer wrapper div for centering group, takes up space on sm+ */}
-          <div className="flex-grow flex justify-center">
-            {/* Inner div still centers its own items if they wrap */}
-            <div className="flex items-center justify-center gap-1.5 flex-wrap sm:flex-nowrap">
-              <Select value={workoutExercise.equipmentType ?? undefined} onValueChange={(value) => onEquipmentChange(value as EquipmentType)}>
-                {/* Adjusted Select size slightly for larger text, removed border/ring */}
-                <SelectTrigger className="w-[90px] h-9 sm:h-10 text-xs sm:text-sm flex-shrink-0 border-0 focus:ring-0 focus:ring-offset-0">
-                  <SelectValue placeholder="Equip." />
-                </SelectTrigger>
-                <SelectContent>
-                  {equipmentTypes.map((type) => (
-                    <SelectItem key={type} value={type}>{type}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {/* Exercise Name - still shrinks/truncates */}
-              <span className="font-semibold flex-shrink min-w-0 overflow-hidden text-ellipsis whitespace-nowrap mx-1">
-                {workoutExercise.exercise.name}
-              </span>
+      {/* Make header relative and hide overflow for the absolutely positioned delete button */}
+      <CardHeader className="relative p-2 sm:p-4 overflow-hidden"> {/* Reduced padding */}
+        {/* CardTitle content now wrapped for motion */}
+        <motion.div
+          drag="x"
+          dragConstraints={{ left: -REVEAL_WIDTH, right: 0 }}
+          dragElastic={0.1}
+          initial={{ x: 0 }}
+          animate={{ x: revealedItemId === 'title' ? -REVEAL_WIDTH : 0 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+          onDragEnd={handleTitleDragEnd}
+          onClick={() => { if (revealedItemId === 'title') handleHide(); }} // Tap content to hide
+          className="relative z-10 bg-card" // Need background to hide button underneath during drag
+          style={{ touchAction: 'pan-y' }} // Prioritize vertical scroll over horizontal drag
+        >
+          {/* Use justify-between on sm+, increased text size */}
+          <CardTitle className="relative flex flex-col sm:flex-row sm:justify-between items-center gap-1 sm:gap-2 text-lg sm:text-xl">
+            {/* New outer wrapper div for centering group, takes up space on sm+ */}
+            <div className="flex-grow flex justify-center">
+              {/* Inner div still centers its own items if they wrap */}
+              <div className="flex items-center justify-center gap-1.5 flex-wrap sm:flex-nowrap">
+                <Select value={workoutExercise.equipmentType ?? undefined} onValueChange={(value) => onEquipmentChange(value as EquipmentType)}>
+                  {/* Adjusted Select size slightly for larger text, removed border/ring */}
+                  <SelectTrigger className="w-[110px] h-9 sm:h-10 text-xs sm:text-sm flex-shrink-0 border-0 focus:ring-0 focus:ring-offset-0">
+                    {/* Use mapping for display value */}
+                    <SelectValue placeholder="Equip.">
+                      {workoutExercise.equipmentType ? equipmentTypeDisplayNames[workoutExercise.equipmentType] : 'Equip.'}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {/* Use the sorted list */}
+                    {sortedEquipmentTypes.map((type) => (
+                      // Use mapping for option text
+                      <SelectItem key={type} value={type}>{equipmentTypeDisplayNames[type]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {/* Exercise Name - still shrinks/truncates */}
+                <span className="font-semibold flex-shrink min-w-0 overflow-hidden text-ellipsis whitespace-nowrap mx-1">
+                  {workoutExercise.exercise.name}
+                </span>
 
-              {/* Variation Section */}
-              {!isAddingVariation ? (
-                (exerciseId) && (
-                  <Select
-                    value={selectedVariation ?? DEFAULT_VARIATION}
-                    onValueChange={onVariationChange}
-                    disabled={isLoadingVariations || isSavingVariation}
-                  >
-                    {/* Adjusted Select size slightly, removed border/ring */}
-                    <SelectTrigger className="w-auto min-w-[100px] max-w-[150px] h-9 sm:h-10 text-xs sm:text-sm flex-shrink-0 border-0 focus:ring-0 focus:ring-offset-0">
-                      <SelectValue placeholder={variationSelectPlaceholder} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {variations?.map((variation) => (
-                        <SelectItem key={variation} value={variation}>
-                          {variation}
+                {/* Variation Section */}
+                {!isAddingVariation ? (
+                  (exerciseId) && (
+                    <Select
+                      value={selectedVariation ?? DEFAULT_VARIATION}
+                      onValueChange={onVariationChange}
+                      disabled={isLoadingVariations || isSavingVariation}
+                    >
+                      {/* Adjusted Select size slightly, removed border/ring */}
+                      <SelectTrigger className="w-auto min-w-[100px] max-w-[150px] h-9 sm:h-10 text-xs sm:text-sm flex-shrink-0 border-0 focus:ring-0 focus:ring-offset-0">
+                        <SelectValue placeholder={variationSelectPlaceholder} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {variations?.map((variation) => (
+                          <SelectItem key={variation} value={variation}>
+                            {variation}
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="add_new" className="text-blue-600 dark:text-blue-400">
+                          <span className="flex items-center"><Plus size={14} className="mr-1" /> Add New</span>
                         </SelectItem>
-                      ))}
-                      <SelectItem value="add_new" className="text-blue-600 dark:text-blue-400">
-                        <span className="flex items-center"><Plus size={14} className="mr-1" /> Add New</span>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                )
-              ) : (
-                // Adding variation input section - Adjusted size slightly
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <Input
-                    type="text"
-                    placeholder="New Variation"
-                    value={newVariationName}
-                    onChange={(e) => onNewVariationNameChange(e.target.value)}
-                    className="h-9 sm:h-10 w-[120px] sm:w-[150px]" // Adjusted height
-                    disabled={isSavingVariation}
-                    autoFocus
-                  />
-                  {/* Adjusted button sizes slightly */}
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-9 w-9 sm:h-10 sm:w-10 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/50 flex-shrink-0"
-                    onClick={onSaveNewVariation}
-                    disabled={!newVariationName.trim() || newVariationName.trim().toLowerCase() === DEFAULT_VARIATION.toLowerCase() || isSavingVariation}
-                    aria-label="Save new variation"
-                  >
-                     {isSavingVariation ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div> : <Check size={18} />}
-                  </Button>
-                   <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-9 w-9 sm:h-10 sm:w-10 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50 flex-shrink-0"
-                    onClick={onCancelAddVariation}
-                    disabled={isSavingVariation}
-                     aria-label="Cancel adding variation"
-                  >
-                     <X size={18} />
-                  </Button>
-                </div>
-              )}
+                      </SelectContent>
+                    </Select>
+                  )
+                ) : (
+                  // Adding variation input section - Adjusted size slightly
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <Input
+                      type="text"
+                      placeholder="New Variation"
+                      value={newVariationName}
+                      onChange={(e) => onNewVariationNameChange(e.target.value)}
+                      className="h-9 sm:h-10 w-[120px] sm:w-[150px]" // Adjusted height
+                      disabled={isSavingVariation}
+                      autoFocus
+                    />
+                    {/* Adjusted button sizes slightly */}
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-9 w-9 sm:h-10 sm:w-10 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/50 flex-shrink-0"
+                      onClick={onSaveNewVariation}
+                      disabled={!newVariationName.trim() || newVariationName.trim().toLowerCase() === DEFAULT_VARIATION.toLowerCase() || isSavingVariation}
+                      aria-label="Save new variation"
+                    >
+                       {isSavingVariation ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div> : <Check size={18} />}
+                    </Button>
+                     <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-9 w-9 sm:h-10 sm:w-10 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50 flex-shrink-0"
+                      onClick={onCancelAddVariation}
+                      disabled={isSavingVariation}
+                       aria-label="Cancel adding variation"
+                    >
+                       <X size={18} />
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
 
-          {/* Delete Button - Positioning unchanged, but justify-between on parent pushes it right on sm+ */}
+            {/* Empty div to maintain spacing when delete button is absolute (on sm+) */}
+            {/* The actual button is moved outside this motion.div */}
+            <div className="hidden sm:block flex-shrink-0 h-8 w-8 sm:h-9 sm:w-9"></div>
+          </CardTitle>
+        </motion.div>
+
+        {/* Delete Button - Positioned absolutely, now animated */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: revealedItemId === 'title' ? 1 : 0 }}
+          transition={{ duration: 0.2 }} // Simple fade in/out
+          className="absolute top-0 right-0 h-full flex items-center justify-center bg-card z-0"
+          style={{ width: REVEAL_WIDTH }}
+          aria-hidden={revealedItemId !== 'title'} // Keep aria-hidden for accessibility
+        >
           <Button
-            variant="ghost"
+            variant="ghost" // Change variant to ghost
             size="icon"
-            className="absolute top-0 right-0 sm:relative sm:top-auto sm:right-auto text-destructive hover:bg-destructive/10 flex-shrink-0 h-8 w-8 sm:h-9 sm:w-9" // Adjusted size slightly
-            onClick={onDeleteExercise}
+            // Add text-destructive for icon color, add hover effect
+            className="h-full w-full rounded-none text-lg text-destructive hover:bg-destructive/10"
+            onClick={handleDeleteExerciseClick} // Use updated handler
             aria-label="Delete exercise from workout"
+            tabIndex={revealedItemId === 'title' ? 0 : -1} // Make focusable only when revealed
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 className="h-5 w-5" /> {/* Slightly larger icon */}
           </Button>
-        </CardTitle>
+        </motion.div>
       </CardHeader>
       {/* Reduced CardContent padding, especially horizontal */}
       <CardContent className="pt-0 pb-2 px-2 sm:px-4">
@@ -216,10 +298,7 @@ export const WorkoutExerciseView = ({
                     workoutExerciseId={workoutExercise.id}
                     set={set}
                     setIndex={index}
-                    // Pass raw data, let SetComponent format it if necessary
                     previousPerformance={previousPerformanceForSet}
-                    // Or pass formatted string:
-                    // previousPerformanceFormatted={formatPrevious(previousPerformanceForSet)}
                   />
                 );
               })}
