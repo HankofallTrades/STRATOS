@@ -30,7 +30,7 @@ interface WorkoutExerciseViewProps {
   workoutExercise: { id: string; exerciseId: string; exercise: Exercise; sets: ExerciseSet[]; equipmentType?: EquipmentType };
   equipmentTypes: Readonly<EquipmentType[]>;
   overallLastPerformance: { weight: number; reps: number } | null;
-  historicalSetPerformances: Array<{ weight: number; reps: number } | null>;
+  historicalSetPerformances: Record<number, { weight: number; reps: number } | null>;
   oneRepMax: number | null;
   onAddSet: () => void;
   onEquipmentChange: (value: EquipmentType) => void;
@@ -186,7 +186,9 @@ export const WorkoutExerciseView = ({
           <TableBody>
             {workoutExercise.sets.map((set, index) => {
               // Get the specific historical performance for this set index
-              const previousPerformanceForSet = historicalSetPerformances?.[index] ?? null;
+              // Use index + 1 as the set number key for lookup
+              const setNumber = index + 1;
+              const previousPerformanceForSet = historicalSetPerformances?.[setNumber] ?? null;
               return (
                 <SetComponent
                   key={set.id} // React key

@@ -110,17 +110,18 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
   }, [historicalSets]);
 
   const historicalSetPerformances = useMemo(() => {
-    if (!historicalSets) return [];
-    const maxSets = workoutExercise.sets.length;
-    const performances: Array<{ weight: number; reps: number } | null> = Array(maxSets).fill(null);
+    if (!historicalSets) return {};
+
+    const performances: Record<number, { weight: number; reps: number } | null> = {};
+
     historicalSets.forEach(set => {
-        const index = set.set_number - 1;
-        if (index >= 0 && index < maxSets) {
-            performances[index] = { weight: set.weight, reps: set.reps };
-        }
+      if (set.set_number && set.set_number > 0) {
+        performances[set.set_number] = { weight: set.weight, reps: set.reps };
+      }
     });
+
     return performances;
-  }, [historicalSets, workoutExercise.sets.length]);
+  }, [historicalSets]);
 
   const oneRepMax = useAppSelector(state => selectOneRepMaxForExercise(state, workoutExercise.exerciseId));
   const equipmentTypes = Object.values(EquipmentTypeEnum);
