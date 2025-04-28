@@ -23,7 +23,7 @@ const queryClient = new QueryClient();
 const MainAppLayout = () => {
   useWorkoutTimer(); // Example: Call hooks needed only when logged in
   return (
-    <div className="pb-20"> {/* Padding for BottomNav */}
+    <div> {/* Padding REMOVED from here */}
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/analytics" element={<Analytics />} />

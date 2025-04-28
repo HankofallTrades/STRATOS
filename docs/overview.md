@@ -1,4 +1,4 @@
-# Project Overview: lift-smart-workout-app
+# Project Overview: STRATOS
 
 This document provides a high-level overview of the project structure to aid in development and feature additions.
 
