@@ -63,7 +63,12 @@ const PerformanceIndicator: React.FC<{
   );
 };
 
-const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, setIndex, previousPerformance }) => {
+const SetComponent: React.FC<SetComponentProps> = ({
+  workoutExerciseId,
+  set,
+  setIndex,
+  previousPerformance,
+}) => {
   const dispatch = useAppDispatch();
 
   const [localWeight, setLocalWeight] = useState(() => (set.weight > 0 ? set.weight.toString() : ''));
@@ -137,21 +142,19 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
   const previousRepsValue = previousPerformance?.reps;
 
   return (
-    <TableRow 
-      key={set.id} 
+    <TableRow
+      key={set.id}
       className={cn(
         "group",
         isCompleted && "bg-green-100 dark:bg-green-900/30",
         "border-b-0"
       )}
     >
-      <TableCell className="font-medium text-center w-[60px] align-middle">{setIndex + 1}</TableCell>
-
-      <TableCell className="text-center text-xs text-muted-foreground w-[140px] align-middle">
-        {previousPerformance ? `${previousPerformance.weight}x${previousPerformance.reps}` : '-'}
+      <TableCell className="font-medium text-center w-[35px] px-1 py-1 align-middle">{setIndex + 1}</TableCell>
+      <TableCell className="text-center text-xs text-muted-foreground w-[70px] px-1 py-1 align-middle">
+        {previousPerformance ? `${previousPerformance.weight}kg x ${previousPerformance.reps}` : '-'}
       </TableCell>
-
-      <TableCell className="w-[120px] px-1 py-1 align-middle relative">
+      <TableCell className="w-[75px] px-1 py-1 align-middle relative">
         <div>
           <Input
             id={`weight-${set.id}`}
@@ -176,8 +179,7 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
           isVisible={showWeightIndicator}
         />
       </TableCell>
-
-      <TableCell className="w-[120px] px-1 py-1 align-middle relative">
+      <TableCell className="w-[60px] px-1 py-1 align-middle relative">
         <div>
           <Input
             id={`reps-${set.id}`}
@@ -202,17 +204,16 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
           isVisible={showRepsIndicator}
         />
       </TableCell>
-
-      <TableCell className="w-[100px] align-middle px-0 py-4">
-         <div className="flex justify-center space-x-2">
-             <Checkbox
-                  id={`completed-${set.id}`}
-                  checked={isCompleted}
-                  onCheckedChange={handleCompletionChange}
-                  className="w-5 h-5"
-                  aria-label="Mark set as completed"
-              />
-         </div>
+      <TableCell className="w-[40px] align-middle px-0 py-0">
+        <div className="flex justify-center items-center h-full">
+          <Checkbox
+            id={`completed-${set.id}`}
+            checked={isCompleted}
+            onCheckedChange={handleCompletionChange}
+            className="w-5 h-5"
+            aria-label="Mark set as completed"
+          />
+        </div>
       </TableCell>
     </TableRow>
   );
