@@ -1003,7 +1003,7 @@ The Lift Smart Workout App codebase is functional but has several areas where mo
   - Add detailed setup, testing, and deployment instructions.
   - Example:
     ```markdown
-    # Lift Smart Workout App
+    # STRATOS
 
     A workout tracking app built with React, TypeScript, Tailwind CSS, and Supabase.
 
