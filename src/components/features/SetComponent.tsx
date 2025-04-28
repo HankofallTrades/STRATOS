@@ -169,7 +169,7 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
               "h-9 w-full",
               "text-center",
               "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-              showWeightIndicator && "px-10"
+              showWeightIndicator && "pr-8"
             )}
             placeholder={previousPerformance ? String(previousPerformance.weight) : '0'}
             aria-label="Weight in kilograms"
@@ -196,7 +196,7 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
               "h-9 w-full",
               "text-center",
               "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-              showRepsIndicator && "px-10"
+              showRepsIndicator && "pr-8"
             )}
             placeholder={previousPerformance ? String(previousPerformance.reps) : '0'}
             aria-label="Repetitions"
