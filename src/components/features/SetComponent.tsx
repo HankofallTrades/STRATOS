@@ -141,7 +141,8 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
       key={set.id} 
       className={cn(
         "group",
-        isCompleted && "bg-green-100 dark:bg-green-900/30"
+        isCompleted && "bg-green-100 dark:bg-green-900/30",
+        "border-b-0"
       )}
     >
       <TableCell className="font-medium text-center w-[60px] align-middle">{setIndex + 1}</TableCell>

@@ -94,10 +94,13 @@ const ExerciseSelector = () => {
     <div className="flex justify-end">
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-          {/* Modified Button for icon-only, circular look */}
-          <Button variant="outline" size="icon" className="bg-fitnessBlue hover:bg-fitnessBlue/90">
-          <Plus size={18} />
-            {/* Removed text span */}
+          {/* Modified Button to show text and keep blue color */}
+          <Button 
+            variant="default" // Changed from outline to default to better match original request's blue
+            className="bg-fitnessBlue hover:bg-fitnessBlue/90 text-white" // Ensured blue background and white text
+          > 
+            <Plus size={16} className="mr-2" /> {/* Keep icon, adjust size if needed */}
+            Add Exercise {/* Added text */}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md dark:bg-gray-800 dark:border-gray-700">
