@@ -17,39 +17,44 @@ const Index = () => {
   };
 
   return (
+    // Reverted to standard container layout, starts at top
     <div className="container mx-auto p-4">
-      <header className="flex flex-col items-center justify-between mb-8 text-center">
-        <h1 className="text-3xl md:text-4xl font-bold mb-2 text-fitnessBlue dark:text-fitnessBlue">Stratos</h1>
-        <p className="text-gray-600 dark:text-gray-400 mb-6">Take your health & fitness to new heights</p>
-      </header>
+      {/* Removed wrapper div */}
+        <header className="flex flex-col items-center justify-between mb-8 text-center mt-8">
+          <h1 className="text-5xl md:text-6xl font-bold mb-2 text-fitnessBlue dark:text-fitnessBlue uppercase">
+            Stratos
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">Take your health & fitness to new heights</p>
+        </header>
 
-      <main>
-        {!currentWorkout ? (
-          <div className="flex flex-col items-center justify-center py-12 px-4 bg-gray-50 dark:bg-gray-800 rounded-lg shadow-sm">
-            <Dumbbell size={64} className="text-fitnessBlue mb-6" />
-            <h2 className="text-2xl font-semibold mb-4 dark:text-white">Ready to start your session?</h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-8 text-center">
-              Track your exercises, sets, and reps to monitor your progress over time.
-            </p>
-            <Button 
-              onClick={handleStartWorkout} // Use dispatch 
-              size="lg" 
-              className="bg-fitnessGreen hover:bg-fitnessGreen/90 text-white font-semibold px-8"
-            >
-              Start Workout
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg mb-6 flex items-center justify-center">
-              <Clock className="text-fitnessBlue mr-2" />
-              <span className="text-xl font-mono dark:text-white">{formatTime(workoutTime)}</span>
+        <main>
+          {!currentWorkout ? (
+            <div className="flex flex-col items-center justify-center py-12 px-4 bg-gray-50 dark:bg-gray-800 rounded-lg shadow-sm">
+              <Dumbbell size={64} className="text-fitnessBlue mb-6" />
+              <h2 className="text-2xl font-semibold mb-4 dark:text-white">Ready to start your session?</h2>
+              <p className="text-gray-600 dark:text-gray-400 mb-8 text-center">
+                Track your exercises, sets, and reps to monitor your progress over time.
+              </p>
+              <Button 
+                onClick={handleStartWorkout} // Use dispatch 
+                size="lg" 
+                className="bg-fitnessGreen hover:bg-fitnessGreen/90 text-white font-semibold px-8"
+              >
+                Start Workout
+              </Button>
             </div>
-            
-            <WorkoutComponent />
-          </div>
-        )}
-      </main>
+          ) : (
+            <div className="space-y-4">
+              <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg mb-6 flex items-center justify-center">
+                <Clock className="text-fitnessBlue mr-2" />
+                <span className="text-xl font-mono dark:text-white">{formatTime(workoutTime)}</span>
+              </div>
+              
+              <WorkoutComponent />
+            </div>
+          )}
+        </main>
+      {/* Removed wrapper div */}
     </div>
   );
 };
