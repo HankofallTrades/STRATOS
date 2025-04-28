@@ -7,7 +7,6 @@ import {
   updateWorkoutExerciseEquipment as updateWorkoutExerciseEquipmentAction,
   updateWorkoutExerciseVariation as updateWorkoutExerciseVariationAction,
   deleteWorkoutExercise as deleteWorkoutExerciseAction,
-  selectOneRepMaxForExercise,
 } from "@/state/workout/workoutSlice";
 import { WorkoutExercise, ExerciseSet, Exercise } from "@/lib/types/workout";
 import { EquipmentType, EquipmentTypeEnum } from "@/lib/types/enums";
@@ -17,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/core/input";
 import { Label } from "@/components/core/label";
 import { Button } from "@/components/core/button";
-import { Check, X as XIcon } from "lucide-react";
+import { Check, X as XIcon, Trash2, ArrowUp, ArrowDown, Minus } from "lucide-react";
 import { WorkoutExerciseView } from './WorkoutExerciseView';
 
 interface WorkoutExerciseContainerProps {
@@ -123,7 +122,6 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
     return performances;
   }, [historicalSets]);
 
-  const oneRepMax = useAppSelector(state => selectOneRepMaxForExercise(state, workoutExercise.exerciseId));
   const equipmentTypes = Object.values(EquipmentTypeEnum);
 
   useEffect(() => {
@@ -220,6 +218,10 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
     console.log('Fetched historical sets:', historicalSets);
   }, [historicalSets]);
 
+  const handleDeleteExercise = () => {
+    dispatch(deleteWorkoutExerciseAction(workoutExercise.id));
+  };
+
   return (
     <>
       <WorkoutExerciseView
@@ -227,9 +229,9 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
         equipmentTypes={equipmentTypes}
         overallLastPerformance={overallLastPerformance}
         historicalSetPerformances={historicalSetPerformances}
-        oneRepMax={oneRepMax}
         onAddSet={handleAddSet}
         onEquipmentChange={handleEquipmentChange}
+        onDeleteExercise={handleDeleteExercise}
         variations={variations}
         selectedVariation={selectedVariation}
         isAddingVariation={isAddingVariation}

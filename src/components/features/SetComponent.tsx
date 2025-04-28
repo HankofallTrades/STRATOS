@@ -21,7 +21,6 @@ interface SetComponentProps {
   workoutExerciseId: string;
   set: ExerciseSet;
   setIndex: number;
-  oneRepMax?: number | null;
   previousPerformance: { weight: number; reps: number } | null;
 }
 
@@ -64,7 +63,7 @@ const PerformanceIndicator: React.FC<{
   );
 };
 
-const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, setIndex, oneRepMax, previousPerformance }) => {
+const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, setIndex, previousPerformance }) => {
   const dispatch = useAppDispatch();
 
   const [localWeight, setLocalWeight] = useState(() => (set.weight > 0 ? set.weight.toString() : ''));
@@ -145,13 +144,13 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
         isCompleted && "bg-green-100 dark:bg-green-900/30"
       )}
     >
-      <TableCell className="font-medium text-center w-[50px]">{setIndex + 1}</TableCell>
+      <TableCell className="font-medium text-center w-[60px] align-middle">{setIndex + 1}</TableCell>
 
-      <TableCell className="text-center text-xs text-muted-foreground w-[100px]">
+      <TableCell className="text-center text-xs text-muted-foreground w-[140px] align-middle">
         {previousPerformance ? `${previousPerformance.weight} kg x ${previousPerformance.reps}` : '-'}
       </TableCell>
 
-      <TableCell className="w-[100px]">
+      <TableCell className="w-[120px] px-4 py-1 align-middle">
         <div className="relative">
           <PerformanceIndicator
             type="weight"
@@ -177,7 +176,7 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
         </div>
       </TableCell>
 
-      <TableCell className="w-[100px]">
+      <TableCell className="w-[120px] px-4 py-1 align-middle">
         <div className="relative">
           <PerformanceIndicator
             type="reps"
@@ -203,8 +202,8 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
         </div>
       </TableCell>
 
-      <TableCell className="text-right w-[100px]">
-         <div className="flex items-center justify-end space-x-2">
+      <TableCell className="w-[100px] align-middle px-0 py-4">
+         <div className="flex justify-center space-x-2">
              <Checkbox
                   id={`completed-${set.id}`}
                   checked={isCompleted}
@@ -212,15 +211,6 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
                   className="w-5 h-5"
                   aria-label="Mark set as completed"
               />
-              <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleDelete}
-                  className="w-7 h-7 text-muted-foreground hover:text-destructive opacity-50 group-hover:opacity-100 transition-opacity"
-                  aria-label="Delete Set"
-              >
-                  <Trash2 className="w-4 h-4" />
-              </Button>
          </div>
       </TableCell>
     </TableRow>
