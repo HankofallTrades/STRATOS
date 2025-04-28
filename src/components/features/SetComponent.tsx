@@ -148,16 +148,11 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
       <TableCell className="font-medium text-center w-[60px] align-middle">{setIndex + 1}</TableCell>
 
       <TableCell className="text-center text-xs text-muted-foreground w-[140px] align-middle">
-        {previousPerformance ? `${previousPerformance.weight} kg x ${previousPerformance.reps}` : '-'}
+        {previousPerformance ? `${previousPerformance.weight}x${previousPerformance.reps}` : '-'}
       </TableCell>
 
-      <TableCell className="w-[120px] px-4 py-1 align-middle">
-        <div className="relative">
-          <PerformanceIndicator
-            type="weight"
-            previousReps={previousRepsValue}
-            isVisible={showWeightIndicator}
-          />
+      <TableCell className="w-[120px] px-1 py-1 align-middle relative">
+        <div>
           <Input
             id={`weight-${set.id}`}
             type="number"
@@ -169,22 +164,21 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
               "h-9 w-full",
               "text-center",
               "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-              showWeightIndicator && "pr-8"
             )}
             placeholder={previousPerformance ? String(previousPerformance.weight) : '0'}
             aria-label="Weight in kilograms"
             disabled={isCompleted}
           />
         </div>
+        <PerformanceIndicator
+          type="weight"
+          previousReps={previousRepsValue}
+          isVisible={showWeightIndicator}
+        />
       </TableCell>
 
-      <TableCell className="w-[120px] px-4 py-1 align-middle">
-        <div className="relative">
-          <PerformanceIndicator
-            type="reps"
-            previousReps={previousRepsValue}
-            isVisible={showRepsIndicator}
-          />
+      <TableCell className="w-[120px] px-1 py-1 align-middle relative">
+        <div>
           <Input
             id={`reps-${set.id}`}
             type="number"
@@ -196,13 +190,17 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
               "h-9 w-full",
               "text-center",
               "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-              showRepsIndicator && "pr-8"
             )}
             placeholder={previousPerformance ? String(previousPerformance.reps) : '0'}
             aria-label="Repetitions"
             disabled={isCompleted}
           />
         </div>
+        <PerformanceIndicator
+          type="reps"
+          previousReps={previousRepsValue}
+          isVisible={showRepsIndicator}
+        />
       </TableCell>
 
       <TableCell className="w-[100px] align-middle px-0 py-4">
