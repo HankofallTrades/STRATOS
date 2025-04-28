@@ -10,7 +10,7 @@ import { EquipmentType } from '@/lib/types/enums'; // Correct import path
 import { Button } from '@/components/core/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/core/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/core/card';
-import { Plus, Check, X } from 'lucide-react'; // Added Check, X icons
+import { Plus, Check, X, Trash2 } from 'lucide-react'; // Added Check, X icons
 import SetComponent from './SetComponent'; // Assuming SetComponent exists in the same directory
 // Removed Supabase function imports
 // import { addExerciseVariationToDB, fetchExerciseVariationsFromDB } from '@/lib/integrations/supabase/exercises';
@@ -31,9 +31,9 @@ interface WorkoutExerciseViewProps {
   equipmentTypes: Readonly<EquipmentType[]>;
   overallLastPerformance: { weight: number; reps: number } | null;
   historicalSetPerformances: Record<number, { weight: number; reps: number } | null>;
-  oneRepMax: number | null;
   onAddSet: () => void;
   onEquipmentChange: (value: EquipmentType) => void;
+  onDeleteExercise: () => void; // Add delete handler prop
   // Variation related props from container
   variations: string[];
   selectedVariation: string | undefined;
@@ -55,9 +55,9 @@ export const WorkoutExerciseView = ({
   equipmentTypes,
   overallLastPerformance,
   historicalSetPerformances,
-  oneRepMax,
   onAddSet,
   onEquipmentChange,
+  onDeleteExercise, // Use the new prop
   // Variation props
   variations,
   selectedVariation,
@@ -91,7 +91,7 @@ export const WorkoutExerciseView = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+        <CardTitle className="relative flex flex-col sm:flex-row justify-center sm:items-center gap-2 p-4 sm:p-0">
           <div className="flex items-center gap-2 flex-wrap">
             <Select value={workoutExercise.equipmentType ?? undefined} onValueChange={(value) => onEquipmentChange(value as EquipmentType)}>
               <SelectTrigger className="w-[100px]">
@@ -163,24 +163,28 @@ export const WorkoutExerciseView = ({
               </div>
             )}
           </div>
-          {/* Last Performance - Display logic remains the same, but data is now filtered */}
-          {overallLastPerformance && (
-            <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
-              Last: {overallLastPerformance.weight} kg × {overallLastPerformance.reps} reps
-            </span>
-          )}
+          {/* Delete Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute top-1 right-1 text-destructive hover:bg-destructive/10"
+            onClick={onDeleteExercise}
+            aria-label="Delete exercise from workout"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
-        <Table>
+        <Table className="w-auto mx-auto">
            {/* <TableCaption>Recent sets for {workoutExercise.exercise.name}.</TableCaption> */}
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[50px] text-center">Set</TableHead>
-              <TableHead className="w-[100px] text-center">Previous</TableHead>
-              <TableHead className="w-[100px] text-center">Weight (kg)</TableHead>
-              <TableHead className="w-[100px] text-center">Reps</TableHead>
-              <TableHead className="w-[100px] text-right">Actions</TableHead>
+              <TableHead className="w-[60px] text-center">Set</TableHead>
+              <TableHead className="w-[140px] text-center">Previous</TableHead>
+              <TableHead className="w-[120px] text-center">Weight (kg)</TableHead>
+              <TableHead className="w-[120px] text-center">Reps</TableHead>
+              <TableHead className="w-[100px] p-0 flex justify-center items-center"><Check size={18} /></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -195,7 +199,6 @@ export const WorkoutExerciseView = ({
                   workoutExerciseId={workoutExercise.id}
                   set={set}
                   setIndex={index}
-                  oneRepMax={oneRepMax} // Pass oneRepMax down
                   previousPerformance={previousPerformanceForSet}
                 />
               );
@@ -203,7 +206,7 @@ export const WorkoutExerciseView = ({
           </TableBody>
         </Table>
 
-        <div className="mt-4">
+        <div className="w-full flex justify-end mt-4">
           <Button onClick={onAddSet} variant="outline" size="sm">
             <Plus className="mr-2 h-4 w-4" /> Add Set
           </Button>
