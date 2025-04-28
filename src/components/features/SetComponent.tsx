@@ -161,6 +161,7 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
           <Input
             id={`weight-${set.id}`}
             type="number"
+            inputMode="numeric"
             value={localWeight}
             onChange={handleWeightChange}
             onBlur={() => handleBlur('weight')}
@@ -168,7 +169,7 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
               "h-9 w-full",
               "text-center",
               "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-              showWeightIndicator && "px-8"
+              showWeightIndicator && "px-10"
             )}
             placeholder={previousPerformance ? String(previousPerformance.weight) : '0'}
             aria-label="Weight in kilograms"
@@ -187,6 +188,7 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
           <Input
             id={`reps-${set.id}`}
             type="number"
+            inputMode="numeric"
             value={localReps}
             onChange={handleRepsChange}
             onBlur={() => handleBlur('reps')}
@@ -194,7 +196,7 @@ const SetComponent: React.FC<SetComponentProps> = ({ workoutExerciseId, set, set
               "h-9 w-full",
               "text-center",
               "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-              showRepsIndicator && "px-8"
+              showRepsIndicator && "px-10"
             )}
             placeholder={previousPerformance ? String(previousPerformance.reps) : '0'}
             aria-label="Repetitions"
