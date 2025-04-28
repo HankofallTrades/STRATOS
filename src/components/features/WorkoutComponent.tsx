@@ -199,18 +199,28 @@ const WorkoutComponent = () => {
           <p className="text-gray-500 dark:text-gray-400 mb-4">No exercises added yet</p>
         </div>
       )}
-
-        <ExerciseSelector />
       </div>
 
-      <div className="mt-auto pt-4 flex justify-center">
+      {/* Container for buttons at the bottom */}
+      <div className="mt-auto pt-4 flex justify-between items-center">
+        {/* Empty div for spacing, pushes End Workout button right */}
+        <div className="w-10"></div> 
+
+        {/* Exercise Selector and Add Button (Centered Group) */}
+        <div className="flex flex-col items-center">
+          <ExerciseSelector /> 
+          {/* Removed placeholder Button as ExerciseSelector now renders the button */}
+        </div>
+
+        {/* End Workout Button (Right Aligned, Icon Only, Circular) */}
         <Button
           onClick={handleEndWorkout}
-          variant="default"
-          className="max-w-1/2 bg-fitnessGreen hover:bg-fitnessGreen/90 flex items-center justify-center gap-2"
+          variant="default" 
+          size="icon" // Keep icon size
+          className="bg-fitnessGreen hover:bg-fitnessGreen/90 rounded-full h-12 w-12" // Increased size from h-10 w-10 to h-12 w-12
         >
-          <Save size={16} />
-          <span>End Workout</span>
+          <Save size={16} className="text-white" />
+          {/* Removed the text span */}
         </Button>
       </div>
     </div>

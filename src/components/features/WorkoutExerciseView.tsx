@@ -19,7 +19,7 @@ import { Input } from '@/components/core/input'; // Import Input component
 import {
   Table,
   TableBody,
-//   TableCaption, // Removed unused TableCaption
+  TableCell,
   TableHead,
   TableHeader,
   TableRow,
@@ -223,14 +223,26 @@ export const WorkoutExerciseView = ({
                   />
                 );
               })}
+              {/* New Row for Add Set Button */}
+              <TableRow className="border-b-0">
+                <TableCell className="p-1 text-center"> {/* Padding adjustment as needed */}
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={onAddSet}
+                    className="h-7 w-7" // Smaller icon button
+                    aria-label="Add set"
+                  >
+                    <Plus size={16} />
+                  </Button>
+                </TableCell>
+                {/* Add empty cells to fill the remaining columns */}
+                <TableCell></TableCell>
+                <TableCell></TableCell>
+                <TableCell></TableCell>
+                <TableCell></TableCell>
+              </TableRow>
             </TableBody></Table>
-        </div>
-
-        {/* Reduced margin top */}
-        <div className="w-full flex justify-end mt-2">
-          <Button onClick={onAddSet} variant="outline" size="sm">
-            <Plus className="mr-2 h-4 w-4" /> Add Set
-          </Button>
         </div>
       </CardContent>
     </Card>
