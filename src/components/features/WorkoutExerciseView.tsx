@@ -202,7 +202,7 @@ export const WorkoutExerciseView = ({
             <TableHeader>
               {/* Use text-xs and reduced padding */}
               <TableRow className="text-xs">
-                <TableHead className="w-[35px] text-center px-1 py-1">Set</TableHead><TableHead className="w-[90px] text-center px-1 py-1">Prev.</TableHead>{/* Increased width from 80px */}<TableHead className="w-[75px] text-center px-1 py-1">Wt (kg)</TableHead>{/* Abbreviated */}<TableHead className="w-[60px] text-center px-1 py-1">Reps</TableHead>{/* Adjusted check column size and padding */}<TableHead className="w-[40px] p-0 text-center"><Check size={16} className="mx-auto" /></TableHead>
+                <TableHead className="w-[35px] text-center px-1 py-1">Set</TableHead><TableHead className="w-[70px] text-center px-1 py-1">Prev.</TableHead>{/* Reduced width from 100px */}<TableHead className="w-[75px] text-center px-1 py-1">Wt (kg)</TableHead>{/* Abbreviated */}<TableHead className="w-[60px] text-center px-1 py-1">Reps</TableHead>{/* Adjusted check column size and padding */}<TableHead className="w-[40px] p-0 text-center"><Check size={16} className="mx-auto" /></TableHead>
               </TableRow>
             </TableHeader><TableBody>
               {workoutExercise.sets.map((set, index) => {
