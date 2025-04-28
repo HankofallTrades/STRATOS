@@ -19,27 +19,41 @@ export const fetchLastWorkoutExerciseInstanceFromDB = async (
   variation: string | undefined | null
 ): Promise<{ weight: number; reps: number; set_number: number }[] | null> => {
   const targetVariation = variation || 'Standard';
-  const targetEquipmentType = equipmentType ?? null; // Handle null equipment type explicitly
+  const targetEquipmentType = equipmentType ?? null;
 
   try {
-    // Step 1: Find the most recent workout_id containing the exercise for the user
-    // We only need the workout_id, and we look for any completed set of the exercise
-    const { data: lastWorkoutIdData, error: lastWorkoutIdError } = await supabase
+    // Step 1: Find the most recent workout_id where the user completed sets
+    // for this exercise WITH the specified equipment and variation.
+    // Start from workouts and join down to apply filters and order easily.
+    const { data: lastWorkoutData, error: lastWorkoutError } = await supabase
       .from('workouts')
-      .select('id, date, workout_exercises!inner(exercise_id, exercise_sets!inner(completed))')
-      .eq('user_id', userId)
-      .eq('workout_exercises.exercise_id', exerciseId)
-      .eq('workout_exercises.exercise_sets.completed', true) // Ensure at least one completed set exists for the exercise in the workout
-      .order('date', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .select('id, date, workout_exercises!inner(exercise_id, exercise_sets!inner(completed, variation, equipment_type))') // Select id, date and join down
+      .eq('user_id', userId) // Filter by user ID on workouts table
+      .eq('workout_exercises.exercise_id', exerciseId) // Filter by exercise ID on joined table
+      .eq('workout_exercises.exercise_sets.completed', true) // Filter by completed on doubly joined table
+      // Filter by equipment type (handle null) on doubly joined table
+      .filter('workout_exercises.exercise_sets.equipment_type', targetEquipmentType === null ? 'is' : 'eq', targetEquipmentType)
+      // Filter by variation (handle 'Standard') on doubly joined table
+      .filter(
+        'workout_exercises.exercise_sets.variation',
+        targetVariation === 'Standard' ? 'in' : 'eq',
+        targetVariation === 'Standard' ? '("Standard", "", null)' : targetVariation
+      )
+      .order('date', { ascending: false }) // Order directly by workout date
+      .limit(1) // Get the most recent one
+      .maybeSingle(); // Expect 0 or 1 result
 
-    if (lastWorkoutIdError) throw lastWorkoutIdError;
-    if (!lastWorkoutIdData) return null; // No previous workout found for this user/exercise
+    if (lastWorkoutError) throw lastWorkoutError;
+    // If no workout entry matches all criteria, return null
+    if (!lastWorkoutData) { // Simpler check now
+        console.log('No previous workout found matching all criteria (user, exercise, equipment, variation).');
+        return null;
+    }
 
-    const lastWorkoutId = lastWorkoutIdData.id;
+    const lastWorkoutId = lastWorkoutData.id; // Simpler access
+    console.log('Found last matching workout ID:', lastWorkoutId);
 
-    // Step 2: Fetch all completed sets from that specific workout_id matching all criteria
+    // Step 2: Fetch all completed sets from that specific workout_id matching all criteria again (for safety)
     const { data: historicalSetsData, error: historicalSetsError } = await supabase
       .from('exercise_sets')
       .select('weight, reps, set_number, variation, equipment_type, workout_exercises!inner(exercise_id, workout_id)')
@@ -57,29 +71,24 @@ export const fetchLastWorkoutExerciseInstanceFromDB = async (
       .order('set_number', { ascending: true }); // Order the results by set number
 
     if (historicalSetsError) throw historicalSetsError;
-    if (!historicalSetsData || historicalSetsData.length === 0) return null; // No sets matching criteria in that specific workout
+    if (!historicalSetsData || historicalSetsData.length === 0) {
+        console.log('Found matching workout ID, but failed to fetch sets from it. This should not happen.');
+        return null; // Should technically not happen if Step 1 succeeded, but good failsafe
+    }
 
-    // Filter again in code just to be certain, especially for the 'Standard' variation case
-     const matchingSets = historicalSetsData.filter(set => {
-        const setVariation = set.variation || 'Standard';
-        // Important: Check against targetEquipmentType which handles null correctly
-        const equipmentMatch = set.equipment_type === targetEquipmentType;
-        const variationMatch = setVariation === targetVariation;
-        return equipmentMatch && variationMatch; // No need to check completed again, query did that
-    });
+    // No need for the extra JS filter anymore, the DB queries are specific enough.
 
     // Format the final result
-    const formattedSets = matchingSets.map(set => ({
+    const formattedSets = historicalSetsData.map(set => ({
       weight: set.weight,
       reps: set.reps,
       set_number: set.set_number,
     }));
-    // No need to sort again, query did that
 
-    return formattedSets.length > 0 ? formattedSets : null;
+    return formattedSets; // formattedSets cannot be empty if we reached here
 
   } catch (error) {
-    console.error("Error fetching last workout exercise instance (revised):", error);
+    console.error("Error fetching last workout exercise instance (revised logic):", error);
     return null;
   }
 };

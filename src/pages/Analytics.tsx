@@ -17,6 +17,12 @@ import { Checkbox } from "@/components/core/checkbox"; // Import Checkbox
 import { Label } from "@/components/core/label"; // Import Label
 import { DailyMaxE1RM } from '@/lib/types/analytics'; // Import the type for RPC result
 
+// Define structure for unified chart data point
+interface UnifiedDataPoint {
+  workout_date: string;
+  [combinationKey: string]: number | string | undefined | null; // Allows string for date, number for e1RM
+}
+
 // Define the structure for processed data points
 interface DataPoint {
   date: string; // Keep date as string for easier charting
@@ -75,26 +81,41 @@ const formatDate = (dateInput: Date | string): string => {
 // Custom Tooltip Component
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
-    const dataPoint = payload[0]; // We focus on the first item in the payload array
-    const name = dataPoint.name; // Now "Variation - EquipmentType"
-    const value = dataPoint.value; // max_e1rm
     const date = label; // workout_date passed as label
 
-    // Split by hyphen now
-    const parts = name.split(' - ');
-    const variation = parts[0] || 'Unknown'; 
-    const equipmentType = parts[1] || 'Unknown';
-
-    // Handle display names for "Default" (which now covers null/undefined/"Standard" variation)
-    const variationDisplay = variation === 'Default' ? 'Standard' : variation;
-    const equipmentDisplay = equipmentType === 'Default' ? 'Default' : equipmentType; // Keep displaying 'Default' if that's the key part
-
     return (
-      <div className="custom-tooltip bg-white p-3 border border-gray-300 rounded shadow-lg text-sm"> {/* Added more padding and shadow */}
+      <div className="custom-tooltip bg-white p-3 border border-gray-300 rounded shadow-lg text-sm space-y-1"> {/* Added space-y-1 */}
         <p className="label font-semibold mb-1">{`Date: ${formatDate(date)}`}</p>
-        <p className="intro text-fitnessIndigo font-medium">{`Est. 1RM: ${value.toFixed(1)} kg`}</p> {/* Added color */}
-        <p className="desc text-gray-700">{`Variation: ${variationDisplay}`}</p>
-        <p className="desc text-gray-700">{`Equipment: ${equipmentDisplay}`}</p>
+        {/* Iterate through all items in payload */} 
+        {payload.map((entry: any, index: number) => {
+          const name = entry.name; // "Variation - EquipmentType"
+          const value = entry.value; // max_e1rm
+          const color = entry.color; // Get line color
+
+          // Ensure name and value exist before processing
+          if (name == null || value == null) {
+            return null; // Don't render if data is missing
+          }
+
+          // Split by hyphen now
+          const parts = name.split(' - ');
+          const variation = parts[0] || 'Unknown'; 
+          const equipmentType = parts[1] || 'Unknown';
+
+          // Handle display names for "Default"
+          const variationDisplay = variation === 'Default' ? 'Standard' : variation;
+          const equipmentDisplay = equipmentType === 'Default' ? 'Default' : equipmentType; 
+          
+          return (
+            <div key={index} className="tooltip-entry"> {/* Wrap each entry */} 
+              <p className="intro font-medium" style={{ color: color }}> {/* Use line color */} 
+                {`${variationDisplay} (${equipmentDisplay}): ~${value.toFixed(1)} kg`}
+              </p>
+              {/* <p className="desc text-gray-700">{`Variation: ${variationDisplay}`}</p>
+              <p className="desc text-gray-700">{`Equipment: ${equipmentDisplay}`}</p> */}
+            </div>
+          );
+        })}
       </div>
     );
   }
@@ -229,28 +250,28 @@ const Analytics = () => {
     return `${date.getMonth() + 1}/${date.getDate()}`;
   };
   
-  // Prepare data for the chart, grouped by combination key
-  const chartData = useMemo((): ChartData => {
-      const groupedData: ChartData = {};
+  // Prepare UNIFIED data for the chart
+  const chartData = useMemo((): UnifiedDataPoint[] => {
+      if (!maxE1RMHistory || maxE1RMHistory.length === 0) return [];
 
+      // 1. Get all unique dates and sort them
+      const allDates = Array.from(new Set(maxE1RMHistory.map(item => item.workout_date)))
+                            .sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+
+      // 2. Create base structure: { workout_date: date }
+      const unifiedData: UnifiedDataPoint[] = allDates.map(date => ({ workout_date: date }));
+
+      // 3. Populate with e1RM data for each combination
       maxE1RMHistory.forEach(item => {
           const key = getCombinationKey(item.variation, item.equipment_type);
-          if (!groupedData[key]) {
-              groupedData[key] = [];
+          const dateIndex = unifiedData.findIndex(d => d.workout_date === item.workout_date);
+          if (dateIndex !== -1) {
+              // Add the e1RM value under its combination key
+              unifiedData[dateIndex][key] = item.max_e1rm;
           }
-          // Add the data point (date and max_e1rm)
-          groupedData[key].push({ 
-              workout_date: item.workout_date, 
-              max_e1rm: item.max_e1rm 
-          });
       });
 
-      // Sort data points within each combination by date
-      Object.keys(groupedData).forEach(key => {
-          groupedData[key].sort((a, b) => new Date(a.workout_date).getTime() - new Date(b.workout_date).getTime());
-      });
-
-      return groupedData;
+      return unifiedData;
   }, [maxE1RMHistory]);
 
   // Define colors for chart lines (add more if needed)
@@ -371,16 +392,16 @@ const Analytics = () => {
                        <p className="text-red-500 italic text-center py-10">Error loading history: {errorHistory.message}</p> 
                     ) : maxE1RMHistory.length > 0 && Object.keys(chartData).length > 0 ? ( // Check if there's processed data
                        <ResponsiveContainer width="100%" height={400}>
-                           {/* Use the derived chartData */}
-                           <LineChart margin={{ top: 5, right: 20, left: 20, bottom: 5 }}> 
+                           {/* Use the UNIFIED chartData */}
+                           <LineChart data={chartData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}> 
                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(229, 231, 235, 0.25)" /> 
-                               {/* Update XAxis dataKey */}
+                               {/* Update XAxis config */}
                                <XAxis 
                                    dataKey="workout_date" 
                                    tickFormatter={formatAxisDate} 
-                                   domain={['dataMin', 'dataMax']}
+                                   // domain removed - let Recharts calculate from unified data
                                    type="category" 
-                                   allowDuplicatedCategory={true}
+                                   // allowDuplicatedCategory removed
                                    tick={{ fontSize: 12 }}
                                    padding={{ left: 10, right: 10 }} 
                                />
@@ -389,7 +410,7 @@ const Analytics = () => {
                                    label={{ value: 'Max e1RM (kg)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle' }, dx: -10 }} 
                                    tick={{ fontSize: 12 }}
                                    domain={['auto', 'auto']} 
-                                   dataKey="max_e1rm" // Point YAxis to the correct data key implicitly if needed
+                                   // dataKey removed - inferred from Lines
                                />
                                {/* Use the custom tooltip */}
                                <Tooltip 
@@ -399,29 +420,39 @@ const Analytics = () => {
                                {/* Legend logic remains largely the same, using allCombinationKeys and activeCombinationKeys */}
                                <Legend 
                                   onClick={(data) => {
-                                      const key = data.value.replace(' - ', '|'); 
+                                      // Key extraction needs to use the ID from the payload, which is the original combination key
+                                      const key = data.id; // Use data.id which holds the original key
                                       setActiveCombinationKeys(prevKeys => 
                                           prevKeys.includes(key) ? prevKeys.filter(k => k !== key) : [...prevKeys, key]
                                       );
                                   }}
-                                  formatter={(value, entry) => {
-                                      const key = value.replace(' - ', '|'); 
+                                  formatter={(value, entry: any) => { // Added :any to entry to bypass TS check temporarily if needed, better fix below
+                                      // Key extraction needs to use the ID from the payload
+                                      const key = entry.id; // Use entry.id which holds the original key, not entry.payload.id
                                       const isActive = activeCombinationKeys.includes(key);
                                       const color = isActive ? entry.color : '#9ca3af'; 
+                                      // Value is already formatted as 'Variation - Equipment'
                                       return <span style={{ color, cursor: 'pointer' }}>{value}</span>;
                                   }}
                                   payload={
-                                      allCombinationKeys.map((key, index) => ({
-                                          id: key,
-                                          type: 'line',
-                                          value: key.replace('|', ' - '), 
-                                          color: lineColors[index % lineColors.length], 
-                                      }))
+                                      allCombinationKeys.map((key, index) => {
+                                          // Generate display value: Replace 'Default' with 'Standard' for legend
+                                          const displayValue = key.startsWith('Default|')
+                                              ? key.replace('Default|', 'Standard - ')
+                                              : key.replace('|', ' - ');
+                                          
+                                          return {
+                                              id: key, // The unique combination key (e.g., Default|BB)
+                                              type: 'line',
+                                              value: displayValue, // Use the generated display value
+                                              color: lineColors[index % lineColors.length], 
+                                          }
+                                      })
                                   }
                                   wrapperStyle={{ paddingTop: '20px' }} 
                                />
-                               {/* Map over the chartData (grouped data) */}
-                               {Object.entries(chartData).map(([key, dataPoints]) => {
+                               {/* Map over the allCombinationKeys to render lines */}
+                               {allCombinationKeys.map((key) => {
                                     const colorIndex = allCombinationKeys.indexOf(key); 
                                     // Only render lines for active keys
                                     if (!activeCombinationKeys.includes(key)) return null; 
@@ -429,13 +460,14 @@ const Analytics = () => {
                                         <Line 
                                             key={key} 
                                             type="monotone" 
-                                            data={dataPoints} // Use the grouped data points
-                                            dataKey="max_e1rm" // Use the correct data key
-                                            name={key.replace('|', ' - ')} 
+                                            // data prop removed - uses chart data
+                                            dataKey={key} // Use the combination key as dataKey 
+                                            name={key.replace('|', ' - ')} // Keep name for Tooltip/Legend formatting
                                             stroke={lineColors[colorIndex % lineColors.length]} 
                                             strokeWidth={2}
-                                            dot={{ r: 4 }}
-                                            activeDot={{ r: 6 }} 
+                                            dot={{ r: 4, fill: lineColors[colorIndex % lineColors.length] }} // Ensure default dot is visible and filled with line color
+                                            activeDot={{ r: 6 }} // Slightly larger dot on hover
+                                            connectNulls // Connect line segments across null data points
                                         />
                                     );
                                })}
