@@ -1,19 +1,52 @@
 import { supabase } from './client';
 import type { Database } from './types'; // Import generated Database type
+import { v4 as uuidv4 } from 'uuid'; // Import UUID generator
 
-// Define type aliases for easier use
+// Define type aliases for easier use (assuming types generated from Supabase include the new columns)
 type ExerciseRow = Database['public']['Tables']['exercises']['Row'];
 type ExerciseInsert = Database['public']['Tables']['exercises']['Insert'];
+type UserHiddenExerciseInsert = Database['public']['Tables']['user_hidden_exercises']['Insert'];
 
 /**
- * Fetches the list of exercises from the Supabase database.
+ * Fetches the list of exercises from the Supabase database,
+ * excluding those hidden by the current user.
  */
 export const fetchExercisesFromDB = async (): Promise<ExerciseRow[]> => {
-  console.log("Fetching exercises from Supabase..."); // Log start
+  console.log("Fetching exercises from Supabase...");
+
+  // Get current user session
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    console.error('Error fetching user session or no user logged in:', userError);
+    // Handle appropriately - maybe return only non-user exercises or throw error
+    // For now, let's fetch only predefined exercises if no user is found
+     const { data: predefinedData, error: predefinedError } = await supabase
+      .from('exercises')
+      .select('*')
+      .is('created_by_user_id', null)
+      .order('order', { ascending: true })
+      .order('name', { ascending: true });
+      
+     if (predefinedError) {
+      console.error('Error fetching predefined exercises:', predefinedError);
+      throw new Error(`Failed to fetch predefined exercises: ${predefinedError.message}`);
+     }
+     console.log(`Fetched ${predefinedData?.length ?? 0} predefined exercises (no user logged in).`);
+     return predefinedData || [];
+  }
+
+  console.log(`Fetching exercises for user: ${user.id}`);
+
+  // Fetch exercises, joining with user_hidden_exercises to filter out hidden ones
   const { data, error } = await supabase
     .from('exercises')
-    .select('*')
-    .order('order', { ascending: true }) // Optionally order exercises
+    // Select all columns from exercises, and user_id from the hidden table to check for matches
+    .select('*, user_hidden_exercises(user_id)')
+    // Left join: include all exercises, but only matching hidden entries for the current user
+    .is('user_hidden_exercises.user_id', null) // Filter: Only include rows where the join condition didn't find a match (i.e., not hidden)
+    // Original ordering
+    .order('order', { ascending: true })
     .order('name', { ascending: true });
 
   if (error) {
@@ -21,24 +54,42 @@ export const fetchExercisesFromDB = async (): Promise<ExerciseRow[]> => {
     throw new Error(`Failed to fetch exercises: ${error.message}`);
   }
 
-  console.log(`Fetched ${data?.length ?? 0} exercises.`); // Log success
+  console.log(`Fetched ${data?.length ?? 0} visible exercises for user ${user.id}.`);
+  // The data structure might change slightly due to the join, ensure it matches ExerciseRow expectations.
+  // Supabase typically nests the joined table result.
+  // We might need to explicitly list columns if `select('*')` causes issues with the join.
+  // Assuming the filter works, the returned `data` should conform to ExerciseRow[]
   return data || [];
 };
 
 /**
- * Creates a new exercise in the Supabase database.
+ * Creates a new custom exercise in the Supabase database for the current user.
  * @param exerciseData - The data for the new exercise (requires name).
  */
 export const createExerciseInDB = async (
   exerciseData: Pick<ExerciseInsert, 'name' | 'default_equipment_type'>
 ): Promise<ExerciseRow> => {
-  console.log("Creating exercise in Supabase:", exerciseData.name);
-  // We only pass name and default_equipment_type, assuming others like id, created_at, created_by_user_id are handled by DB/policies.
+  console.log("Creating custom exercise in Supabase:", exerciseData.name);
+
+  // Get current user
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    console.error('User must be logged in to create a custom exercise:', userError);
+    throw new Error('Authentication required to create exercises.');
+  }
+
+  // Prepare data including the user ID
+  const insertPayload: ExerciseInsert = {
+    ...exerciseData,
+    created_by_user_id: user.id, // Set the creator
+  };
+
   const { data: exerciseDataResult, error: exerciseError } = await supabase
     .from('exercises')
-    .insert(exerciseData) // Pass the provided data
+    .insert(insertPayload) // Insert data with user ID
     .select()
-    .single(); // Expecting a single record back
+    .single();
 
   if (exerciseError) {
     console.error('Error creating exercise:', exerciseError);
@@ -49,21 +100,17 @@ export const createExerciseInDB = async (
     throw new Error('Failed to create exercise: No data returned.');
   }
 
-  console.log("Exercise created successfully:", exerciseDataResult.id);
+  console.log("Custom exercise created successfully:", exerciseDataResult.id, "by user", user.id);
 
-  // --- Add Standard Variation --- 
+  // Add Standard Variation (remains the same)
   try {
     console.log(`Adding default 'Standard' variation for new exercise: ${exerciseDataResult.id}`);
     await addExerciseVariationToDB(exerciseDataResult.id, 'Standard');
     console.log(`'Standard' variation added for exercise: ${exerciseDataResult.id}`);
   } catch (variationError) {
-    // Log the error, but maybe don't fail the whole exercise creation?
-    // Depending on requirements, you might want to re-throw or handle this differently.
-    // For example, implement cleanup logic to delete the exercise if adding the variation fails.
     console.error(`Failed to add 'Standard' variation for exercise ${exerciseDataResult.id}:`, variationError);
-    // Consider throwing a more specific error or returning a status indicating partial success.
+    // Consider cleanup or alternative handling
   }
-  // --- End Add Standard Variation ---
 
   return exerciseDataResult;
 };
@@ -150,4 +197,70 @@ export async function fetchExerciseVariationsFromDB(exerciseId: string): Promise
 
   console.log(`Fetched ${variationNames.length} variations for ${exerciseId}, starting with Standard.`);
   return variationNames;
-} 
+}
+
+/**
+ * Hides a predefined exercise for a specific user.
+ * @param userId - The UUID of the user.
+ * @param exerciseId - The UUID of the exercise to hide.
+ */
+export const hideExerciseForUser = async (userId: string, exerciseId: string): Promise<void> => {
+  console.log(`Hiding exercise ${exerciseId} for user ${userId}`);
+
+  // Generate a new UUID for the relationship table entry
+  const newId = uuidv4(); 
+
+  const insertData: UserHiddenExerciseInsert = {
+    id: newId, // Add the generated ID
+    user_id: userId,
+    exercise_id: exerciseId,
+  };
+
+  console.log("Inserting into user_hidden_exercises:", insertData);
+
+  const { error } = await supabase
+    .from('user_hidden_exercises')
+    .insert(insertData);
+
+  if (error) {
+    // Handle potential unique constraint violation (user already hid this exercise)
+    if (error.code === '23505') { 
+      console.warn(`User ${userId} has already hidden exercise ${exerciseId}. Ignoring.`);
+      // Don't throw an error if it's already hidden
+      return; 
+    }
+    console.error(`Error hiding exercise ${exerciseId} for user ${userId}:`, error);
+    throw new Error(`Failed to hide exercise: ${error.message}`);
+  }
+
+  console.log(`Successfully hid exercise ${exerciseId} for user ${userId}`);
+};
+
+/**
+ * Deletes an exercise and its associated variations from the Supabase database.
+ * Note: This assumes cascade delete is set up for related tables (like exercise_variations)
+ * or handles deletion manually if necessary.
+ * @param exerciseId - The UUID of the exercise to delete.
+ */
+export const deleteExerciseFromDB = async (exerciseId: string): Promise<void> => {
+  console.log(`Attempting to delete exercise: ${exerciseId}`);
+
+  // Add deletion logic here. 
+  // This currently assumes that deleting an exercise will cascade delete 
+  // related entries (like variations, history, etc.) based on foreign key constraints 
+  // set up in your Supabase schema.
+  // If cascade delete is NOT configured, you'll need to manually delete
+  // entries from related tables first (e.g., exercise_variations, workout_sets linked to this exercise).
+
+  const { error } = await supabase
+    .from('exercises')
+    .delete()
+    .eq('id', exerciseId);
+
+  if (error) {
+    console.error(`Error deleting exercise ${exerciseId}:`, error);
+    throw new Error(`Failed to delete exercise: ${error.message}`);
+  }
+
+  console.log(`Successfully deleted exercise: ${exerciseId}`);
+}; 

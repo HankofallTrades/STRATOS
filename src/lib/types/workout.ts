@@ -8,6 +8,7 @@ export interface Exercise {
   name: string;
   // oneRepMax?: number; // Removed - Likely stored in user_exercise_stats
   default_equipment_type?: string | null; // Renamed from equipmentType, matching DB
+  created_by_user_id?: string | null; // Add the creator user ID field
   // variations?: string[]; // Removed - Likely stored in exercise_variations
 }
 
