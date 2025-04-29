@@ -3,10 +3,10 @@ import { useAppSelector } from "@/hooks/redux"; // Import Redux hooks
 import { selectWorkoutHistory } from "@/state/history/historySlice"; // Restore history slice import for stats calculation
 import { useQuery } from '@tanstack/react-query'; // Add TanStack Query import
 import { fetchExercisesFromDB } from '@/lib/integrations/supabase/exercises'; // Add Supabase function import
-import { fetchMaxE1RMHistory } from '@/lib/integrations/supabase/history'; // Import the new history fetcher
+import { fetchMaxE1RMHistory } from '@/lib/integrations/supabase/history'; 
 import { supabase } from "@/lib/integrations/supabase/client"; // Import supabase client
 import { formatTime } from '@/lib/utils/timeUtils';
-import { BarChart, Clock, Calendar, Dumbbell, Award, TrendingUp } from "lucide-react";
+import { BarChart, Clock, Calendar, Dumbbell, Award, TrendingUp } from "lucide-react"; // Removed Target, CheckCircle
 import { Link } from "react-router-dom";
 import { Button } from "@/components/core/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/core/card";
@@ -16,6 +16,8 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { Checkbox } from "@/components/core/checkbox"; // Import Checkbox
 import { Label } from "@/components/core/label"; // Import Label
 import { DailyMaxE1RM } from '@/lib/types/analytics'; // Import the type for RPC result
+import { useAuth } from '@/state/auth/AuthProvider'; // Import useAuth to get user ID easily
+import StrengthBenchmarks from '@/components/features/StrengthBenchmarks'; // Import the new StrengthBenchmarks component
 
 // Define structure for unified chart data point
 interface UnifiedDataPoint {
@@ -126,25 +128,14 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 const Analytics = () => {
   // Get workout history for stats calculation
   const workoutHistory = useAppSelector(selectWorkoutHistory);
+  // Get user object for ID
+  const { user } = useAuth(); 
   
-  // Fetch user ID directly
-  const [userId, setUserId] = useState<string | null>(null);
-  useEffect(() => {
-      const fetchUser = async () => {
-          const { data: { user }, error } = await supabase.auth.getUser();
-          if (error) {
-              console.error("Error fetching user for analytics:", error);
-          } else {
-              setUserId(user?.id ?? null);
-          }
-      };
-      fetchUser();
-  }, []); // Run once on mount
-
   // Fetch list of all exercises for the dropdown selector
   const { data: exercises = [], isLoading: isLoadingExercises, error: errorExercises } = useQuery({
     queryKey: ['exercises'],
     queryFn: fetchExercisesFromDB,
+    staleTime: Infinity, // Exercises list rarely changes, cache indefinitely
   });
   
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
@@ -157,12 +148,12 @@ const Analytics = () => {
       isLoading: isLoadingHistory, 
       error: errorHistory 
   } = useQuery({
-      queryKey: ['maxE1RMHistory', selectedExercise?.id, userId],
+      queryKey: ['maxE1RMHistory', selectedExercise?.id, user?.id],
       queryFn: async () => {
-          if (!userId || !selectedExercise?.id) return []; 
-          return fetchMaxE1RMHistory(userId, selectedExercise.id);
+          if (!user?.id || !selectedExercise?.id) return []; 
+          return fetchMaxE1RMHistory(user.id, selectedExercise.id);
       },
-      enabled: !!userId && !!selectedExercise?.id, // Only run query when user and exercise are selected
+      enabled: !!user?.id && !!selectedExercise?.id, // Only run query when user and exercise are selected
       staleTime: 5 * 60 * 1000, // Cache data for 5 minutes
   });
 
@@ -295,8 +286,8 @@ const Analytics = () => {
         <p className="text-gray-600 mb-6">Track your progress and visualize your gains</p>
       </header>
 
-      <main>
-        <h2 className="text-2xl font-semibold mb-6">Performance Overview</h2> {/* Added heading */}
+      <main className="space-y-8"> {/* Added space between main sections */}
+        <h2 className="text-2xl font-semibold mb-4">Performance Overview</h2> {/* Added heading */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"> {/* Changed to 4 cols */}
           <Card>
             <CardHeader className="pb-2">
@@ -348,6 +339,9 @@ const Analytics = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Render the NEW Strength Benchmarks Component */}
+        <StrengthBenchmarks />
 
         <h2 className="text-2xl font-semibold mb-4">Exercise Progress Analysis</h2> {/* Changed heading */}
         {isLoadingExercises ? (

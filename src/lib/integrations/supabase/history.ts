@@ -125,4 +125,55 @@ export async function fetchMaxE1RMHistory(userId: string, exerciseId: string): P
   }));
 
   return formattedData as DailyMaxE1RM[]; // Final cast for return type safety
+}
+
+// Structure for the result of the new RPC function
+export interface LatestMaxE1RM {
+  exercise_id: string;
+  max_e1rm: number;
+}
+
+/**
+ * Fetches the latest calculated max e1RM for a list of specified exercises.
+ * Assumes a Supabase RPC function 'get_latest_max_e1rm_for_exercises' exists.
+ *
+ * @param userId The UUID of the user.
+ * @param exerciseIds An array of UUIDs for the exercises.
+ * @returns A promise resolving to an array of { exercise_id: string, max_e1rm: number }.
+ */
+export async function fetchLatestMaxE1RMForExercises(
+  userId: string,
+  exerciseIds: string[]
+): Promise<LatestMaxE1RM[]> {
+  if (!userId || !exerciseIds || exerciseIds.length === 0) {
+    console.warn("User ID or Exercise IDs missing/empty for fetchLatestMaxE1RMForExercises call");
+    return [];
+  }
+
+  try {
+    const { data, error } = await supabase.rpc('get_latest_max_e1rm_for_exercises', {
+      p_user_id: userId,
+      p_exercise_ids: exerciseIds,
+    });
+
+    if (error) {
+      console.error('Error fetching latest max e1RM from Supabase RPC:', error);
+      throw new Error(`Supabase RPC Error: ${error.message}`);
+    }
+
+    // Ensure data is an array and conforms to the expected structure
+    const results = (data as any[] | null) ?? [];
+    const validatedData = results.map(item => ({
+        exercise_id: String(item.exercise_id), // Ensure string
+        max_e1rm: Number(item.max_e1rm) // Ensure number
+    })).filter(item => item.exercise_id && !isNaN(item.max_e1rm)); // Basic validation
+
+    return validatedData as LatestMaxE1RM[];
+
+  } catch (error) {
+    console.error("Client-side error in fetchLatestMaxE1RMForExercises:", error);
+    // Re-throw or return empty array depending on desired error handling
+    // For now, let's return empty to avoid crashing the analytics page
+    return []; 
+  }
 } 
