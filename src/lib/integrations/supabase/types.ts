@@ -168,6 +168,42 @@ export type Database = {
           },
         ]
       }
+      user_hidden_exercises: {
+        Row: {
+          created_at: string
+          exercise_id: string | null
+          id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          exercise_id?: string | null
+          id?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          exercise_id?: string | null
+          id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_hidden_exercises_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_hidden_exercises_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workout_exercises: {
         Row: {
           created_at: string | null
@@ -239,7 +275,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_exercise_max_e1rm_history: {
+        Args: { p_user_id: string; p_exercise_id: string }
+        Returns: {
+          workout_date: string
+          variation: string
+          equipment_type: string
+          max_e1rm: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
