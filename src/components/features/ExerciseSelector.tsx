@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 // Remove Redux imports for exercise list management
 // import { useAppSelector, useAppDispatch } from "@/hooks/redux";
 // import { selectAllExercises, addExercise as addExerciseAction } from "@/state/exercise/exerciseSlice";
@@ -32,16 +32,62 @@ const ExerciseSelector = () => {
   const { data: exercises = [], isLoading, error } = useQuery({
     queryKey: ['exercises'],
     queryFn: fetchExercisesFromDB,
+    // Keep data fresh but don't refetch on window focus while dialog might be open
+    refetchOnWindowFocus: false, 
   });
+
+  // Modify handleSelectExercise to accept the full Exercise object
+  const handleSelectExercise = (selectedExercise: Exercise) => {
+      // No need to find the exercise anymore
+      const newWorkoutExerciseId = uuidv4(); // Generate ID once
+      const workoutExercisePayload: WorkoutExercise = {
+        id: newWorkoutExerciseId, // Use generated ID
+        exerciseId: selectedExercise.id,
+        exercise: selectedExercise,
+        // Use default_equipment_type if available, otherwise undefined
+        equipmentType: selectedExercise.default_equipment_type 
+          ? selectedExercise.default_equipment_type as EquipmentType 
+          : undefined, 
+        variation: 'Standard',
+        sets: [], // Start with empty sets initially
+      };
+      // Dispatch to add to the *current workout* state (client state)
+      dispatch(addExerciseToWorkoutAction(workoutExercisePayload));
+
+      // Dispatch to add the first default set immediately after
+      dispatch(addSetToExercise({ // Corrected: Use the correct action
+        workoutExerciseId: newWorkoutExerciseId, // Use the same ID
+        exerciseId: selectedExercise.id // Add the missing exerciseId
+        // Optionally provide default set values here if the reducer doesn't handle defaults
+        // set: { id: uuidv4(), weight: 0, reps: 0, completed: false } 
+      }));
+
+      setOpen(false); // Close the dialog after selection
+      setSearchQuery(""); // Reset search query
+      setIsAddingNew(false); // Reset adding state
+      setNewExerciseName(""); // Reset new exercise name
+  };
 
   // Mutation for adding a new exercise
   const mutation = useMutation({
     mutationFn: createExerciseInDB,
-    onSuccess: () => {
-      // Invalidate and refetch the exercises list on success
+    onSuccess: (newExercise: Exercise) => { // Receive the newly created exercise object
+      // Invalidate and refetch the exercises list in the background
       queryClient.invalidateQueries({ queryKey: ['exercises'] });
-      setNewExerciseName("");
-      setIsAddingNew(false);
+      
+      // Automatically select the newly created exercise
+      // Ensure newExercise has an ID before selecting
+      if (newExercise && newExercise.id) {
+        handleSelectExercise(newExercise);
+      } else {
+        // Handle case where newExercise might not be returned as expected
+        console.warn("New exercise created, but couldn't auto-select. Refetching list.");
+        // Reset state even if auto-select fails for some reason
+         setNewExerciseName("");
+         setIsAddingNew(false);
+         setOpen(false); // Close dialog anyway
+      }
+      // No need to reset state here, handleSelectExercise does it now
     },
     onError: (err) => {
       console.error("Error adding exercise:", err);
@@ -57,37 +103,20 @@ const ExerciseSelector = () => {
   const handleAddNew = () => {
     if (newExerciseName.trim()) {
       // Use mutation to add the new exercise
-      mutation.mutate({ name: newExerciseName.trim() });
+      // Pass only the name, assuming createExerciseInDB handles defaults
+      mutation.mutate({ name: newExerciseName.trim() }); 
     }
   };
 
-  // handleSelectExercise remains mostly the same, uses data from useQuery
-  const handleSelectExercise = (exerciseId: string) => {
-    const selectedExercise = exercises.find(ex => ex.id === exerciseId);
-    if (selectedExercise) {
-      const newWorkoutExerciseId = uuidv4(); // Generate ID once
-      const workoutExercisePayload: WorkoutExercise = {
-        id: newWorkoutExerciseId, // Use generated ID
-        exerciseId: selectedExercise.id,
-        exercise: selectedExercise,
-        equipmentType: selectedExercise.default_equipment_type as EquipmentType | undefined,
-        variation: 'Standard',
-        sets: [], // Start with empty sets initially
-      };
-      // Dispatch to add to the *current workout* state (client state)
-      dispatch(addExerciseToWorkoutAction(workoutExercisePayload));
-
-      // Dispatch to add the first default set immediately after
-      dispatch(addSetToExercise({ // Corrected: Use the correct action
-        workoutExerciseId: newWorkoutExerciseId, // Use the same ID
-        exerciseId: selectedExercise.id // Add the missing exerciseId
-        // Optionally provide default set values here if the reducer doesn't handle defaults
-        // set: { id: uuidv4(), weight: 0, reps: 0, completed: false } 
-      }));
-
-      setOpen(false);
+  // Reset search and add state when dialog closes
+  useEffect(() => {
+    if (!open) {
+        setSearchQuery("");
+        setIsAddingNew(false);
+        setNewExerciseName("");
     }
-  };
+  }, [open]);
+
 
   return (
     // Added wrapper div for right alignment
@@ -103,7 +132,11 @@ const ExerciseSelector = () => {
             Add Exercise {/* Added text */}
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md dark:bg-gray-800 dark:border-gray-700">
+      {/* Add onOpenAutoFocus to prevent default focus behavior */}
+      <DialogContent 
+        className="sm:max-w-md dark:bg-gray-800 dark:border-gray-700"
+        onOpenAutoFocus={(e) => e.preventDefault()} 
+      >
         <DialogHeader>
           <DialogTitle className="dark:text-white">Select Exercise</DialogTitle>
         </DialogHeader>
@@ -115,6 +148,7 @@ const ExerciseSelector = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
+              // Removed autoFocus if it was present, onOpenAutoFocus handles it
             />
           </div>
 
@@ -128,7 +162,8 @@ const ExerciseSelector = () => {
                 <Button
                   key={exercise.id}
                   variant="outline"
-                  onClick={() => handleSelectExercise(exercise.id)}
+                  // Pass the full exercise object to handleSelectExercise
+                  onClick={() => handleSelectExercise(exercise)} 
                   className="w-full justify-start h-auto py-3 px-4 font-normal hover:bg-gray-50 dark:border-gray-700 dark:text-white dark:hover:bg-gray-700"
                 >
                   {exercise.name}
@@ -186,6 +221,7 @@ const ExerciseSelector = () => {
               variant="outline"
               className="w-full dark:border-gray-700 dark:text-white dark:hover:bg-gray-700"
               onClick={() => setIsAddingNew(true)}
+              disabled={mutation.isPending} // Also disable "Create New" if mutation is pending
             >
               <Plus size={16} className="mr-2" />
               Create New Exercise
