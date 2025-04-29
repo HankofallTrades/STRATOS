@@ -112,6 +112,7 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          bodyweight: number | null
           created_at: string
           id: string
           updated_at: string
@@ -119,6 +120,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          bodyweight?: number | null
           created_at?: string
           id: string
           updated_at?: string
@@ -126,6 +128,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          bodyweight?: number | null
           created_at?: string
           id?: string
           updated_at?: string
@@ -281,6 +284,13 @@ export type Database = {
           workout_date: string
           variation: string
           equipment_type: string
+          max_e1rm: number
+        }[]
+      }
+      get_latest_max_e1rm_for_exercises: {
+        Args: { p_user_id: string; p_exercise_ids: string[] }
+        Returns: {
+          exercise_id: string
           max_e1rm: number
         }[]
       }

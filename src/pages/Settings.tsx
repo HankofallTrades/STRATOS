@@ -1,38 +1,123 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/state/auth/AuthProvider';
 import { Button } from '@/components/core/button';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/lib/integrations/supabase/client';
+import { Input } from '@/components/core/input';
+import { Label } from '@/components/core/label';
+import { toast } from "sonner";
 
 const Settings: React.FC = () => {
   const { signOut, user } = useAuth();
-  const [loading, setLoading] = useState(false);
+  const [loadingSignOut, setLoadingSignOut] = useState(false);
+  const [loadingBodyweight, setLoadingBodyweight] = useState(false);
+  const [bodyweight, setBodyweight] = useState<number | string>('');
   const navigate = useNavigate();
 
+  useEffect(() => {
+    const fetchBodyweight = async () => {
+      if (!user) return;
+      setLoadingBodyweight(true);
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('bodyweight')
+          .eq('id', user.id)
+          .single();
+
+        if (error) {
+          console.error("Error fetching bodyweight:", error);
+        } else if (data && data.bodyweight !== null) {
+          setBodyweight(data.bodyweight);
+        }
+      } catch (err) {
+        console.error("Client-side error fetching bodyweight:", err);
+      } finally {
+        setLoadingBodyweight(false);
+      }
+    };
+
+    fetchBodyweight();
+  }, [user]);
+
   const handleSignOut = async () => {
-    setLoading(true);
+    setLoadingSignOut(true);
     try {
       await signOut();
-      // No need to navigate here, ProtectedRoute will handle redirect on session change
       console.log("User signed out successfully");
     } catch (error) {
       console.error("Sign out failed:", error);
-      // Optionally show an error message to the user
-      setLoading(false); // Stop loading only if there was an error
+      toast.error("Failed to sign out. Please try again.");
+      setLoadingSignOut(false);
     }
-    // setLoading(false) // No need to set loading false on success, page will redirect
+  };
+
+  const handleUpdateBodyweight = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || bodyweight === '' || isNaN(Number(bodyweight))) {
+      toast.error("Please enter a valid bodyweight.");
+      return;
+    }
+
+    setLoadingBodyweight(true);
+    const weightInKg = Number(bodyweight);
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ bodyweight: weightInKg })
+        .eq('id', user.id);
+
+      if (error) {
+        console.error("Error updating bodyweight:", error);
+        toast.error("Failed to update bodyweight. Please try again.");
+      } else {
+        toast.success("Bodyweight updated successfully!");
+        setBodyweight(weightInKg);
+      }
+    } catch (err) {
+      console.error("Client-side error updating bodyweight:", err);
+      toast.error("An unexpected error occurred.");
+    } finally {
+      setLoadingBodyweight(false);
+    }
   };
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-4 space-y-6 max-w-md mx-auto">
       <h1 className="text-2xl font-bold">Settings</h1>
       {user && (
         <p className="text-muted-foreground">Logged in as: {user.email}</p>
       )}
-      <p>Other settings content will go here.</p>
 
-      <Button onClick={handleSignOut} disabled={loading} variant="destructive">
-        {loading ? "Logging out..." : "Log Out"}
-      </Button>
+      <form onSubmit={handleUpdateBodyweight} className="space-y-4 border p-4 rounded-md">
+         <h2 className="text-lg font-medium">Profile Information</h2>
+         <div className="space-y-2">
+            <Label htmlFor="bodyweight">Bodyweight (kg)</Label>
+            <Input
+              id="bodyweight"
+              type="number"
+              value={bodyweight}
+              onChange={(e) => setBodyweight(e.target.value)}
+              placeholder="Enter your bodyweight in kg"
+              disabled={loadingBodyweight}
+              step="0.1"
+            />
+            <p className="text-xs text-muted-foreground">
+                Used for calculating strength benchmarks.
+            </p>
+         </div>
+         <Button type="submit" disabled={loadingBodyweight}>
+             {loadingBodyweight ? "Saving..." : "Save Bodyweight"}
+         </Button>
+      </form>
+
+      <div className="border p-4 rounded-md">
+          <h2 className="text-lg font-medium mb-4">Account</h2>
+          <Button onClick={handleSignOut} disabled={loadingSignOut} variant="destructive">
+            {loadingSignOut ? "Logging out..." : "Log Out"}
+          </Button>
+      </div>
     </div>
   );
 };
