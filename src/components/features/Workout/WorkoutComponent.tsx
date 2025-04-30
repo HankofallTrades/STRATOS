@@ -184,7 +184,6 @@ const WorkoutComponent = () => {
     <div className="space-y-6 flex flex-col h-full">
       <div className="flex-grow space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold dark:text-white">Current Workout</h2>
       </div>
 
       {currentWorkout.exercises.length > 0 ? (
