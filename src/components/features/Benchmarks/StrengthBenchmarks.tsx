@@ -8,7 +8,7 @@ import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/core/card";
 import { Progress } from "@/components/core/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/core/alert";
-import { Target, CheckCircle, ChevronDown } from "lucide-react";
+import { Target, CheckCircle, ChevronDown, Info } from "lucide-react";
 import { Barbell } from "@phosphor-icons/react";
 import { Exercise } from "@/lib/types/workout"; // Need Exercise type
 import { Label } from "@/components/core/label"; // Import Label for dropdown
@@ -20,6 +20,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/core/dropdown-menu";
 import { Button } from "@/components/core/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/core/tooltip";
 
 // Define benchmark exercises 
 const BENCHMARK_NAMES = ["Deadlift", "Squat", "Bench Press", "Row", "Overhead Press"] as const;
@@ -285,12 +286,20 @@ const StrengthBenchmarks: React.FC<StrengthBenchmarksProps> = ({ currentType, on
                                  ))}
                              </DropdownMenuContent>
                          </DropdownMenu>
+                         <TooltipProvider delayDuration={100}>
+                             <Tooltip>
+                                 <TooltipTrigger asChild>
+                                     <Button variant="ghost" size="icon" className="ml-1 h-5 w-5 p-0 text-gray-500 hover:bg-transparent">
+                                        <Info className="h-4 w-4" />
+                                    </Button>
+                                 </TooltipTrigger>
+                                 <TooltipContent side="bottom" className="max-w-xs">
+                                     <p>See how your estimated one-rep max compares to <span className='lowercase font-medium'>{selectedLevel}</span> strength standards based on bodyweight.</p>
+                                 </TooltipContent>
+                             </Tooltip>
+                         </TooltipProvider>
                      </CardTitle>
                 </div>
-
-                <CardDescription className="pr-28 mt-1"> {/* Add margin top if needed */} 
-                    See how your e1RM compares to <span className='lowercase font-medium'>{selectedLevel}</span> strength standards based on your bodyweight ({userProfile?.bodyweight ? `${userProfile.bodyweight} kg` : isLoadingProfile ? 'loading...' : 'not set'}).
-                </CardDescription>
             </CardHeader>
             <CardContent>
                 {renderBenchmarkContent()}
