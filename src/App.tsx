@@ -9,7 +9,8 @@ import { store, persistor } from './state/store';
 import { ThemeProvider } from "next-themes";
 import BottomNav from "@/components/layout/BottomNav";
 import ProtectedRoute from "@/components/layout/ProtectedRoute";
-import Index from "./pages/Index";
+import Home from "./pages/Home";
+import Workout from "./pages/Workout";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
@@ -23,7 +24,8 @@ const MainAppLayout = () => {
   return (
     <div> {/* Padding REMOVED from here */}
       <Routes>
-        <Route path="/" element={<Index />} />
+        <Route path="/" element={<Home />} />
+        <Route path="/workout" element={<Workout />} />
         <Route path="/analytics" element={<Analytics />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<NotFound />} />
