@@ -1,5 +1,5 @@
-
 import type { Config } from "tailwindcss";
+import defaultTheme from 'tailwindcss/defaultTheme';
 
 export default {
 	darkMode: ["class"],
@@ -19,6 +19,10 @@ export default {
 			}
 		},
 		extend: {
+			fontFamily: {
+				sans: ['"Open Sans"', ...defaultTheme.fontFamily.sans],
+				montserrat: ['"Montserrat"', 'sans-serif'],
+			},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
@@ -64,7 +68,7 @@ export default {
 					ring: 'hsl(var(--sidebar-ring))'
 				},
 				fitnessBlue: "#3B82F6",
-				fitnessGreen: "#10B981", 
+				fitnessGreen: "#22C55E",
 				fitnessIndigo: "#6366F1",
 			},
 			borderRadius: {
