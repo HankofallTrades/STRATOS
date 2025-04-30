@@ -38,6 +38,7 @@ const equipmentTypeDisplayNames: Record<EquipmentType, string> = {
   [EquipmentTypeEnum.KB]: 'Kettlebell',
   [EquipmentTypeEnum.Cable]: 'Cable',
   [EquipmentTypeEnum.Free]: 'Bodyweight', // Or 'Free Weight'? Let's use Bodyweight for now
+  [EquipmentTypeEnum.Machine]: 'Machine', // Add Machine display name
 };
 
 // Define props passed from WorkoutExerciseContainer
@@ -238,6 +239,20 @@ export const WorkoutExerciseView = ({
                           {equipmentTypeDisplayNames[type]}
                         </Button>
                       ))}
+                      {/* Add New Equipment Button */}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-start h-8 px-2 text-xs text-blue-600 dark:text-blue-400 mt-1"
+                        onClick={() => {
+                          // TODO: Implement logic to handle adding a new equipment type
+                          // For now, just calling onEquipmentChange with a special value
+                          onEquipmentChange('add_new' as any); // Using 'any' temporarily
+                          setEquipmentOpen(false);
+                        }}
+                      >
+                        <Plus size={14} className="mr-1" /> Add New
+                      </Button>
                     </div>
                   </PopoverContent>
                 </Popover>
