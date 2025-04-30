@@ -30,7 +30,7 @@ const Index = () => {
           <h1 className="text-5xl md:text-6xl font-bold mb-2 text-fitnessBlue dark:text-fitnessBlue uppercase font-montserrat">
             Stratos
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">Take your health & fitness to new heights</p>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">Elevate your game</p>
         </header>
 
         <main>

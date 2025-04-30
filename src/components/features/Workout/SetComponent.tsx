@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, MotionProps } from 'framer-motion';
 import { ExerciseSet } from "@/lib/types/workout";
 import { EquipmentType } from "@/lib/types/enums";
 import { useAppDispatch } from "@/hooks/redux";
@@ -18,7 +19,7 @@ import {
 import { cn } from "@/lib/utils/cn";
 import { EquipmentTypeEnum } from '@/lib/types/enums';
 
-interface SetComponentProps {
+interface SetComponentProps extends MotionProps {
   workoutExerciseId: string;
   set: ExerciseSet;
   setIndex: number;
@@ -71,6 +72,7 @@ const SetComponent: React.FC<SetComponentProps> = ({
   setIndex,
   previousPerformance,
   userBodyweight,
+  ...motionProps
 }) => {
   const dispatch = useAppDispatch();
 
@@ -91,6 +93,14 @@ const SetComponent: React.FC<SetComponentProps> = ({
       setLocalWeight(String(userBodyweight));
     }
   }, [set.equipmentType, userBodyweight, weightTouched, localWeight]);
+
+  useEffect(() => {
+    setLocalWeight(set.weight > 0 ? set.weight.toString() : '');
+  }, [set.weight]);
+
+  useEffect(() => {
+    setLocalReps(set.reps > 0 ? set.reps.toString() : '');
+  }, [set.reps]);
 
   const handleWeightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setLocalWeight(e.target.value);
@@ -157,7 +167,8 @@ const SetComponent: React.FC<SetComponentProps> = ({
   const previousRepsValue = previousPerformance?.reps;
 
   return (
-    <TableRow
+    <motion.tr
+      {...motionProps}
       key={set.id}
       className={cn(
         "group",
@@ -165,11 +176,11 @@ const SetComponent: React.FC<SetComponentProps> = ({
         "border-b-0"
       )}
     >
-      <TableCell className="font-medium text-center w-[35px] px-1 py-1 align-middle">{setIndex + 1}</TableCell>
-      <TableCell className="text-center text-xs text-muted-foreground w-[70px] px-1 py-1 align-middle">
-        {previousPerformance ? `${previousPerformance.weight}kg x ${previousPerformance.reps}` : '-'}
+      <TableCell key={`${set.id}-setnum`} className="font-medium text-center w-[35px] px-1 py-1 align-middle">{setIndex + 1}</TableCell>
+      <TableCell key={`${set.id}-prev`} className="text-center text-xs text-muted-foreground w-[70px] px-1 py-1 align-middle">
+        {previousPerformance ? `${previousPerformance.weight}x${previousPerformance.reps}` : '-'}
       </TableCell>
-      <TableCell className="w-[75px] px-1 py-1 align-middle relative">
+      <TableCell key={`${set.id}-weight`} className="w-[75px] px-1 py-1 align-middle relative">
         <div>
           <Input
             id={`weight-${set.id}`}
@@ -194,7 +205,7 @@ const SetComponent: React.FC<SetComponentProps> = ({
           isVisible={showWeightIndicator}
         />
       </TableCell>
-      <TableCell className="w-[60px] px-1 py-1 align-middle relative">
+      <TableCell key={`${set.id}-reps`} className="w-[60px] px-1 py-1 align-middle relative">
         <div>
           <Input
             id={`reps-${set.id}`}
@@ -219,7 +230,7 @@ const SetComponent: React.FC<SetComponentProps> = ({
           isVisible={showRepsIndicator}
         />
       </TableCell>
-      <TableCell className="w-[40px] align-middle px-0 py-0">
+      <TableCell key={`${set.id}-completed`} className="w-[40px] align-middle px-0 py-0">
         <div className="flex justify-center items-center h-full">
           <Checkbox
             id={`completed-${set.id}`}
@@ -230,7 +241,7 @@ const SetComponent: React.FC<SetComponentProps> = ({
           />
         </div>
       </TableCell>
-    </TableRow>
+    </motion.tr>
   );
 };
 

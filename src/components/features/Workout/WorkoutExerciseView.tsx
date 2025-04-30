@@ -12,7 +12,7 @@ import { Button } from '@/components/core/button';
 // REMOVED Select imports
 // import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/core/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/core/card'; // Re-added CardTitle
-import { Plus, Check, X, Trash2 } from 'lucide-react'; // Added Check, X icons
+import { Plus, Check, X, Trash2, Minus } from 'lucide-react'; // Added Check, X, Minus icons
 import SetComponent from './SetComponent'; // Assuming SetComponent exists in the same directory
 // Removed Supabase function imports
 // import { addExerciseVariationToDB, fetchExerciseVariationsFromDB } from '@/lib/integrations/supabase/exercises';
@@ -62,6 +62,7 @@ interface WorkoutExerciseViewProps {
   onNewVariationNameChange: (value: string) => void;
   onSaveNewVariation: () => void;
   onCancelAddVariation: () => void;
+  onUpdateLastSet: (field: 'weight' | 'reps', change: number) => void; // Add new prop
 }
 
 const DEFAULT_VARIATION = 'Standard'; // Define default variation
@@ -96,6 +97,7 @@ export const WorkoutExerciseView = ({
   onNewVariationNameChange,
   onSaveNewVariation,
   onCancelAddVariation,
+  onUpdateLastSet, // Destructure new prop
 }: WorkoutExerciseViewProps) => {
   // Removed state: selectedVariation, isAddingVariation, newVariationName
   // Removed queryClient
@@ -337,10 +339,10 @@ export const WorkoutExerciseView = ({
               <div className="">
                 <Table className="w-full">
                   <TableHeader>
-                    <TableRow className="text-xs">
+                    <TableRow className="text-xs select-none pointer-events-none">
                       <TableHead className="w-[35px] text-center px-1 py-1">Set</TableHead>
-                      <TableHead className="w-[70px] text-center px-1 py-1">Prev.</TableHead>
-                      <TableHead className="w-[75px] text-center px-1 py-1">Wt (kg)</TableHead>
+                      <TableHead className="w-[70px] text-center px-1 py-1">Previous</TableHead>
+                      <TableHead className="w-[75px] text-center px-1 py-1">Weight</TableHead>
                       <TableHead className="w-[60px] text-center px-1 py-1">Reps</TableHead>
                       <TableHead className="w-[40px] p-0 text-center"><Check size={16} className="mx-auto" /></TableHead>
                     </TableRow>
@@ -351,41 +353,94 @@ export const WorkoutExerciseView = ({
                         const setNumber = index + 1;
                         const previousPerformanceForSet = historicalSetPerformances?.[setNumber] ?? null;
                         return (
-                          <motion.div
+                          <SetComponent
                             key={set.id}
+                            workoutExerciseId={workoutExercise.id}
+                            set={set}
+                            setIndex={index}
+                            previousPerformance={previousPerformanceForSet}
+                            userBodyweight={userBodyweight}
                             initial={{ opacity: 0, height: 0 }}
                             animate={{ opacity: 1, height: 'auto' }}
                             exit={{ opacity: 0, height: 0 }}
                             transition={{ type: 'tween', duration: 0.5 }}
-                            style={{ display: 'contents' }}
-                          >
-                            <SetComponent
-                              workoutExerciseId={workoutExercise.id}
-                              set={set}
-                              setIndex={index}
-                              previousPerformance={previousPerformanceForSet}
-                              userBodyweight={userBodyweight}
-                            />
-                          </motion.div>
+                            layout
+                          />
                         );
                       })}
-                      <motion.div 
+                      <motion.tr
                         key="add-set-row"
                         layout={false}
-                        style={{ display: 'contents' }}
+                        className="border-b-0"
                       >
-                        <TableRow className="border-b-0">
-                          <TableCell className="p-1 text-center">
-                            <Button variant="ghost" size="icon" onClick={onAddSet} className="h-7 w-7" aria-label="Add set">
-                              <Plus size={16} />
+                        <TableCell className="p-1 text-center align-middle">
+                          <Button variant="ghost" size="icon" onClick={onAddSet} className="h-7 w-7" aria-label="Add set">
+                            <Plus size={16} />
+                          </Button>
+                        </TableCell>
+                        <TableCell className="p-1 align-middle"></TableCell>
+                        <TableCell className="p-1 align-middle">
+                          <div className="flex items-center justify-center gap-1">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-6 w-6"
+                              onClick={(e) => {
+                                onUpdateLastSet('weight', -1);
+                                (e.target as HTMLButtonElement).blur();
+                              }}
+                              disabled={workoutExercise.sets.length === 0}
+                              aria-label="Decrease weight of last set by 1"
+                            >
+                              <Minus size={14} />
                             </Button>
-                          </TableCell>
-                          <TableCell></TableCell>
-                          <TableCell></TableCell>
-                          <TableCell></TableCell>
-                          <TableCell></TableCell>
-                        </TableRow>
-                      </motion.div>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-6 w-6"
+                              onClick={(e) => {
+                                onUpdateLastSet('weight', 1);
+                                (e.target as HTMLButtonElement).blur();
+                              }}
+                              disabled={workoutExercise.sets.length === 0}
+                              aria-label="Increase weight of last set by 1"
+                            >
+                              <Plus size={14} />
+                            </Button>
+                          </div>
+                        </TableCell>
+                        <TableCell className="p-1 align-middle">
+                          <div className="flex items-center justify-center gap-1">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-6 w-6"
+                              onClick={(e) => {
+                                onUpdateLastSet('reps', -1);
+                                (e.target as HTMLButtonElement).blur();
+                              }}
+                              disabled={workoutExercise.sets.length === 0}
+                              aria-label="Decrease reps of last set by 1"
+                            >
+                              <Minus size={14} />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-6 w-6"
+                              onClick={(e) => {
+                                onUpdateLastSet('reps', 1);
+                                (e.target as HTMLButtonElement).blur();
+                              }}
+                              disabled={workoutExercise.sets.length === 0}
+                              aria-label="Increase reps of last set by 1"
+                            >
+                              <Plus size={14} />
+                            </Button>
+                          </div>
+                        </TableCell>
+                        <TableCell className="p-1 align-middle"></TableCell>
+                      </motion.tr>
                     </AnimatePresence>
                   </TableBody>
                 </Table>

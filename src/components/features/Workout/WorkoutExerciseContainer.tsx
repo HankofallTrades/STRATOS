@@ -7,6 +7,7 @@ import {
   updateWorkoutExerciseEquipment as updateWorkoutExerciseEquipmentAction,
   updateWorkoutExerciseVariation as updateWorkoutExerciseVariationAction,
   deleteWorkoutExercise as deleteWorkoutExerciseAction,
+  updateSet as updateSetAction,
 } from "@/state/workout/workoutSlice";
 import { WorkoutExercise, ExerciseSet, Exercise } from "@/lib/types/workout";
 import { EquipmentType, EquipmentTypeEnum } from "@/lib/types/enums";
@@ -181,6 +182,36 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
     dispatch(addSetToExerciseAction({ workoutExerciseId: workoutExercise.id, exerciseId: workoutExercise.exerciseId }));
   };
 
+  const handleUpdateLastSet = (field: 'weight' | 'reps', change: number) => {
+    const sets = workoutExercise.sets;
+    if (sets.length === 0) return;
+
+    const lastSetIndex = sets.length - 1;
+    const lastSet = sets[lastSetIndex];
+    const previousPerformanceForLastSet = historicalSetPerformances?.[lastSetIndex + 1] ?? null;
+
+    const currentWeight = lastSet.weight > 0 ? lastSet.weight : (previousPerformanceForLastSet?.weight ?? 0);
+    const currentReps = lastSet.reps > 0 ? lastSet.reps : (previousPerformanceForLastSet?.reps ?? 0);
+
+    let newWeight = currentWeight;
+    let newReps = currentReps;
+
+    if (field === 'weight') {
+      newWeight = Math.max(0, currentWeight + change);
+    } else if (field === 'reps') {
+      newReps = Math.max(0, currentReps + change);
+    }
+
+    dispatch(updateSetAction({
+      workoutExerciseId: workoutExercise.id,
+      setId: lastSet.id,
+      weight: newWeight,
+      reps: newReps,
+      variation: lastSet.variation ?? undefined,
+      equipmentType: lastSet.equipmentType ?? undefined,
+    }));
+  };
+
   if (variationsError) {
       console.error("Variation fetch error:", variationsError);
   }
@@ -214,6 +245,7 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
         onNewVariationNameChange={setNewVariationName}
         onSaveNewVariation={handleSaveNewVariation}
         onCancelAddVariation={handleCancelAddVariation}
+        onUpdateLastSet={handleUpdateLastSet}
       />
     </>
   );
