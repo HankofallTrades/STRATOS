@@ -18,6 +18,7 @@ import { Label } from "@/components/core/label";
 import { Button } from "@/components/core/button";
 import { Check, X as XIcon, Trash2, ArrowUp, ArrowDown, Minus } from "lucide-react";
 import { WorkoutExerciseView } from './WorkoutExerciseView';
+import { useAuth } from '@/state/auth/AuthProvider';
 
 interface WorkoutExerciseContainerProps {
   workoutExercise: WorkoutExercise;
@@ -28,16 +29,8 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
   const queryClient = useQueryClient();
   const exerciseId = workoutExercise.exerciseId;
   const DEFAULT_VARIATION = 'Standard';
-
-  const [userId, setUserId] = useState<string | null>(null);
-  useEffect(() => {
-      const fetchUser = async () => {
-          const { data: { user } } = await supabase.auth.getUser();
-          console.log("Fetched User ID:", user?.id);
-          setUserId(user?.id ?? null);
-      };
-      fetchUser();
-  }, []);
+  const { user } = useAuth();
+  const userId = user?.id;
 
   const [selectedVariation, setSelectedVariation] = useState<string | undefined>(
     workoutExercise.sets.filter(s => s.variation).at(-1)?.variation ?? DEFAULT_VARIATION
@@ -81,6 +74,26 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
     },
     enabled: !!userId && !!exerciseId,
     staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: userProfile, isLoading: isLoadingProfile } = useQuery({
+      queryKey: ['userProfile', userId],
+      queryFn: async () => {
+          if (!userId) return null;
+          const { data, error } = await supabase
+              .from('profiles')
+              .select('bodyweight')
+              .eq('id', userId)
+              .single();
+          if (error) {
+              console.error("Error fetching user profile for bodyweight:", error);
+              return null;
+          }
+          return data;
+      },
+      enabled: !!userId,
+      staleTime: 15 * 60 * 1000,
+      gcTime: 30 * 60 * 1000,
   });
 
   const addVariationMutation = useMutation({
@@ -229,6 +242,7 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
         equipmentTypes={equipmentTypes}
         overallLastPerformance={overallLastPerformance}
         historicalSetPerformances={historicalSetPerformances}
+        userBodyweight={userProfile?.bodyweight ?? null}
         onAddSet={handleAddSet}
         onEquipmentChange={handleEquipmentChange}
         onDeleteExercise={handleDeleteExercise}

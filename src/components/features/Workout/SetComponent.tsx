@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ExerciseSet } from "@/lib/types/workout";
 import { EquipmentType } from "@/lib/types/enums";
 import { useAppDispatch } from "@/hooks/redux";
@@ -16,12 +16,14 @@ import {
   TableCell,
 } from "@/components/core/table";
 import { cn } from "@/lib/utils/cn";
+import { EquipmentTypeEnum } from '@/lib/types/enums';
 
 interface SetComponentProps {
   workoutExerciseId: string;
   set: ExerciseSet;
   setIndex: number;
   previousPerformance: { weight: number; reps: number } | null;
+  userBodyweight?: number | null;
 }
 
 const PerformanceIndicator: React.FC<{
@@ -68,6 +70,7 @@ const SetComponent: React.FC<SetComponentProps> = ({
   set,
   setIndex,
   previousPerformance,
+  userBodyweight,
 }) => {
   const dispatch = useAppDispatch();
 
@@ -76,6 +79,18 @@ const SetComponent: React.FC<SetComponentProps> = ({
   const [weightTouched, setWeightTouched] = useState(false);
   const [repsTouched, setRepsTouched] = useState(false);
   const [isCompleted, setIsCompleted] = useState(set.completed);
+
+  useEffect(() => {
+    if (
+      set.equipmentType === EquipmentTypeEnum.Free && 
+      userBodyweight && 
+      userBodyweight > 0 && 
+      !weightTouched && 
+      (!localWeight || parseFloat(localWeight) === 0)
+    ) {
+      setLocalWeight(String(userBodyweight));
+    }
+  }, [set.equipmentType, userBodyweight, weightTouched, localWeight]);
 
   const handleWeightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setLocalWeight(e.target.value);
