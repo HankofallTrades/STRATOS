@@ -101,6 +101,10 @@ export const WorkoutExerciseView = ({
   const exerciseId = workoutExercise.exerciseId;
   const [revealedItemId, setRevealedItemId] = useState<string | null>(null); // 'title' or set.id
 
+  // State for Popover open state
+  const [equipmentOpen, setEquipmentOpen] = useState(false)
+  const [variationOpen, setVariationOpen] = useState(false)
+
   // --- Handlers ---
   const handleReveal = (id: string) => {
     setRevealedItemId(id);
@@ -148,10 +152,6 @@ export const WorkoutExerciseView = ({
   const variationSelectPlaceholder = isLoadingVariations ? "Loading..." : (selectedVariation || DEFAULT_VARIATION);
   const isSavingVariation = addVariationMutationStatus === 'pending'; // Check mutation status
 
-  // State for Popover open state (optional, Popover can manage itself)
-  // const [equipmentOpen, setEquipmentOpen] = useState(false)
-  // const [variationOpen, setVariationOpen] = useState(false)
-
   return (
     <Fragment>
       {/* Selection Popovers container removed from here */}
@@ -184,7 +184,7 @@ export const WorkoutExerciseView = ({
           {/* Removed flex-wrap and justify-end */}
            <div className="flex items-center gap-2 flex-shrink-0">
             {/* Equipment Popover */}
-            <Popover> {/* Removed open/onOpenChange if letting Popover manage state */}
+            <Popover open={equipmentOpen} onOpenChange={setEquipmentOpen}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
@@ -206,7 +206,7 @@ export const WorkoutExerciseView = ({
                       className="w-full justify-start h-8 px-2 text-xs"
                       onClick={() => {
                         onEquipmentChange(type as EquipmentType);
-                        // setEquipmentOpen(false); // Close if managing state
+                        setEquipmentOpen(false); // Close popover
                       }}
                       disabled={workoutExercise.equipmentType === type} // Disable currently selected
                     >
@@ -219,7 +219,7 @@ export const WorkoutExerciseView = ({
 
             {/* Variation Popover / Input */}
             {!isAddingVariation ? (
-              <Popover> {/* Removed open/onOpenChange */}
+              <Popover open={variationOpen} onOpenChange={setVariationOpen}>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
@@ -242,7 +242,7 @@ export const WorkoutExerciseView = ({
                           className="w-full justify-start h-8 px-2 text-xs"
                           onClick={() => {
                             onVariationChange(variation);
-                            // setVariationOpen(false); // Close if managing state
+                            setVariationOpen(false); // Close popover
                           }}
                           disabled={selectedVariation === variation || (selectedVariation === undefined && variation === DEFAULT_VARIATION)} // Disable currently selected
                         >
@@ -255,7 +255,7 @@ export const WorkoutExerciseView = ({
                         className="w-full justify-start h-8 px-2 text-xs text-blue-600 dark:text-blue-400 mt-1"
                         onClick={() => {
                           onVariationChange('add_new');
-                          // setVariationOpen(false); // Close if managing state
+                          setVariationOpen(false); // Close popover
                         }}
                       >
                         <Plus size={14} className="mr-1" /> Add New
