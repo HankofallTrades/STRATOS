@@ -7,7 +7,8 @@ import { useAuth } from '@/state/auth/AuthProvider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/core/card";
 import { Progress } from "@/components/core/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/core/alert";
-import { CheckCircle, ChevronDown, PersonStanding } from "lucide-react";
+import { CheckCircle, ChevronDown } from "lucide-react";
+import { PersonSimpleRun } from "@phosphor-icons/react";
 import { Label } from "@/components/core/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/core/select";
 import {
@@ -207,7 +208,7 @@ const CalisthenicBenchmarks: React.FC<CalisthenicBenchmarksProps> = ({ currentTy
                  </div>
 
                 <div className="flex items-center mr-28">
-                    <PersonStanding className="mr-2 h-5 w-5 text-fitnessBlue flex-shrink-0" />
+                    <PersonSimpleRun className="mr-2 h-5 w-5 text-fitnessBlue flex-shrink-0" />
                     <CardTitle className="flex items-center">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>

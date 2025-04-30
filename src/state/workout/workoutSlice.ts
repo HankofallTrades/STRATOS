@@ -6,12 +6,12 @@ import type { RootState } from '../store'; // Import RootState for selectors
 
 interface WorkoutState {
   currentWorkout: Workout | null;
-  workoutTime: number; // in seconds
+  workoutStartTime: number | null; // Store start time as timestamp (ms)
 }
 
 const initialState: WorkoutState = {
   currentWorkout: null,
-  workoutTime: 0,
+  workoutStartTime: null, // Initialize as null
 };
 
 const workoutSlice = createSlice({
@@ -19,20 +19,25 @@ const workoutSlice = createSlice({
   initialState,
   reducers: {
     startWorkout(state) {
+      const startTime = Date.now(); // Get current timestamp
       state.currentWorkout = {
         id: uuidv4(),
-        date: new Date().toISOString(), // Store as ISO string
-        duration: 0,
+        date: new Date(startTime).toISOString(), // Use start time for date
+        duration: 0, // Duration calculated on end
         exercises: [],
         completed: false,
       };
-      state.workoutTime = 0;
+      state.workoutStartTime = startTime; // Store start time
     },
     endWorkout(state) {
-      if (state.currentWorkout) {
+      if (state.currentWorkout && state.workoutStartTime) {
+        const endTime = Date.now();
+        const durationInSeconds = Math.round((endTime - state.workoutStartTime) / 1000);
         state.currentWorkout.completed = true;
-        state.currentWorkout.duration = state.workoutTime;
-        state.currentWorkout = null;
+        state.currentWorkout.duration = durationInSeconds; // Save calculated duration
+        // Keep currentWorkout until it's saved/discarded by the component
+        // state.currentWorkout = null; // Don't nullify here
+        state.workoutStartTime = null; // Clear start time
       }
     },
     addExerciseToWorkout(state, action: PayloadAction<WorkoutExercise>) {
@@ -110,11 +115,6 @@ const workoutSlice = createSlice({
             set.completed = action.payload.completed;
         }
     },
-    tickWorkoutTime(state) {
-        if (state.currentWorkout && !state.currentWorkout.completed) {
-            state.workoutTime += 1;
-        }
-    },
     updateWorkoutExerciseEquipment(state, action: PayloadAction<{ workoutExerciseId: string; equipmentType: EquipmentType }>) {
         if (!state.currentWorkout) return;
         const workoutExercise = state.currentWorkout.exercises.find(
@@ -165,7 +165,6 @@ export const {
     updateSet,
     deleteSet,
     completeSet,
-    tickWorkoutTime,
     updateWorkoutExerciseEquipment,
     updateWorkoutExerciseVariation,
     deleteWorkoutExercise,
@@ -173,8 +172,8 @@ export const {
 
 // Selectors
 export const selectCurrentWorkout = (state: RootState) => state.workout.currentWorkout;
-export const selectWorkoutTime = (state: RootState) => state.workout.workoutTime;
-export const selectIsWorkoutActive = (state: RootState) => state.workout.currentWorkout !== null && !state.workout.currentWorkout.completed;
+export const selectWorkoutStartTime = (state: RootState) => state.workout.workoutStartTime;
+export const selectIsWorkoutActive = (state: RootState) => state.workout.currentWorkout !== null && !state.workout.currentWorkout.completed && state.workout.workoutStartTime !== null;
 
 // --- End Placeholder Selectors ---
 

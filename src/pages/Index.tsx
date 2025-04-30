@@ -1,19 +1,22 @@
 import { Button } from "@/components/core/button";
 // import { WorkoutProvider, useWorkout } from "@/state/workout/WorkoutContext"; // Remove old context import
 import { useAppSelector, useAppDispatch } from "@/hooks/redux"; // Import Redux hooks
-import { selectCurrentWorkout, selectWorkoutTime, startWorkout as startWorkoutAction } from "@/state/workout/workoutSlice"; // Import selectors and actions
+import { selectCurrentWorkout, selectWorkoutStartTime, startWorkout as startWorkoutAction } from "@/state/workout/workoutSlice"; // Import selectors and actions
 import { Clock } from "lucide-react";
 import { formatTime } from "@/lib/utils/timeUtils";
 import WorkoutComponent from "@/components/features/WorkoutComponent";
 import { Barbell } from "@phosphor-icons/react";
 import { useAuth } from "@/state/auth/AuthProvider";
 import { Link } from "react-router-dom";
+import { useElapsedTime } from "@/hooks/useElapsedTime"; // Import the new hook
 
 const Index = () => {
   // const { currentWorkout, startWorkout, workoutTime } = useWorkout(); // Remove old context usage
   const dispatch = useAppDispatch();
   const currentWorkout = useAppSelector(selectCurrentWorkout);
-  const workoutTime = useAppSelector(selectWorkoutTime);
+  const workoutStartTime = useAppSelector(selectWorkoutStartTime);
+  
+  const displayTime = useElapsedTime(workoutStartTime);
 
   const handleStartWorkout = () => {
     dispatch(startWorkoutAction());
@@ -34,7 +37,7 @@ const Index = () => {
           {!currentWorkout ? (
             <div className="flex flex-col items-center justify-center py-12 px-4 bg-gray-50 dark:bg-gray-800 rounded-lg shadow-sm">
               <Barbell size={64} className="text-fitnessBlue mb-6" />
-              <h2 className="text-2xl font-semibold mb-4 dark:text-white">Ready to start your session?</h2>
+              <h2 className="text-2xl font-semibold mb-4 dark:text-white text-center">Ready to start your session?</h2>
               <p className="text-gray-600 dark:text-gray-400 mb-8 text-center">
                 Track your exercises, sets, and reps to monitor your progress over time.
               </p>
@@ -50,7 +53,7 @@ const Index = () => {
             <div className="space-y-4">
               <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg mb-6 flex items-center justify-center">
                 <Clock className="text-fitnessBlue mr-2" />
-                <span className="text-xl font-mono dark:text-white">{formatTime(workoutTime)}</span>
+                <span className="text-xl font-mono dark:text-white">{formatTime(displayTime)}</span>
               </div>
               
               <WorkoutComponent />
