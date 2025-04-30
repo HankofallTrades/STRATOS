@@ -182,6 +182,7 @@ export async function fetchMaxE1RMHistory(userId: string, exerciseId: string): P
 export interface LatestMaxE1RM {
   exercise_id: string;
   max_e1rm: number;
+  equipment_type: EquipmentType | string | null;
 }
 
 /**
@@ -216,7 +217,8 @@ export async function fetchLatestMaxE1RMForExercises(
     const results = (data as any[] | null) ?? [];
     const validatedData = results.map(item => ({
         exercise_id: String(item.exercise_id), // Ensure string
-        max_e1rm: Number(item.max_e1rm) // Ensure number
+        max_e1rm: Number(item.max_e1rm), // Ensure number
+        equipment_type: item.equipment_type as EquipmentType | string | null // Map the new field
     })).filter(item => item.exercise_id && !isNaN(item.max_e1rm)); // Basic validation
 
     return validatedData as LatestMaxE1RM[];
