@@ -7,7 +7,7 @@ import { useAuth } from '@/state/auth/AuthProvider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/core/card";
 import { Progress } from "@/components/core/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/core/alert";
-import { CheckCircle, ChevronDown } from "lucide-react";
+import { CheckCircle, ChevronDown, Info } from "lucide-react";
 import { PersonSimpleRun } from "@phosphor-icons/react";
 import { Label } from "@/components/core/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/core/select";
@@ -19,6 +19,7 @@ import {
 } from "@/components/core/dropdown-menu";
 import { Button } from "@/components/core/button";
 import { Exercise } from "@/lib/types/workout";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/core/tooltip";
 
 // Define benchmark exercises
 const CALISTHENIC_BENCHMARK_NAMES = ["Pull-up", "Push-up"] as const;
@@ -229,12 +230,20 @@ const CalisthenicBenchmarks: React.FC<CalisthenicBenchmarksProps> = ({ currentTy
                                 ))}
                             </DropdownMenuContent>
                         </DropdownMenu>
+                        <TooltipProvider delayDuration={100}>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="ml-1 h-5 w-5 p-0 text-gray-500 hover:bg-transparent">
+                                        <Info className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom" className="max-w-xs">
+                                    <p>See how your max reps compare to <span className='lowercase font-medium'>{selectedLevel}</span> calisthenic standards.</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                     </CardTitle>
                 </div>
-                
-                <CardDescription className="pr-28 mt-1">
-                    See how your max reps compare to <span className='lowercase font-medium'>{selectedLevel}</span> calisthenic standards.
-                </CardDescription>
             </CardHeader>
             <CardContent>
                 {renderBenchmarkContent()}
