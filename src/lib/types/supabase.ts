@@ -14,9 +14,11 @@ export type Database = {
           completed: boolean
           created_at: string | null
           equipment_type: string | null
+          exercise_name: string | null
           id: string
           reps: number
           set_number: number
+          user: string | null
           variation: string | null
           weight: number
           workout_exercise_id: string
@@ -25,9 +27,11 @@ export type Database = {
           completed?: boolean
           created_at?: string | null
           equipment_type?: string | null
+          exercise_name?: string | null
           id?: string
           reps: number
           set_number: number
+          user?: string | null
           variation?: string | null
           weight: number
           workout_exercise_id: string
@@ -36,14 +40,23 @@ export type Database = {
           completed?: boolean
           created_at?: string | null
           equipment_type?: string | null
+          exercise_name?: string | null
           id?: string
           reps?: number
           set_number?: number
+          user?: string | null
           variation?: string | null
           weight?: number
           workout_exercise_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "exercise_sets_exercise_name_fkey"
+            columns: ["exercise_name"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["name"]
+          },
           {
             foreignKeyName: "exercise_sets_workout_exercise_id_fkey"
             columns: ["workout_exercise_id"]
@@ -112,6 +125,7 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          bodyweight: number | null
           created_at: string
           id: string
           updated_at: string
@@ -119,6 +133,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          bodyweight?: number | null
           created_at?: string
           id: string
           updated_at?: string
@@ -126,6 +141,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          bodyweight?: number | null
           created_at?: string
           id?: string
           updated_at?: string
@@ -164,6 +180,42 @@ export type Database = {
             columns: ["exercise_id"]
             isOneToOne: false
             referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_hidden_exercises: {
+        Row: {
+          created_at: string
+          exercise_id: string | null
+          id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          exercise_id?: string | null
+          id?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          exercise_id?: string | null
+          id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_hidden_exercises_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_hidden_exercises_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -246,6 +298,20 @@ export type Database = {
           variation: string
           equipment_type: string
           max_e1rm: number
+        }[]
+      }
+      get_latest_max_e1rm_for_exercises: {
+        Args: { p_user_id: string; p_exercise_ids: string[] }
+        Returns: {
+          exercise_id: string
+          max_e1rm: number
+        }[]
+      }
+      get_latest_max_reps_for_exercises: {
+        Args: { p_user_id: string; p_exercise_ids: string[] }
+        Returns: {
+          exercise_id: string
+          max_reps: number
         }[]
       }
     }

@@ -176,4 +176,57 @@ export async function fetchLatestMaxE1RMForExercises(
     // For now, let's return empty to avoid crashing the analytics page
     return []; 
   }
+}
+
+// Structure for the result of the max reps RPC function
+export interface LatestMaxReps {
+  exercise_id: string;
+  max_reps: number;
+}
+
+/**
+ * Fetches the latest recorded max reps for a list of specified exercises.
+ * This is typically used for bodyweight or calisthenic exercises where weight is 0 or null.
+ * Assumes a Supabase RPC function 'get_latest_max_reps_for_exercises' exists.
+ *
+ * @param userId The UUID of the user.
+ * @param exerciseIds An array of UUIDs for the exercises.
+ * @returns A promise resolving to an array of { exercise_id: string, max_reps: number }.
+ */
+export async function fetchLatestMaxRepsForExercises(
+  userId: string,
+  exerciseIds: string[]
+): Promise<LatestMaxReps[]> {
+  if (!userId || !exerciseIds || exerciseIds.length === 0) {
+    console.warn("User ID or Exercise IDs missing/empty for fetchLatestMaxRepsForExercises call");
+    return [];
+  }
+
+  try {
+    // Note: The RPC function 'get_latest_max_reps_for_exercises' needs to be created in Supabase SQL.
+    const { data, error } = await supabase.rpc('get_latest_max_reps_for_exercises', {
+      p_user_id: userId,
+      p_exercise_ids: exerciseIds,
+    });
+
+    if (error) {
+      console.error('Error fetching latest max reps from Supabase RPC:', error);
+      // Consider more specific error handling or logging here
+      throw new Error(`Supabase RPC Error: ${error.message}`);
+    }
+
+    // Ensure data is an array and conforms to the expected structure
+    const results = (data as any[] | null) ?? [];
+    const validatedData = results.map(item => ({
+        exercise_id: String(item.exercise_id), // Ensure string
+        max_reps: Number(item.max_reps) // Ensure number
+    })).filter(item => item.exercise_id && !isNaN(item.max_reps) && item.max_reps >= 0); // Basic validation
+
+    return validatedData as LatestMaxReps[];
+
+  } catch (error) {
+    console.error("Client-side error in fetchLatestMaxRepsForExercises:", error);
+    // Return empty array to prevent crashing the UI component
+    return []; 
+  }
 } 

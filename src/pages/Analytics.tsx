@@ -17,7 +17,8 @@ import { Checkbox } from "@/components/core/checkbox"; // Import Checkbox
 import { Label } from "@/components/core/label"; // Import Label
 import { DailyMaxE1RM } from '@/lib/types/analytics'; // Import the type for RPC result
 import { useAuth } from '@/state/auth/AuthProvider'; // Import useAuth to get user ID easily
-import StrengthBenchmarks from '@/components/features/StrengthBenchmarks'; // Import the new StrengthBenchmarks component
+import StrengthBenchmarks from '@/components/features/Benchmarks/StrengthBenchmarks'; 
+import CalisthenicBenchmarks from '@/components/features/Benchmarks/CalisthenicBenchmarks';
 
 // Define structure for unified chart data point
 interface UnifiedDataPoint {
@@ -54,6 +55,9 @@ interface SelectedFilters {
 interface ChartData {
   [combinationKey: string]: { workout_date: string; max_e1rm: number }[]; // Key: "Variation|EquipmentType"
 }
+
+// Define Benchmark Type
+type BenchmarkType = 'Strength' | 'Calisthenics';
 
 // Helper function to create a unique key for combination
 const getCombinationKey = (
@@ -279,6 +283,14 @@ const Analytics = () => {
     "#a4de6c",
   ];
 
+  // State for selected benchmark type
+  const [selectedBenchmarkType, setSelectedBenchmarkType] = useState<BenchmarkType>('Strength');
+
+  // Function to handle changing the benchmark type
+  const handleBenchmarkTypeChange = (newType: BenchmarkType) => {
+    setSelectedBenchmarkType(newType);
+  };
+
   return (
     <div className="container mx-auto p-4 max-w-4xl"> {/* Increased max-width */}
       <header className="flex flex-col items-center justify-between mb-8 text-center">
@@ -339,9 +351,6 @@ const Analytics = () => {
             </CardContent>
           </Card>
         </div>
-
-        {/* Render the NEW Strength Benchmarks Component */}
-        <StrengthBenchmarks />
 
         <h2 className="text-2xl font-semibold mb-4">Exercise Progress Analysis</h2> {/* Changed heading */}
         {isLoadingExercises ? (
@@ -480,6 +489,22 @@ const Analytics = () => {
         ) : (
           <p className="text-gray-500 italic">No exercises defined yet. Add some via the workout screen.</p>
         )}
+
+        {/* Benchmark Section - Conditionally render based on state */}
+        <div className="mt-8"> {/* Add some margin top */} 
+          <h2 className="text-2xl font-semibold mb-4">Benchmarks</h2> {/* Added heading */} 
+          {selectedBenchmarkType === 'Strength' ? (
+            <StrengthBenchmarks 
+              currentType={selectedBenchmarkType} 
+              onTypeChange={handleBenchmarkTypeChange} 
+            />
+          ) : (
+            <CalisthenicBenchmarks 
+              currentType={selectedBenchmarkType} 
+              onTypeChange={handleBenchmarkTypeChange} 
+            />
+          )}
+        </div>
 
         <div className="mt-8">
           <h2 className="text-xl font-semibold mb-4">Recent Workouts</h2>
