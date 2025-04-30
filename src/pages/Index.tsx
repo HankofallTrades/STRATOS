@@ -21,7 +21,7 @@ const Index = () => {
     <div className="container mx-auto p-4">
       {/* Removed wrapper div */}
         <header className="flex flex-col items-center justify-between mb-8 text-center mt-8">
-          <h1 className="text-5xl md:text-6xl font-bold mb-2 text-fitnessBlue dark:text-fitnessBlue uppercase">
+          <h1 className="text-5xl md:text-6xl font-bold mb-2 text-fitnessBlue dark:text-fitnessBlue uppercase font-montserrat">
             Stratos
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mb-6">Take your health & fitness to new heights</p>
@@ -38,7 +38,7 @@ const Index = () => {
               <Button 
                 onClick={handleStartWorkout} // Use dispatch 
                 size="lg" 
-                className="bg-fitnessGreen hover:bg-fitnessGreen/90 text-white font-semibold px-8"
+                className="bg-fitnessBlue hover:bg-blue-600 text-white font-semibold px-8"
               >
                 Start Workout
               </Button>
