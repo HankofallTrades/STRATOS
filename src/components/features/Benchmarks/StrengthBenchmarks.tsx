@@ -8,10 +8,17 @@ import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/core/card";
 import { Progress } from "@/components/core/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/core/alert";
-import { Target, CheckCircle } from "lucide-react";
+import { Target, CheckCircle, ChevronDown, Dumbbell } from "lucide-react";
 import { Exercise } from "@/lib/types/workout"; // Need Exercise type
 import { Label } from "@/components/core/label"; // Import Label for dropdown
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/core/select"; // Import Select components
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/core/dropdown-menu";
+import { Button } from "@/components/core/button";
 
 // Define benchmark exercises 
 const BENCHMARK_NAMES = ["Deadlift", "Squat", "Bench Press", "Row", "Overhead Press"] as const;
@@ -19,6 +26,8 @@ type BenchmarkName = typeof BENCHMARK_NAMES[number];
 
 // Define levels and their multipliers
 type BenchmarkLevel = 'Average' | 'Strong' | 'Elite';
+type BenchmarkTypeOption = 'Strength' | 'Calisthenics'; // For the type switcher
+const ALL_BENCHMARK_TYPES: BenchmarkTypeOption[] = ['Strength', 'Calisthenics'];
 
 const BENCHMARK_MULTIPLIERS: Record<BenchmarkLevel, Record<BenchmarkName, number>> = {
     Average: {
@@ -53,7 +62,13 @@ interface CalculatedBenchmark {
     progress: number; // Percentage 0-100
 }
 
-const StrengthBenchmarks: React.FC = () => {
+// Define Props interface
+interface StrengthBenchmarksProps {
+  currentType: BenchmarkTypeOption;
+  onTypeChange: (newType: BenchmarkTypeOption) => void;
+}
+
+const StrengthBenchmarks: React.FC<StrengthBenchmarksProps> = ({ currentType, onTypeChange }) => {
     const { user } = useAuth();
     const [selectedLevel, setSelectedLevel] = useState<BenchmarkLevel>('Strong'); // Default to 'Strong'
 
@@ -229,6 +244,7 @@ const StrengthBenchmarks: React.FC = () => {
     return (
         <Card className="relative">
             <CardHeader>
+                {/* Level Selector (stays in top right) */}
                 <div className="absolute top-4 right-4">
                     <Select 
                         value={selectedLevel} 
@@ -245,11 +261,33 @@ const StrengthBenchmarks: React.FC = () => {
                     </Select>
                  </div>
 
-                <CardTitle className="flex items-center pr-28">
-                    <Target className="mr-2 h-5 w-5 text-fitnessIndigo" />
-                    Strength Benchmarks
-                </CardTitle>
-                <CardDescription className="pr-28">
+                {/* Title with inline DropdownMenu */}
+                <div className="flex items-center mr-28"> {/* Wrapper to keep icon/title/dropdown together, with margin */} 
+                     <Dumbbell className="mr-2 h-5 w-5 text-fitnessIndigo flex-shrink-0" /> {/* Icon outside trigger */} 
+                     <CardTitle className="flex items-center">
+                         <DropdownMenu>
+                             <DropdownMenuTrigger asChild>
+                                 <Button variant="ghost" className="p-0 h-auto font-bold text-lg hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 mr-1">
+                                     {currentType}
+                                     <ChevronDown className="h-4 w-4 text-gray-500 ml-1" />
+                                 </Button>
+                             </DropdownMenuTrigger>
+                             <DropdownMenuContent align="start">
+                                 {ALL_BENCHMARK_TYPES.map((option) => (
+                                     <DropdownMenuItem 
+                                         key={option}
+                                         onSelect={() => onTypeChange(option)} 
+                                         disabled={currentType === option}
+                                     >
+                                         {option}
+                                     </DropdownMenuItem>
+                                 ))}
+                             </DropdownMenuContent>
+                         </DropdownMenu>
+                     </CardTitle>
+                </div>
+
+                <CardDescription className="pr-28 mt-1"> {/* Add margin top if needed */} 
                     See how your e1RM compares to <span className='lowercase font-medium'>{selectedLevel}</span> strength standards based on your bodyweight ({userProfile?.bodyweight ? `${userProfile.bodyweight} kg` : isLoadingProfile ? 'loading...' : 'not set'}).
                 </CardDescription>
             </CardHeader>
