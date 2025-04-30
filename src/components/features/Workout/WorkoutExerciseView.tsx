@@ -334,10 +334,10 @@ export const WorkoutExerciseView = ({
             </CardHeader>
 
             <CardContent className="pt-0 pb-2 px-2 sm:px-4">
-              <div className="overflow-x-auto">
+              <div className="">
                 <Table className="w-full min-w-[340px]">
                   <TableHeader>
-                    <TableRow className="text-xs">
+                    <TableRow className="text-xs overflow-hidden">
                       <TableHead className="w-[35px] text-center px-1 py-1">Set</TableHead>
                       <TableHead className="w-[70px] text-center px-1 py-1">Prev.</TableHead>
                       <TableHead className="w-[75px] text-center px-1 py-1">Wt (kg)</TableHead>
@@ -360,7 +360,7 @@ export const WorkoutExerciseView = ({
                         />
                       );
                     })}
-                    <TableRow className="border-b-0">
+                    <TableRow className="border-b-0 overflow-hidden">
                       <TableCell className="p-1 text-center">
                         <Button variant="ghost" size="icon" onClick={onAddSet} className="h-7 w-7" aria-label="Add set">
                           <Plus size={16} />
