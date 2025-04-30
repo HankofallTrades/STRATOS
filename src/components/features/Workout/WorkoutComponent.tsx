@@ -1,6 +1,11 @@
 import React from 'react';
 import { useAppSelector, useAppDispatch } from "@/hooks/redux";
-import { selectCurrentWorkout, endWorkout as endWorkoutAction } from "@/state/workout/workoutSlice";
+import { 
+  selectCurrentWorkout, 
+  selectWorkoutStartTime,
+  endWorkout as endWorkoutAction, 
+  clearWorkout 
+} from "@/state/workout/workoutSlice";
 import { addWorkoutToHistory } from "@/state/history/historySlice";
 import { Button } from "@/components/core/button";
 import { Plus, Save } from "lucide-react";
@@ -16,6 +21,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 const WorkoutComponent = () => {
   const dispatch = useAppDispatch();
   const currentWorkout = useAppSelector(selectCurrentWorkout);
+  const workoutStartTime = useAppSelector(selectWorkoutStartTime);
   const navigate = useNavigate();
 
   if (!currentWorkout) {
@@ -36,6 +42,7 @@ const WorkoutComponent = () => {
             variant: "default",
         });
         dispatch(endWorkoutAction());
+        dispatch(clearWorkout());
         navigate('/');
         return;
     }
@@ -52,14 +59,15 @@ const WorkoutComponent = () => {
         return;
     }
 
-    dispatch(endWorkoutAction());
-
-    const workoutToSave = workoutToEnd; 
+    const endTime = Date.now();
+    const durationInSeconds = workoutStartTime 
+      ? Math.max(0, Math.round((endTime - workoutStartTime) / 1000)) 
+      : 0;
 
     const workoutDataForDb: TablesInsert<'workouts'> = {
         user_id: user.id,
-        date: workoutToSave.date,
-        duration_seconds: workoutToSave.duration,
+        date: workoutToEnd.date,
+        duration_seconds: durationInSeconds,
         completed: true,
     };
 
@@ -76,7 +84,7 @@ const WorkoutComponent = () => {
 
         const workoutId = savedWorkout.id;
 
-        const workoutExercisesDataForDb: TablesInsert<'workout_exercises'>[] = workoutToSave.exercises
+        const workoutExercisesDataForDb: TablesInsert<'workout_exercises'>[] = workoutToEnd.exercises
           .filter(exercise => exercise.sets.some(set => set.completed))
           .map((exercise, index) => ({
             workout_id: workoutId,
@@ -91,6 +99,7 @@ const WorkoutComponent = () => {
                 description: "Could not find exercises with completed sets to save.",
                 variant: "destructive",
              });
+             dispatch(clearWorkout());
              navigate('/');
              return;
         }
@@ -105,12 +114,13 @@ const WorkoutComponent = () => {
         }
 
         const exerciseSetsDataForDb: TablesInsert<'exercise_sets'>[] = [];
-        workoutToSave.exercises.forEach((exercise) => {
+        workoutToEnd.exercises.forEach((exercise) => {
             const savedWorkoutExercise = savedWorkoutExercises.find(
                 swe => swe.exercise_id === exercise.exerciseId && swe.workout_id === workoutId
             );
 
             if (!savedWorkoutExercise) {
+                console.warn(`Could not find saved workout exercise for exercise ID: ${exercise.exerciseId}`);
                 return;
             }
 
@@ -142,10 +152,11 @@ const WorkoutComponent = () => {
         }
 
         const completedWorkoutForState: Workout = {
-            ...workoutToSave,
+            ...workoutToEnd,
             id: workoutId,
             completed: true,
-            exercises: workoutToSave.exercises
+            duration: durationInSeconds,
+            exercises: workoutToEnd.exercises
                 .map(woEx => {
                     const savedWoEx = savedWorkoutExercises.find(swe => swe.exercise_id === woEx.exerciseId && swe.workout_id === workoutId);
                     if (!savedWoEx) return null;
@@ -154,10 +165,12 @@ const WorkoutComponent = () => {
                         ...woEx,
                         id: savedWoEx.id,
                         workoutId: workoutId,
-                        sets: woEx.sets.filter(set => set.completed),
+                        sets: woEx.sets
+                            .filter(set => set.completed)
+                            .map(set => ({ ...set, workoutExerciseId: savedWoEx.id })),
                     };
                 })
-                .filter(woEx => woEx !== null && woEx.sets.length > 0),
+                .filter((woEx): woEx is Exclude<typeof woEx, null> => woEx !== null && woEx.sets.length > 0),
         };
 
         dispatch(addWorkoutToHistory(completedWorkoutForState));
@@ -167,6 +180,7 @@ const WorkoutComponent = () => {
             description: "Your workout has been successfully saved to your profile.",
         });
 
+        dispatch(clearWorkout());
         navigate('/');
 
     } catch (error: any) {

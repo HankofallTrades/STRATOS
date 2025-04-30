@@ -53,7 +53,10 @@ const Index = () => {
             <div className="space-y-4">
               <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg mb-6 flex items-center justify-center">
                 <Clock className="text-fitnessBlue mr-2" />
-                <span className="text-xl font-mono dark:text-white">{formatTime(displayTime)}</span>
+                <span className="text-xl font-mono dark:text-white">
+                  {/* If workout is completed, show final duration, otherwise show live time */}
+                  {formatTime(currentWorkout.completed ? currentWorkout.duration : displayTime)}
+                </span>
               </div>
               
               <WorkoutComponent />

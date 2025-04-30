@@ -23,8 +23,8 @@ export const useElapsedTime = (startTime: number | null | undefined): number => 
       // Update every second to refresh the display
       interval = setInterval(calculateAndUpdate, 1000);
     } else {
-      // Reset if startTime becomes null (e.g., workout ends)
-      setElapsedTime(0);
+      // If startTime becomes null (e.g., workout ends), we just stop the interval.
+      // The last calculated time will remain.
     }
 
     // Cleanup interval on component unmount or when startTime changes
