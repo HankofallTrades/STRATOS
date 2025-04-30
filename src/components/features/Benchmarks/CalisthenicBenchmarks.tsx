@@ -7,7 +7,7 @@ import { useAuth } from '@/state/auth/AuthProvider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/core/card";
 import { Progress } from "@/components/core/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/core/alert";
-import { CheckCircle, Dumbbell, ChevronDown, PersonStanding } from "lucide-react";
+import { CheckCircle, ChevronDown, PersonStanding } from "lucide-react";
 import { Label } from "@/components/core/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/core/select";
 import {
@@ -17,6 +17,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/core/dropdown-menu";
 import { Button } from "@/components/core/button";
+import { Exercise } from "@/lib/types/workout";
 
 // Define benchmark exercises
 const CALISTHENIC_BENCHMARK_NAMES = ["Pull-up", "Push-up"] as const;

@@ -6,7 +6,7 @@ import { fetchExercisesFromDB } from '@/lib/integrations/supabase/exercises'; //
 import { fetchMaxE1RMHistory } from '@/lib/integrations/supabase/history'; 
 import { supabase } from "@/lib/integrations/supabase/client"; // Import supabase client
 import { formatTime } from '@/lib/utils/timeUtils';
-import { BarChart, Clock, Calendar, Dumbbell, Award, TrendingUp } from "lucide-react"; // Removed Target, CheckCircle
+import { BarChart, Clock, Calendar, Award, TrendingUp } from "lucide-react"; // Removed Target, CheckCircle
 import { Link } from "react-router-dom";
 import { Button } from "@/components/core/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/core/card";
@@ -19,6 +19,7 @@ import { DailyMaxE1RM } from '@/lib/types/analytics'; // Import the type for RPC
 import { useAuth } from '@/state/auth/AuthProvider'; // Import useAuth to get user ID easily
 import StrengthBenchmarks from '@/components/features/Benchmarks/StrengthBenchmarks'; 
 import CalisthenicBenchmarks from '@/components/features/Benchmarks/CalisthenicBenchmarks';
+import { Barbell } from "@phosphor-icons/react";
 
 // Define structure for unified chart data point
 interface UnifiedDataPoint {
@@ -328,7 +329,7 @@ const Analytics = () => {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-lg font-medium flex items-center">
-                <Dumbbell className="mr-2 h-4 w-4 text-fitnessBlue" />
+                <Barbell className="mr-2 h-4 w-4 text-fitnessBlue" />
                 Avg. Duration
               </CardTitle>
             </CardHeader>
