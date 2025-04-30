@@ -2,16 +2,18 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchMaxE1RMHistory } from '@/lib/integrations/supabase/history';
 import { Exercise } from '@/lib/types/workout';
-import { EquipmentType } from "@/lib/types/enums";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/core/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/core/card";
 import { TrendingUp } from "lucide-react";
 import { DailyMaxE1RM } from '@/lib/types/analytics'; // Assuming this type lives here or is moved
+import { Button } from "@/components/core/button"; // Add Button import
+import { ChevronDown } from "lucide-react"; // Import ChevronDown icon
 
 // Define structure for unified chart data point
 interface UnifiedDataPoint {
-  workout_date: string;
-  [combinationKey: string]: number | string | undefined | null; // Allows string for date, number for e1RM
+  workout_timestamp: number; // Use timestamp for numerical axis
+  workout_date: string; // Keep original date string for potential reference
+  [combinationKey: string]: number | string | undefined | null;
 }
 
 // Props interface
@@ -45,21 +47,22 @@ const formatDate = (dateInput: Date | string): string => {
   });
 };
 
-// Format date for XAxis
-const formatAxisDate = (dateString: string): string => {
-    const date = new Date(dateString);
+// Format date for XAxis (accepts timestamp)
+const formatAxisDate = (timestamp: number): string => {
+    const date = new Date(timestamp);
     // Simple format like MM/DD
     return `${date.getMonth() + 1}/${date.getDate()}`;
 };
 
-// Custom Tooltip Component
+// Custom Tooltip Component - Use timestamp to get date
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
-    const date = label; // workout_date passed as label
+    const timestamp = label; // Label is now the timestamp
+    const date = new Date(timestamp);
 
     return (
       <div className="custom-tooltip bg-white p-3 border border-gray-300 rounded shadow-lg text-sm space-y-1">
-        <p className="label font-semibold mb-1">{`Date: ${formatDate(date)}`}</p>
+        <p className="label font-semibold mb-1">{`Date: ${formatDate(date)}`}</p> {/* Use original formatDate here */}
         {payload.map((entry: any, index: number) => {
           const name = entry.name;
           const value = entry.value;
@@ -97,6 +100,10 @@ const lineColors = [
     "#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#a4de6c",
 ];
 
+// Define time range options
+type TimeRange = '1W' | '1M' | '3M' | '6M' | '1Y' | 'ALL';
+const timeRangeOptions: TimeRange[] = ['1W', '1M', '3M', '6M', '1Y', 'ALL'];
+
 const ExerciseProgressAnalysis: React.FC<ExerciseProgressAnalysisProps> = ({
     userId,
     exercises,
@@ -106,6 +113,7 @@ const ExerciseProgressAnalysis: React.FC<ExerciseProgressAnalysisProps> = ({
     const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
     const [allCombinationKeys, setAllCombinationKeys] = useState<string[]>([]);
     const [activeCombinationKeys, setActiveCombinationKeys] = useState<string[]>([]);
+    const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>('ALL'); // State for time range
 
     // Fetch max e1RM history using TanStack Query and the Supabase function
     const {
@@ -122,7 +130,7 @@ const ExerciseProgressAnalysis: React.FC<ExerciseProgressAnalysisProps> = ({
         staleTime: 5 * 60 * 1000, // Cache data for 5 minutes
     });
 
-    // Process the fetched maxE1RMHistory to group by combination and update keys
+    // Process the fetched maxE1RMHistory to group by combination and update keys (based on full history)
     useEffect(() => {
         if (!maxE1RMHistory || maxE1RMHistory.length === 0) {
             setAllCombinationKeys([]);
@@ -160,29 +168,141 @@ const ExerciseProgressAnalysis: React.FC<ExerciseProgressAnalysisProps> = ({
         setActiveCombinationKeys(mostFrequentKey ? [mostFrequentKey] : (sortedKeys.length > 0 ? [sortedKeys[0]] : []));
     }, [maxE1RMHistory]);
 
-    // Prepare UNIFIED data for the chart
-    const chartData = useMemo((): UnifiedDataPoint[] => {
-        if (!maxE1RMHistory || maxE1RMHistory.length === 0) return [];
+    // Calculate date range and prepare data for chart
+    const { chartData, domain, ticks } = useMemo(() => {
+        if (!maxE1RMHistory) return { chartData: [], domain: [0, 0], ticks: [] };
 
-        const allDates = Array.from(new Set(maxE1RMHistory.map(item => item.workout_date)))
-                              .sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+        // Ensure 'now' and 'endDate' represent UTC midnight
+        const now = new Date();
+        now.setUTCHours(0, 0, 0, 0); // Use UTC normalization
+        const endDate = new Date(now); // endDate is today UTC midnight
 
-        const unifiedData: UnifiedDataPoint[] = allDates.map(date => ({ workout_date: date }));
+        const firstDataPointDateStr = maxE1RMHistory.length > 0 
+            ? [...maxE1RMHistory].sort((a, b) => new Date(a.workout_date).getTime() - new Date(b.workout_date).getTime())[0].workout_date
+            : null;
 
+        // Use Date.UTC for parsing the first date string
+        let firstDataPointDate: Date;
+        if (firstDataPointDateStr) {
+            const parts = firstDataPointDateStr.split('-').map(Number); // [YYYY, MM, DD]
+            // Month is 0-indexed for Date.UTC
+            firstDataPointDate = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+        } else {
+            firstDataPointDate = new Date(now); // Default to now if no history
+        }
+
+        let startDate = new Date(now); // Default start is today UTC midnight
+
+        if (selectedTimeRange !== 'ALL') {
+            // Use UTC methods for calculating past dates to align with UTC endDate
+             switch (selectedTimeRange) {
+                case '1W': startDate.setUTCDate(now.getUTCDate() - 7); break;
+                case '1M': startDate.setUTCMonth(now.getUTCMonth() - 1); break;
+                case '3M': startDate.setUTCMonth(now.getUTCMonth() - 3); break;
+                case '6M': startDate.setUTCMonth(now.getUTCMonth() - 6); break;
+                case '1Y': startDate.setUTCFullYear(now.getUTCFullYear() - 1); break;
+             }
+             // No separate normalization needed as we started from UTC midnight and used UTC methods
+
+        } else {
+            startDate = new Date(firstDataPointDate); // Use the UTC-parsed first date
+        }
+
+        // Generate all dates using UTC to avoid timezone shifts during iteration
+        const allDatesInRange: Date[] = [];
+        let currentDate = new Date(startDate); // Already UTC midnight or normalized local midnight
+        while (currentDate <= endDate) { // endDate is also UTC midnight
+            allDatesInRange.push(new Date(currentDate));
+            // Use setUTCDate to avoid potential DST issues if iterating across boundaries
+            currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+        }
+
+        // Group history by date string for quick lookup
+        const historyByDate: Record<string, DailyMaxE1RM[]> = {};
         maxE1RMHistory.forEach(item => {
-            const key = getCombinationKey(item.variation, item.equipment_type);
-            const dateIndex = unifiedData.findIndex(d => d.workout_date === item.workout_date);
-            if (dateIndex !== -1) {
-                unifiedData[dateIndex][key] = item.max_e1rm;
+            const dateStr = item.workout_date;
+            if (!historyByDate[dateStr]) {
+                historyByDate[dateStr] = [];
             }
+            historyByDate[dateStr].push(item);
         });
 
-        return unifiedData;
-    }, [maxE1RMHistory]);
+        // Create unified data, including points for dates without history
+        const unifiedData: UnifiedDataPoint[] = allDatesInRange.map(date => {
+            const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+            const dataForDate = historyByDate[dateStr] || [];
+            const point: UnifiedDataPoint = {
+                workout_timestamp: date.getTime(),
+                workout_date: dateStr,
+            };
+
+            // Initialize all potential keys with null for this date
+            allCombinationKeys.forEach(key => {
+                point[key] = null;
+            });
+
+            dataForDate.forEach(item => {
+                const key = getCombinationKey(item.variation, item.equipment_type);
+                // Only overwrite null if max_e1rm exists and is a valid number
+                if (item.max_e1rm != null && !isNaN(item.max_e1rm)) {
+                    point[key] = item.max_e1rm; 
+                } else {
+                    point[key] = null; // Ensure it's explicitly null
+                }
+            });
+
+            return point;
+        });
+
+        // Define domain for XAxis
+        // Add a minimal buffer (1 millisecond) to prevent clipping the last point
+        const domainEndDate = endDate.getTime() + 1; 
+        const calculatedDomain: [number, number] = [startDate.getTime(), domainEndDate];
+
+        // Generate explicit ticks based on the range for even spacing
+        const tickTimestamps: number[] = [];
+        const dayMillis = 1000 * 60 * 60 * 24;
+        const totalDays = Math.round((endDate.getTime() - startDate.getTime()) / dayMillis);
+
+        // Ensure start and end dates are always included
+        tickTimestamps.push(startDate.getTime());
+
+        if (totalDays <= 10) { // Daily ticks for short ranges (<= 10 days)
+             let tickDate = new Date(startDate);
+             tickDate.setUTCDate(tickDate.getUTCDate() + 1); // Start loop from day after start
+             while (tickDate < endDate) {
+                 tickTimestamps.push(tickDate.getTime());
+                 tickDate.setUTCDate(tickDate.getUTCDate() + 1);
+             }
+        } else { // Evenly spaced ticks for longer ranges (> 10 days)
+            const totalDurationMillis = endDate.getTime() - startDate.getTime();
+            const targetIntervals = 7; // Aim for approx 8 ticks total
+            // Prevent division by zero if duration is somehow zero or negative
+            const tickIntervalMillis = totalDurationMillis > 0 ? totalDurationMillis / targetIntervals : dayMillis; 
+
+            let currentTickTime = startDate.getTime();
+            for (let i = 1; i < targetIntervals; i++) { // Generate intermediate ticks
+                 currentTickTime += tickIntervalMillis;
+                 // Add ticks only if they are before the end date (excluding buffer)
+                 if (currentTickTime < endDate.getTime()) { 
+                    tickTimestamps.push(currentTickTime);
+                 }
+            }
+        }
+
+        // Ensure end date is the last tick
+        tickTimestamps.push(endDate.getTime());
+        
+        // Remove potential duplicates and sort (important if start/end logic overlaps)
+        const uniqueSortedTicks = Array.from(new Set(tickTimestamps)).sort((a, b) => a - b);
+
+        return { chartData: unifiedData, domain: calculatedDomain, ticks: uniqueSortedTicks }; // Use unique sorted ticks
+
+    }, [maxE1RMHistory, selectedTimeRange, allCombinationKeys]);
 
     return (
         <>
-            <h2 className="text-2xl font-semibold mb-4">Exercise Progress Analysis</h2>
+            <h2 className="text-2xl font-semibold mb-4">Exercise Progress</h2>
             {isLoadingExercises ? (
                 <p className="text-gray-500 italic">Loading exercises...</p>
             ) : errorExercises ? (
@@ -190,21 +310,23 @@ const ExerciseProgressAnalysis: React.FC<ExerciseProgressAnalysisProps> = ({
             ) : exercises.length > 0 ? (
                 <Card className="mb-8">
                     <CardHeader>
-                        <CardTitle>Select Exercise</CardTitle>
-                        <CardDescription>Choose an exercise to analyze its progress over time.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        <div>
+                        <div className="relative inline-flex items-center cursor-pointer">
+                            <span className="text-lg font-semibold">
+                                {selectedExercise ? selectedExercise.name : "-- Select an Exercise --"}
+                            </span>
+                            <div className="flex items-center ml-1">
+                                <ChevronDown className="h-4 w-4 text-gray-400" />
+                            </div>
                             <select
-                                className="w-full p-2 border rounded-md bg-white shadow-sm"
+                                className="absolute inset-0 w-full h-full opacity-0 appearance-none cursor-pointer"
                                 value={selectedExercise?.id || ""}
                                 onChange={(e) => {
                                     const selected = exercises.find(ex => ex.id === e.target.value);
                                     setSelectedExercise(selected || null);
                                 }}
-                                disabled={isLoadingExercises} // Disable while loading
+                                disabled={isLoadingExercises}
                             >
-                                <option value="">-- Select an Exercise --</option>
+                                <option value="" disabled={!!selectedExercise}>-- Select an Exercise --</option>
                                 {exercises.map((exercise) => (
                                     <option key={exercise.id} value={exercise.id}>
                                         {exercise.name}
@@ -212,65 +334,83 @@ const ExerciseProgressAnalysis: React.FC<ExerciseProgressAnalysisProps> = ({
                                 ))}
                             </select>
                         </div>
-
+                    </CardHeader>
+                    <CardContent className="space-y-6 pt-6">
                         {selectedExercise && (
                             <div>
-                                <h3 className="text-lg font-medium mb-4 flex items-center">
-                                    <TrendingUp className="mr-2 h-5 w-5" /> Estimated 1RM Progression
-                                </h3>
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-lg font-medium flex items-center">
+                                        <TrendingUp className="mr-2 h-5 w-5" /> Estimated 1RM
+                                    </h3>
+                                    <div className="flex space-x-1">
+                                        {timeRangeOptions.map(range => (
+                                            <Button 
+                                                key={range} 
+                                                variant={selectedTimeRange === range ? "default" : "outline"}
+                                                size="sm"
+                                                onClick={() => setSelectedTimeRange(range)}
+                                                aria-label={`Select ${range}`}
+                                                className="px-2 h-8"
+                                            >
+                                                {range}
+                                            </Button>
+                                        ))}
+                                    </div>
+                                </div>
                                 {isLoadingHistory ? (
                                     <p className="text-gray-500 italic text-center py-10">Loading history...</p>
                                 ) : errorHistory ? (
                                     <p className="text-red-500 italic text-center py-10">Error loading history: {errorHistory.message}</p>
-                                ) : maxE1RMHistory.length > 0 && chartData.length > 0 ? ( // Check chartData length too
+                                ) : chartData.length > 0 ? (
                                     <ResponsiveContainer width="100%" height={400}>
-                                        <LineChart data={chartData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
+                                        <LineChart 
+                                            data={chartData} 
+                                            margin={{ top: 5, right: 0, left: 20, bottom: 5 }}
+                                        >
                                             <CartesianGrid strokeDasharray="3 3" stroke="rgba(229, 231, 235, 0.25)" />
                                             <XAxis
-                                                dataKey="workout_date"
+                                                dataKey="workout_timestamp"
                                                 tickFormatter={formatAxisDate}
-                                                type="category"
+                                                type="number"
+                                                domain={domain} // Set calculated domain
+                                                ticks={ticks} // Use explicit ticks
                                                 tick={{ fontSize: 12 }}
-                                                padding={{ left: 10, right: 10 }}
                                             />
                                             <YAxis
-                                                label={{ value: 'Max e1RM (kg)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle' }, dx: -10 }}
+                                                orientation="right" // Move axis to the right
                                                 tick={{ fontSize: 12 }}
                                                 domain={['auto', 'auto']}
+                                                // Add tick formatter
+                                                tickFormatter={(value) => `${value} kg`} 
                                             />
-                                            <Tooltip
-                                                content={<CustomTooltip />}
-                                                cursor={{ stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '3 3' }}
-                                            />
-                                            <Legend
-                                                onClick={(data) => {
-                                                    const key = data.id;
-                                                    setActiveCombinationKeys(prevKeys =>
-                                                        prevKeys.includes(key) ? prevKeys.filter(k => k !== key) : [...prevKeys, key]
-                                                    );
-                                                }}
-                                                formatter={(value, entry: any) => {
-                                                    const key = entry.id;
-                                                    const isActive = activeCombinationKeys.includes(key);
-                                                    const color = isActive ? entry.color : '#9ca3af';
-                                                    return <span style={{ color, cursor: 'pointer' }}>{value}</span>;
-                                                }}
-                                                payload={
-                                                    allCombinationKeys.map((key, index) => {
-                                                        const displayValue = key.startsWith('Default|')
-                                                            ? key.replace('Default|', 'Standard - ')
-                                                            : key.replace('|', ' - ');
+                                            <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '3 3' }} />
+                                            <Legend onClick={(data) => {
+                                                const key = data.id;
+                                                setActiveCombinationKeys(prevKeys =>
+                                                    prevKeys.includes(key) ? prevKeys.filter(k => k !== key) : [...prevKeys, key]
+                                                );
+                                            }}
+                                            formatter={(value, entry: any) => {
+                                                const key = entry.id;
+                                                const isActive = activeCombinationKeys.includes(key);
+                                                const color = isActive ? entry.color : '#9ca3af';
+                                                return <span style={{ color, cursor: 'pointer' }}>{value}</span>;
+                                            }}
+                                            payload={
+                                                allCombinationKeys.map((key, index) => {
+                                                    const displayValue = key.startsWith('Default|')
+                                                        ? key.replace('Default|', 'Standard - ')
+                                                        : key.replace('|', ' - ');
 
-                                                        return {
-                                                            id: key,
-                                                            type: 'line',
-                                                            value: displayValue,
-                                                            color: lineColors[index % lineColors.length],
-                                                        }
-                                                    })
-                                                }
-                                                wrapperStyle={{ paddingTop: '20px' }}
-                                            />
+                                                    return {
+                                                        id: key,
+                                                        type: 'line',
+                                                        value: displayValue,
+                                                        color: lineColors[index % lineColors.length],
+                                                    }
+                                                })
+                                            }
+                                            wrapperStyle={{ paddingTop: '20px' }} />
                                             {allCombinationKeys.map((key) => {
                                                 const colorIndex = allCombinationKeys.indexOf(key);
                                                 if (!activeCombinationKeys.includes(key)) return null;
@@ -282,9 +422,10 @@ const ExerciseProgressAnalysis: React.FC<ExerciseProgressAnalysisProps> = ({
                                                         name={key.replace('|', ' - ')}
                                                         stroke={lineColors[colorIndex % lineColors.length]}
                                                         strokeWidth={2}
-                                                        dot={{ r: 4, fill: lineColors[colorIndex % lineColors.length] }}
-                                                        activeDot={{ r: 6 }}
-                                                        connectNulls
+                                                        // Revert dot style to default boolean
+                                                        dot={true} 
+                                                        activeDot={{ r: 6 }} 
+                                                        connectNulls={true} // Ensure connectNulls is true
                                                     />
                                                 );
                                             })}
@@ -292,7 +433,9 @@ const ExerciseProgressAnalysis: React.FC<ExerciseProgressAnalysisProps> = ({
                                     </ResponsiveContainer>
                                 ) : (
                                     <p className="text-gray-500 italic text-center py-10">
-                                        No estimated 1RM history found for this exercise. Complete some sets!
+                                        {selectedTimeRange === 'ALL' 
+                                            ? "No estimated 1RM history found for this exercise. Complete some sets!"
+                                            : `No estimated 1RM history found for this exercise in the last ${selectedTimeRange}.`}
                                     </p>
                                 )}
                             </div>
