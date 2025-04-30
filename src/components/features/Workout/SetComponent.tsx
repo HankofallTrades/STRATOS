@@ -162,8 +162,7 @@ const SetComponent: React.FC<SetComponentProps> = ({
       className={cn(
         "group",
         isCompleted && "bg-green-100 dark:bg-green-900/30",
-        "border-b-0",
-        "overflow-hidden"
+        "border-b-0"
       )}
     >
       <TableCell className="font-medium text-center w-[35px] px-1 py-1 align-middle">{setIndex + 1}</TableCell>

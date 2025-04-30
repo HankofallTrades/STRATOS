@@ -187,11 +187,11 @@ const WorkoutComponent = () => {
             {currentWorkout.exercises.map((exercise) => (
               <motion.div
                 key={exercise.id}
-                layout
+                layout="position"
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-                transition={{ type: 'spring', duration: 0.4, bounce: 0 }}
+                transition={{ type: "spring", stiffness: 250, damping: 30 }}
               >
                 <WorkoutExerciseContainer
                   workoutExercise={exercise}

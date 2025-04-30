@@ -1,5 +1,5 @@
 import React, { Fragment, useMemo, useState } from 'react';
-import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
+import { motion, useMotionValue, useTransform, animate, AnimatePresence } from 'framer-motion';
 // TanStack Query - Removed hooks, just keep types if needed
 // import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MutationStatus } from '@tanstack/react-query'; // Keep MutationStatus type
@@ -335,9 +335,9 @@ export const WorkoutExerciseView = ({
 
             <CardContent className="pt-0 pb-2 px-2 sm:px-4">
               <div className="">
-                <Table className="w-full min-w-[340px]">
+                <Table className="w-full">
                   <TableHeader>
-                    <TableRow className="text-xs overflow-hidden">
+                    <TableRow className="text-xs">
                       <TableHead className="w-[35px] text-center px-1 py-1">Set</TableHead>
                       <TableHead className="w-[70px] text-center px-1 py-1">Prev.</TableHead>
                       <TableHead className="w-[75px] text-center px-1 py-1">Wt (kg)</TableHead>
@@ -346,31 +346,47 @@ export const WorkoutExerciseView = ({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {workoutExercise.sets.map((set, index) => {
-                      const setNumber = index + 1;
-                      const previousPerformanceForSet = historicalSetPerformances?.[setNumber] ?? null;
-                      return (
-                        <SetComponent
-                          key={set.id}
-                          workoutExerciseId={workoutExercise.id}
-                          set={set}
-                          setIndex={index}
-                          previousPerformance={previousPerformanceForSet}
-                          userBodyweight={userBodyweight}
-                        />
-                      );
-                    })}
-                    <TableRow className="border-b-0 overflow-hidden">
-                      <TableCell className="p-1 text-center">
-                        <Button variant="ghost" size="icon" onClick={onAddSet} className="h-7 w-7" aria-label="Add set">
-                          <Plus size={16} />
-                        </Button>
-                      </TableCell>
-                      <TableCell></TableCell>
-                      <TableCell></TableCell>
-                      <TableCell></TableCell>
-                      <TableCell></TableCell>
-                    </TableRow>
+                    <AnimatePresence initial={false}>
+                      {workoutExercise.sets.map((set, index) => {
+                        const setNumber = index + 1;
+                        const previousPerformanceForSet = historicalSetPerformances?.[setNumber] ?? null;
+                        return (
+                          <motion.div
+                            key={set.id}
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ type: 'tween', duration: 0.5 }}
+                            style={{ display: 'contents' }}
+                          >
+                            <SetComponent
+                              workoutExerciseId={workoutExercise.id}
+                              set={set}
+                              setIndex={index}
+                              previousPerformance={previousPerformanceForSet}
+                              userBodyweight={userBodyweight}
+                            />
+                          </motion.div>
+                        );
+                      })}
+                      <motion.div 
+                        key="add-set-row"
+                        layout={false}
+                        style={{ display: 'contents' }}
+                      >
+                        <TableRow className="border-b-0">
+                          <TableCell className="p-1 text-center">
+                            <Button variant="ghost" size="icon" onClick={onAddSet} className="h-7 w-7" aria-label="Add set">
+                              <Plus size={16} />
+                            </Button>
+                          </TableCell>
+                          <TableCell></TableCell>
+                          <TableCell></TableCell>
+                          <TableCell></TableCell>
+                          <TableCell></TableCell>
+                        </TableRow>
+                      </motion.div>
+                    </AnimatePresence>
                   </TableBody>
                 </Table>
               </div>
