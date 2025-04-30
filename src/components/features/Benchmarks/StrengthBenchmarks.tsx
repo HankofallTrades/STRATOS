@@ -59,7 +59,7 @@ const BENCHMARK_MULTIPLIERS: Record<BenchmarkLevel, Record<BenchmarkName, number
 interface CalculatedBenchmark {
     name: BenchmarkName;
     exerciseId: string | null;
-    currentE1RM: number | null;
+    currentE1RM: number | null; // This will store the potentially adjusted E1RM
     goalE1RM: number | null;
     progress: number; // Percentage 0-100
 }
@@ -148,11 +148,34 @@ const StrengthBenchmarks: React.FC<StrengthBenchmarksProps> = ({ currentType, on
                 ex.name.trim().toLowerCase() === name.trim().toLowerCase()
             );
             const exerciseId = foundExercise?.id || null;
+            // const equipmentType = foundExercise?.default_equipment_type; // No longer use default equipment
+            // console.log(`Processing benchmark: ${name}, Found Exercise:`, foundExercise); // Log found exercise
 
             let currentE1RM: number | null = null;
+            let displayE1RM: number | null = null; // Separate variable for display
+
             if (exerciseId) {
                 const e1rmData = latestMaxE1RMs.find(data => data.exercise_id === exerciseId);
-                currentE1RM = e1rmData?.max_e1rm ?? null;
+                const rawE1RM = e1rmData?.max_e1rm ?? null;
+                const actualEquipmentType = e1rmData?.equipment_type; // Use equipment type from E1RM data
+                // console.log(`  Raw E1RM for ${name} (ID: ${exerciseId}): ${rawE1RM}, Equipment from Set: ${actualEquipmentType}`); // Log raw data
+
+                if (rawE1RM !== null) {
+                    // Check if equipment type requires doubling
+                    if (actualEquipmentType === 'DB' || actualEquipmentType === 'KB') {
+                        currentE1RM = rawE1RM * 2;
+                        displayE1RM = currentE1RM; // Display the doubled value
+                        // console.log(`  ${name} is DB/KB (from set). Doubled E1RM: ${currentE1RM}`); // Log doubling
+                    } else {
+                        currentE1RM = rawE1RM;
+                        displayE1RM = currentE1RM; // Display the original value
+                        // console.log(`  ${name} is not DB/KB (from set). Using raw E1RM: ${currentE1RM}`); // Log non-doubling
+                    }
+                } else {
+                    // console.log(`  No raw E1RM data found for ${name}`);
+                }
+            } else {
+                // console.log(`  Exercise ID not found for benchmark: ${name}`);
             }
 
             // Use multiplier for the selected level
@@ -160,13 +183,14 @@ const StrengthBenchmarks: React.FC<StrengthBenchmarksProps> = ({ currentType, on
             const goalE1RM = bodyweight ? bodyweight * multiplier : null;
             let progress = 0;
             if (currentE1RM && goalE1RM && goalE1RM > 0) {
+                // Use the potentially doubled currentE1RM for progress calculation
                 progress = Math.min(100, Math.max(0, (currentE1RM / goalE1RM) * 100));
             }
 
             return {
                 name, // Use the benchmark name directly
                 exerciseId,
-                currentE1RM,
+                currentE1RM: displayE1RM, // Store the value to be displayed
                 goalE1RM,
                 progress,
             };
@@ -223,7 +247,7 @@ const StrengthBenchmarks: React.FC<StrengthBenchmarksProps> = ({ currentType, on
                             <span className="font-medium text-sm">{bench.name}</span>
                             <span className="text-xs text-gray-600">
                                 {bench.currentE1RM !== null
-                                    ? `~${bench.currentE1RM.toFixed(1)} kg / ${bench.goalE1RM?.toFixed(1)} kg Goal`
+                                    ? `~${bench.currentE1RM.toFixed(1)} kg / ${bench.goalE1RM?.toFixed(1)} kg Goal` // Display the adjusted E1RM
                                     : `No Data / ${bench.goalE1RM?.toFixed(1)} kg Goal`}
                             </span>
                         </div>
