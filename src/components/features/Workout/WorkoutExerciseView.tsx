@@ -150,18 +150,19 @@ export const WorkoutExerciseView = ({
   };
 
   const handleDeleteExerciseClick = () => {
-    // Animate card back to 0 before deleting if revealed
-    if (cardX.get() < 0) {
-        animate(cardX, 0, {
-          type: "spring",
-          stiffness: 400,
-          damping: 40,
-          onComplete: onDeleteExercise // Call actual delete *after* animation
-        });
-    } else {
-        onDeleteExercise(); // Delete immediately if not revealed
-    }
-    handleHide();
+    // Remove the animation logic here. Parent handles removal & AnimatePresence handles animation.
+    // if (cardX.get() < 0) {
+    //     animate(cardX, 0, {
+    //       type: "spring",
+    //       stiffness: 400,
+    //       damping: 40,
+    //       onComplete: onDeleteExercise // Call actual delete *after* animation
+    //     });
+    // } else {
+    //     onDeleteExercise(); // Delete immediately if not revealed
+    // }
+    onDeleteExercise(); // Just call the delete handler directly
+    handleHide(); // Still hide the button state locally if needed
   };
 
   // --- Memos ---

@@ -7,12 +7,11 @@ import { Plus, Save } from "lucide-react";
 import ExerciseSelector from "./ExerciseSelector";
 import WorkoutExerciseContainer from "./WorkoutExerciseContainer";
 import { toast } from "@/hooks/use-toast";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/core/card";
-import { ScrollArea } from "@/components/core/scroll-area";
 import { supabase } from '@/lib/integrations/supabase/client';
-import { Workout, WorkoutExercise, ExerciseSet } from "@/lib/types/workout";
+import { Workout } from "@/lib/types/workout";
 import { TablesInsert } from '@/lib/integrations/supabase/types';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const WorkoutComponent = () => {
   const dispatch = useAppDispatch();
@@ -182,46 +181,43 @@ const WorkoutComponent = () => {
 
   return (
     <div className="space-y-6 flex flex-col h-full">
-      <div className="flex-grow space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex-grow space-y-6 overflow-y-auto px-1">
+        {currentWorkout.exercises.length > 0 ? (
+          <AnimatePresence initial={false}>
+            {currentWorkout.exercises.map((exercise) => (
+              <motion.div
+                key={exercise.id}
+                layout
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                transition={{ type: 'spring', duration: 0.4, bounce: 0 }}
+              >
+                <WorkoutExerciseContainer
+                  workoutExercise={exercise}
+                />
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        ) : (
+          <div className="text-center py-6 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <p className="text-gray-500 dark:text-gray-400 mb-4">No exercises added yet</p>
+          </div>
+        )}
       </div>
 
-      {currentWorkout.exercises.length > 0 ? (
-        <div className="space-y-6">
-          {currentWorkout.exercises.map((exercise) => (
-            <WorkoutExerciseContainer 
-              key={exercise.id} 
-              workoutExercise={exercise} 
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-6 bg-gray-50 dark:bg-gray-800 rounded-lg">
-          <p className="text-gray-500 dark:text-gray-400 mb-4">No exercises added yet</p>
-        </div>
-      )}
-      </div>
-
-      {/* Container for buttons at the bottom */}
       <div className="mt-auto pt-4 flex justify-between items-center">
-        {/* Empty div for spacing, pushes End Workout button right */}
         <div className="w-10"></div> 
-
-        {/* Exercise Selector and Add Button (Centered Group) */}
         <div className="flex flex-col items-center">
           <ExerciseSelector /> 
-          {/* Removed placeholder Button as ExerciseSelector now renders the button */}
         </div>
-
-        {/* End Workout Button (Right Aligned, Icon Only, Circular) */}
         <Button
           onClick={handleEndWorkout}
           variant="default" 
-          size="icon" // Keep icon size
-          className="bg-fitnessGreen hover:bg-fitnessGreen/90 rounded-full h-12 w-12" // Increased size from h-10 w-10 to h-12 w-12
+          size="icon"
+          className="bg-fitnessGreen hover:bg-fitnessGreen/90 rounded-full h-12 w-12"
         >
           <Save size={16} className="text-white" />
-          {/* Removed the text span */}
         </Button>
       </div>
     </div>
