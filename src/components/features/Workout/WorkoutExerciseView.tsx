@@ -41,6 +41,7 @@ interface WorkoutExerciseViewProps {
   equipmentTypes: Readonly<EquipmentType[]>;
   overallLastPerformance: { weight: number; reps: number } | null;
   historicalSetPerformances: Record<number, { weight: number; reps: number } | null>;
+  userBodyweight?: number | null; // Add user bodyweight prop
   onAddSet: () => void;
   onEquipmentChange: (value: EquipmentType) => void;
   onDeleteExercise: () => void; // Add delete handler prop
@@ -74,6 +75,7 @@ export const WorkoutExerciseView = ({
   equipmentTypes,
   overallLastPerformance,
   historicalSetPerformances,
+  userBodyweight, // Destructure userBodyweight
   onAddSet,
   onEquipmentChange,
   onDeleteExercise, // Use the new prop
@@ -299,6 +301,7 @@ export const WorkoutExerciseView = ({
                     set={set}
                     setIndex={index}
                     previousPerformance={previousPerformanceForSet}
+                    userBodyweight={userBodyweight} // Pass bodyweight to SetComponent
                   />
                 );
               })}
