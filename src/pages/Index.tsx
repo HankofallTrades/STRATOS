@@ -4,7 +4,7 @@ import { useAppSelector, useAppDispatch } from "@/hooks/redux"; // Import Redux 
 import { selectCurrentWorkout, selectWorkoutStartTime, startWorkout as startWorkoutAction } from "@/state/workout/workoutSlice"; // Import selectors and actions
 import { Clock } from "lucide-react";
 import { formatTime } from "@/lib/utils/timeUtils";
-import WorkoutComponent from "@/components/features/WorkoutComponent";
+import WorkoutComponent from "@/components/features/Workout/WorkoutComponent";
 import { Barbell } from "@phosphor-icons/react";
 import { useAuth } from "@/state/auth/AuthProvider";
 import { Link } from "react-router-dom";
