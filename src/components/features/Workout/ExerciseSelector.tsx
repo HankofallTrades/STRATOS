@@ -9,6 +9,7 @@ import {
 } from "@/state/workout/workoutSlice"; // Keep workout actions
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'; // Add TanStack Query imports
 import { fetchExercisesFromDB, createExerciseInDB, deleteExerciseFromDB, hideExerciseForUser } from '@/lib/integrations/supabase/exercises'; // Add Supabase function imports
+import { fetchLastConfigForExercise, fetchLastWorkoutExerciseInstanceFromDB } from '@/lib/integrations/supabase/history'; // Import the new function
 import { Button } from "@/components/core/button";
 import { Plus, Search, X, Trash2 } from "lucide-react";
 import { Label } from "@/components/core/label";
@@ -42,43 +43,80 @@ const ExerciseSelector = () => {
   // Fetch exercises using useQuery
   const { data: exercises = [], isLoading, error } = useQuery({
     queryKey: ['exercises'],
-    queryFn: fetchExercisesFromDB,
-    // Keep data fresh but don't refetch on window focus while dialog might be open
+    queryFn: () => user ? fetchExercisesFromDB() : [], // Call without arguments
     refetchOnWindowFocus: false, 
     enabled: !!user, // Only fetch if user is loaded
   });
 
-  // Modify handleSelectExercise to accept the full Exercise object
-  const handleSelectExercise = (selectedExercise: Exercise) => {
-      // No need to find the exercise anymore
-      const newWorkoutExerciseId = uuidv4(); // Generate ID once
-      const workoutExercisePayload: WorkoutExercise = {
-        id: newWorkoutExerciseId, // Use generated ID
-        exerciseId: selectedExercise.id,
-        exercise: selectedExercise,
-        // Use default_equipment_type if available, otherwise default to Barbell (BB) for new exercises
-        // TODO: This could potentially be smarter, inferring likely equipment based on name (regex, LLM?)
-        equipmentType: selectedExercise.default_equipment_type
-          ? selectedExercise.default_equipment_type as EquipmentType
-          : EquipmentTypeEnum.BB, // Corrected: Use the constant EquipmentTypeEnum.BB for 'Barbell'
-        variation: 'Standard',
-        sets: [], // Start with empty sets initially
-      };
-      // Dispatch to add to the *current workout* state (client state)
-      dispatch(addExerciseToWorkoutAction(workoutExercisePayload));
+  // Modify handleSelectExercise to accept the full Exercise object and make it async
+  const handleSelectExercise = async (selectedExercise: Exercise) => { // Make async
+    const newWorkoutExerciseId = uuidv4(); // Generate ID once
+    let lastConfig = { equipmentType: null, variation: null }; // Default last config
 
-      // Dispatch to add the first default set immediately after
-      dispatch(addSetToExercise({ // Corrected: Use the correct action
-        workoutExerciseId: newWorkoutExerciseId, // Use the same ID
-        exerciseId: selectedExercise.id // Add the missing exerciseId
-        // Optionally provide default set values here if the reducer doesn't handle defaults
-        // set: { id: uuidv4(), weight: 0, reps: 0, completed: false } 
-      }));
+    // Fetch last used config if user is logged in
+    if (user?.id && selectedExercise.id) {
+      try {
+        // Use fetchQuery to get the last configuration
+        const fetchedConfig = await queryClient.fetchQuery({
+          queryKey: ['lastExerciseConfig', user.id, selectedExercise.id],
+          queryFn: () => fetchLastConfigForExercise(user.id, selectedExercise.id),
+          staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+        });
+        if (fetchedConfig) {
+          lastConfig = fetchedConfig;
+        }
+        console.log(`Last config for ${selectedExercise.name}:`, lastConfig);
+      } catch (error) {
+        console.error("Error fetching last exercise config:", error);
+        // Non-critical, proceed with defaults
+      }
+    }
 
-      setOpen(false); // Close the dialog after selection
-      setSearchQuery(""); // Reset search query
-      setIsAddingNew(false); // Reset adding state
-      setNewExerciseName(""); // Reset new exercise name
+    // Determine equipment type: last used > exercise default > fallback (BB)
+    const equipmentType = 
+      lastConfig.equipmentType as EquipmentType ?? // Use last used if available
+      selectedExercise.default_equipment_type as EquipmentType ?? // Else use exercise default
+      EquipmentTypeEnum.BB; // Else fallback to Barbell
+
+    // Determine variation: last used > fallback ('Standard')
+    const variation = lastConfig.variation ?? 'Standard';
+
+    // Prefetch historical data for the determined config
+    if (user?.id && selectedExercise.id) {
+      queryClient.prefetchQuery({
+        queryKey: ['lastPerformance', user.id, selectedExercise.id, equipmentType, variation],
+        queryFn: () => fetchLastWorkoutExerciseInstanceFromDB(user.id!, selectedExercise.id, equipmentType, variation),
+        staleTime: 5 * 60 * 1000, // Keep prefetched data fresh for 5 mins
+      }).catch(error => {
+          console.error("Error prefetching last performance data:", error); 
+          // Log error but don't block adding the exercise
+      });
+    }
+
+    // Create the payload with potentially fetched config
+    const workoutExercisePayload: WorkoutExercise = {
+      id: newWorkoutExerciseId, // Use generated ID
+      exerciseId: selectedExercise.id,
+      exercise: selectedExercise,
+      equipmentType: equipmentType, // Use determined equipment type
+      variation: variation,         // Use determined variation
+      sets: [], // Start with empty sets initially
+    };
+
+    // Dispatch to add to the *current workout* state (client state)
+    dispatch(addExerciseToWorkoutAction(workoutExercisePayload));
+
+    // Dispatch to add the first default set immediately after
+    dispatch(addSetToExercise({ // Corrected: Use the correct action
+      workoutExerciseId: newWorkoutExerciseId, // Use the same ID
+      exerciseId: selectedExercise.id // Add the missing exerciseId
+    }));
+
+    // Reset UI state
+    setOpen(false); // Close the dialog after selection
+    setSearchQuery(""); // Reset search query
+    setIsAddingNew(false); // Reset adding state
+    setNewExerciseName(""); // Reset new exercise name
   };
 
   // Mutation for adding a new exercise

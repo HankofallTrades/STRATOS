@@ -32,9 +32,6 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
   const { user } = useAuth();
   const userId = user?.id;
 
-  const [selectedVariation, setSelectedVariation] = useState<string | undefined>(
-    workoutExercise.sets.filter(s => s.variation).at(-1)?.variation ?? DEFAULT_VARIATION
-  );
   const [isAddingVariation, setIsAddingVariation] = useState(false);
   const [newVariationName, setNewVariationName] = useState('');
 
@@ -52,14 +49,14 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
         userId,
         exerciseId,
         workoutExercise.equipmentType,
-        selectedVariation
+        workoutExercise.variation ?? DEFAULT_VARIATION
     ],
     queryFn: () => {
         console.log('Querying history with params:', {
             userId,
             exerciseId,
             equipmentType: workoutExercise.equipmentType,
-            selectedVariation
+            selectedVariation: workoutExercise.variation ?? DEFAULT_VARIATION
         });
         if (!userId || !exerciseId) {
             console.log("History query skipped: userId or exerciseId missing.");
@@ -69,7 +66,7 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
             userId,
             exerciseId,
             workoutExercise.equipmentType,
-            selectedVariation
+            workoutExercise.variation ?? DEFAULT_VARIATION
         );
     },
     enabled: !!userId && !!exerciseId,
@@ -103,7 +100,6 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
       queryClient.invalidateQueries({ queryKey: ['exerciseVariations', exerciseId] });
       setNewVariationName('');
       setIsAddingVariation(false);
-      setSelectedVariation(newVariationData.variation_name);
       dispatch(updateWorkoutExerciseVariationAction({ workoutExerciseId: workoutExercise.id, variation: newVariationData.variation_name }));
     },
     onError: (error) => {
@@ -137,29 +133,6 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
 
   const equipmentTypes = Object.values(EquipmentTypeEnum);
 
-  useEffect(() => {
-    const lastSetVariationInCurrentWorkout = workoutExercise.sets.filter(s => s.variation).at(-1)?.variation;
-
-    let targetVariation: string | undefined = DEFAULT_VARIATION;
-
-    if (lastSetVariationInCurrentWorkout && variations.includes(lastSetVariationInCurrentWorkout)) {
-      targetVariation = lastSetVariationInCurrentWorkout;
-    }
-    else if (selectedVariation && variations.includes(selectedVariation)) {
-        targetVariation = selectedVariation;
-    }
-
-    if (selectedVariation !== targetVariation) {
-        setSelectedVariation(targetVariation);
-        dispatch(updateWorkoutExerciseVariationAction({ workoutExerciseId: workoutExercise.id, variation: targetVariation }));
-    }
-    else if (!selectedVariation && variations.includes(DEFAULT_VARIATION)) {
-       setSelectedVariation(DEFAULT_VARIATION);
-       dispatch(updateWorkoutExerciseVariationAction({ workoutExerciseId: workoutExercise.id, variation: DEFAULT_VARIATION }));
-    }
-
-  }, [variations, workoutExercise.sets, selectedVariation, dispatch, workoutExercise.id]);
-
   const handleEquipmentChange = (value: EquipmentType) => {
     dispatch(updateWorkoutExerciseEquipmentAction({ workoutExerciseId: workoutExercise.id, equipmentType: value }));
   };
@@ -167,10 +140,8 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
   const handleVariationChange = (value: string) => {
     if (value === 'add_new') {
       setIsAddingVariation(true);
-      setSelectedVariation(undefined);
     } else {
       setIsAddingVariation(false);
-      setSelectedVariation(value);
       dispatch(updateWorkoutExerciseVariationAction({ workoutExerciseId: workoutExercise.id, variation: value }));
     }
   };
@@ -182,10 +153,9 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
           console.warn(`Variation "${newVariationName.trim()}" already exists.`);
           const existingVariation = variations.find(v => v.toLowerCase() === newVariationName.trim().toLowerCase());
           if (existingVariation) {
-              setSelectedVariation(existingVariation);
+              dispatch(updateWorkoutExerciseVariationAction({ workoutExerciseId: workoutExercise.id, variation: existingVariation }));
               setIsAddingVariation(false);
               setNewVariationName('');
-              dispatch(updateWorkoutExerciseVariationAction({ workoutExerciseId: workoutExercise.id, variation: existingVariation }));
           }
           return;
       }
@@ -196,27 +166,15 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
       }
     } else if (newVariationName.trim().toLowerCase() === DEFAULT_VARIATION.toLowerCase()) {
         console.warn("'Standard' variation cannot be added explicitly.");
-        setSelectedVariation(DEFAULT_VARIATION);
+        dispatch(updateWorkoutExerciseVariationAction({ workoutExerciseId: workoutExercise.id, variation: DEFAULT_VARIATION }));
         setIsAddingVariation(false);
         setNewVariationName('');
-        dispatch(updateWorkoutExerciseVariationAction({ workoutExerciseId: workoutExercise.id, variation: DEFAULT_VARIATION }));
     }
   };
 
   const handleCancelAddVariation = () => {
     setIsAddingVariation(false);
     setNewVariationName('');
-    if (!selectedVariation && variations.includes(DEFAULT_VARIATION)) {
-        setSelectedVariation(DEFAULT_VARIATION);
-        dispatch(updateWorkoutExerciseVariationAction({ workoutExerciseId: workoutExercise.id, variation: DEFAULT_VARIATION }));
-    } else if (selectedVariation) {
-    } else {
-        const firstAvailable = variations[0];
-         if (firstAvailable) {
-             setSelectedVariation(firstAvailable);
-             dispatch(updateWorkoutExerciseVariationAction({ workoutExerciseId: workoutExercise.id, variation: firstAvailable }));
-         }
-    }
   };
 
   const handleAddSet = () => {
@@ -247,7 +205,7 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
         onEquipmentChange={handleEquipmentChange}
         onDeleteExercise={handleDeleteExercise}
         variations={variations}
-        selectedVariation={selectedVariation}
+        selectedVariation={workoutExercise.variation ?? DEFAULT_VARIATION}
         isAddingVariation={isAddingVariation}
         newVariationName={newVariationName}
         isLoadingVariations={isLoadingVariations}
