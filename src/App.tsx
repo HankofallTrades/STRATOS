@@ -15,13 +15,11 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import LoginPage from "./pages/LoginPage";
 import WaitlistPage from "./pages/WaitlistPage";
-import { useWorkoutTimer } from './hooks/useWorkoutTimer';
 
 const queryClient = new QueryClient();
 
 // Main Application Layout (for authenticated users)
 const MainAppLayout = () => {
-  useWorkoutTimer(); // Example: Call hooks needed only when logged in
   return (
     <div> {/* Padding REMOVED from here */}
       <Routes>

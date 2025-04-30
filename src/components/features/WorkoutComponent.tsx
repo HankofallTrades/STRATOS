@@ -17,7 +17,6 @@ import { useNavigate } from 'react-router-dom';
 const WorkoutComponent = () => {
   const dispatch = useAppDispatch();
   const currentWorkout = useAppSelector(selectCurrentWorkout);
-  const workoutTime = useAppSelector((state) => state.workout.workoutTime);
   const navigate = useNavigate();
 
   if (!currentWorkout) {
@@ -25,11 +24,11 @@ const WorkoutComponent = () => {
   }
 
   const handleEndWorkout = async () => {
-    const workoutToPotentiallySave = currentWorkout; 
+    const workoutToEnd = currentWorkout;
     
-    if (!workoutToPotentiallySave) return;
+    if (!workoutToEnd) return;
 
-    const hasCompletedSets = workoutToPotentiallySave.exercises.some(ex => ex.sets.some(set => set.completed));
+    const hasCompletedSets = workoutToEnd.exercises.some(ex => ex.sets.some(set => set.completed));
     
     if (!hasCompletedSets) {
         toast({
@@ -54,10 +53,14 @@ const WorkoutComponent = () => {
         return;
     }
 
+    dispatch(endWorkoutAction());
+
+    const workoutToSave = workoutToEnd; 
+
     const workoutDataForDb: TablesInsert<'workouts'> = {
         user_id: user.id,
-        date: workoutToPotentiallySave.date,
-        duration_seconds: Math.round(workoutTime),
+        date: workoutToSave.date,
+        duration_seconds: workoutToSave.duration,
         completed: true,
     };
 
@@ -74,7 +77,7 @@ const WorkoutComponent = () => {
 
         const workoutId = savedWorkout.id;
 
-        const workoutExercisesDataForDb: TablesInsert<'workout_exercises'>[] = workoutToPotentiallySave.exercises
+        const workoutExercisesDataForDb: TablesInsert<'workout_exercises'>[] = workoutToSave.exercises
           .filter(exercise => exercise.sets.some(set => set.completed))
           .map((exercise, index) => ({
             workout_id: workoutId,
@@ -89,6 +92,7 @@ const WorkoutComponent = () => {
                 description: "Could not find exercises with completed sets to save.",
                 variant: "destructive",
              });
+             navigate('/');
              return;
         }
 
@@ -102,7 +106,7 @@ const WorkoutComponent = () => {
         }
 
         const exerciseSetsDataForDb: TablesInsert<'exercise_sets'>[] = [];
-        workoutToPotentiallySave.exercises.forEach((exercise) => {
+        workoutToSave.exercises.forEach((exercise) => {
             const savedWorkoutExercise = savedWorkoutExercises.find(
                 swe => swe.exercise_id === exercise.exerciseId && swe.workout_id === workoutId
             );
@@ -139,11 +143,10 @@ const WorkoutComponent = () => {
         }
 
         const completedWorkoutForState: Workout = {
-            ...workoutToPotentiallySave,
+            ...workoutToSave,
             id: workoutId,
-            duration: Math.round(workoutTime),
             completed: true,
-            exercises: workoutToPotentiallySave.exercises
+            exercises: workoutToSave.exercises
                 .map(woEx => {
                     const savedWoEx = savedWorkoutExercises.find(swe => swe.exercise_id === woEx.exerciseId && swe.workout_id === workoutId);
                     if (!savedWoEx) return null;
@@ -158,7 +161,6 @@ const WorkoutComponent = () => {
                 .filter(woEx => woEx !== null && woEx.sets.length > 0),
         };
 
-        dispatch(endWorkoutAction());
         dispatch(addWorkoutToHistory(completedWorkoutForState));
 
         toast({
