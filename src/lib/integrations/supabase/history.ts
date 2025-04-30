@@ -3,6 +3,57 @@ import { EquipmentType } from '@/lib/types/enums';
 import { DailyMaxE1RM } from '@/lib/types/analytics';
 
 /**
+ * Fetches the last used equipment type and variation for a specific exercise by a user.
+ *
+ * @param userId The UUID of the user.
+ * @param exerciseId The UUID of the exercise.
+ * @returns An object containing { equipmentType: EquipmentType | null, variation: string | null }, or null if no history found.
+ */
+export const fetchLastConfigForExercise = async (
+  userId: string,
+  exerciseId: string
+): Promise<{ equipmentType: EquipmentType | null; variation: string | null } | null> => {
+  try {
+    // Query the exercise_sets table, join up to workouts to filter by user and order by date
+    const { data, error } = await supabase
+      .from('exercise_sets')
+      .select(
+        'equipment_type, variation, workout_exercises!inner(exercise_id, workout_id, workouts!inner(user_id, date))'
+      )
+      .eq('workout_exercises.workouts.user_id', userId)
+      .eq('workout_exercises.exercise_id', exerciseId)
+      // Consider only sets that were part of a completed workout or maybe just any recorded set?
+      // For now, let's order by the workout date to get the most recent session
+      .order('date', {
+        foreignTable: 'workout_exercises.workouts',
+        ascending: false,
+      })
+      // Also order by set_number descending within that workout to get the last set's config?
+      // Or maybe just the first set encountered from the latest workout is fine.
+      // Let's stick to workout date for simplicity.
+      .limit(1) // Get the most recent record
+      .maybeSingle(); // Expect 0 or 1 result
+
+    if (error) throw error;
+
+    if (!data) {
+      console.log(`No history found for exercise ${exerciseId} by user ${userId}`);
+      return null;
+    }
+
+    // Return the equipment type and variation from the most recent set found
+    return {
+      equipmentType: data.equipment_type as EquipmentType | null,
+      variation: data.variation as string | null,
+    };
+
+  } catch (error) {
+    console.error("Error fetching last exercise config:", error);
+    return null; // Return null on error
+  }
+};
+
+/**
  * Fetches the completed sets from the most recent workout instance
  * for a specific exercise, user, equipment type, and variation.
  *
@@ -204,7 +255,8 @@ export async function fetchLatestMaxRepsForExercises(
 
   try {
     // Note: The RPC function 'get_latest_max_reps_for_exercises' needs to be created in Supabase SQL.
-    const { data, error } = await supabase.rpc('get_latest_max_reps_for_exercises', {
+    // Cast the function name to 'any' to bypass strict type checking if types are out of sync
+    const { data, error } = await supabase.rpc('get_latest_max_reps_for_exercises' as any, {
       p_user_id: userId,
       p_exercise_ids: exerciseIds,
     });
