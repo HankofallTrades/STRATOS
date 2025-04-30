@@ -339,7 +339,7 @@ export const WorkoutExerciseView = ({
               <div className="">
                 <Table className="w-full">
                   <TableHeader>
-                    <TableRow className="text-xs select-none pointer-events-none">
+                    <TableRow className="text-xs">
                       <TableHead className="w-[35px] text-center px-1 py-1">Set</TableHead>
                       <TableHead className="w-[70px] text-center px-1 py-1">Previous</TableHead>
                       <TableHead className="w-[75px] text-center px-1 py-1">Weight</TableHead>
@@ -384,11 +384,8 @@ export const WorkoutExerciseView = ({
                             <Button 
                               variant="ghost" 
                               size="icon" 
-                              className="h-6 w-6"
-                              onClick={(e) => {
-                                onUpdateLastSet('weight', -1);
-                                (e.target as HTMLButtonElement).blur();
-                              }}
+                              className="h-6 w-6 hover:bg-transparent"
+                              onClick={() => onUpdateLastSet('weight', -1)}
                               disabled={workoutExercise.sets.length === 0}
                               aria-label="Decrease weight of last set by 1"
                             >
@@ -397,11 +394,8 @@ export const WorkoutExerciseView = ({
                             <Button 
                               variant="ghost" 
                               size="icon" 
-                              className="h-6 w-6"
-                              onClick={(e) => {
-                                onUpdateLastSet('weight', 1);
-                                (e.target as HTMLButtonElement).blur();
-                              }}
+                              className="h-6 w-6 hover:bg-transparent"
+                              onClick={() => onUpdateLastSet('weight', 1)}
                               disabled={workoutExercise.sets.length === 0}
                               aria-label="Increase weight of last set by 1"
                             >
@@ -414,11 +408,8 @@ export const WorkoutExerciseView = ({
                             <Button 
                               variant="ghost" 
                               size="icon" 
-                              className="h-6 w-6"
-                              onClick={(e) => {
-                                onUpdateLastSet('reps', -1);
-                                (e.target as HTMLButtonElement).blur();
-                              }}
+                              className="h-6 w-6 hover:bg-transparent"
+                              onClick={() => onUpdateLastSet('reps', -1)}
                               disabled={workoutExercise.sets.length === 0}
                               aria-label="Decrease reps of last set by 1"
                             >
@@ -427,11 +418,8 @@ export const WorkoutExerciseView = ({
                             <Button 
                               variant="ghost" 
                               size="icon" 
-                              className="h-6 w-6"
-                              onClick={(e) => {
-                                onUpdateLastSet('reps', 1);
-                                (e.target as HTMLButtonElement).blur();
-                              }}
+                              className="h-6 w-6 hover:bg-transparent"
+                              onClick={() => onUpdateLastSet('reps', 1)}
                               disabled={workoutExercise.sets.length === 0}
                               aria-label="Increase reps of last set by 1"
                             >
