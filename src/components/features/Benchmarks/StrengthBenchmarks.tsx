@@ -8,7 +8,8 @@ import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/core/card";
 import { Progress } from "@/components/core/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/core/alert";
-import { Target, CheckCircle, ChevronDown, Dumbbell } from "lucide-react";
+import { Target, CheckCircle, ChevronDown } from "lucide-react";
+import { Barbell } from "@phosphor-icons/react";
 import { Exercise } from "@/lib/types/workout"; // Need Exercise type
 import { Label } from "@/components/core/label"; // Import Label for dropdown
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/core/select"; // Import Select components
@@ -263,7 +264,7 @@ const StrengthBenchmarks: React.FC<StrengthBenchmarksProps> = ({ currentType, on
 
                 {/* Title with inline DropdownMenu */}
                 <div className="flex items-center mr-28"> {/* Wrapper to keep icon/title/dropdown together, with margin */} 
-                     <Dumbbell className="mr-2 h-5 w-5 text-fitnessIndigo flex-shrink-0" /> {/* Icon outside trigger */} 
+                     <Barbell className="mr-2 h-5 w-5 text-fitnessIndigo flex-shrink-0" /> {/* Icon outside trigger */} 
                      <CardTitle className="flex items-center">
                          <DropdownMenu>
                              <DropdownMenuTrigger asChild>
