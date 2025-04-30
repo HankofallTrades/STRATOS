@@ -40,6 +40,10 @@ const workoutSlice = createSlice({
         state.workoutStartTime = null; // Clear start time
       }
     },
+    clearWorkout(state) {
+      state.currentWorkout = null;
+      state.workoutStartTime = null;
+    },
     addExerciseToWorkout(state, action: PayloadAction<WorkoutExercise>) {
         if (state.currentWorkout) {
             if (!state.currentWorkout.exercises.some(ex => ex.exerciseId === action.payload.exerciseId)) {
@@ -160,6 +164,7 @@ const workoutSlice = createSlice({
 export const {
     startWorkout,
     endWorkout,
+    clearWorkout,
     addExerciseToWorkout,
     addSetToExercise,
     updateSet,
