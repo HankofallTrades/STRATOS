@@ -179,7 +179,13 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
   };
 
   const handleAddSet = () => {
-    dispatch(addSetToExerciseAction({ workoutExerciseId: workoutExercise.id, exerciseId: workoutExercise.exerciseId }));
+    dispatch(
+      addSetToExerciseAction({
+        workoutExerciseId: workoutExercise.id,
+        exerciseId: workoutExercise.exerciseId,
+        userBodyweight: userProfile?.bodyweight ?? null,
+      })
+    );
   };
 
   const handleUpdateLastSet = (field: 'weight' | 'reps', change: number) => {

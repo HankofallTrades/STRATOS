@@ -1,7 +1,7 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { v4 as uuidv4 } from 'uuid';
 import type { Workout, ExerciseSet, WorkoutExercise } from '../../lib/types/workout';
-import type { EquipmentType } from '../../lib/types/enums'; // Import EquipmentType
+import { EquipmentType, EquipmentTypeEnum } from '../../lib/types/enums'; // Import EquipmentType & Enum
 import type { RootState } from '../store'; // Import RootState for selectors
 
 interface WorkoutState {
@@ -51,7 +51,14 @@ const workoutSlice = createSlice({
             }
         }
     },
-    addSetToExercise(state, action: PayloadAction<{ workoutExerciseId: string; exerciseId: string }>) {
+    addSetToExercise(
+        state,
+        action: PayloadAction<{
+            workoutExerciseId: string;
+            exerciseId: string;
+            userBodyweight?: number | null; // Add optional bodyweight
+        }>
+    ) {
       if (!state.currentWorkout) return;
       const workoutExercise = state.currentWorkout.exercises.find(
         (ex) => ex.id === action.payload.workoutExerciseId
@@ -59,10 +66,21 @@ const workoutSlice = createSlice({
       if (!workoutExercise) return;
 
       // Create a new set, potentially copying weight/reps/variation/equipment from the last set
-      const lastSet = workoutExercise.sets.at(-1);
+      const lastSet = workoutExercise.sets.length > 0 ? workoutExercise.sets[workoutExercise.sets.length - 1] : null;
+
+      // Determine initial weight: Bodyweight if applicable, else last set weight or 0
+      let weightForNewSet = lastSet?.weight ?? 0;
+      if (
+          workoutExercise.equipmentType === EquipmentTypeEnum.Free &&
+          action.payload.userBodyweight != null &&
+          action.payload.userBodyweight > 0
+      ) {
+          weightForNewSet = action.payload.userBodyweight;
+      }
+
       const newSet: ExerciseSet = {
         id: uuidv4(),
-        weight: lastSet?.weight ?? 0,
+        weight: weightForNewSet, // Use calculated initial weight
         reps: lastSet?.reps ?? 0,
         exerciseId: action.payload.exerciseId,
         completed: false,
