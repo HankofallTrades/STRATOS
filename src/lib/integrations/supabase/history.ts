@@ -1,5 +1,4 @@
 import { supabase } from './client';
-import { EquipmentType } from '@/lib/types/enums';
 import { DailyMaxE1RM } from '@/lib/types/analytics';
 
 /**
@@ -12,7 +11,7 @@ import { DailyMaxE1RM } from '@/lib/types/analytics';
 export const fetchLastConfigForExercise = async (
   userId: string,
   exerciseId: string
-): Promise<{ equipmentType: EquipmentType | null; variation: string | null } | null> => {
+): Promise<{ equipmentType: string | null; variation: string | null } | null> => {
   try {
     // Query the exercise_sets table, join up to workouts to filter by user and order by date
     const { data, error } = await supabase
@@ -43,7 +42,7 @@ export const fetchLastConfigForExercise = async (
 
     // Return the equipment type and variation from the most recent set found
     return {
-      equipmentType: data.equipment_type as EquipmentType | null,
+      equipmentType: data.equipment_type as string | null,
       variation: data.variation as string | null,
     };
 
@@ -66,7 +65,7 @@ export const fetchLastConfigForExercise = async (
 export const fetchLastWorkoutExerciseInstanceFromDB = async (
   userId: string,
   exerciseId: string,
-  equipmentType: EquipmentType | undefined | null,
+  equipmentType: string | undefined | null,
   variation: string | undefined | null
 ): Promise<{ weight: number; reps: number; set_number: number }[] | null> => {
   const targetVariation = variation || 'Standard';
@@ -182,7 +181,7 @@ export async function fetchMaxE1RMHistory(userId: string, exerciseId: string): P
 export interface LatestMaxE1RM {
   exercise_id: string;
   max_e1rm: number;
-  equipment_type: EquipmentType | string | null;
+  equipment_type: string | null;
 }
 
 /**
@@ -218,7 +217,7 @@ export async function fetchLatestMaxE1RMForExercises(
     const validatedData = results.map(item => ({
         exercise_id: String(item.exercise_id), // Ensure string
         max_e1rm: Number(item.max_e1rm), // Ensure number
-        equipment_type: item.equipment_type as EquipmentType | string | null // Map the new field
+        equipment_type: item.equipment_type as string | null // Map the new field
     })).filter(item => item.exercise_id && !isNaN(item.max_e1rm)); // Basic validation
 
     return validatedData as LatestMaxE1RM[];

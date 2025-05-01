@@ -16,7 +16,6 @@ import { Label } from "@/components/core/label";
 import { Input } from "@/components/core/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/core/Dialog";
 import { Exercise, WorkoutExercise } from "@/lib/types/workout";
-import { EquipmentType, EquipmentTypeEnum } from '@/lib/types/enums';
 import { v4 as uuidv4 } from 'uuid';
 import { useToast } from "@/components/core/Toast/use-toast";
 import { useAuth } from '@/state/auth/AuthProvider';
@@ -72,16 +71,16 @@ const ExerciseSelector = () => {
       }
     }
 
-    // Determine equipment type: last used > exercise default > fallback (BB)
-    const equipmentType = 
-      lastConfig.equipmentType as EquipmentType ?? // Use last used if available
-      selectedExercise.default_equipment_type as EquipmentType ?? // Else use exercise default
-      EquipmentTypeEnum.BB; // Else fallback to Barbell
+    // Directly use the string from history or default, with a fallback
+    const equipmentType: string = 
+      lastConfig.equipmentType ?? // Use last used if available (will be a string like "Dumbbell" or potentially an old code if history wasn't updated)
+      selectedExercise.default_equipment_type ?? // Else use exercise default (also a string)
+      "Barbell"; // Final fallback to the string "Barbell" if both are null/undefined
 
     // Determine variation: last used > fallback ('Standard')
     const variation = lastConfig.variation ?? 'Standard';
 
-    // Prefetch historical data for the determined config
+    // Prefetch historical data for the determined config (using the direct equipmentType string)
     if (user?.id && selectedExercise.id) {
       queryClient.prefetchQuery({
         queryKey: ['lastPerformance', user.id, selectedExercise.id, equipmentType, variation],
@@ -93,12 +92,12 @@ const ExerciseSelector = () => {
       });
     }
 
-    // Create the payload with potentially fetched config
+    // Create the payload with the directly determined config
     const workoutExercisePayload: WorkoutExercise = {
       id: newWorkoutExerciseId, // Use generated ID
       exerciseId: selectedExercise.id,
       exercise: selectedExercise,
-      equipmentType: equipmentType, // Use determined equipment type
+      equipmentType: equipmentType, // Use the directly determined equipment type string
       variation: variation,         // Use determined variation
       sets: [], // Start with empty sets initially
     };

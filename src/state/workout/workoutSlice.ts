@@ -1,7 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { v4 as uuidv4 } from 'uuid';
 import type { Workout, ExerciseSet, WorkoutExercise } from '../../lib/types/workout';
-import { EquipmentType, EquipmentTypeEnum } from '../../lib/types/enums'; // Import EquipmentType & Enum
 import type { RootState } from '../store'; // Import RootState for selectors
 
 interface WorkoutState {
@@ -71,7 +70,8 @@ const workoutSlice = createSlice({
       // Determine initial weight: Bodyweight if applicable, else last set weight or 0
       let weightForNewSet = lastSet?.weight ?? 0;
       if (
-          workoutExercise.equipmentType === EquipmentTypeEnum.Free &&
+          // Check against the string "Bodyweight"
+          workoutExercise.equipmentType === "Bodyweight" &&
           action.payload.userBodyweight != null &&
           action.payload.userBodyweight > 0
       ) {
@@ -97,7 +97,7 @@ const workoutSlice = createSlice({
         weight: number;
         reps: number;
         variation?: string | null; // Add optional variation
-        equipmentType?: EquipmentType | null; // Add optional equipmentType
+        equipmentType?: string | null; // Add optional equipmentType
       }>
     ) {
       if (!state.currentWorkout) return;
@@ -137,7 +137,7 @@ const workoutSlice = createSlice({
             set.completed = action.payload.completed;
         }
     },
-    updateWorkoutExerciseEquipment(state, action: PayloadAction<{ workoutExerciseId: string; equipmentType: EquipmentType }>) {
+    updateWorkoutExerciseEquipment(state, action: PayloadAction<{ workoutExerciseId: string; equipmentType: string }>) {
         if (!state.currentWorkout) return;
         const workoutExercise = state.currentWorkout.exercises.find(
             (ex) => ex.id === action.payload.workoutExerciseId

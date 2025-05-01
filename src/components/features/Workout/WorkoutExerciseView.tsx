@@ -7,7 +7,8 @@ import { MutationStatus } from '@tanstack/react-query'; // Keep MutationStatus t
 // import { useAppSelector } from '@/hooks/redux';
 // Selector
 import { Exercise, ExerciseSet } from '@/lib/types/workout';
-import { EquipmentType, EquipmentTypeEnum } from '@/lib/types/enums'; // Correct import path
+// Removed EquipmentType imports
+// import { EquipmentType, EquipmentTypeEnum } from '@/lib/types/enums'; // Correct import path
 import { Button } from '@/components/core/button';
 // REMOVED Select imports
 // import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/core/select';
@@ -31,25 +32,22 @@ import {
 // ADD Popover imports
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/core/popover"
 
-// Add map for display names
-const equipmentTypeDisplayNames: Record<EquipmentType, string> = {
-  [EquipmentTypeEnum.BB]: 'Barbell',
-  [EquipmentTypeEnum.DB]: 'Dumbbell',
-  [EquipmentTypeEnum.KB]: 'Kettlebell',
-  [EquipmentTypeEnum.Cable]: 'Cable',
-  [EquipmentTypeEnum.Free]: 'Bodyweight', // Or 'Free Weight'? Let's use Bodyweight for now
-  [EquipmentTypeEnum.Machine]: 'Machine', // Add Machine display name
-};
+// Removed translation map
+// const equipmentTypeDisplayNames: Record<EquipmentType, string> = { ... };
+
+// Define the direct string options for equipment
+const EQUIPMENT_CHOICES = ["Barbell", "Dumbbell", "Kettlebell", "Cable", "Bodyweight", "Machine"];
 
 // Define props passed from WorkoutExerciseContainer
 interface WorkoutExerciseViewProps {
-  workoutExercise: { id: string; exerciseId: string; exercise: Exercise; sets: ExerciseSet[]; equipmentType?: EquipmentType };
-  equipmentTypes: Readonly<EquipmentType[]>;
+  workoutExercise: { id: string; exerciseId: string; exercise: Exercise; sets: ExerciseSet[]; equipmentType?: string }; // Changed EquipmentType to string
+  // Removed equipmentTypes prop
+  // equipmentTypes: Readonly<EquipmentType[]>;
   overallLastPerformance: { weight: number; reps: number } | null;
   historicalSetPerformances: Record<number, { weight: number; reps: number } | null>;
   userBodyweight?: number | null; // Add user bodyweight prop
   onAddSet: () => void;
-  onEquipmentChange: (value: EquipmentType) => void;
+  onEquipmentChange: (value: string) => void; // Changed signature to accept string
   onDeleteExercise: () => void; // Add delete handler prop
   // Variation related props from container
   variations: string[];
@@ -79,7 +77,7 @@ const formatPrevious = (perf: { weight: number; reps: number } | null): string =
 export const WorkoutExerciseView = ({
   // Destructure all props
   workoutExercise,
-  equipmentTypes,
+  // removed equipmentTypes prop
   overallLastPerformance,
   historicalSetPerformances,
   userBodyweight, // Destructure userBodyweight
@@ -169,22 +167,8 @@ export const WorkoutExerciseView = ({
   };
 
   // --- Memos ---
-  const sortedEquipmentTypes = useMemo(() => {
-    const defaultType = workoutExercise.exercise.default_equipment_type;
-    if (!defaultType || !equipmentTypes.includes(defaultType as EquipmentType)) {
-      return equipmentTypes; // Return original if no default or default not in list
-    }
-
-    const sorted = [...equipmentTypes];
-    const index = sorted.indexOf(defaultType as EquipmentType);
-
-    // Should always be found based on the includes check, but double-check
-    if (index > -1) {
-      sorted.splice(index, 1); // Remove from current position
-      sorted.unshift(defaultType as EquipmentType); // Add to the beginning
-    }
-    return sorted;
-  }, [equipmentTypes, workoutExercise.exercise.default_equipment_type]);
+  // Removed sortedEquipmentTypes useMemo hook
+  // const sortedEquipmentTypes = useMemo(() => { ... });
 
   // --- Render ---
   // Removed variationsError check (handled in container)
@@ -223,24 +207,29 @@ export const WorkoutExerciseView = ({
                 <Popover open={equipmentOpen} onOpenChange={setEquipmentOpen}>
                   <PopoverTrigger asChild onPointerDownCapture={(e) => e.stopPropagation()}>
                     <Button variant="outline" size="sm" className="rounded-full h-7 px-2.5 text-xs w-auto border-border">
-                      {workoutExercise.equipmentType ? equipmentTypeDisplayNames[workoutExercise.equipmentType] : "Select Equip."}
+                      {/* Display the string directly, provide fallback */}
+                      {workoutExercise.equipmentType || "Select Equip."}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-1">
                     <div className="flex flex-col gap-1">
-                      {sortedEquipmentTypes.map((type) => (
+                      {/* Iterate over the string choices */}
+                      {EQUIPMENT_CHOICES.map((choice) => (
                         <Button
-                          key={type}
+                          key={choice}
                           variant="ghost"
                           size="sm"
                           className="w-full justify-start h-8 px-2 text-xs"
                           onClick={() => {
-                            onEquipmentChange(type as EquipmentType);
+                            // Pass the string choice directly
+                            onEquipmentChange(choice);
                             setEquipmentOpen(false);
                           }}
-                          disabled={workoutExercise.equipmentType === type}
+                          // Compare with the string choice
+                          disabled={workoutExercise.equipmentType === choice}
                         >
-                          {equipmentTypeDisplayNames[type]}
+                          {/* Display the string choice */}
+                          {choice}
                         </Button>
                       ))}
                       {/* Add New Equipment Button */}
@@ -251,7 +240,7 @@ export const WorkoutExerciseView = ({
                         onClick={() => {
                           // TODO: Implement logic to handle adding a new equipment type
                           // For now, just calling onEquipmentChange with a special value
-                          onEquipmentChange('add_new' as any); // Using 'any' temporarily
+                          onEquipmentChange('add_new'); // Using 'any' temporarily
                           setEquipmentOpen(false);
                         }}
                       >
