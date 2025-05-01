@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, MotionProps } from 'framer-motion';
 import { ExerciseSet } from "@/lib/types/workout";
-import { EquipmentType } from "@/lib/types/enums";
 import { useAppDispatch } from "@/hooks/redux";
 import { 
   updateSet as updateSetAction, 
@@ -17,7 +16,6 @@ import {
   TableCell,
 } from "@/components/core/table";
 import { cn } from "@/lib/utils/cn";
-import { EquipmentTypeEnum } from '@/lib/types/enums';
 
 interface SetComponentProps extends MotionProps {
   workoutExerciseId: string;
@@ -84,7 +82,7 @@ const SetComponent: React.FC<SetComponentProps> = ({
 
   useEffect(() => {
     if (
-      set.equipmentType === EquipmentTypeEnum.Free && 
+      set.equipmentType === "Bodyweight" && 
       userBodyweight && 
       userBodyweight > 0 && 
       !weightTouched && 

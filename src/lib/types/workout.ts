@@ -1,5 +1,3 @@
-import { EquipmentType } from "./enums";
-
 /**
  * Represents the core definition of an exercise, mirroring the Supabase 'exercises' table.
  */
@@ -18,7 +16,7 @@ export interface ExerciseSet {
   reps: number;
   exerciseId: string; // Links to Exercise.id
   completed: boolean;
-  equipmentType?: EquipmentType; // Equipment used for *this specific set*
+  equipmentType?: string; // Changed to string
   variation?: string; // Variation used for *this specific set*
 }
 
@@ -30,7 +28,7 @@ export interface WorkoutExercise {
   workoutId?: string; // Foreign key to the workout this instance belongs to
   exerciseId: string; // Foreign key to the main Exercise definition
   exercise: Exercise; // Embed the core exercise details (using updated Exercise type)
-  equipmentType?: EquipmentType; // Equipment used for *this workout instance*
+  equipmentType?: string; // Changed to string
   variation?: string; // Variation used for *this workout instance*
   sets: ExerciseSet[];
 }

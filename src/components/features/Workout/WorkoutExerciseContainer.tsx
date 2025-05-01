@@ -10,7 +10,6 @@ import {
   updateSet as updateSetAction,
 } from "@/state/workout/workoutSlice";
 import { WorkoutExercise, ExerciseSet, Exercise } from "@/lib/types/workout";
-import { EquipmentType, EquipmentTypeEnum } from "@/lib/types/enums";
 import { addExerciseVariationToDB, fetchExerciseVariationsFromDB } from '@/lib/integrations/supabase/exercises';
 import { fetchLastWorkoutExerciseInstanceFromDB } from '@/lib/integrations/supabase/history';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/core/Dialog";
@@ -132,9 +131,7 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
     return performances;
   }, [historicalSets]);
 
-  const equipmentTypes = Object.values(EquipmentTypeEnum);
-
-  const handleEquipmentChange = (value: EquipmentType) => {
+  const handleEquipmentChange = (value: string) => {
     dispatch(updateWorkoutExerciseEquipmentAction({ workoutExerciseId: workoutExercise.id, equipmentType: value }));
   };
 
@@ -234,7 +231,6 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
     <>
       <WorkoutExerciseView
         workoutExercise={workoutExercise}
-        equipmentTypes={equipmentTypes}
         overallLastPerformance={overallLastPerformance}
         historicalSetPerformances={historicalSetPerformances}
         userBodyweight={userProfile?.bodyweight ?? null}
