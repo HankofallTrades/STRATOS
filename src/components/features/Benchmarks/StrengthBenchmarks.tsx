@@ -268,8 +268,8 @@ const StrengthBenchmarks: React.FC<StrengthBenchmarksProps> = ({ currentType, on
 
     // Render the Card containing the benchmarks UI
     return (
-        <Card className="relative">
-            <CardHeader>
+        <Card className="relative border-0 shadow-none bg-transparent p-0 md:border md:shadow md:bg-card md:p-6">
+            <CardHeader className="p-0 mb-4 md:p-4 md:pb-0">
                 {/* Level Selector (stays in top right) */}
                 <div className="absolute top-4 right-4">
                     <Select 
@@ -325,7 +325,7 @@ const StrengthBenchmarks: React.FC<StrengthBenchmarksProps> = ({ currentType, on
                      </CardTitle>
                 </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0 md:p-6 md:pt-0">
                 {renderBenchmarkContent()}
             </CardContent>
         </Card>

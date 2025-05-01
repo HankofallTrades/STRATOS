@@ -360,8 +360,8 @@ const ExerciseProgressAnalysis: React.FC<ExerciseProgressAnalysisProps> = ({
             ) : errorExercises ? (
                 <p className="text-red-500 italic text-center py-10">Error loading exercises: {errorExercises.message}</p>
             ) : exercises.length > 0 ? (
-                <Card className="mb-8">
-                    <CardHeader>
+                <Card className="mb-8 border-0 shadow-none bg-transparent p-0 md:border md:shadow md:bg-card md:p-6">
+                    <CardHeader className="p-0 mb-4 md:p-4 md:pb-0">
                         {/* Moved title and buttons into header */}
                         {selectedExercise && (
                             <>
@@ -390,7 +390,7 @@ const ExerciseProgressAnalysis: React.FC<ExerciseProgressAnalysisProps> = ({
                         )}
                     </CardHeader>
                     {/* Removed space-y-6 from CardContent */}
-                    <CardContent>
+                    <CardContent className="p-0 md:p-6 md:pt-0">
                         {selectedExercise && (
                             // Removed outer div that previously held title/buttons
                             <>
