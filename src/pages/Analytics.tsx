@@ -81,7 +81,7 @@ const Analytics = () => {
   return (
     <div className="container mx-auto p-4 max-w-4xl"> {/* Increased max-width */}
       <header className="flex flex-col items-center justify-between mb-8 text-center">
-        <h1 className="text-3xl md:text-4xl font-bold mb-2 text-fitnessIndigo">Your Analytics</h1>
+        <h1 className="text-3xl md:text-4xl font-bold mb-2 text-fitnessIndigo">Analytics</h1>
         <p className="text-gray-600 mb-6">Track your progress and visualize your gains</p>
       </header>
 
