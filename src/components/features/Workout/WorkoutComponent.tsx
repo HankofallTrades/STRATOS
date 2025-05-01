@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAppSelector, useAppDispatch } from "@/hooks/redux";
 import { 
   selectCurrentWorkout, 
@@ -17,16 +17,33 @@ import { Workout } from "@/lib/types/workout";
 import { TablesInsert } from '@/lib/integrations/supabase/types';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from "@/components/core/Dialog";
 
 const WorkoutComponent = () => {
   const dispatch = useAppDispatch();
   const currentWorkout = useAppSelector(selectCurrentWorkout);
   const workoutStartTime = useAppSelector(selectWorkoutStartTime);
   const navigate = useNavigate();
+  const [isDiscardConfirmOpen, setIsDiscardConfirmOpen] = useState(false);
 
   if (!currentWorkout) {
     return null;
   }
+
+  const handleDiscardWorkout = () => {
+    dispatch(endWorkoutAction());
+    dispatch(clearWorkout());
+    navigate('/');
+    setIsDiscardConfirmOpen(false);
+  };
 
   const handleEndWorkout = async () => {
     const workoutToEnd = currentWorkout;
@@ -36,14 +53,7 @@ const WorkoutComponent = () => {
     const hasCompletedSets = workoutToEnd.exercises.some(ex => ex.sets.some(set => set.completed));
     
     if (!hasCompletedSets) {
-        toast({
-            title: "Empty Workout",
-            description: "Workout discarded as no sets were completed.",
-            variant: "default",
-        });
-        dispatch(endWorkoutAction());
-        dispatch(clearWorkout());
-        navigate('/');
+        setIsDiscardConfirmOpen(true);
         return;
     }
 
@@ -194,47 +204,68 @@ const WorkoutComponent = () => {
   };
 
   return (
-    <div className="space-y-6 flex flex-col h-full">
-      <div className="flex-grow space-y-6 overflow-y-auto px-1">
-        {currentWorkout.exercises.length > 0 ? (
-          <AnimatePresence initial={false}>
-            {currentWorkout.exercises.map((exercise) => (
-              <motion.div
-                key={exercise.id}
-                layout="position"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-                transition={{ type: "spring", stiffness: 250, damping: 30 }}
-              >
-                <WorkoutExerciseContainer
-                  workoutExercise={exercise}
-                />
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        ) : (
-          <div className="text-center py-6 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <p className="text-gray-500 dark:text-gray-400 mb-4">No exercises added yet</p>
+    <>
+      <div className="space-y-6 flex flex-col h-full">
+        <div className="flex-grow space-y-6 overflow-y-auto px-1">
+          {currentWorkout.exercises.length > 0 ? (
+            <AnimatePresence initial={false}>
+              {currentWorkout.exercises.map((exercise) => (
+                <motion.div
+                  key={exercise.id}
+                  layout="position"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                  transition={{ type: "spring", stiffness: 250, damping: 30 }}
+                >
+                  <WorkoutExerciseContainer
+                    workoutExercise={exercise}
+                  />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          ) : (
+            <div className="text-center py-6 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <p className="text-gray-500 dark:text-gray-400 mb-4">No exercises added yet</p>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-auto pt-4 flex justify-between items-center">
+          <div className="w-10"></div> 
+          <div className="flex flex-col items-center">
+            <ExerciseSelector /> 
           </div>
-        )}
+          <Button
+            onClick={handleEndWorkout}
+            variant="default" 
+            size="icon"
+            className="bg-fitnessGreen hover:bg-fitnessGreen/90 rounded-full h-12 w-12"
+          >
+            <Save size={16} className="text-white" />
+          </Button>
+        </div>
       </div>
 
-      <div className="mt-auto pt-4 flex justify-between items-center">
-        <div className="w-10"></div> 
-        <div className="flex flex-col items-center">
-          <ExerciseSelector /> 
-        </div>
-        <Button
-          onClick={handleEndWorkout}
-          variant="default" 
-          size="icon"
-          className="bg-fitnessGreen hover:bg-fitnessGreen/90 rounded-full h-12 w-12"
-        >
-          <Save size={16} className="text-white" />
-        </Button>
-      </div>
-    </div>
+      <Dialog open={isDiscardConfirmOpen} onOpenChange={setIsDiscardConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Discard Workout?</DialogTitle>
+            <DialogDescription>
+              This workout has no completed sets. Are you sure you want to discard it?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex flex-row justify-center gap-2">
+            <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button variant="destructive" onClick={handleDiscardWorkout}>
+              Discard
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 
