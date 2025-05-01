@@ -275,7 +275,48 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      exercise_sets_readable: {
+        Row: {
+          completed: boolean | null
+          created_at: string | null
+          equipment_type: string | null
+          exercise_name: string | null
+          id: string | null
+          reps: number | null
+          set_number: number | null
+          username: string | null
+          variation: string | null
+          weight: number | null
+          workout_exercise_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercise_sets_workout_exercise_id_fkey"
+            columns: ["workout_exercise_id"]
+            isOneToOne: false
+            referencedRelation: "workout_exercises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exercise_variations_readable: {
+        Row: {
+          created_at: string | null
+          exercise_id: string | null
+          exercise_name: string | null
+          id: string | null
+          variation_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercise_variations_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       get_exercise_max_e1rm_history: {
@@ -292,6 +333,32 @@ export type Database = {
         Returns: {
           exercise_id: string
           max_e1rm: number
+          equipment_type: string
+        }[]
+      }
+      get_latest_max_reps_for_exercises: {
+        Args: { p_user_id: string; p_exercise_ids: string[] }
+        Returns: {
+          exercise_id: string
+          max_reps: number
+        }[]
+      }
+      get_recent_workouts_summary: {
+        Args: { p_user_id: string; p_limit?: number }
+        Returns: {
+          workout_id: string
+          workout_date: string
+          duration_seconds: number
+          total_completed_sets: number
+          exercise_names: string[]
+        }[]
+      }
+      get_user_performance_stats: {
+        Args: { p_user_id: string }
+        Returns: {
+          total_workouts: number
+          total_duration_seconds: number
+          most_common_exercise_id: string
         }[]
       }
     }
