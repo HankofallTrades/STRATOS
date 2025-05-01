@@ -192,6 +192,18 @@ const ExerciseProgressAnalysis: React.FC<ExerciseProgressAnalysisProps> = ({
         }
 
         let startDate = new Date(now); // Default start is today UTC midnight
+        // Initialize endDate - will default to today unless 'ALL' range overrides it
+        let effectiveEndDate = new Date(endDate); 
+
+        // Find the date of the last data point for the 'ALL' range
+        const lastDataPointDateStr = maxE1RMHistory.length > 0
+            ? [...maxE1RMHistory].sort((a, b) => new Date(b.workout_date).getTime() - new Date(a.workout_date).getTime())[0].workout_date
+            : null;
+        let lastDataPointDate: Date | null = null;
+        if (lastDataPointDateStr) {
+            const parts = lastDataPointDateStr.split('-').map(Number);
+            lastDataPointDate = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+        }
 
         if (selectedTimeRange !== 'ALL') {
             // Use UTC methods for calculating past dates to align with UTC endDate
@@ -206,12 +218,16 @@ const ExerciseProgressAnalysis: React.FC<ExerciseProgressAnalysisProps> = ({
 
         } else {
             startDate = new Date(firstDataPointDate); // Use the UTC-parsed first date
+            // For 'ALL', set the end date to the last data point's date, if available
+            if (lastDataPointDate) {
+                effectiveEndDate = new Date(lastDataPointDate); 
+            }
         }
 
         // Generate all dates using UTC to avoid timezone shifts during iteration
         const allDatesInRange: Date[] = [];
         let currentDate = new Date(startDate); // Already UTC midnight or normalized local midnight
-        while (currentDate <= endDate) { // endDate is also UTC midnight
+        while (currentDate <= effectiveEndDate) { // Use effectiveEndDate
             allDatesInRange.push(new Date(currentDate));
             // Use setUTCDate to avoid potential DST issues if iterating across boundaries
             currentDate.setUTCDate(currentDate.getUTCDate() + 1);
@@ -256,13 +272,13 @@ const ExerciseProgressAnalysis: React.FC<ExerciseProgressAnalysisProps> = ({
 
         // Define domain for XAxis
         // Add a minimal buffer (1 millisecond) to prevent clipping the last point
-        const domainEndDate = endDate.getTime() + 1; 
+        const domainEndDate = effectiveEndDate.getTime() + 1; 
         const calculatedDomain: [number, number] = [startDate.getTime(), domainEndDate];
 
         // Generate explicit ticks based on the range for even spacing
         const tickTimestamps: number[] = [];
         const dayMillis = 1000 * 60 * 60 * 24;
-        const totalDays = Math.round((endDate.getTime() - startDate.getTime()) / dayMillis);
+        const totalDays = Math.round((effectiveEndDate.getTime() - startDate.getTime()) / dayMillis);
 
         // Ensure start and end dates are always included
         tickTimestamps.push(startDate.getTime());
@@ -270,13 +286,14 @@ const ExerciseProgressAnalysis: React.FC<ExerciseProgressAnalysisProps> = ({
         if (totalDays <= 10) { // Daily ticks for short ranges (<= 10 days)
              let tickDate = new Date(startDate);
              tickDate.setUTCDate(tickDate.getUTCDate() + 1); // Start loop from day after start
-             while (tickDate < endDate) {
+             while (tickDate < effectiveEndDate) {
                  tickTimestamps.push(tickDate.getTime());
                  tickDate.setUTCDate(tickDate.getUTCDate() + 1);
              }
         } else { // Evenly spaced ticks for longer ranges (> 10 days)
-            const totalDurationMillis = endDate.getTime() - startDate.getTime();
-            const targetIntervals = 7; // Aim for approx 8 ticks total
+            const totalDurationMillis = effectiveEndDate.getTime() - startDate.getTime();
+            // Reduce target intervals for more space, especially on mobile
+            const targetIntervals = 4; // Aim for approx 5 ticks total (Reduced from 7)
             // Prevent division by zero if duration is somehow zero or negative
             const tickIntervalMillis = totalDurationMillis > 0 ? totalDurationMillis / targetIntervals : dayMillis; 
 
@@ -284,14 +301,14 @@ const ExerciseProgressAnalysis: React.FC<ExerciseProgressAnalysisProps> = ({
             for (let i = 1; i < targetIntervals; i++) { // Generate intermediate ticks
                  currentTickTime += tickIntervalMillis;
                  // Add ticks only if they are before the end date (excluding buffer)
-                 if (currentTickTime < endDate.getTime()) { 
+                 if (currentTickTime < effectiveEndDate.getTime()) { 
                     tickTimestamps.push(currentTickTime);
                  }
             }
         }
 
         // Ensure end date is the last tick
-        tickTimestamps.push(endDate.getTime());
+        tickTimestamps.push(effectiveEndDate.getTime());
         
         // Remove potential duplicates and sort (important if start/end logic overlaps)
         const uniqueSortedTicks = Array.from(new Set(tickTimestamps)).sort((a, b) => a - b);
@@ -302,61 +319,81 @@ const ExerciseProgressAnalysis: React.FC<ExerciseProgressAnalysisProps> = ({
 
     return (
         <>
-            <h2 className="text-2xl font-semibold mb-4">Exercise Progress</h2>
+            {/* Moved dropdown logic here and restyled */}
+            {/* Outer flex container for title */}
+            <div className="flex items-center mb-4">
+                {/* Dropdown part */}
+                <div className="relative inline-flex items-center cursor-pointer"> 
+                    {/* Visible text span - Just exercise name now */}
+                    <span className="text-2xl font-semibold"> 
+                        {selectedExercise ? selectedExercise.name : "-- Select an Exercise --"}
+                    </span>
+                    {/* Chevron Icon */}
+                    <div className="flex items-center ml-1">
+                        <ChevronDown className="h-4 w-4 text-gray-400" />
+                    </div>
+                    {/* Hidden select element for functionality */}
+                    <select
+                        className="absolute inset-0 w-full h-full opacity-0 appearance-none cursor-pointer" // Make select cover div and hide visually
+                        value={selectedExercise?.id || ""}
+                        onChange={(e) => {
+                            const selected = exercises.find(ex => ex.id === e.target.value);
+                            setSelectedExercise(selected || null);
+                        }}
+                        disabled={isLoadingExercises}
+                    >
+                        <option value="" disabled={!!selectedExercise}>-- Select an Exercise --</option> {/* Optionally disable placeholder if something selected */}
+                        {exercises.map((exercise) => (
+                            <option key={exercise.id} value={exercise.id}>
+                                {exercise.name}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+                {/* Static "Progress" text */}
+                <span className="text-2xl font-semibold ml-2">Progress</span>
+            </div>
+            
+            {/* Conditional Rendering for loading/error/card */}
             {isLoadingExercises ? (
                 <p className="text-gray-500 italic">Loading exercises...</p>
             ) : errorExercises ? (
-                <p className="text-red-500 italic">Error loading exercises.</p>
+                <p className="text-red-500 italic text-center py-10">Error loading exercises: {errorExercises.message}</p>
             ) : exercises.length > 0 ? (
                 <Card className="mb-8">
                     <CardHeader>
-                        <div className="relative inline-flex items-center cursor-pointer">
-                            <span className="text-lg font-semibold">
-                                {selectedExercise ? selectedExercise.name : "-- Select an Exercise --"}
-                            </span>
-                            <div className="flex items-center ml-1">
-                                <ChevronDown className="h-4 w-4 text-gray-400" />
-                            </div>
-                            <select
-                                className="absolute inset-0 w-full h-full opacity-0 appearance-none cursor-pointer"
-                                value={selectedExercise?.id || ""}
-                                onChange={(e) => {
-                                    const selected = exercises.find(ex => ex.id === e.target.value);
-                                    setSelectedExercise(selected || null);
-                                }}
-                                disabled={isLoadingExercises}
-                            >
-                                <option value="" disabled={!!selectedExercise}>-- Select an Exercise --</option>
-                                {exercises.map((exercise) => (
-                                    <option key={exercise.id} value={exercise.id}>
-                                        {exercise.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="space-y-6 pt-6">
+                        {/* Moved title and buttons into header */}
                         {selectedExercise && (
-                            <div>
-                                <div className="flex justify-between items-center mb-4">
+                            <>
+                                {/* Container for title ONLY */}
+                                <div className="mb-4"> 
                                     <h3 className="text-lg font-medium flex items-center">
                                         <TrendingUp className="mr-2 h-5 w-5" /> Estimated 1RM
                                     </h3>
-                                    <div className="flex space-x-1">
-                                        {timeRangeOptions.map(range => (
-                                            <Button 
-                                                key={range} 
-                                                variant={selectedTimeRange === range ? "default" : "outline"}
-                                                size="sm"
-                                                onClick={() => setSelectedTimeRange(range)}
-                                                aria-label={`Select ${range}`}
-                                                className="px-2 h-8"
-                                            >
-                                                {range}
-                                            </Button>
-                                        ))}
-                                    </div>
                                 </div>
+                                {/* Moved Time Range Buttons here, centered */}
+                                <div className="flex justify-center space-x-1 mb-4"> 
+                                    {timeRangeOptions.map(range => (
+                                        <Button 
+                                            key={range} 
+                                            variant={selectedExercise && selectedTimeRange === range ? "default" : "outline"}
+                                            size="sm"
+                                            onClick={() => setSelectedTimeRange(range)}
+                                            aria-label={`Select ${range}`}
+                                            className="px-2 h-8"
+                                        >
+                                            {range}
+                                        </Button>
+                                    ))}
+                                </div>
+                            </>
+                        )}
+                    </CardHeader>
+                    {/* Removed space-y-6 from CardContent */}
+                    <CardContent>
+                        {selectedExercise && (
+                            // Removed outer div that previously held title/buttons
+                            <>
                                 {isLoadingHistory ? (
                                     <p className="text-gray-500 italic text-center py-10">Loading history...</p>
                                 ) : errorHistory ? (
@@ -438,7 +475,11 @@ const ExerciseProgressAnalysis: React.FC<ExerciseProgressAnalysisProps> = ({
                                             : `No estimated 1RM history found for this exercise in the last ${selectedTimeRange}.`}
                                     </p>
                                 )}
-                            </div>
+                            </>
+                        )}
+                        {/* If no exercise selected, maybe show a prompt? */}
+                        {!selectedExercise && (
+                             <p className="text-gray-500 italic text-center py-10">Select an exercise above to see its progress.</p>
                         )}
                     </CardContent>
                 </Card>
