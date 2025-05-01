@@ -193,6 +193,8 @@ export const WorkoutExerciseView = ({
   const variationSelectPlaceholder = isLoadingVariations ? "Loading..." : (selectedVariation || DEFAULT_VARIATION);
   const isSavingVariation = addVariationMutationStatus === 'pending'; // Check mutation status
 
+  const [expanded, setExpanded] = useState(false);
+
   return (
     <Fragment>
       {/* Static Relative Wrapper for Positioning and Clipping */}
@@ -206,8 +208,8 @@ export const WorkoutExerciseView = ({
           onDragEnd={handleDragEnd} // Use the correct handler
           style={{ x: cardX, touchAction: 'pan-y' }}
         >
-          <Card className="w-full rounded-lg">
-            <CardHeader className="flex flex-row justify-between items-center gap-2 p-2 sm:p-4">
+          <Card className="w-full rounded-lg border-0 shadow-none bg-transparent p-0 md:border md:shadow md:bg-card md:rounded-lg">
+            <CardHeader className="flex flex-row justify-between items-center gap-2 p-0 md:p-2 md:sm:p-4">
               {/* Title Area */}
               <div className="flex-grow min-w-0">
                 <CardTitle className="text-lg sm:text-xl font-semibold text-left truncate">
@@ -335,7 +337,7 @@ export const WorkoutExerciseView = ({
               </div>
             </CardHeader>
 
-            <CardContent className="pt-0 pb-2 px-2 sm:px-4">
+            <CardContent className="p-0 pt-0 md:pt-0 md:pb-2 md:px-2 md:sm:px-4">
               <div className="">
                 <Table className="w-full">
                   <TableHeader>

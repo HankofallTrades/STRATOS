@@ -190,24 +190,25 @@ const CalisthenicBenchmarks: React.FC<CalisthenicBenchmarksProps> = ({ currentTy
     };
 
     return (
-        <Card className="relative">
-            <CardHeader>
-                <div className="absolute top-4 right-4">
-                    <Select
-                        value={selectedLevel}
-                        onValueChange={(value) => setSelectedLevel(value as BenchmarkLevel)}
-                    >
-                        <SelectTrigger className="w-[110px]">
-                            <SelectValue placeholder="Select level" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="Average">Average</SelectItem>
-                            <SelectItem value="Strong">Strong</SelectItem>
-                            <SelectItem value="Elite">Elite</SelectItem>
-                        </SelectContent>
-                    </Select>
-                 </div>
-
+        <Card className="relative border-0 shadow-none bg-transparent p-0 md:border md:shadow md:bg-card md:p-6">
+            <CardHeader className="p-0 mb-4 md:p-4 md:pb-0">
+                <div className="flex items-center mb-4">
+                    <div className="relative inline-flex items-center cursor-pointer">
+                        <Select
+                            value={selectedLevel}
+                            onValueChange={(value) => setSelectedLevel(value as BenchmarkLevel)}
+                        >
+                            <SelectTrigger className="w-[110px]">
+                                <SelectValue placeholder="Select level" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Average">Average</SelectItem>
+                                <SelectItem value="Strong">Strong</SelectItem>
+                                <SelectItem value="Elite">Elite</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
                 <div className="flex items-center mr-28">
                     <PersonSimpleRun className="mr-2 h-5 w-5 text-fitnessBlue flex-shrink-0" />
                     <CardTitle className="flex items-center">
@@ -245,7 +246,7 @@ const CalisthenicBenchmarks: React.FC<CalisthenicBenchmarksProps> = ({ currentTy
                     </CardTitle>
                 </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0 md:p-6 md:pt-0">
                 {renderBenchmarkContent()}
             </CardContent>
         </Card>
