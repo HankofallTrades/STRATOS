@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from "@/lib/integrations/supabase/client";
 import { fetchExercisesFromDB } from '@/lib/integrations/supabase/exercises';
@@ -20,18 +20,20 @@ import {
 import { Button } from "@/components/core/button";
 import { Exercise } from "@/lib/types/workout";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/core/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/core/popover";
 
 // Define benchmark exercises
 const CALISTHENIC_BENCHMARK_NAMES = ["Pull-up", "Push-up"] as const;
 type CalisthenicBenchmarkName = typeof CALISTHENIC_BENCHMARK_NAMES[number];
 
 // Define levels and their goal reps
-type BenchmarkLevel = 'Average' | 'Strong' | 'Elite';
+type BenchmarkLevel = 'Solid' | 'Strong' | 'Elite';
+const ALL_LEVELS: BenchmarkLevel[] = ['Solid', 'Strong', 'Elite'];
 type BenchmarkTypeOption = 'Strength' | 'Calisthenics'; // For the type switcher
 const ALL_BENCHMARK_TYPES: BenchmarkTypeOption[] = ['Strength', 'Calisthenics'];
 
 const CALISTHENIC_BENCHMARK_GOALS: Record<BenchmarkLevel, Record<CalisthenicBenchmarkName, number>> = {
-    Average: {
+    Solid: {
         "Pull-up": 8,
         "Push-up": 30,
     },
@@ -62,7 +64,33 @@ interface CalisthenicBenchmarksProps {
 
 const CalisthenicBenchmarks: React.FC<CalisthenicBenchmarksProps> = ({ currentType, onTypeChange }) => {
     const { user } = useAuth();
-    const [selectedLevel, setSelectedLevel] = useState<BenchmarkLevel>('Strong');
+    const LOCAL_STORAGE_KEY = 'userBenchmarkLevel';
+
+    // Initialize state from localStorage or default to 'Strong'
+    const [selectedLevel, setSelectedLevel] = useState<BenchmarkLevel>(() => {
+        try {
+            const storedLevel = localStorage.getItem(LOCAL_STORAGE_KEY);
+            // Validate stored value against possible levels
+            if (storedLevel && ALL_LEVELS.includes(storedLevel as BenchmarkLevel)) {
+                return storedLevel as BenchmarkLevel;
+            }
+        } catch (error) {
+            console.error("Error reading benchmark level from localStorage:", error);
+        }
+        return 'Strong'; // Default value
+    });
+
+    // State for Popover open state
+    const [levelPopoverOpen, setLevelPopoverOpen] = useState(false);
+
+    // Effect to save selected level to localStorage
+    useEffect(() => {
+        try {
+            localStorage.setItem(LOCAL_STORAGE_KEY, selectedLevel);
+        } catch (error) {
+            console.error("Error saving benchmark level to localStorage:", error);
+        }
+    }, [selectedLevel]);
 
     // Fetch list of all exercises
     const { data: exercises = [], isLoading: isLoadingExercises, error: errorExercises } = useQuery({
@@ -192,26 +220,9 @@ const CalisthenicBenchmarks: React.FC<CalisthenicBenchmarksProps> = ({ currentTy
     return (
         <Card className="relative border-0 shadow-none bg-transparent p-0 md:border md:shadow md:bg-card md:p-6">
             <CardHeader className="p-0 mb-4 md:p-4 md:pb-0">
-                <div className="flex items-center mb-4">
-                    <div className="relative inline-flex items-center cursor-pointer">
-                        <Select
-                            value={selectedLevel}
-                            onValueChange={(value) => setSelectedLevel(value as BenchmarkLevel)}
-                        >
-                            <SelectTrigger className="w-[110px]">
-                                <SelectValue placeholder="Select level" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="Average">Average</SelectItem>
-                                <SelectItem value="Strong">Strong</SelectItem>
-                                <SelectItem value="Elite">Elite</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </div>
-                <div className="flex items-center mr-28">
+                <div className="flex items-center justify-between mb-4">
                     <PersonSimpleRun className="mr-2 h-5 w-5 text-fitnessBlue flex-shrink-0" />
-                    <CardTitle className="flex items-center">
+                    <CardTitle className="flex items-center flex-grow mr-2">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" className="p-0 h-auto font-bold text-lg hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 mr-1">
@@ -244,6 +255,38 @@ const CalisthenicBenchmarks: React.FC<CalisthenicBenchmarksProps> = ({ currentTy
                             </Tooltip>
                         </TooltipProvider>
                     </CardTitle>
+                    <div className="flex-shrink-0">
+                        <Popover open={levelPopoverOpen} onOpenChange={setLevelPopoverOpen}>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="default"
+                                    size="sm"
+                                    className="rounded-full h-7 px-2.5 text-xs font-medium bg-fitnessBlue hover:bg-fitnessBlue/90 w-[80px] justify-center"
+                                >
+                                    {selectedLevel}
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-1">
+                                <div className="flex flex-col gap-1">
+                                    {ALL_LEVELS.map((level) => (
+                                        <Button
+                                            key={level}
+                                            variant={selectedLevel === level ? "secondary" : "ghost"}
+                                            size="sm"
+                                            className="w-full justify-start h-8 px-2 text-xs"
+                                            onClick={() => {
+                                                setSelectedLevel(level);
+                                                setLevelPopoverOpen(false);
+                                            }}
+                                            disabled={selectedLevel === level}
+                                        >
+                                            {level}
+                                        </Button>
+                                    ))}
+                                </div>
+                            </PopoverContent>
+                        </Popover>
+                    </div>
                 </div>
             </CardHeader>
             <CardContent className="p-0 md:p-6 md:pt-0">

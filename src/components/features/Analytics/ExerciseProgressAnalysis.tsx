@@ -110,10 +110,66 @@ const ExerciseProgressAnalysis: React.FC<ExerciseProgressAnalysisProps> = ({
     isLoadingExercises,
     errorExercises,
 }) => {
-    const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
+    const SELECTED_EXERCISE_STORAGE_KEY = 'selectedAnalyticsExerciseId';
+
+    // Initialize selectedExercise from localStorage or null
+    const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(() => {
+        if (isLoadingExercises || !exercises || exercises.length === 0) {
+            return null; // Cannot determine initial state if exercises aren't loaded
+        }
+        try {
+            const storedId = localStorage.getItem(SELECTED_EXERCISE_STORAGE_KEY);
+            if (storedId) {
+                const foundExercise = exercises.find(ex => ex.id === storedId);
+                return foundExercise || null; // Return found exercise or null if ID is stale
+            }
+        } catch (error) {
+            console.error("Error reading selected exercise from localStorage:", error);
+        }
+        return null; // Default to null if nothing stored or error
+    });
+
     const [allCombinationKeys, setAllCombinationKeys] = useState<string[]>([]);
     const [activeCombinationKeys, setActiveCombinationKeys] = useState<string[]>([]);
     const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>('ALL'); // State for time range
+
+    // Effect to save selected exercise ID to localStorage
+    useEffect(() => {
+        try {
+            if (selectedExercise) {
+                localStorage.setItem(SELECTED_EXERCISE_STORAGE_KEY, selectedExercise.id);
+            } else {
+                // Optionally remove if deselected, or just let the initializer handle null
+                // localStorage.removeItem(SELECTED_EXERCISE_STORAGE_KEY);
+            }
+        } catch (error) {
+            console.error("Error saving selected exercise to localStorage:", error);
+        }
+    }, [selectedExercise]);
+
+    // Effect to update selectedExercise if exercises list changes (e.g., initial load after localStorage read)
+    useEffect(() => {
+        if (!selectedExercise && !isLoadingExercises && exercises && exercises.length > 0) {
+            try {
+                const storedId = localStorage.getItem(SELECTED_EXERCISE_STORAGE_KEY);
+                if (storedId) {
+                    const foundExercise = exercises.find(ex => ex.id === storedId);
+                    if (foundExercise) {
+                        setSelectedExercise(foundExercise);
+                    }
+                }
+            } catch (error) {
+                console.error("Error re-checking selected exercise from localStorage:", error);
+            }
+        }
+        // If exercises are loaded but no exercise is selected and nothing is in storage, maybe select the first? (Optional)
+        // else if (!selectedExercise && !isLoadingExercises && exercises && exercises.length > 0) {
+        //     const storedId = localStorage.getItem(SELECTED_EXERCISE_STORAGE_KEY);
+        //     if (!storedId) {
+        //         // setSelectedExercise(exercises[0]); // Uncomment to select first exercise by default
+        //     }
+        // }
+    }, [exercises, isLoadingExercises, selectedExercise]); // Re-run if exercises load
 
     // Fetch max e1RM history using TanStack Query and the Supabase function
     const {
@@ -323,10 +379,10 @@ const ExerciseProgressAnalysis: React.FC<ExerciseProgressAnalysisProps> = ({
             {/* Outer flex container for title */}
             <div className="flex items-center mb-4">
                 {/* Dropdown part */}
-                <div className="relative inline-flex items-center cursor-pointer"> 
+                <div className="relative inline-flex items-center cursor-pointer min-w-0"> 
                     {/* Visible text span - Just exercise name now */}
-                    <span className="text-2xl font-semibold"> 
-                        {selectedExercise ? selectedExercise.name : "-- Select an Exercise --"}
+                    <span className="text-2xl font-semibold truncate" title={selectedExercise?.name || 'Exercise'}> 
+                        {selectedExercise ? selectedExercise.name : "Exercise"}
                     </span>
                     {/* Chevron Icon */}
                     <div className="flex items-center ml-1">
