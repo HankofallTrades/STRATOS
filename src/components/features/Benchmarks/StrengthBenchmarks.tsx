@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from "@/lib/integrations/supabase/client";
 import { fetchExercisesFromDB } from '@/lib/integrations/supabase/exercises'; // Need exercises to map names to IDs
@@ -21,18 +21,20 @@ import {
 } from "@/components/core/dropdown-menu";
 import { Button } from "@/components/core/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/core/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/core/popover"; // Import Popover components
 
 // Define benchmark exercises 
 const BENCHMARK_NAMES = ["Deadlift", "Squat", "Bench Press", "Row", "Overhead Press"] as const;
 type BenchmarkName = typeof BENCHMARK_NAMES[number];
 
 // Define levels and their multipliers
-type BenchmarkLevel = 'Average' | 'Strong' | 'Elite';
+type BenchmarkLevel = 'Solid' | 'Strong' | 'Elite';
+const ALL_LEVELS: BenchmarkLevel[] = ['Solid', 'Strong', 'Elite']; // Define levels array
 type BenchmarkTypeOption = 'Strength' | 'Calisthenics'; // For the type switcher
 const ALL_BENCHMARK_TYPES: BenchmarkTypeOption[] = ['Strength', 'Calisthenics'];
 
 const BENCHMARK_MULTIPLIERS: Record<BenchmarkLevel, Record<BenchmarkName, number>> = {
-    Average: {
+    Solid: {
         "Deadlift": 1.75,
         "Squat": 1.25,
         "Bench Press": 1.0,
@@ -72,7 +74,33 @@ interface StrengthBenchmarksProps {
 
 const StrengthBenchmarks: React.FC<StrengthBenchmarksProps> = ({ currentType, onTypeChange }) => {
     const { user } = useAuth();
-    const [selectedLevel, setSelectedLevel] = useState<BenchmarkLevel>('Strong'); // Default to 'Strong'
+    const LOCAL_STORAGE_KEY = 'userBenchmarkLevel';
+
+    // Initialize state from localStorage or default to 'Strong'
+    const [selectedLevel, setSelectedLevel] = useState<BenchmarkLevel>(() => {
+        try {
+            const storedLevel = localStorage.getItem(LOCAL_STORAGE_KEY);
+            // Validate stored value against possible levels
+            if (storedLevel && ALL_LEVELS.includes(storedLevel as BenchmarkLevel)) {
+                return storedLevel as BenchmarkLevel;
+            }
+        } catch (error) {
+            console.error("Error reading benchmark level from localStorage:", error);
+        }
+        return 'Strong'; // Default value
+    });
+
+    // State for Popover open state
+    const [levelPopoverOpen, setLevelPopoverOpen] = useState(false)
+
+    // Effect to save selected level to localStorage
+    useEffect(() => {
+        try {
+            localStorage.setItem(LOCAL_STORAGE_KEY, selectedLevel);
+        } catch (error) {
+            console.error("Error saving benchmark level to localStorage:", error);
+        }
+    }, [selectedLevel]);
 
     // Fetch list of all exercises (needed to map benchmark names to IDs)
     // Consider if this fetch should happen here or be passed as a prop if Analytics already fetches it
@@ -270,27 +298,10 @@ const StrengthBenchmarks: React.FC<StrengthBenchmarksProps> = ({ currentType, on
     return (
         <Card className="relative border-0 shadow-none bg-transparent p-0 md:border md:shadow md:bg-card md:p-6">
             <CardHeader className="p-0 mb-4 md:p-4 md:pb-0">
-                {/* Level Selector (stays in top right) */}
-                <div className="absolute top-4 right-4">
-                    <Select 
-                        value={selectedLevel} 
-                        onValueChange={(value) => setSelectedLevel(value as BenchmarkLevel)}
-                    > 
-                        <SelectTrigger className="w-[110px]">
-                            <SelectValue placeholder="Select level" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="Average">Average</SelectItem>
-                            <SelectItem value="Strong">Strong</SelectItem>
-                            <SelectItem value="Elite">Elite</SelectItem>
-                        </SelectContent>
-                    </Select>
-                 </div>
-
-                {/* Title with inline DropdownMenu */}
-                <div className="flex items-center mr-28"> {/* Wrapper to keep icon/title/dropdown together, with margin */} 
+                <div className="flex items-center justify-between mb-4"> {/* Use justify-between */}
+                     {/* Icon and Title Group */}
                      <Barbell className="mr-2 h-5 w-5 text-fitnessIndigo flex-shrink-0" /> {/* Icon outside trigger */} 
-                     <CardTitle className="flex items-center">
+                     <CardTitle className="flex items-center flex-grow mr-2"> {/* Title takes available space */}
                          <DropdownMenu>
                              <DropdownMenuTrigger asChild>
                                  <Button variant="ghost" className="p-0 h-auto font-bold text-lg hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 mr-1">
@@ -323,6 +334,40 @@ const StrengthBenchmarks: React.FC<StrengthBenchmarksProps> = ({ currentType, on
                              </Tooltip>
                          </TooltipProvider>
                      </CardTitle>
+
+                    {/* Benchmark Level Popover */}
+                    <div className="flex-shrink-0">
+                        <Popover open={levelPopoverOpen} onOpenChange={setLevelPopoverOpen}>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="default" // Always default variant for the trigger
+                                    size="sm"
+                                    className="rounded-full h-7 px-2.5 text-xs font-medium bg-fitnessIndigo hover:bg-fitnessIndigo/90 w-[80px] justify-center" // Fixed width for consistency
+                                >
+                                    {selectedLevel}
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-1">
+                                <div className="flex flex-col gap-1">
+                                    {ALL_LEVELS.map((level) => (
+                                        <Button
+                                            key={level}
+                                            variant={selectedLevel === level ? "secondary" : "ghost"} // Highlight selected in popover
+                                            size="sm"
+                                            className="w-full justify-start h-8 px-2 text-xs"
+                                            onClick={() => {
+                                                setSelectedLevel(level);
+                                                setLevelPopoverOpen(false);
+                                            }}
+                                            disabled={selectedLevel === level}
+                                        >
+                                            {level}
+                                        </Button>
+                                    ))}
+                                </div>
+                            </PopoverContent>
+                        </Popover>
+                    </div>
                 </div>
             </CardHeader>
             <CardContent className="p-0 md:p-6 md:pt-0">
