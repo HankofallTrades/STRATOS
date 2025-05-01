@@ -2,7 +2,7 @@
 CREATE TABLE public.exercises (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name text NOT NULL UNIQUE,
-  default_equipment_type text CHECK (default_equipment_type IN ('DB', 'BB', 'KB', 'Cable', 'Free')),
+  default_equipment_type text,
   created_by_user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL, -- Optional: Track user-created exercises
   created_at timestamptz DEFAULT now()
 );
@@ -30,7 +30,7 @@ CREATE TABLE public.user_exercise_stats (
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   exercise_id uuid NOT NULL REFERENCES public.exercises(id) ON DELETE CASCADE,
   one_rep_max float,
-  last_used_equipment_type text CHECK (last_used_equipment_type IN ('DB', 'BB', 'KB', 'Cable', 'Free')),
+  last_used_equipment_type text,
   custom_variations text[], -- Array of text
   updated_at timestamptz DEFAULT now(),
   PRIMARY KEY (user_id, exercise_id) -- Composite primary key
@@ -94,7 +94,7 @@ CREATE TABLE public.exercise_sets (
   weight float NOT NULL,
   reps integer NOT NULL,
   completed boolean NOT NULL DEFAULT false,
-  equipment_type text CHECK (equipment_type IN ('DB', 'BB', 'KB', 'Cable', 'Free')),
+  equipment_type text,
   variation text,
   created_at timestamptz DEFAULT now(),
   UNIQUE (workout_exercise_id, set_number) -- Ensure set_number is unique for a given workout_exercise

@@ -15,7 +15,7 @@ const Workout = () => {
   }
 
   return (
-    <div className="container mx-auto p-4 flex flex-col h-full">
+    <div className="max-w-screen-md mx-auto p-4 flex flex-col h-full">
       <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg mb-6 flex items-center justify-center flex-shrink-0">
         <Clock className="text-fitnessBlue mr-2" />
         <span className="text-xl font-mono dark:text-white">
