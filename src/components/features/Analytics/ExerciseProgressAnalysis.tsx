@@ -189,8 +189,13 @@ const ExerciseProgressAnalysis: React.FC<ExerciseProgressAnalysisProps> = ({
     // Process the fetched maxE1RMHistory to group by combination and update keys (based on full history)
     useEffect(() => {
         if (!maxE1RMHistory || maxE1RMHistory.length === 0) {
-            setAllCombinationKeys([]);
-            setActiveCombinationKeys([]);
+            // Only update if state is not already empty
+            if (allCombinationKeys.length > 0) {
+                setAllCombinationKeys([]);
+            }
+            if (activeCombinationKeys.length > 0) {
+                setActiveCombinationKeys([]);
+            }
             return;
         }
 
@@ -203,14 +208,22 @@ const ExerciseProgressAnalysis: React.FC<ExerciseProgressAnalysisProps> = ({
             keyFrequency[key] = (keyFrequency[key] || 0) + 1;
         });
 
-        const sortedKeys = Array.from(uniqueKeys).sort((a, b) => {
+        const newSortedKeys = Array.from(uniqueKeys).sort((a, b) => {
             const aIsDefault = a.startsWith('Default|');
             const bIsDefault = b.startsWith('Default|');
             if (aIsDefault && !bIsDefault) return -1;
             if (!aIsDefault && bIsDefault) return 1;
             return a.localeCompare(b);
         });
-        setAllCombinationKeys(sortedKeys);
+        // setAllCombinationKeys(sortedKeys); // Old unconditional update
+
+        // Compare new keys with existing state before setting
+        // Use stringify for simple array comparison (assumes order matters, which it does due to sorting)
+        const didKeysChange = JSON.stringify(newSortedKeys) !== JSON.stringify(allCombinationKeys);
+        if (didKeysChange) {
+            setAllCombinationKeys(newSortedKeys);
+        }
+
 
         let mostFrequentKey: string | null = null;
         let maxFreq = 0;
@@ -221,8 +234,17 @@ const ExerciseProgressAnalysis: React.FC<ExerciseProgressAnalysisProps> = ({
             }
         });
 
-        setActiveCombinationKeys(mostFrequentKey ? [mostFrequentKey] : (sortedKeys.length > 0 ? [sortedKeys[0]] : []));
-    }, [maxE1RMHistory]);
+        // Determine the "best" active keys based on the NEW data
+        const newActiveKeys = mostFrequentKey ? [mostFrequentKey] : (newSortedKeys.length > 0 ? [newSortedKeys[0]] : []);
+
+        // Update active keys IF the available keys changed OR the calculated "best" active keys changed
+        // This ensures that if the available keys change, we re-evaluate which one should be active.
+        if (didKeysChange || JSON.stringify(newActiveKeys) !== JSON.stringify(activeCombinationKeys)) {
+             setActiveCombinationKeys(newActiveKeys);
+        }
+        // setActiveCombinationKeys(mostFrequentKey ? [mostFrequentKey] : (sortedKeys.length > 0 ? [sortedKeys[0]] : [])); // Old unconditional update
+
+    }, [maxE1RMHistory]); // Keep dependencies simple: only the input data
 
     // Calculate date range and prepare data for chart
     const { chartData, domain, ticks } = useMemo(() => {
