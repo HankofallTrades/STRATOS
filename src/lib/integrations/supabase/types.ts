@@ -111,28 +111,49 @@ export type Database = {
       }
       profiles: {
         Row: {
+          age: number | null
           avatar_url: string | null
           bodyweight: number | null
           created_at: string
+          focus: string | null
+          height: number | null
           id: string
+          preferred_distance_unit: string | null
+          preferred_height_unit: string | null
+          preferred_weight_unit: string | null
           updated_at: string
           username: string | null
+          weight: number | null
         }
         Insert: {
+          age?: number | null
           avatar_url?: string | null
           bodyweight?: number | null
           created_at?: string
+          focus?: string | null
+          height?: number | null
           id: string
+          preferred_distance_unit?: string | null
+          preferred_height_unit?: string | null
+          preferred_weight_unit?: string | null
           updated_at?: string
           username?: string | null
+          weight?: number | null
         }
         Update: {
+          age?: number | null
           avatar_url?: string | null
           bodyweight?: number | null
           created_at?: string
+          focus?: string | null
+          height?: number | null
           id?: string
+          preferred_distance_unit?: string | null
+          preferred_height_unit?: string | null
+          preferred_weight_unit?: string | null
           updated_at?: string
           username?: string | null
+          weight?: number | null
         }
         Relationships: []
       }
@@ -253,6 +274,7 @@ export type Database = {
           date: string
           duration_seconds: number | null
           id: string
+          is_single_log: boolean
           user_id: string
         }
         Insert: {
@@ -261,6 +283,7 @@ export type Database = {
           date?: string
           duration_seconds?: number | null
           id?: string
+          is_single_log?: boolean
           user_id: string
         }
         Update: {
@@ -269,6 +292,7 @@ export type Database = {
           date?: string
           duration_seconds?: number | null
           id?: string
+          is_single_log?: boolean
           user_id?: string
         }
         Relationships: []

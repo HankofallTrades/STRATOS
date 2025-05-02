@@ -20,11 +20,13 @@ const Home = () => { // Changed component name to Home
   // const displayTime = useElapsedTime(workoutStartTime); // No longer needed here
 
   // Redirect to workout page if a workout is already active
+  /*
   useEffect(() => {
     if (currentWorkout) {
       navigate('/workout');
     }
   }, [currentWorkout, navigate]);
+  */ // Commented out the redirect logic
 
   const handleStartWorkout = () => {
     dispatch(startWorkoutAction());
@@ -34,9 +36,11 @@ const Home = () => { // Changed component name to Home
   // If a workout is active, this component will redirect. 
   // If not, show the start workout prompt.
   // We add a check to prevent rendering the prompt briefly before redirecting.
+  /* // Commenting out this check as well, since we no longer redirect
   if (currentWorkout) {
     return null; // Or a loading indicator
   }
+  */
 
   return (
     // Reverted to standard container layout, starts at top
