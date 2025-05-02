@@ -26,7 +26,7 @@ const KG_TO_LB = 2.20462;
 const runtimeLlmProviderFallback = import.meta.env.VITE_LLM_PROVIDER || 'local';
 
 const Settings: React.FC = () => {
-  const { signOut, user } = useAuth();
+  const { signOut, user, triggerOnboarding } = useAuth();
   const [loadingSignOut, setLoadingSignOut] = useState(false);
   const [loadingBodyweight, setLoadingBodyweight] = useState(false);
   const [bodyweight, setBodyweight] = useState<number | string>('');
@@ -235,6 +235,14 @@ const Settings: React.FC = () => {
             Select the LLM provider for the AI Coach feature.
             Changes take effect immediately. Ensure necessary API keys/URLs
             are still configured in <code className="font-mono text-xs">.env.local</code> for the selected provider.
+          </p>
+        </div>
+        <div className="pt-2">
+          <Button variant="secondary" onClick={triggerOnboarding}>
+             Re-Trigger Onboarding Flow
+          </Button>
+           <p className="text-xs text-muted-foreground pt-1">
+            Test the onboarding dialog even if already completed.
           </p>
         </div>
       </div>

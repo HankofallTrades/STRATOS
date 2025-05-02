@@ -17,6 +17,7 @@ type AuthContextType = {
   user: User | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  triggerOnboarding: () => void;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -116,6 +117,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   }, [user, loading, profileChecked]);
 
+  // Function to manually trigger the onboarding dialog
+  const triggerOnboarding = () => {
+    console.log("Manually triggering onboarding flow...");
+    setProfileChecked(false); // Reset check to allow dialog to show even if profile was previously complete
+    setShowOnboarding(true);
+  };
+
   const signOut = async () => {
     setLoading(true);
     const { error } = await supabase.auth.signOut();
@@ -132,6 +140,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     user,
     loading,
     signOut,
+    triggerOnboarding,
   };
 
   // Don't render children until the initial session check is complete
