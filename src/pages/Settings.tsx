@@ -12,10 +12,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/core/select";
+import { RadioGroup, RadioGroupItem } from "@/components/core/radio-group";
 import { toast } from "sonner";
 
-// Key for localStorage
+// Keys for localStorage
 const LLM_PROVIDER_PREF_KEY = 'llmProviderPref';
+const BODYWEIGHT_UNIT_PREF_KEY = 'bodyweightUnitPref';
+
+// Conversion factor
+const KG_TO_LB = 2.20462;
 
 // Read the provider from environment variable as a fallback/initial default
 const runtimeLlmProviderFallback = import.meta.env.VITE_LLM_PROVIDER || 'local';
@@ -29,16 +34,25 @@ const Settings: React.FC = () => {
   const [llmProviderPref, setLlmProviderPref] = useState<string>(() => {
     return localStorage.getItem(LLM_PROVIDER_PREF_KEY) || runtimeLlmProviderFallback;
   });
+  // State for bodyweight unit preference - load from localStorage
+  const [unitPref, setUnitPref] = useState<'kg' | 'lb'>(() => {
+    return (localStorage.getItem(BODYWEIGHT_UNIT_PREF_KEY) as 'kg' | 'lb') || 'kg';
+  });
   const navigate = useNavigate();
 
-  // Save preference to localStorage whenever it changes
+  // Save LLM provider preference to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem(LLM_PROVIDER_PREF_KEY, llmProviderPref);
     // Optionally, notify user the change takes effect immediately for the Coach feature
     // toast.info(`LLM Provider set to: ${llmProviderPref}. Changes apply immediately to the Coach feature.`);
   }, [llmProviderPref]);
 
+  // Save unit preference to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem(BODYWEIGHT_UNIT_PREF_KEY, unitPref);
+  }, [unitPref]);
 
+  // Fetch bodyweight and convert based on initial unit preference
   useEffect(() => {
     const fetchBodyweight = async () => {
       if (!user) return;
@@ -52,11 +66,20 @@ const Settings: React.FC = () => {
 
         if (error) {
           console.error("Error fetching bodyweight:", error);
+          toast.error("Failed to fetch bodyweight.");
         } else if (data && data.bodyweight !== null) {
-          setBodyweight(data.bodyweight);
+          // Load unit preference again inside effect to ensure it's the latest
+          const currentUnitPref = (localStorage.getItem(BODYWEIGHT_UNIT_PREF_KEY) as 'kg' | 'lb') || 'kg';
+          const bwKg = data.bodyweight;
+          if (currentUnitPref === 'lb') {
+             setBodyweight(Number((bwKg * KG_TO_LB).toFixed(1)));
+          } else {
+            setBodyweight(bwKg);
+          }
         }
       } catch (err) {
         console.error("Client-side error fetching bodyweight:", err);
+        toast.error("An unexpected error occurred while fetching bodyweight.");
       } finally {
         setLoadingBodyweight(false);
       }
@@ -64,6 +87,36 @@ const Settings: React.FC = () => {
 
     fetchBodyweight();
   }, [user]);
+
+  // Effect to handle unit changes and convert displayed bodyweight
+  useEffect(() => {
+    const currentBw = Number(bodyweight);
+    if (isNaN(currentBw) || bodyweight === '') return;
+    
+    const previousUnitPref = localStorage.getItem(BODYWEIGHT_UNIT_PREF_KEY) || 'kg';
+
+  }, [unitPref]);
+
+  const handleUnitChange = (newUnit: 'kg' | 'lb') => {
+    const currentBw = Number(bodyweight);
+    if (isNaN(currentBw) || bodyweight === '') {
+        setUnitPref(newUnit);
+        return;
+    }
+
+    let convertedBw: number;
+    if (newUnit === 'lb' && unitPref === 'kg') {
+        convertedBw = currentBw * KG_TO_LB;
+    } else if (newUnit === 'kg' && unitPref === 'lb') {
+        convertedBw = currentBw / KG_TO_LB;
+    } else {
+        setUnitPref(newUnit);
+        return;
+    }
+
+    setBodyweight(Number(convertedBw.toFixed(1)));
+    setUnitPref(newUnit);
+ };
 
   const handleSignOut = async () => {
     setLoadingSignOut(true);
@@ -79,13 +132,20 @@ const Settings: React.FC = () => {
 
   const handleUpdateBodyweight = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || bodyweight === '' || isNaN(Number(bodyweight))) {
-      toast.error("Please enter a valid bodyweight.");
+    const currentBwInput = Number(bodyweight);
+    if (!user || bodyweight === '' || isNaN(currentBwInput)) {
+      toast.error(`Please enter a valid bodyweight in ${unitPref}.`);
       return;
     }
 
     setLoadingBodyweight(true);
-    const weightInKg = Number(bodyweight);
+    let weightInKg: number;
+
+    if (unitPref === 'lb') {
+      weightInKg = currentBwInput / KG_TO_LB;
+    } else {
+      weightInKg = currentBwInput;
+    }
 
     try {
       const { error } = await supabase
@@ -98,7 +158,6 @@ const Settings: React.FC = () => {
         toast.error("Failed to update bodyweight. Please try again.");
       } else {
         toast.success("Bodyweight updated successfully!");
-        setBodyweight(weightInKg);
       }
     } catch (err) {
       console.error("Client-side error updating bodyweight:", err);
@@ -118,13 +177,30 @@ const Settings: React.FC = () => {
       <form onSubmit={handleUpdateBodyweight} className="space-y-4 border p-4 rounded-md">
          <h2 className="text-lg font-medium">Profile Information</h2>
          <div className="space-y-2">
-            <Label htmlFor="bodyweight">Bodyweight (kg)</Label>
+            <Label>Preferred Unit</Label>
+            <RadioGroup
+              value={unitPref}
+              onValueChange={(value) => handleUnitChange(value as 'kg' | 'lb')}
+              className="flex space-x-4"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="kg" id="r1" />
+                <Label htmlFor="r1">kg</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="lb" id="r2" />
+                <Label htmlFor="r2">lb</Label>
+              </div>
+            </RadioGroup>
+         </div>
+         <div className="space-y-2">
+            <Label htmlFor="bodyweight">Bodyweight ({unitPref})</Label>
             <Input
               id="bodyweight"
               type="number"
               value={bodyweight}
               onChange={(e) => setBodyweight(e.target.value)}
-              placeholder="Enter your bodyweight in kg"
+              placeholder={`Enter your bodyweight in ${unitPref}`}
               disabled={loadingBodyweight}
               step="0.1"
             />
