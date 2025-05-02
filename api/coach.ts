@@ -1,11 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-// Import specific functions and type
+// Import specific functions and type, adding .js extension
 import {
   getLocalLlmResponse,
   getOpenAiResponse,
   getOpenRouterResponse,
   type ChatMessage
-} from '../src/lib/llm/llmClient';
+} from '../src/lib/llm/llmClient.js'; // Added .js extension
 
 // Define possible provider types
 type LlmProvider = 'openai' | 'openrouter' | 'local';
