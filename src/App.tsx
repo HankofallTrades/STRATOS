@@ -16,6 +16,7 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import LoginPage from "./pages/LoginPage";
 import WaitlistPage from "./pages/WaitlistPage";
+import Coach from "./pages/Coach";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +28,7 @@ const MainAppLayout = () => {
         <Route path="/" element={<Home />} />
         <Route path="/workout" element={<Workout />} />
         <Route path="/analytics" element={<Analytics />} />
+        <Route path="/coach" element={<Coach />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
