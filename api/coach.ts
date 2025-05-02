@@ -10,9 +10,9 @@ import {
 // Define possible provider types
 type LlmProvider = 'openai' | 'openrouter' | 'local';
 
-// Determine provider - For now, hardcode to OpenAI
+// Determine provider - For now, hardcode to OpenRouter
 // TODO: Implement logic to select provider dynamically if needed
-const llmProvider: LlmProvider = 'openai'; // Explicitly type the constant
+const llmProvider: LlmProvider = 'openrouter'; // Changed from 'openai'
 
 export default async function handler(
   req: VercelRequest,
