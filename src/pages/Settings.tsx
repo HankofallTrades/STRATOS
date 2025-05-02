@@ -60,26 +60,26 @@ const Settings: React.FC = () => {
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('bodyweight')
+          .select('weight')
           .eq('id', user.id)
           .single();
 
         if (error) {
-          console.error("Error fetching bodyweight:", error);
-          toast.error("Failed to fetch bodyweight.");
-        } else if (data && data.bodyweight !== null) {
+          console.error("Error fetching weight:", error);
+          toast.error("Failed to fetch weight.");
+        } else if (data && data.weight !== null) {
           // Load unit preference again inside effect to ensure it's the latest
           const currentUnitPref = (localStorage.getItem(BODYWEIGHT_UNIT_PREF_KEY) as 'kg' | 'lb') || 'kg';
-          const bwKg = data.bodyweight;
+          const weightKg = data.weight;
           if (currentUnitPref === 'lb') {
-             setBodyweight(Number((bwKg * KG_TO_LB).toFixed(1)));
+             setBodyweight(Number((weightKg * KG_TO_LB).toFixed(1)));
           } else {
-            setBodyweight(bwKg);
+            setBodyweight(weightKg);
           }
         }
       } catch (err) {
-        console.error("Client-side error fetching bodyweight:", err);
-        toast.error("An unexpected error occurred while fetching bodyweight.");
+        console.error("Client-side error fetching weight:", err);
+        toast.error("An unexpected error occurred while fetching weight.");
       } finally {
         setLoadingBodyweight(false);
       }
@@ -134,7 +134,7 @@ const Settings: React.FC = () => {
     e.preventDefault();
     const currentBwInput = Number(bodyweight);
     if (!user || bodyweight === '' || isNaN(currentBwInput)) {
-      toast.error(`Please enter a valid bodyweight in ${unitPref}.`);
+      toast.error(`Please enter a valid weight in ${unitPref}.`);
       return;
     }
 
@@ -150,17 +150,17 @@ const Settings: React.FC = () => {
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({ bodyweight: weightInKg })
+        .update({ weight: weightInKg })
         .eq('id', user.id);
 
       if (error) {
-        console.error("Error updating bodyweight:", error);
-        toast.error("Failed to update bodyweight. Please try again.");
+        console.error("Error updating weight:", error);
+        toast.error("Failed to update weight. Please try again.");
       } else {
-        toast.success("Bodyweight updated successfully!");
+        toast.success("Weight updated successfully!");
       }
     } catch (err) {
-      console.error("Client-side error updating bodyweight:", err);
+      console.error("Client-side error updating weight:", err);
       toast.error("An unexpected error occurred.");
     } finally {
       setLoadingBodyweight(false);
@@ -194,13 +194,13 @@ const Settings: React.FC = () => {
             </RadioGroup>
          </div>
          <div className="space-y-2">
-            <Label htmlFor="bodyweight">Bodyweight ({unitPref})</Label>
+            <Label htmlFor="bodyweight">Weight ({unitPref})</Label>
             <Input
               id="bodyweight"
               type="number"
               value={bodyweight}
               onChange={(e) => setBodyweight(e.target.value)}
-              placeholder={`Enter your bodyweight in ${unitPref}`}
+              placeholder={`Enter your weight in ${unitPref}`}
               disabled={loadingBodyweight}
               step="0.1"
             />
@@ -209,7 +209,7 @@ const Settings: React.FC = () => {
             </p>
          </div>
          <Button type="submit" disabled={loadingBodyweight}>
-             {loadingBodyweight ? "Saving..." : "Save Bodyweight"}
+             {loadingBodyweight ? "Saving..." : "Save Weight"}
          </Button>
       </form>
 

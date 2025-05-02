@@ -117,7 +117,7 @@ const StrengthBenchmarks: React.FC<StrengthBenchmarksProps> = ({ currentType, on
             if (!user?.id) return null;
             const { data, error } = await supabase
                 .from('profiles')
-                .select('bodyweight, username')
+                .select('weight, username')
                 .eq('id', user.id)
                 .single();
             if (error) {
@@ -163,9 +163,9 @@ const StrengthBenchmarks: React.FC<StrengthBenchmarksProps> = ({ currentType, on
 
     // Calculate benchmark progress
     const calculatedBenchmarks = useMemo((): CalculatedBenchmark[] => {
-        const bodyweight = userProfile?.bodyweight;
+        const weight = userProfile?.weight;
         // Add explicit check for exercises data too
-        if (isLoadingExercises || isLoadingBenchmarks || isLoadingProfile || exercises.length === 0 || !bodyweight) {
+        if (isLoadingExercises || isLoadingBenchmarks || isLoadingProfile || exercises.length === 0 || !weight) {
             return [];
         }
 
@@ -208,7 +208,7 @@ const StrengthBenchmarks: React.FC<StrengthBenchmarksProps> = ({ currentType, on
 
             // Use multiplier for the selected level
             const multiplier = currentMultipliers[name];
-            const goalE1RM = bodyweight ? bodyweight * multiplier : null;
+            const goalE1RM = weight ? weight * multiplier : null;
             let progress = 0;
             if (currentE1RM && goalE1RM && goalE1RM > 0) {
                 // Use the potentially doubled currentE1RM for progress calculation
@@ -237,13 +237,13 @@ const StrengthBenchmarks: React.FC<StrengthBenchmarksProps> = ({ currentType, on
             return <p className="text-red-500 italic text-center py-4">Error loading profile data.</p>;
         }
         // Then check bodyweight
-        if (!userProfile?.bodyweight) {
+        if (!userProfile?.weight) {
              return (
                  <Alert variant="default" className="bg-blue-50 border-blue-200">
                      <Target className="h-4 w-4 !text-blue-700" />
-                     <AlertTitle className="text-blue-800">Set Your Bodyweight</AlertTitle>
+                     <AlertTitle className="text-blue-800">Set Your Weight</AlertTitle>
                      <AlertDescription className="text-blue-700">
-                         Go to <Link to="/settings" className="font-medium underline">Settings</Link> to enter your bodyweight and see your strength benchmarks.
+                         Go to <Link to="/settings" className="font-medium underline">Settings</Link> to enter your weight and see your strength benchmarks.
                      </AlertDescription>
                  </Alert>
              );

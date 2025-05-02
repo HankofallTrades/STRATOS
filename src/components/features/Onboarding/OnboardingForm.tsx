@@ -56,9 +56,9 @@ export const OnboardingForm: React.FC<OnboardingFormProps> = ({ onSuccess }) => 
     resolver: zodResolver(formSchema),
     // Set default values (could fetch existing profile data if available, but for onboarding, start fresh)
     defaultValues: {
-      age: undefined, // Explicitly undefined to ensure placeholder shows
-      height: undefined,
-      weight: undefined,
+      age: undefined, // Reverted to undefined
+      height: undefined, // Reverted to undefined
+      weight: undefined, // Reverted to undefined
       focus: 'General Fitness', // Sensible default
       preferred_weight_unit: 'kg', // Default preference
       preferred_height_unit: 'cm', // Default preference
@@ -119,7 +119,7 @@ export const OnboardingForm: React.FC<OnboardingFormProps> = ({ onSuccess }) => 
             <FormItem>
               <FormLabel>Age</FormLabel>
               <FormControl>
-                <Input type="number" placeholder="Enter your age" {...field} />
+                <Input type="number" placeholder="Enter your age" {...field} value={field.value ?? ''} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -134,7 +134,7 @@ export const OnboardingForm: React.FC<OnboardingFormProps> = ({ onSuccess }) => 
             <FormItem>
               <FormLabel>Height ({form.watch('preferred_height_unit') === 'cm' ? 'cm' : 'ft/in'})</FormLabel>
               <FormControl>
-                <Input type="number" step="any" placeholder={`Enter height in ${form.watch('preferred_height_unit') === 'cm' ? 'cm' : 'feet/inches'}`} {...field} />
+                <Input type="number" step="any" placeholder={`Enter height in ${form.watch('preferred_height_unit') === 'cm' ? 'cm' : 'feet/inches'}`} {...field} value={field.value ?? ''} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -189,7 +189,7 @@ export const OnboardingForm: React.FC<OnboardingFormProps> = ({ onSuccess }) => 
             <FormItem>
               <FormLabel>Weight ({form.watch('preferred_weight_unit')})</FormLabel>
               <FormControl>
-                <Input type="number" step="any" placeholder={`Enter weight in ${form.watch('preferred_weight_unit')}`} {...field} />
+                <Input type="number" step="any" placeholder={`Enter weight in ${form.watch('preferred_weight_unit')}`} {...field} value={field.value ?? ''} />
               </FormControl>
               <FormMessage />
             </FormItem>
