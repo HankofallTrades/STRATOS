@@ -4,6 +4,8 @@ import { Input } from '@/components/core/input';
 import { Send } from 'lucide-react';
 import { getLlmResponse, type ChatMessage } from '@/lib/llm/llmClient';
 import { coachPrompts } from '@/lib/prompts/coachPrompts';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const Coach: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -56,7 +58,7 @@ const Coach: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full max-w-screen-md mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4 text-center">STRATOSCoach</h1>
+      <h1 className="text-2xl font-bold mb-4 text-center">STRATOS Coach</h1>
       <div className="flex-grow overflow-y-auto mb-4 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg space-y-4">
         {messages.filter(msg => msg.role !== 'system').map((message, index) => (
           <div
@@ -66,16 +68,22 @@ const Coach: React.FC = () => {
             <div
               className={`max-w-xs md:max-w-md lg:max-w-lg px-4 py-2 rounded-lg shadow ${message.role === 'user'
                   ? 'bg-blue-500 text-white'
-                  : 'bg-white dark:bg-gray-700 dark:text-white'
+                  : 'bg-white dark:bg-gray-700 dark:text-white prose prose-sm dark:prose-invert prose-p:m-0 prose-headings:my-1 prose-ul:my-1 prose-li:my-0'
                 }`}
             >
-              {message.content}
+              {message.role === 'assistant' ? (
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {message.content}
+                </ReactMarkdown>
+              ) : (
+                message.content
+              )}
             </div>
           </div>
         ))}
         {isLoading && (
           <div className="flex justify-start">
-            <div className="px-4 py-2 rounded-lg shadow bg-white dark:bg-gray-700 dark:text-white">
+            <div className="px-4 py-2 rounded-lg shadow bg-white dark:bg-gray-700 dark:text-white prose prose-sm dark:prose-invert">
               <span className="italic">Thinking...</span>
             </div>
           </div>

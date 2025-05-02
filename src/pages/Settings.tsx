@@ -14,31 +14,29 @@ import {
 } from "@/components/core/select";
 import { toast } from "sonner";
 
-// Read the provider from environment variable for initial display/default
-const runtimeLlmProvider = import.meta.env.VITE_LLM_PROVIDER || 'local';
+// Key for localStorage
+const LLM_PROVIDER_PREF_KEY = 'llmProviderPref';
+
+// Read the provider from environment variable as a fallback/initial default
+const runtimeLlmProviderFallback = import.meta.env.VITE_LLM_PROVIDER || 'local';
 
 const Settings: React.FC = () => {
   const { signOut, user } = useAuth();
   const [loadingSignOut, setLoadingSignOut] = useState(false);
   const [loadingBodyweight, setLoadingBodyweight] = useState(false);
   const [bodyweight, setBodyweight] = useState<number | string>('');
-  // State for developer LLM provider preference
-  const [llmProviderPref, setLlmProviderPref] = useState<string>(runtimeLlmProvider);
+  // State for developer LLM provider preference - load from localStorage
+  const [llmProviderPref, setLlmProviderPref] = useState<string>(() => {
+    return localStorage.getItem(LLM_PROVIDER_PREF_KEY) || runtimeLlmProviderFallback;
+  });
   const navigate = useNavigate();
 
-  // TODO: Optionally load/save preference from localStorage or user profile
-  // useEffect(() => {
-  //   const savedPref = localStorage.getItem('llmProviderPref');
-  //   if (savedPref) {
-  //     setLlmProviderPref(savedPref);
-  //   }
-  // }, []);
-
-  // const handleProviderChange = (value: string) => {
-  //   setLlmProviderPref(value);
-  //   localStorage.setItem('llmProviderPref', value);
-  //   // Potentially show a toast message about needing to restart etc.
-  // };
+  // Save preference to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem(LLM_PROVIDER_PREF_KEY, llmProviderPref);
+    // Optionally, notify user the change takes effect immediately for the Coach feature
+    // toast.info(`LLM Provider set to: ${llmProviderPref}. Changes apply immediately to the Coach feature.`);
+  }, [llmProviderPref]);
 
 
   useEffect(() => {
@@ -142,7 +140,7 @@ const Settings: React.FC = () => {
       <div className="border p-4 rounded-md space-y-4">
         <h2 className="text-lg font-medium">Developer Settings</h2>
         <div className="space-y-2">
-          <Label htmlFor="llm-provider">AI Coach Provider</Label>
+          <Label htmlFor="llm-provider">LLM Provider</Label>
           <Select value={llmProviderPref} onValueChange={setLlmProviderPref}>
             <SelectTrigger id="llm-provider">
               <SelectValue placeholder="Select LLM Provider" />
@@ -150,6 +148,7 @@ const Settings: React.FC = () => {
             <SelectContent>
               <SelectItem value="local">Local (LM Studio/Ollama)</SelectItem>
               <SelectItem value="openai">OpenAI</SelectItem>
+              <SelectItem value="deepseek">DeepSeek (OpenRouter)</SelectItem>
               <SelectItem value="anthropic">Anthropic</SelectItem>
               <SelectItem value="google">Google</SelectItem>
               <SelectItem value="xai">XAI (Grok)</SelectItem>
@@ -157,16 +156,10 @@ const Settings: React.FC = () => {
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground">
-            Select your preferred LLM provider for the AI Coach feature.
-            Note: To actually use the selected provider, you must configure the
-            corresponding <code className="font-mono text-xs">VITE_LLM_PROVIDER</code> and any necessary API keys/URLs
-            in your <code className="font-mono text-xs">.env.local</code> file and restart the development server.
+            Select the LLM provider for the AI Coach feature.
+            Changes take effect immediately. Ensure necessary API keys/URLs
+            are still configured in <code className="font-mono text-xs">.env.local</code> for the selected provider.
           </p>
-           {llmProviderPref !== runtimeLlmProvider && (
-             <p className="text-xs text-warning-foreground bg-warning/10 p-2 rounded-md">
-               Your selection (<span className='font-semibold'>{llmProviderPref}</span>) differs from the currently active provider (<span className='font-semibold'>{runtimeLlmProvider}</span>) configured in <code className="font-mono text-xs">.env.local</code>.
-             </p>
-           )}
         </div>
       </div>
 
