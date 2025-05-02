@@ -24,9 +24,11 @@ import { cn } from "@/lib/utils/cn"; // For conditional class names
 const EQUIPMENT_TYPES = ['Barbell', 'Dumbbell', 'Machine', 'Kettlebell', 'Bodyweight', 'Other'];
 const DEFAULT_VARIATION = 'Standard'; // Use consistent default naming
 
+// --- Interfaces ---
 interface AddSingleExerciseDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  defaultLogData?: LatestSingleLogData | null; // Add optional prop
 }
 
 // Define the structure needed for the mutation
@@ -45,15 +47,21 @@ type ExerciseVariation = Tables<'exercise_variations'>;
 // Assuming Exercise Set type structure
 type ExerciseSet = Tables<'exercise_sets'>;
 
-const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open, onOpenChange }) => {
+// Interface for the latest single log data passed as prop
+// (Can be defined here or imported if defined elsewhere)
+interface LatestSingleLogData extends Tables<'exercise_sets'> {
+    exercise_id: string;
+}
+
+const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open, onOpenChange, defaultLogData }) => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { toast } = useToast();
-  const [selectedExerciseId, setSelectedExerciseId] = useState<string>('');
-  const [reps, setReps] = useState<string>('');
-  const [weight, setWeight] = useState<string>('');
-  const [selectedEquipment, setSelectedEquipment] = useState<string | null>(null);
-  const [selectedVariation, setSelectedVariation] = useState<string | null>(null);
+  const [selectedExerciseId, setSelectedExerciseId] = useState<string>(() => defaultLogData?.exercise_id ?? '');
+  const [reps, setReps] = useState<string>(() => defaultLogData?.reps?.toString() ?? '');
+  const [weight, setWeight] = useState<string>(() => defaultLogData?.weight?.toString() ?? '');
+  const [selectedEquipment, setSelectedEquipment] = useState<string | null>(() => defaultLogData?.equipment_type ?? null);
+  const [selectedVariation, setSelectedVariation] = useState<string | null>(() => defaultLogData?.variation ?? null);
   const [equipmentPopoverOpen, setEquipmentPopoverOpen] = useState(false);
   const [variationPopoverOpen, setVariationPopoverOpen] = useState(false);
 
@@ -132,43 +140,54 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
     return exercises.find(ex => ex.id === selectedExerciseId);
   }, [exercises, selectedExerciseId]);
 
-  // Reset form when dialog opens/closes
+  // Reset form when dialog opens/closes (overrides initial state if needed)
   useEffect(() => {
-    if (!open) {
-      setSelectedExerciseId('');
-      setReps('');
-      setWeight('');
-      setSelectedEquipment(null);
-      setSelectedVariation(null);
-      // Reset react-query cache for last set/variations if dialog closes?
-      // queryClient.resetQueries({ queryKey: ['lastSet'] });
-      // queryClient.resetQueries({ queryKey: ['exerciseVariations'] });
+    if (open) {
+        // When opening, prioritize defaultLogData for initial state
+        setSelectedExerciseId(defaultLogData?.exercise_id ?? '');
+        setReps(defaultLogData?.reps?.toString() ?? '');
+        setWeight(defaultLogData?.weight?.toString() ?? '');
+        setSelectedEquipment(defaultLogData?.equipment_type ?? null);
+        setSelectedVariation(defaultLogData?.variation ?? null);
+    } else {
+        // When closing, clear everything
+        setSelectedExerciseId('');
+        setReps('');
+        setWeight('');
+        setSelectedEquipment(null);
+        setSelectedVariation(null);
+        // Optional: Reset react-query caches related to this dialog if desired
+        queryClient.removeQueries({ queryKey: ['lastSet', user?.id, selectedExerciseId], exact: true });
+        queryClient.removeQueries({ queryKey: ['exerciseVariations', selectedExerciseId], exact: true });
     }
-  }, [open, queryClient]);
+  // Add queryClient and user?.id to dependencies if using resetQueries
+  // Also add defaultLogData to reset when it changes (might cause re-renders if object ref changes)
+  }, [open, defaultLogData, queryClient, user?.id]); 
 
-  // Pre-fill form based on selected exercise defaults and last set data
+  // Pre-fill form based on *manually changed* selected exercise and last set data
+  // This effect now primarily handles updates AFTER the initial load or manual exercise changes
   useEffect(() => {
-      if (selectedExercise && lastSet !== undefined) { // Check lastSet is fetched (even if null)
-          // Prioritize last set data
-          setWeight(lastSet?.weight?.toString() ?? '');
-          setReps(lastSet?.reps?.toString() ?? '');
-          setSelectedEquipment(lastSet?.equipment_type ?? selectedExercise.default_equipment_type ?? null);
-          setSelectedVariation(lastSet?.variation ?? null);
-
-          // Bodyweight Autofill Logic (Example - refine as needed)
-          // Uses profile.bodyweight if available
-          // if (selectedExercise.default_equipment_type === 'Bodyweight' && profile?.bodyweight && !lastSet?.weight) {
-          //   setWeight(profile.bodyweight.toString()); 
-          // }
-          
-      } else if (selectedExercise) {
-           // No last set data, use exercise defaults
-           setWeight(''); // Clear weight if no last set
-           setReps('');   // Clear reps
-           setSelectedEquipment(selectedExercise.default_equipment_type ?? null);
-           setSelectedVariation(null); // Clear variation
-      }
-  }, [selectedExercise, lastSet, profile?.bodyweight]); // Use profile.bodyweight
+    // Only run if the exercise ID was *changed* after initial load
+    // or if defaultLogData wasn't present initially.
+    // Avoid running if selectedExerciseId matches the defaultLogData exercise_id initially.
+    const isInitialDefault = defaultLogData?.exercise_id && selectedExerciseId === defaultLogData.exercise_id;
+    
+    if (!isInitialDefault && selectedExercise && lastSet !== undefined) { 
+        // Prioritize last set data *for the currently selected exercise*
+        setWeight(lastSet?.weight?.toString() ?? '');
+        setReps(lastSet?.reps?.toString() ?? '');
+        setSelectedEquipment(lastSet?.equipment_type ?? selectedExercise.default_equipment_type ?? null);
+        setSelectedVariation(lastSet?.variation ?? null);
+        
+    } else if (!isInitialDefault && selectedExercise) {
+        // No last set data for this *manually selected* exercise, use its defaults
+        setWeight(''); 
+        setReps('');   
+        setSelectedEquipment(selectedExercise.default_equipment_type ?? null);
+        setSelectedVariation(null); 
+    }
+  // Ensure dependencies are correct - only react to changes in these after initial load
+  }, [selectedExercise, lastSet, defaultLogData?.exercise_id]); 
 
   // *** Refactored Mutation ***
   const saveSingleLogMutation = useMutation({

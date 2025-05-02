@@ -27,7 +27,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/core/dropdown-menu"
 // Imports for Save Workout Logic
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppSelector, useAppDispatch } from "@/hooks/redux";
 import { 
   selectCurrentWorkout, 
@@ -40,7 +40,7 @@ import { addWorkoutToHistory } from "@/state/history/historySlice";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from '@/lib/integrations/supabase/client';
 import { Workout as WorkoutType } from "@/lib/types/workout";
-import { TablesInsert } from '@/lib/integrations/supabase/types';
+import { TablesInsert, Tables } from '@/lib/integrations/supabase/types';
 import {
   Dialog,
   DialogContent,
@@ -50,19 +50,76 @@ import {
   DialogTitle,
   DialogClose,
 } from "@/components/core/Dialog";
-import AddSingleExerciseDialog from './components/features/Workout/AddSingleExerciseDialog';
+import AddSingleExerciseDialog from '@/components/features/Workout/AddSingleExerciseDialog';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/state/auth/AuthProvider';
 
 const queryClient = new QueryClient();
+
+// Interface for the latest single log data
+interface LatestSingleLogData extends Tables<'exercise_sets'> {
+    exercise_id: string; // Ensure exercise_id is present (from workout_exercises)
+}
 
 // Main Application Layout (for authenticated users)
 const MainAppLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useAppDispatch();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const currentWorkout = useAppSelector(selectCurrentWorkout);
   const workoutStartTime = useAppSelector(selectWorkoutStartTime);
   const [isDiscardConfirmOpen, setIsDiscardConfirmOpen] = useState(false);
   const [isAddExerciseDialogOpen, setIsAddExerciseDialogOpen] = useState(false);
+
+  // *** Query to fetch the latest single exercise log ***
+  const { data: latestSingleLogData, isLoading: isLoadingLatestLog } = useQuery<LatestSingleLogData | null>({
+      queryKey: ['latestSingleLog', user?.id],
+      queryFn: async () => {
+          if (!user?.id) return null;
+          
+          // Define the expected nested structure type explicitly
+          type NestedSetData = Tables<'exercise_sets'> & {
+            workout_exercises: { exercise_id: string } | null;
+          };
+
+          const { data, error } = await supabase
+              .from('exercise_sets')
+              .select(`
+                  *, 
+                  workout_exercises!inner(
+                      exercise_id, 
+                      workouts!inner(is_single_log, user_id)
+                  )
+              `)
+              .eq('workout_exercises.workouts.user_id', user.id)
+              .eq('workout_exercises.workouts.is_single_log', true)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .returns<NestedSetData[]>() // Use .returns<Type[]>()
+              .maybeSingle(); // Use maybeSingle() which works with .returns<Type[]>()
+          
+          if (error) {
+              console.error("Error fetching latest single log:", error);
+              return null;
+          }
+          
+          // Now safely extract exercise_id if data and nested structure exist
+          if (data && data.workout_exercises) {
+            const result: LatestSingleLogData = {
+                 ...data,
+                 exercise_id: data.workout_exercises.exercise_id
+            };
+            // Remove the nested structure before returning if needed, or adjust LatestSingleLogData interface
+            // delete (result as any).workout_exercises;
+            return result;
+          } 
+          return null; // Return null if data or nested structure is missing
+      },
+      enabled: !!user?.id,
+      staleTime: 5 * 60 * 1000, 
+  });
 
   const handleAddWorkout = () => {
     dispatch(startWorkoutAction());
@@ -298,6 +355,7 @@ const MainAppLayout = () => {
       <AddSingleExerciseDialog 
         open={isAddExerciseDialogOpen} 
         onOpenChange={setIsAddExerciseDialogOpen} 
+        defaultLogData={latestSingleLogData}
       />
     </div>
   );
