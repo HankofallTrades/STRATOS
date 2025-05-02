@@ -36,7 +36,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setLoading(false); // Initial check complete
       })
       .catch((error) => {
-        console.error("Error getting initial session:", error);
+        // console.error("Error getting initial session:", error);
         setLoading(false); // Still finish loading even if there's an error
       });
 
@@ -44,7 +44,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log("Auth state changed:", _event, session);
+      // console.log("Auth state changed:", _event, session);
       setSession(session);
       setUser(session?.user ?? null);
       if (_event !== 'INITIAL_SESSION') {
@@ -62,7 +62,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setLoading(true);
     const { error } = await supabase.auth.signOut();
     if (error) {
-      console.error("Error signing out:", error);
+      // console.error("Error signing out:", error);
       // Optionally handle sign-out error (e.g., show a toast)
     }
     // State will be updated by onAuthStateChange listener

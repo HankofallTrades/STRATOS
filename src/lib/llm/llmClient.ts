@@ -24,7 +24,7 @@ export async function getLlmResponse(messages: ChatMessage[]): Promise<ChatMessa
   // Read provider preference from localStorage at runtime
   const selectedProvider = (localStorage.getItem(LLM_PROVIDER_PREF_KEY) || runtimeLlmProviderFallback).toLowerCase();
 
-  console.log(`Using LLM Provider (Runtime): ${selectedProvider}`);
+  // console.log(`Using LLM Provider (Runtime): ${selectedProvider}`);
   // console.log('Sending messages:', messages); // Optional: uncomment for detailed debugging
 
   try {
@@ -50,7 +50,7 @@ export async function getLlmResponse(messages: ChatMessage[]): Promise<ChatMessa
         throw new Error(`Unsupported LLM provider selected: ${selectedProvider}`);
     }
   } catch (error) {
-    console.error(`Error getting LLM response from ${selectedProvider}:`, error);
+    // console.error(`Error getting LLM response from ${selectedProvider}:`, error);
     // Return a generic error message as an assistant response
     return {
       role: 'assistant',
@@ -78,7 +78,7 @@ async function getLocalLlmResponse(messages: ChatMessage[]): Promise<ChatMessage
     stream: false, // Keep it simple for now
   };
 
-  console.log('Sending payload to local LLM:', JSON.stringify(payload));
+  // console.log('Sending payload to local LLM:', JSON.stringify(payload));
 
   const response = await fetch(localLlmUrl, {
     method: 'POST',
@@ -92,16 +92,16 @@ async function getLocalLlmResponse(messages: ChatMessage[]): Promise<ChatMessage
 
   if (!response.ok) {
     const errorBody = await response.text();
-    console.error('Local LLM API Error Response Body:', errorBody);
+    // console.error('Local LLM API Error Response Body:', errorBody);
     throw new Error(`Local LLM API request failed with status ${response.status}: ${errorBody}`);
   }
 
   const data = await response.json();
-  console.log('Received data from local LLM:', data);
+  // console.log('Received data from local LLM:', data);
 
   // Extract the response message using OpenAI-compatible structure
   if (!data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content) {
-    console.error('Invalid response structure from local LLM API:', data);
+    // console.error('Invalid response structure from local LLM API:', data);
     throw new Error('Invalid response structure from local LLM API (Expected OpenAI format)');
   }
 

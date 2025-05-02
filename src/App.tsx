@@ -2,7 +2,7 @@ import { Toaster } from "@/components/core/Toast/toaster";
 import { Toaster as Sonner } from "@/components/core/sonner";
 import { TooltipProvider } from "@/components/core/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { store, persistor } from './state/store';
@@ -17,13 +17,229 @@ import NotFound from "./pages/NotFound";
 import LoginPage from "./pages/LoginPage";
 import WaitlistPage from "./pages/WaitlistPage";
 import Coach from "./pages/Coach";
+// FAB Imports
+import { Button } from "@/components/core/button";
+import { Plus, Save } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/core/dropdown-menu"
+// Imports for Save Workout Logic
+import React, { useState } from 'react';
+import { useAppSelector, useAppDispatch } from "@/hooks/redux";
+import { 
+  selectCurrentWorkout, 
+  selectWorkoutStartTime,
+  endWorkout as endWorkoutAction, 
+  clearWorkout,
+  startWorkout as startWorkoutAction
+} from "@/state/workout/workoutSlice";
+import { addWorkoutToHistory } from "@/state/history/historySlice";
+import { toast } from "@/hooks/use-toast";
+import { supabase } from '@/lib/integrations/supabase/client';
+import { Workout as WorkoutType } from "@/lib/types/workout";
+import { TablesInsert } from '@/lib/integrations/supabase/types';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from "@/components/core/Dialog";
+import AddSingleExerciseDialog from './components/features/Workout/AddSingleExerciseDialog';
 
 const queryClient = new QueryClient();
 
 // Main Application Layout (for authenticated users)
 const MainAppLayout = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const dispatch = useAppDispatch();
+  const currentWorkout = useAppSelector(selectCurrentWorkout);
+  const workoutStartTime = useAppSelector(selectWorkoutStartTime);
+  const [isDiscardConfirmOpen, setIsDiscardConfirmOpen] = useState(false);
+  const [isAddExerciseDialogOpen, setIsAddExerciseDialogOpen] = useState(false);
+
+  const handleAddWorkout = () => {
+    dispatch(startWorkoutAction());
+    navigate('/workout');
+  };
+
+  const handleAddExercise = () => {
+    setIsAddExerciseDialogOpen(true);
+  };
+
+  const handleDiscardWorkout = () => {
+    dispatch(endWorkoutAction());
+    dispatch(clearWorkout());
+    navigate('/');
+    setIsDiscardConfirmOpen(false);
+  };
+
+  const handleEndWorkout = async () => {
+    const workoutToEnd = currentWorkout;
+    
+    if (!workoutToEnd) return;
+
+    const hasCompletedSets = workoutToEnd.exercises.some(ex => ex.sets.some(set => set.completed));
+    
+    if (!hasCompletedSets) {
+        setIsDiscardConfirmOpen(true);
+        return;
+    }
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+        console.error("Authentication error or user not found:", authError);
+        toast({
+            title: "Authentication Error",
+            description: "Could not verify user. Please log in again.",
+            variant: "destructive",
+        });
+        return;
+    }
+
+    const endTime = Date.now();
+    const durationInSeconds = workoutStartTime 
+      ? Math.max(0, Math.round((endTime - workoutStartTime) / 1000)) 
+      : 0;
+
+    const workoutDataForDb: TablesInsert<'workouts'> = {
+        user_id: user.id,
+        date: workoutToEnd.date,
+        duration_seconds: durationInSeconds,
+        completed: true,
+    };
+
+    try {
+        const { data: savedWorkout, error: workoutError } = await supabase
+            .from('workouts')
+            .insert(workoutDataForDb)
+            .select()
+            .single();
+
+        if (workoutError || !savedWorkout) {
+            throw workoutError || new Error("Failed to save workout record.");
+        }
+
+        const workoutId = savedWorkout.id;
+
+        const workoutExercisesDataForDb: TablesInsert<'workout_exercises'>[] = workoutToEnd.exercises
+          .filter(exercise => exercise.sets.some(set => set.completed))
+          .map((exercise, index) => ({
+            workout_id: workoutId,
+            exercise_id: exercise.exerciseId,
+            order: index + 1,
+        }));
+
+        if (workoutExercisesDataForDb.length === 0) {
+             console.warn("Workout save aborted: No exercises with completed sets found after filtering.");
+             toast({
+                title: "Save Issue",
+                description: "Could not find exercises with completed sets to save.",
+                variant: "destructive",
+             });
+             dispatch(clearWorkout());
+             navigate('/');
+             return;
+        }
+
+        const { data: savedWorkoutExercises, error: workoutExercisesError } = await supabase
+            .from('workout_exercises')
+            .insert(workoutExercisesDataForDb)
+            .select();
+
+        if (workoutExercisesError || !savedWorkoutExercises || savedWorkoutExercises.length !== workoutExercisesDataForDb.length) {
+            throw workoutExercisesError || new Error("Failed to save workout exercises records.");
+        }
+
+        const exerciseSetsDataForDb: TablesInsert<'exercise_sets'>[] = [];
+        workoutToEnd.exercises.forEach((exercise) => {
+            const savedWorkoutExercise = savedWorkoutExercises.find(
+                swe => swe.exercise_id === exercise.exerciseId && swe.workout_id === workoutId
+            );
+
+            if (!savedWorkoutExercise) {
+                console.warn(`Could not find saved workout exercise for exercise ID: ${exercise.exerciseId}`);
+                return;
+            }
+
+            exercise.sets.forEach((set, index) => {
+                 if (set.completed) {
+                    exerciseSetsDataForDb.push({
+                        workout_exercise_id: savedWorkoutExercise.id,
+                        set_number: index + 1,
+                        weight: set.weight,
+                        reps: set.reps,
+                        completed: true,
+                        equipment_type: set.equipmentType || null,
+                        variation: set.variation || null,
+                    });
+                 }
+            });
+        });
+
+        if (exerciseSetsDataForDb.length > 0) {
+            const { error: setsError } = await supabase
+                .from('exercise_sets')
+                .insert(exerciseSetsDataForDb);
+
+            if (setsError) {
+                throw setsError;
+            }
+        } else {
+             console.warn("No completed sets found to insert, although workout/workout_exercises were created.");
+        }
+
+        const completedWorkoutForState: WorkoutType = {
+            ...workoutToEnd,
+            id: workoutId,
+            completed: true,
+            duration: durationInSeconds,
+            exercises: workoutToEnd.exercises
+                .map(woEx => {
+                    const savedWoEx = savedWorkoutExercises.find(swe => swe.exercise_id === woEx.exerciseId && swe.workout_id === workoutId);
+                    if (!savedWoEx) return null;
+
+                    return {
+                        ...woEx,
+                        id: savedWoEx.id,
+                        workoutId: workoutId,
+                        sets: woEx.sets
+                            .filter(set => set.completed)
+                            .map(set => ({ ...set, workoutExerciseId: savedWoEx.id })),
+                    };
+                })
+                .filter((woEx): woEx is Exclude<typeof woEx, null> => woEx !== null && woEx.sets.length > 0),
+        };
+
+        dispatch(addWorkoutToHistory(completedWorkoutForState));
+
+        toast({
+            title: "Workout Saved",
+            description: "Your workout has been successfully saved to your profile.",
+        });
+
+        dispatch(clearWorkout());
+        navigate('/');
+
+    } catch (error: any) {
+        console.error("Error saving workout:", error);
+        toast({
+            title: "Save Error",
+            description: `Failed to save workout: ${error.message || 'Unknown error'}. Please try again.`,
+            variant: "destructive",
+        });
+    }
+  };
+
   return (
-    <div> {/* Padding REMOVED from here */}
+    <div className="pb-24 relative">
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/workout" element={<Workout />} />
@@ -33,6 +249,56 @@ const MainAppLayout = () => {
         <Route path="*" element={<NotFound />} />
       </Routes>
       <BottomNav />
+      <div className="fixed bottom-20 right-6 z-20">
+        {location.pathname === '/workout' ? (
+          <Button
+            onClick={handleEndWorkout}
+            variant="default"
+            size="icon"
+            className="bg-fitnessGreen hover:bg-fitnessGreen/90 rounded-full h-14 w-14 shadow-lg"
+          >
+            <Save size={24} className="text-white" />
+          </Button>
+        ) : (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="secondary" size="icon" className="rounded-full w-14 h-14 bg-fitnessBlue hover:bg-blue-600 text-white shadow-lg">
+                <Plus className="h-6 w-6" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 mb-2">
+              <DropdownMenuItem onClick={handleAddWorkout} className="cursor-pointer">
+                <span>New Workout Session</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleAddExercise} className="cursor-pointer">
+                <span>Add Single Exercise</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
+
+      <Dialog open={isDiscardConfirmOpen} onOpenChange={setIsDiscardConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Discard Workout?</DialogTitle>
+            <DialogDescription>
+              You haven't completed any sets in this workout. Are you sure you want to discard it?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDiscardConfirmOpen(false)}>Cancel</Button>
+            <DialogClose asChild>
+              <Button variant="destructive" onClick={handleDiscardWorkout}>Discard</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AddSingleExerciseDialog 
+        open={isAddExerciseDialogOpen} 
+        onOpenChange={setIsAddExerciseDialogOpen} 
+      />
     </div>
   );
 };
@@ -41,7 +307,7 @@ const MainAppLayout = () => {
 const App = () => {
   return (
     <Provider store={store}>
-      <PersistGate loading={null} persistor={persistor}> {/* Consider a loading indicator here */}
+      <PersistGate loading={null} persistor={persistor}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
           <TooltipProvider>
             <Toaster />
@@ -54,7 +320,7 @@ const App = () => {
 
                 {/* Protected Routes */}
                 <Route
-                  path="/*" // Match all routes not matched above
+                  path="/*"
                   element={
                     <ProtectedRoute>
                       <MainAppLayout />

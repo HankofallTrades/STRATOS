@@ -40,12 +40,12 @@ const Coach: React.FC = () => {
 
     try {
       const messagesToSend = [systemMessage, ...updatedMessages];
-      console.log("Sending to LLM:", messagesToSend);
+      // console.log("Sending to LLM:", messagesToSend);
       const llmResponse = await getLlmResponse(messagesToSend);
 
       setMessages((prevMessages) => [...prevMessages, llmResponse]);
     } catch (error) {
-      console.error('Error fetching LLM response:', error);
+      // console.error('Error fetching LLM response:', error);
       const errorMessage: ChatMessage = {
         role: 'assistant',
         content: 'Sorry, I encountered an error. Please try again.',
