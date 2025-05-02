@@ -40,15 +40,30 @@ const Coach: React.FC = () => {
 
     try {
       const messagesToSend = [systemMessage, ...updatedMessages];
-      // console.log("Sending to LLM:", messagesToSend);
-      const llmResponse = await getLlmResponse(messagesToSend);
+      // console.log("Sending to API:", messagesToSend);
+
+      // Call the backend API route
+      const response = await fetch('/api/coach', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ messages: messagesToSend }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `API request failed with status ${response.status}`);
+      }
+
+      const llmResponse: ChatMessage = await response.json();
 
       setMessages((prevMessages) => [...prevMessages, llmResponse]);
     } catch (error) {
-      // console.error('Error fetching LLM response:', error);
+      console.error('Error fetching LLM response via API:', error);
       const errorMessage: ChatMessage = {
         role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.',
+        content: `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
       };
       setMessages((prevMessages) => [...prevMessages, errorMessage]);
     } finally {
