@@ -3,20 +3,22 @@ export type ChatMessage = {
   content: string;
 };
 
-// Environment variables for NON-SECRET values
-const localLlmUrl = import.meta.env.VITE_LOCAL_LLM_URL;
-const openaiApiUrl = import.meta.env.VITE_OPENAI_API_URL || 'https://api.openai.com/v1/chat/completions';
-const openRouterApiUrl = 'https://openrouter.ai/api/v1/chat/completions';
-const openRouterReferer = import.meta.env.VITE_APP_URL || 'http://localhost:5173';
-const openRouterAppName = import.meta.env.VITE_APP_NAME || 'STRATOS';
+// --- Environment Variable Reading Moved to Caller (api/coach.ts) ---
+// const localLlmUrl = import.meta.env.VITE_LOCAL_LLM_URL;
+// const openaiApiUrl = import.meta.env.VITE_OPENAI_API_URL || 'https://api.openai.com/v1/chat/completions';
+// const openRouterApiUrl = 'https://openrouter.ai/api/v1/chat/completions';
+// const openRouterReferer = import.meta.env.VITE_APP_URL || 'http://localhost:5173';
+// const openRouterAppName = import.meta.env.VITE_APP_NAME || 'STRATOS';
 
-// The main getLlmResponse function is removed as the logic now lives in the API route.
-// Specific provider functions are kept and modified to accept keys.
+// Specific provider functions are kept and modified to accept keys and configs.
 
-// --- Local LLM (Example: Ollama / LM Studio OpenAI Compatible) ---
-export async function getLocalLlmResponse(messages: ChatMessage[]): Promise<ChatMessage> {
+// --- Local LLM ---
+export async function getLocalLlmResponse(
+  messages: ChatMessage[],
+  localLlmUrl: string // Accept URL as argument
+): Promise<ChatMessage> {
   if (!localLlmUrl) {
-    throw new Error('VITE_LOCAL_LLM_URL is not defined in environment variables.');
+    throw new Error('Local LLM URL was not provided.');
   }
 
   const payload = {
@@ -50,10 +52,16 @@ export async function getLocalLlmResponse(messages: ChatMessage[]): Promise<Chat
 }
 
 // --- OpenAI LLM ---
-// Accepts apiKey as an argument now
-export async function getOpenAiResponse(messages: ChatMessage[], apiKey: string): Promise<ChatMessage> {
+export async function getOpenAiResponse(
+  messages: ChatMessage[],
+  apiKey: string,
+  openaiApiUrl: string // Accept URL as argument
+): Promise<ChatMessage> {
   if (!apiKey) {
     throw new Error('OpenAI API Key was not provided.');
+  }
+  if (!openaiApiUrl) {
+    throw new Error('OpenAI API URL was not provided.');
   }
 
   const payload = {
@@ -65,7 +73,7 @@ export async function getOpenAiResponse(messages: ChatMessage[], apiKey: string)
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`, // Use the provided apiKey
+      'Authorization': `Bearer ${apiKey}`,
     },
     body: JSON.stringify(payload),
   });
@@ -87,18 +95,31 @@ export async function getOpenAiResponse(messages: ChatMessage[], apiKey: string)
 }
 
 // --- OpenRouter LLM ---
-// Accepts apiKey as an argument now
 export async function getOpenRouterResponse(
   messages: ChatMessage[],
   apiKey: string,
-  model: string
+  model: string,
+  openRouterApiUrl: string, // Accept URL as argument
+  openRouterReferer: string, // Accept Referer as argument
+  openRouterAppName: string // Accept App Name as argument
 ): Promise<ChatMessage> {
   if (!apiKey) {
     throw new Error('OpenRouter API Key was not provided.');
   }
+  if (!openRouterApiUrl) {
+    throw new Error('OpenRouter API URL was not provided.');
+  }
+  if (!openRouterReferer) {
+    // Note: OpenRouter might work without these, but it's recommended
+    console.warn('OpenRouter Referer (VITE_APP_URL) was not provided.');
+  }
+  if (!openRouterAppName) {
+    console.warn('OpenRouter App Name (VITE_APP_NAME) was not provided.');
+  }
+
 
   const payload = {
-    model: model, // Use the specific model passed in
+    model: model,
     messages: messages,
   };
 
@@ -106,10 +127,9 @@ export async function getOpenRouterResponse(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`, // Use the provided apiKey
-      // OpenRouter specific headers
-      'HTTP-Referer': openRouterReferer,
-      'X-Title': openRouterAppName, // Optional but recommended
+      'Authorization': `Bearer ${apiKey}`,
+      'HTTP-Referer': openRouterReferer, // Use provided value
+      'X-Title': openRouterAppName, // Use provided value
     },
     body: JSON.stringify(payload),
   });

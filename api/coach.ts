@@ -14,6 +14,19 @@ type LlmProvider = 'openai' | 'openrouter' | 'local';
 // TODO: Implement logic to select provider dynamically if needed
 const llmProvider: LlmProvider = 'openrouter'; // Changed from 'openai'
 
+// --- Read ALL necessary environment variables server-side ---
+// Secrets
+const openaiApiKey = process.env.OPENAI_API_KEY;
+const openRouterApiKey = process.env.OPENROUTER_API_KEY;
+
+// Configs (Note: VITE_ prefix is part of the key name set in Vercel/env.local)
+const openRouterModel = process.env.OPENROUTER_MODEL || 'deepseek/deepseek-chat-v3-0324:free';
+const localLlmUrl = process.env.VITE_LOCAL_LLM_URL;
+const openaiApiUrl = process.env.VITE_OPENAI_API_URL || 'https://api.openai.com/v1/chat/completions';
+const openRouterApiUrl = process.env.OPENROUTER_API_URL || 'https://openrouter.ai/api/v1/chat/completions'; // OpenRouter has a fixed URL, but allow override
+const appUrl = process.env.VITE_APP_URL || 'http://localhost:5173'; // Used for OpenRouter Referer
+const appName = process.env.VITE_APP_NAME || 'STRATOS'; // Used for OpenRouter X-Title
+
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse,
@@ -35,27 +48,34 @@ export default async function handler(
     // Call the appropriate LLM function based on the selected provider
     switch (llmProvider) {
       case 'openai':
-        // Read the secret key from backend environment variables
-        const openaiApiKey = process.env.OPENAI_API_KEY;
         if (!openaiApiKey) {
           throw new Error('OPENAI_API_KEY environment variable is not set.');
         }
-        llmResponse = await getOpenAiResponse(messages, openaiApiKey);
+        // Pass apiKey and URL
+        llmResponse = await getOpenAiResponse(messages, openaiApiKey, openaiApiUrl);
         break;
 
       case 'openrouter':
-        // Read the secret key from backend environment variables
-        const openRouterApiKey = process.env.OPENROUTER_API_KEY;
-        const openRouterModel = process.env.OPENROUTER_MODEL || 'deepseek/deepseek-chat-v3-0324:free'; // Example model
         if (!openRouterApiKey) {
           throw new Error('OPENROUTER_API_KEY environment variable is not set.');
         }
-        llmResponse = await getOpenRouterResponse(messages, openRouterApiKey, openRouterModel);
+        // Pass apiKey, model, URL, referer (appUrl), and appName
+        llmResponse = await getOpenRouterResponse(
+          messages,
+          openRouterApiKey,
+          openRouterModel,
+          openRouterApiUrl,
+          appUrl,
+          appName
+        );
         break;
 
       case 'local':
-        // Local doesn't typically require an API key in this setup
-        llmResponse = await getLocalLlmResponse(messages);
+        if (!localLlmUrl) {
+          throw new Error('VITE_LOCAL_LLM_URL environment variable is not set.');
+        }
+        // Pass URL
+        llmResponse = await getLocalLlmResponse(messages, localLlmUrl);
         break;
 
       default:
