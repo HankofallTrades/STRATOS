@@ -48,10 +48,20 @@ const formatDate = (dateInput: Date | string): string => {
 };
 
 // Format date for XAxis (accepts timestamp)
-const formatAxisDate = (timestamp: number): string => {
+// Modified to accept timeRange and format '1Y' ticks as month initials
+const formatAxisDate = (timestamp: number, timeRange?: TimeRange): string => {
     const date = new Date(timestamp);
-    // Simple format like MM/DD
-    return `${date.getMonth() + 1}/${date.getDate()}`;
+    if (timeRange === '1Y') {
+        // Use UTC month to be consistent with tick generation
+        const monthIndex = date.getUTCMonth();
+        // Array of first letters
+        const monthInitials = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+        return monthInitials[monthIndex];
+    } else {
+        // Use UTC day/month for consistency (Recharts passes UTC timestamps)
+        // Use getUTCDate() instead of getDate()
+        return `${date.getUTCMonth() + 1}/${date.getUTCDate()}`;
+    }
 };
 
 // Custom Tooltip Component - Use timestamp to get date
@@ -358,35 +368,81 @@ const ExerciseProgressAnalysis: React.FC<ExerciseProgressAnalysisProps> = ({
         const dayMillis = 1000 * 60 * 60 * 24;
         const totalDays = Math.round((effectiveEndDate.getTime() - startDate.getTime()) / dayMillis);
 
-        // Ensure start and end dates are always included
+        // Ensure start date is always included
         tickTimestamps.push(startDate.getTime());
 
-        if (totalDays <= 10) { // Daily ticks for short ranges (<= 10 days)
+        // --- MODIFIED TICK GENERATION LOGIC ---
+        if (selectedTimeRange === '1Y') {
+            const addedMonths = new Set<string>(); // Format: YYYY-MM
+            let currentDate = new Date(startDate);
+
+            // Ensure the start date's month is considered 'added'
+            const startMonthStr = `${startDate.getUTCFullYear()}-${String(startDate.getUTCMonth()).padStart(2, '0')}`;
+            addedMonths.add(startMonthStr);
+
+            // Iterate through the months in the range
+            // Start from the month *after* the startDate's month
+            currentDate.setUTCDate(1); // Go to the 1st of the start month
+            currentDate.setUTCMonth(currentDate.getUTCMonth() + 1); // Move to the 1st of the next month
+
+            while (currentDate <= effectiveEndDate) {
+                const year = currentDate.getUTCFullYear();
+                const month = currentDate.getUTCMonth();
+                const monthStr = `${year}-${String(month).padStart(2, '0')}`;
+
+                // Add tick for the 1st of the current month if not already added
+                // and if it's within the effective range (<= effectiveEndDate)
+                const firstOfMonthTimestamp = Date.UTC(year, month, 1); // Get timestamp for UTC midnight
+                if (firstOfMonthTimestamp <= effectiveEndDate.getTime()) {
+                     if (!addedMonths.has(monthStr)) {
+                        tickTimestamps.push(firstOfMonthTimestamp);
+                        addedMonths.add(monthStr);
+                     }
+                } else {
+                    // If the 1st of the month is already past the end date, stop iterating
+                    break;
+                }
+
+
+                // Move to the 1st of the next month
+                currentDate.setUTCMonth(currentDate.getUTCMonth() + 1);
+            }
+        } else if (totalDays <= 10) { // Daily ticks for short ranges (<= 10 days)
              let tickDate = new Date(startDate);
              tickDate.setUTCDate(tickDate.getUTCDate() + 1); // Start loop from day after start
-             while (tickDate < effectiveEndDate) {
+             // Add ticks only if they are strictly before the end date
+             while (tickDate.getTime() < effectiveEndDate.getTime()) {
                  tickTimestamps.push(tickDate.getTime());
                  tickDate.setUTCDate(tickDate.getUTCDate() + 1);
              }
-        } else { // Evenly spaced ticks for longer ranges (> 10 days)
+             // Consider adding the effectiveEndDate if it wasn't the last tick added naturally
+             // This helps if the range ends exactly on a day boundary
+             if (tickTimestamps.length === 0 || tickTimestamps[tickTimestamps.length - 1] < effectiveEndDate.getTime()) {
+                // Add only if the last tick generated isn't already the end date
+             }
+
+
+        } else { // Evenly spaced ticks for longer ranges (> 10 days, excluding 1Y)
             const totalDurationMillis = effectiveEndDate.getTime() - startDate.getTime();
-            // Reduce target intervals for more space, especially on mobile
-            const targetIntervals = 4; // Aim for approx 5 ticks total (Reduced from 7)
-            // Prevent division by zero if duration is somehow zero or negative
-            const tickIntervalMillis = totalDurationMillis > 0 ? totalDurationMillis / targetIntervals : dayMillis; 
+            const targetIntervals = 4;
+            const tickIntervalMillis = totalDurationMillis > 0 ? totalDurationMillis / targetIntervals : dayMillis;
 
             let currentTickTime = startDate.getTime();
             for (let i = 1; i < targetIntervals; i++) { // Generate intermediate ticks
                  currentTickTime += tickIntervalMillis;
-                 // Add ticks only if they are before the end date (excluding buffer)
-                 if (currentTickTime < effectiveEndDate.getTime()) { 
+                 // Add ticks only if they are strictly before the end date's timestamp
+                 if (currentTickTime < effectiveEndDate.getTime()) {
                     tickTimestamps.push(currentTickTime);
                  }
             }
         }
+        // --- END MODIFIED TICK GENERATION LOGIC ---
 
-        // Ensure end date is the last tick
-        tickTimestamps.push(effectiveEndDate.getTime());
+
+        // Ensure end date is the last tick, only if it's not already the last one added
+        if (tickTimestamps.length === 0 || tickTimestamps[tickTimestamps.length - 1] < effectiveEndDate.getTime()) {
+             tickTimestamps.push(effectiveEndDate.getTime());
+        }
         
         // Remove potential duplicates and sort (important if start/end logic overlaps)
         const uniqueSortedTicks = Array.from(new Set(tickTimestamps)).sort((a, b) => a - b);
@@ -482,10 +538,11 @@ const ExerciseProgressAnalysis: React.FC<ExerciseProgressAnalysisProps> = ({
                                             data={chartData} 
                                             margin={{ top: 5, right: 0, left: 20, bottom: 5 }}
                                         >
-                                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(229, 231, 235, 0.25)" />
+                                            {/* <CartesianGrid strokeDasharray="3 3" stroke="rgba(229, 231, 235, 0.25)" /> // Removed this line */}
                                             <XAxis
                                                 dataKey="workout_timestamp"
-                                                tickFormatter={formatAxisDate}
+                                                // Pass selectedTimeRange to the formatter
+                                                tickFormatter={(ts) => formatAxisDate(ts, selectedTimeRange)}
                                                 type="number"
                                                 domain={domain} // Set calculated domain
                                                 ticks={ticks} // Use explicit ticks
@@ -498,7 +555,7 @@ const ExerciseProgressAnalysis: React.FC<ExerciseProgressAnalysisProps> = ({
                                                 // Add tick formatter
                                                 tickFormatter={(value) => `${value} kg`} 
                                             />
-                                            <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '3 3' }} />
+                                            <Tooltip content={<CustomTooltip />} cursor={false} />
                                             <Legend onClick={(data) => {
                                                 const key = data.id;
                                                 setActiveCombinationKeys(prevKeys =>
@@ -539,7 +596,7 @@ const ExerciseProgressAnalysis: React.FC<ExerciseProgressAnalysisProps> = ({
                                                         strokeWidth={2}
                                                         // Revert dot style to default boolean
                                                         dot={true} 
-                                                        activeDot={{ r: 6 }} 
+                                                        activeDot={{ r: 10 }} // Increased radius for easier mobile interaction
                                                         connectNulls={true} // Ensure connectNulls is true
                                                     />
                                                 );
