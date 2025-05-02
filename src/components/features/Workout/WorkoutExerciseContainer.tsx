@@ -79,11 +79,11 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
           if (!userId) return null;
           const { data, error } = await supabase
               .from('profiles')
-              .select('bodyweight')
+              .select('weight')
               .eq('id', userId)
               .single();
           if (error) {
-              console.error("Error fetching user profile for bodyweight:", error);
+              console.error("Error fetching user profile for weight:", error);
               return null;
           }
           return data;
@@ -180,7 +180,7 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
       addSetToExerciseAction({
         workoutExerciseId: workoutExercise.id,
         exerciseId: workoutExercise.exerciseId,
-        userBodyweight: userProfile?.bodyweight ?? null,
+        userBodyweight: userProfile?.weight ?? null,
       })
     );
   };
@@ -233,7 +233,7 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
         workoutExercise={workoutExercise}
         overallLastPerformance={overallLastPerformance}
         historicalSetPerformances={historicalSetPerformances}
-        userBodyweight={userProfile?.bodyweight ?? null}
+        userBodyweight={userProfile?.weight ?? null}
         onAddSet={handleAddSet}
         onEquipmentChange={handleEquipmentChange}
         onDeleteExercise={handleDeleteExercise}
