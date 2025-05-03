@@ -296,7 +296,7 @@ const MainAppLayout = () => {
   };
 
   return (
-    <div className="pb-24 relative">
+    <div>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/workout" element={<Workout />} />
@@ -306,34 +306,36 @@ const MainAppLayout = () => {
         <Route path="*" element={<NotFound />} />
       </Routes>
       <BottomNav />
-      <div className="fixed bottom-20 right-6 z-20">
-        {location.pathname === '/workout' ? (
-          <Button
-            onClick={handleEndWorkout}
-            variant="default"
-            size="icon"
-            className="bg-fitnessGreen hover:bg-fitnessGreen/90 rounded-full h-14 w-14 shadow-lg"
-          >
-            <Save size={24} className="text-white" />
-          </Button>
-        ) : (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="secondary" size="icon" className="rounded-full w-14 h-14 bg-fitnessBlue hover:bg-blue-600 text-white shadow-lg">
-                <Plus className="h-6 w-6" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 mb-2">
-              <DropdownMenuItem onClick={handleAddWorkout} className="cursor-pointer">
-                <span>New Workout Session</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleAddExercise} className="cursor-pointer">
-                <span>Add Single Exercise</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </div>
+      {location.pathname !== '/coach' && (
+        <div className="fixed bottom-20 right-6 z-20">
+          {location.pathname === '/workout' ? (
+            <Button
+              onClick={handleEndWorkout}
+              variant="default"
+              size="icon"
+              className="bg-fitnessGreen hover:bg-fitnessGreen/90 rounded-full h-14 w-14 shadow-lg"
+            >
+              <Save size={24} className="text-white" />
+            </Button>
+          ) : (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="secondary" size="icon" className="rounded-full w-14 h-14 bg-fitnessBlue hover:bg-blue-600 text-white shadow-lg">
+                  <Plus className="h-6 w-6" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 mb-2">
+                <DropdownMenuItem onClick={handleAddWorkout} className="cursor-pointer">
+                  <span>New Workout Session</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleAddExercise} className="cursor-pointer">
+                  <span>Add Single Exercise</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+      )}
 
       <Dialog open={isDiscardConfirmOpen} onOpenChange={setIsDiscardConfirmOpen}>
         <DialogContent>
