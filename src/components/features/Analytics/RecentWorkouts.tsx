@@ -13,7 +13,7 @@ import { Exercise } from '@/lib/types/workout'; // Keep for exercise name lookup
 // Option 1: Simple summary
 interface RecentWorkoutSummary {
     workout_id: string;
-    workout_date: string; // Assuming RPC returns it as YYYY-MM-DD string or similar
+    workout_created_at: string; // Changed from workout_date, expects timestamp string
     duration_seconds: number | null;
     total_completed_sets: number; // Calculated in RPC
     exercise_names: string[]; // Get distinct exercise names directly from RPC
@@ -37,9 +37,9 @@ const fetchRecentWorkoutsSummary = async (userId: string, limit: number = 5): Pr
     // No longer need 'as any' cast for result, type should be inferred
     // Validate and map the data
     const summaries = (data ?? []); // Default to empty array if data is null/undefined
-    return summaries.map((item) => ({
+    return summaries.map((item: any) => ({
         workout_id: item?.workout_id ?? 'unknown-id',
-        workout_date: item?.workout_date ? String(item.workout_date) : 'Unknown Date',
+        workout_created_at: item?.workout_created_at ? String(item.workout_created_at) : new Date().toISOString(), // Use new field, provide fallback ISO string
         duration_seconds: item?.duration_seconds ?? 0,
         total_completed_sets: item?.total_completed_sets ?? 0,
         exercise_names: Array.isArray(item?.exercise_names) ? item.exercise_names.map(String) : [] // Ensure it's an array of strings
@@ -49,7 +49,7 @@ const fetchRecentWorkoutsSummary = async (userId: string, limit: number = 5): Pr
 // Format date (can be simpler if RPC guarantees format)
 const formatDate = (dateInput: string): string => {
     try {
-        const date = new Date(dateInput + 'T00:00:00Z'); // Assume YYYY-MM-DD and treat as UTC
+        const date = new Date(dateInput); // Directly parse the timestamp string
         if (isNaN(date.getTime())) {
             return "Invalid Date";
         }
@@ -108,7 +108,7 @@ const RecentWorkouts: React.FC = () => {
                         <Card key={workout.workout_id}>
                             <CardHeader className="pb-2">
                                 <CardTitle className="text-lg flex justify-between">
-                                    <span>Workout on {formatDate(workout.workout_date)}</span>
+                                    <span>Workout on {formatDate(workout.workout_created_at)}</span>
                                     <span className="text-sm font-normal flex items-center">
                                         <Clock className="mr-1 h-4 w-4" />
                                         {formatTime(workout.duration_seconds ?? 0)}
