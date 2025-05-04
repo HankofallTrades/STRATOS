@@ -168,7 +168,6 @@ const MainAppLayout = () => {
 
     const workoutDataForDb: TablesInsert<'workouts'> = {
         user_id: user.id,
-        date: workoutToEnd.date,
         duration_seconds: durationInSeconds,
         completed: true,
     };
