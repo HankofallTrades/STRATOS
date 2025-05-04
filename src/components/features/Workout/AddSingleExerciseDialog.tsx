@@ -202,7 +202,6 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
       // 1. Insert into workouts
       const workoutInsertData: any = { // Use any due to is_single_log potentially missing in generated types
           user_id: userId,
-          date: new Date().toISOString(),
           duration_seconds: 0,
           completed: true,
           is_single_log: true, // Mark as single log
