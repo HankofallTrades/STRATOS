@@ -55,7 +55,8 @@ export async function getLocalLlmResponse(
 export async function getOpenAiResponse(
   messages: ChatMessage[],
   apiKey: string,
-  openaiApiUrl: string // Accept URL as argument
+  openaiApiUrl: string, // Accept URL as argument
+  model?: string // Accept optional model name
 ): Promise<ChatMessage> {
   if (!apiKey) {
     throw new Error('OpenAI API Key was not provided.');
@@ -65,7 +66,7 @@ export async function getOpenAiResponse(
   }
 
   const payload = {
-    model: 'gpt-3.5-turbo', // Or your desired OpenAI model
+    model: model || 'gpt-4o', // Use provided model or fallback to a default
     messages: messages,
   };
 
@@ -140,8 +141,22 @@ export async function getOpenRouterResponse(
   }
 
   const data = await response.json();
+
+  // Check for explicit error object in the response first
+  if (data.error) {
+    console.error('OpenRouter API returned an error object:', data.error);
+    // Customize error message for rate limit (429)
+    let errorMessage = `OpenRouter API Error: ${data.error.message || 'Unknown error'} (Code: ${data.error.code || 'N/A'})`;
+    if (data.error.code === 429) {
+        errorMessage = `OpenRouter Rate Limit Exceeded (Code: 429). You may need to wait or check your plan details. Original message: ${data.error.message}`;
+    }
+    throw new Error(errorMessage);
+  }
+
+  // Now, perform the standard check for the expected structure
   if (!data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content) {
-    throw new Error('Invalid response structure from OpenRouter API');
+    // This error should be less common now, but kept as a fallback
+    throw new Error('Invalid response structure from OpenRouter API (Choices/Message/Content missing)');
   }
 
   return {

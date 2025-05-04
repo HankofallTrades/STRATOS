@@ -17,6 +17,7 @@ import { toast } from "sonner";
 
 // Keys for localStorage
 const LLM_PROVIDER_PREF_KEY = 'llmProviderPref';
+const LLM_MODEL_PREF_KEY = 'llmModelPref';
 const BODYWEIGHT_UNIT_PREF_KEY = 'bodyweightUnitPref';
 
 // Conversion factor
@@ -24,6 +25,8 @@ const KG_TO_LB = 2.20462;
 
 // Read the provider from environment variable as a fallback/initial default
 const runtimeLlmProviderFallback = import.meta.env.VITE_LLM_PROVIDER || 'local';
+// Default model for OpenRouter if none is selected/persisted - Updated to user's first choice
+const defaultOpenRouterModel = 'deepseek/deepseek-chat-v3-0324:free';
 
 const Settings: React.FC = () => {
   const { signOut, user, triggerOnboarding } = useAuth();
@@ -34,6 +37,15 @@ const Settings: React.FC = () => {
   const [llmProviderPref, setLlmProviderPref] = useState<string>(() => {
     return localStorage.getItem(LLM_PROVIDER_PREF_KEY) || runtimeLlmProviderFallback;
   });
+  // State for developer LLM model preference - load from localStorage
+  const [llmModelPref, setLlmModelPref] = useState<string>(() => {
+    // Only load model pref if the provider is OpenRouter (or provider that needs a model)
+    const savedProvider = localStorage.getItem(LLM_PROVIDER_PREF_KEY);
+    if (savedProvider === 'openrouter' || savedProvider === 'openai' /* Add other relevant providers */) {
+         return localStorage.getItem(LLM_MODEL_PREF_KEY) || defaultOpenRouterModel; // Fallback to default if no model saved
+    }
+    return ''; // No model needed for providers like 'local' or 'anthropic' initially? Adjust as needed.
+  });
   // State for bodyweight unit preference - load from localStorage
   const [unitPref, setUnitPref] = useState<'kg' | 'lb'>(() => {
     return (localStorage.getItem(BODYWEIGHT_UNIT_PREF_KEY) as 'kg' | 'lb') || 'kg';
@@ -43,9 +55,20 @@ const Settings: React.FC = () => {
   // Save LLM provider preference to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem(LLM_PROVIDER_PREF_KEY, llmProviderPref);
-    // Optionally, notify user the change takes effect immediately for the Coach feature
-    // toast.info(`LLM Provider set to: ${llmProviderPref}. Changes apply immediately to the Coach feature.`);
+    // Reset model if provider changes to one that doesn't need a model or has different models
+    // Add logic here if needed, e.g., setLlmModelPref(getDefaultModelForProvider(llmProviderPref));
   }, [llmProviderPref]);
+
+  // Save LLM model preference to localStorage whenever it changes
+  useEffect(() => {
+    // Only save model pref if a model is actually selected/relevant for the provider
+    if (llmModelPref && (llmProviderPref === 'openrouter' || llmProviderPref === 'openai' /* Add others */ )) {
+        localStorage.setItem(LLM_MODEL_PREF_KEY, llmModelPref);
+    } else {
+         // Optionally remove the key if model is not applicable
+         localStorage.removeItem(LLM_MODEL_PREF_KEY);
+    }
+  }, [llmModelPref, llmProviderPref]); // Depend on provider too
 
   // Save unit preference to localStorage whenever it changes
   useEffect(() => {
@@ -217,22 +240,58 @@ const Settings: React.FC = () => {
         <h2 className="text-lg font-medium">Developer Settings</h2>
         <div className="space-y-2">
           <Label htmlFor="llm-provider">LLM Provider</Label>
-          <Select value={llmProviderPref} onValueChange={setLlmProviderPref}>
+          <Select
+             value={llmProviderPref}
+             onValueChange={(value) => {
+                setLlmProviderPref(value);
+                // Reset model when provider changes - adjust logic as needed
+                if (value === 'openrouter' || value === 'openai') {
+                    setLlmModelPref(localStorage.getItem(LLM_MODEL_PREF_KEY) || defaultOpenRouterModel); // Restore saved or default
+                } else {
+                    setLlmModelPref(''); // Clear model for providers that don't need it
+                }
+             }}
+          >
             <SelectTrigger id="llm-provider">
               <SelectValue placeholder="Select LLM Provider" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="local">Local (LM Studio/Ollama)</SelectItem>
               <SelectItem value="openai">OpenAI</SelectItem>
-              <SelectItem value="deepseek">DeepSeek (OpenRouter)</SelectItem>
+              <SelectItem value="openrouter">OpenRouter</SelectItem>
               <SelectItem value="anthropic">Anthropic</SelectItem>
               <SelectItem value="google">Google</SelectItem>
               <SelectItem value="xai">XAI (Grok)</SelectItem>
               <SelectItem value="custom">Add New...</SelectItem>
             </SelectContent>
           </Select>
-          <p className="text-xs text-muted-foreground">
-            Select the LLM provider for the AI Coach feature.
+          {/* Conditionally render Model selection based on Provider */}
+          {(llmProviderPref === 'openrouter' || llmProviderPref === 'openai') && ( // Show only for providers needing a model
+             <div className="space-y-2 pt-4"> {/* Add padding */}
+               <Label htmlFor="llm-model">Model ({llmProviderPref === 'openrouter' ? 'OpenRouter' : 'OpenAI'})</Label>
+               <Select value={llmModelPref} onValueChange={setLlmModelPref}>
+                  <SelectTrigger id="llm-model">
+                    <SelectValue placeholder="Select Model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {/* Updated list for OpenRouter/DeepSeek based on user request */}
+                    {llmProviderPref === 'openrouter' && (
+                      <>
+                         <SelectItem value="deepseek/deepseek-chat-v3-0324:free">Deepseek V3</SelectItem>
+                         <SelectItem value="google/gemini-2.5-pro-exp-03-25">Gemini 2.5 Pro Exp.</SelectItem>
+                         <SelectItem value="deepseek/deepseek-r1:free">Deepseek R1</SelectItem>
+                         <SelectItem value="google/gemini-2.0-flash-exp:free">Gemini 2.0 Flash Exp.</SelectItem>
+                         {/* Add other specific OpenRouter models here if needed */}
+                      </>
+                    )}
+                     {/* Removed hardcoded OpenAI models as per user request */}
+                     {/* {llmProviderPref === 'openai' && ( ... )} */}
+                  </SelectContent>
+               </Select>
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground pt-2"> {/* Adjust padding */}
+            Select the LLM provider and model for the AI Coach feature.
             Changes take effect immediately. Ensure necessary API keys/URLs
             are still configured in <code className="font-mono text-xs">.env.local</code> for the selected provider.
           </p>
