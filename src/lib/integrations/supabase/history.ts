@@ -17,19 +17,19 @@ export const fetchLastConfigForExercise = async (
     const { data, error } = await supabase
       .from('exercise_sets')
       .select(
-        'equipment_type, variation, workout_exercises!inner(exercise_id, workout_id, workouts!inner(user_id, date))'
+        'equipment_type, variation, workout_exercises!inner(exercise_id, workout_id, workouts!inner(user_id, created_at))'
       )
       .eq('workout_exercises.workouts.user_id', userId)
       .eq('workout_exercises.exercise_id', exerciseId)
       // Consider only sets that were part of a completed workout or maybe just any recorded set?
-      // For now, let's order by the workout date to get the most recent session
-      .order('date', {
+      // For now, let's order by the workout creation time to get the most recent session
+      .order('created_at', {
         foreignTable: 'workout_exercises.workouts',
         ascending: false,
       })
       // Also order by set_number descending within that workout to get the last set's config?
       // Or maybe just the first set encountered from the latest workout is fine.
-      // Let's stick to workout date for simplicity.
+      // Let's stick to workout creation time for simplicity.
       .limit(1) // Get the most recent record
       .maybeSingle(); // Expect 0 or 1 result
 
@@ -77,7 +77,7 @@ export const fetchLastWorkoutExerciseInstanceFromDB = async (
     // Start from workouts and join down to apply filters and order easily.
     const { data: lastWorkoutData, error: lastWorkoutError } = await supabase
       .from('workouts')
-      .select('id, date, workout_exercises!inner(exercise_id, exercise_sets!inner(completed, variation, equipment_type))') // Select id, date and join down
+      .select('id, created_at, workout_exercises!inner(exercise_id, exercise_sets!inner(completed, variation, equipment_type))') // Select id, date and join down
       .eq('user_id', userId) // Filter by user ID on workouts table
       .eq('workout_exercises.exercise_id', exerciseId) // Filter by exercise ID on joined table
       .eq('workout_exercises.exercise_sets.completed', true) // Filter by completed on doubly joined table
@@ -89,7 +89,7 @@ export const fetchLastWorkoutExerciseInstanceFromDB = async (
         targetVariation === 'Standard' ? 'in' : 'eq',
         targetVariation === 'Standard' ? '("Standard", "", null)' : targetVariation
       )
-      .order('date', { ascending: false }) // Order directly by workout date
+      .order('created_at', { ascending: false }) // Order directly by workout creation time
       .limit(1) // Get the most recent one
       .maybeSingle(); // Expect 0 or 1 result
 
