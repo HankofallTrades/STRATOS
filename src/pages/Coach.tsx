@@ -3,6 +3,10 @@ import type { ChatMessage } from '@/lib/llm/llmClient';
 import { coachPrompts } from '@/lib/prompts/coachPrompts';
 import Chat from '@/components/features/Coach/Chat';
 
+// Keys for localStorage (Import or define them here if not using a shared config/state manager)
+const LLM_PROVIDER_PREF_KEY = 'llmProviderPref';
+const LLM_MODEL_PREF_KEY = 'llmModelPref';
+
 const Coach: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState<string>('');
@@ -25,9 +29,13 @@ const Coach: React.FC = () => {
     setIsLoading(true);
 
     try {
+      // 1. Get provider and model preferences from localStorage
+      const provider = localStorage.getItem(LLM_PROVIDER_PREF_KEY) || 'local'; // Use fallback if needed
+      const model = localStorage.getItem(LLM_MODEL_PREF_KEY) || ''; // Get model, fallback to empty string if none saved
+
       const messagesToSend = [
         systemMessage,
-        ...updatedMessages.slice(-10),
+        ...updatedMessages.slice(-10), // Keep only last 10 messages + system prompt
       ];
 
       const response = await fetch('/api/coach', {
@@ -35,7 +43,12 @@ const Coach: React.FC = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ messages: messagesToSend }),
+        // 2. Include provider and model in the request body
+        body: JSON.stringify({
+            messages: messagesToSend,
+            provider: provider,
+            model: model // Send the model, even if it's an empty string for providers that don't need it
+        }),
       });
 
       if (!response.ok) {
