@@ -27,10 +27,39 @@ const Chat: React.FC<ChatProps> = ({
   const messageContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (messageContainerRef.current) {
-      messageContainerRef.current.scrollTop = 0;
+    const container = messageContainerRef.current;
+    if (!container) return;
+
+    // Filter out system messages to align with rendered messages
+    const actualMessages = messages.filter(msg => msg.role !== 'system');
+    if (actualMessages.length === 0) {
+        container.scrollTop = 0; // No messages, scroll to top
+        return;
     }
-  }, [messages]);
+
+    const lastMessage = actualMessages[actualMessages.length - 1];
+
+    // Get rendered message elements (excluding the 'Thinking...' indicator)
+    const messageElements = Array.from(container.children).filter(
+      el => !el.querySelector('span.italic') // Filter out the 'Thinking...' div
+    );
+
+    if (lastMessage.role === 'user' && messageElements.length > 0) {
+      // If the last message was from the user, scroll it to the top
+      const lastMessageElement = messageElements[messageElements.length - 1] as HTMLElement;
+      if (lastMessageElement) {
+          // Scroll the container so the top of the element aligns with the top of the container
+          container.scrollTop = lastMessageElement.offsetTop;
+      } else {
+          // Fallback: scroll to bottom if element not found somehow
+          container.scrollTop = container.scrollHeight;
+      }
+    } else {
+      // If last message is from assistant or initial load, scroll to bottom
+      container.scrollTop = container.scrollHeight;
+    }
+    // Depend on messages and isLoading (as it affects the DOM structure)
+  }, [messages, isLoading]);
 
   return (
     <div className={`flex flex-col ${className}`}> 
@@ -40,7 +69,6 @@ const Chat: React.FC<ChatProps> = ({
       >
         {[...messages]
           .filter(msg => msg.role !== 'system')
-          .reverse()
           .map((message, index) => (
             <div
               key={index}

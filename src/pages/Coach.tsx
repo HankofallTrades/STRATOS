@@ -59,8 +59,7 @@ const Coach: React.FC = () => {
       const llmResponse: ChatMessage = await response.json();
 
       setMessages((prevMessages) => [
-        ...prevMessages.slice(0, -1),
-        newUserMessage,
+        ...prevMessages,
         llmResponse,
       ]);
 
