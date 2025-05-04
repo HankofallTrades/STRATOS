@@ -3,12 +3,10 @@ import { useAppSelector, useAppDispatch } from "@/hooks/redux";
 import { 
   selectCurrentWorkout, 
 } from "@/state/workout/workoutSlice";
-import { Button } from "@/components/core/button";
-import { Plus } from "lucide-react";
 import ExerciseSelector from "./ExerciseSelector";
 import WorkoutExerciseContainer from "./WorkoutExerciseContainer";
-import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Card, CardContent } from "@/components/core/card";
 
 const WorkoutComponent = () => {
   const currentWorkout = useAppSelector(selectCurrentWorkout);
@@ -38,17 +36,21 @@ const WorkoutComponent = () => {
             ))}
           </AnimatePresence>
         ) : (
-          <div className="text-center py-6 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <p className="text-gray-500 dark:text-gray-400 mb-4">No exercises added yet</p>
-          </div>
+          <Card className="bg-card shadow rounded-lg border">
+            <CardContent className="p-6 flex justify-center items-center">
+              <ExerciseSelector />
+            </CardContent>
+          </Card>
         )}
       </div>
 
-      <div className="mt-auto pt-4 flex justify-center items-center">
-        <div className="flex flex-col items-center">
-          <ExerciseSelector /> 
+      {currentWorkout.exercises.length > 0 && (
+        <div className="mt-auto pt-4 flex justify-center items-center">
+          <div className="flex flex-col items-center">
+            <ExerciseSelector /> 
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
