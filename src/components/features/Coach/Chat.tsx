@@ -63,7 +63,7 @@ const Chat: React.FC<ChatProps> = ({
   }, [messages, isLoading]);
 
   return (
-    <div className={`flex flex-col ${className}`}> 
+    <div className={`flex flex-col h-full ${className}`}> 
       <div 
         ref={messageContainerRef}
         className="flex-grow overflow-y-auto mb-4 p-4 space-y-4 min-h-0"
