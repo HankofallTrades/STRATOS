@@ -445,80 +445,86 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
             {/* Weight Input Group */} 
             <div>
               <label htmlFor="weight-input" className="block text-sm font-medium mb-1">Weight (kg/lbs)</label>
-              <input 
-                type="number" 
-                id="weight-input" 
-                value={weight}
-                onChange={(e) => setWeight(e.target.value)}
-                step="0.5"
-                min="0"
-                inputMode="decimal" 
-                className="mt-1 block w-full p-2 border border-input bg-background rounded-md shadow-sm focus:outline-none focus:ring-ring focus:border-ring sm:text-sm text-center"
-                placeholder="0"
-                disabled={isPending}
-              />
-              {/* Buttons Container Below Input */}
-              <div className="flex items-center justify-center gap-2 mt-1.5"> 
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-7 w-7 flex-shrink-0 text-muted-foreground hover:bg-accent" // Made slightly smaller
-                  onClick={() => handleIncrementDecrement('weight', -0.5)}
+              {/* Wrap input and buttons in a flex container */}
+              <div className="flex items-center gap-2 mt-1">
+                <input 
+                  type="number" 
+                  id="weight-input" 
+                  value={weight}
+                  onChange={(e) => setWeight(e.target.value)}
+                  step="0.5"
+                  min="0"
+                  inputMode="decimal" 
+                  className="block w-full p-2 border border-input bg-background rounded-md shadow-sm focus:outline-none focus:ring-ring focus:border-ring sm:text-sm text-center flex-grow" // Added flex-grow
+                  placeholder="0"
                   disabled={isPending}
-                  aria-label="Decrease weight by 0.5"
-                >
-                  <Minus size={14} />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-7 w-7 flex-shrink-0 text-muted-foreground hover:bg-accent"
-                  onClick={() => handleIncrementDecrement('weight', 0.5)}
-                  disabled={isPending}
-                  aria-label="Increase weight by 0.5"
-                >
-                  <Plus size={14} />
-                </Button>
+                />
+                {/* Buttons Container Next to Input */}
+                <div className="flex items-center justify-center gap-1 flex-shrink-0"> 
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-7 w-7 flex-shrink-0 text-muted-foreground hover:bg-accent" 
+                    onClick={() => handleIncrementDecrement('weight', -0.5)}
+                    disabled={isPending}
+                    aria-label="Decrease weight by 0.5"
+                  >
+                    <Minus size={14} />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-7 w-7 flex-shrink-0 text-muted-foreground hover:bg-accent"
+                    onClick={() => handleIncrementDecrement('weight', 0.5)}
+                    disabled={isPending}
+                    aria-label="Increase weight by 0.5"
+                  >
+                    <Plus size={14} />
+                  </Button>
+                </div>
               </div>
             </div>
             
             {/* Reps Input Group */} 
             <div>
               <label htmlFor="reps-input" className="block text-sm font-medium mb-1">Reps</label>
-              <input 
-                type="number" 
-                id="reps-input" 
-                value={reps}
-                onChange={(e) => setReps(e.target.value)}
-                min="1"
-                inputMode="numeric" 
-                pattern="[0-9]*" 
-                className="mt-1 block w-full p-2 border border-input bg-background rounded-md shadow-sm focus:outline-none focus:ring-ring focus:border-ring sm:text-sm text-center"
-                placeholder="Enter reps"
-                disabled={isPending}
-              />
-              {/* Buttons Container Below Input */} 
-              <div className="flex items-center justify-center gap-2 mt-1.5">
-                 <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-7 w-7 flex-shrink-0 text-muted-foreground hover:bg-accent"
-                  onClick={() => handleIncrementDecrement('reps', -1)}
-                  disabled={isPending || (parseInt(reps, 10) || 0) <= 1} // Disable decrementing below 1
-                  aria-label="Decrease reps by 1"
-                >
-                  <Minus size={14} />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-7 w-7 flex-shrink-0 text-muted-foreground hover:bg-accent"
-                  onClick={() => handleIncrementDecrement('reps', 1)}
+               {/* Wrap input and buttons in a flex container */}
+              <div className="flex items-center gap-2 mt-1">
+                <input 
+                  type="number" 
+                  id="reps-input" 
+                  value={reps}
+                  onChange={(e) => setReps(e.target.value)}
+                  min="1"
+                  inputMode="numeric" 
+                  pattern="[0-9]*" 
+                  className="block w-full p-2 border border-input bg-background rounded-md shadow-sm focus:outline-none focus:ring-ring focus:border-ring sm:text-sm text-center flex-grow" // Added flex-grow
+                  placeholder="Enter reps"
                   disabled={isPending}
-                  aria-label="Increase reps by 1"
-                >
-                  <Plus size={14} />
-                </Button>
+                />
+                {/* Buttons Container Next to Input */} 
+                <div className="flex items-center justify-center gap-1 flex-shrink-0">
+                   <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-7 w-7 flex-shrink-0 text-muted-foreground hover:bg-accent"
+                    onClick={() => handleIncrementDecrement('reps', -1)}
+                    disabled={isPending || (parseInt(reps, 10) || 0) <= 1} // Disable decrementing below 1
+                    aria-label="Decrease reps by 1"
+                  >
+                    <Minus size={14} />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-7 w-7 flex-shrink-0 text-muted-foreground hover:bg-accent"
+                    onClick={() => handleIncrementDecrement('reps', 1)}
+                    disabled={isPending}
+                    aria-label="Increase reps by 1"
+                  >
+                    <Plus size={14} />
+                  </Button>
+                </div>
               </div>
             </div>
           </div>

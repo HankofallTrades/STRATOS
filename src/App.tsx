@@ -352,7 +352,7 @@ const MainAppLayout = () => {
               You haven't completed any sets in this workout. Are you sure you want to discard it?
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
+          <DialogFooter className="flex flex-row justify-end gap-2">
             <Button variant="outline" onClick={() => setIsDiscardConfirmOpen(false)}>Cancel</Button>
             <DialogClose asChild>
               <Button variant="destructive" onClick={handleDiscardWorkout}>Discard</Button>
