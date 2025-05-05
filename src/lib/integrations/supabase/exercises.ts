@@ -263,4 +263,59 @@ export const deleteExerciseFromDB = async (exerciseId: string): Promise<void> =>
   }
 
   console.log(`Successfully deleted exercise: ${exerciseId}`);
-}; 
+};
+
+// Define type for the mapping
+export type ExerciseMuscleGroupMapping = Record<string, string[]>; // { exerciseId: muscleGroupName[] }
+
+/**
+ * HYPOTHETICAL FUNCTION: Fetches the mapping between exercises and their targeted muscle groups.
+ * Assumes a backend implementation (e.g., Supabase RPC or view) exists.
+ * @returns A promise resolving to an object mapping exercise IDs to arrays of muscle group names.
+ */
+export const fetchExerciseMuscleGroupMappings = async (): Promise<ExerciseMuscleGroupMapping> => {
+  console.log("Fetching exercise-muscle group mappings from Supabase RPC...");
+
+  // Call the Supabase RPC function
+  // The function name needs to be cast to 'any' if the generated types
+  // don't include it yet after adding the function in the Supabase dashboard.
+  const { data, error } = await supabase.rpc('get_exercise_muscle_group_map' as any);
+
+  if (error) {
+    console.error('Error fetching muscle group mappings from RPC:', error);
+    // Depending on how critical this is, you might want to return an empty object
+    // or re-throw the error.
+    throw new Error(`Failed to fetch muscle group mappings: ${error.message}`);
+  }
+
+  // Ensure the data received is treated as the correct type.
+  // The RPC function returns a single JSON object which should match our type.
+  // Add a null check for safety.
+  if (!data) {
+      console.warn("Received null data from get_exercise_muscle_group_map RPC.");
+      return {}; // Return empty object if data is null
+  }
+
+  console.log(`Fetched mappings for ${Object.keys(data).length} exercises.`);
+  // Cast the returned JSON data to our expected type.
+  // Add runtime validation here if necessary for robustness.
+  return data as ExerciseMuscleGroupMapping;
+
+  // --- Placeholder Implementation Removed --- 
+  /*
+  console.warn("Using placeholder data for fetchExerciseMuscleGroupMappings. Implement backend call.");
+  await new Promise(resolve => setTimeout(resolve, 50)); // Simulate network delay
+  return {
+    // Example mapping (use actual exercise IDs from your DB)
+    'UUID-Squat': ['Quadriceps', 'Gluteals', 'Hamstrings'],
+    'UUID-BenchPress': ['Chest', 'Shoulders', 'Triceps'],
+    'UUID-Deadlift': ['Hamstrings', 'Gluteals', 'Back', 'Lower Back (Core)'],
+    'UUID-Row': ['Back', 'Biceps'],
+    'UUID-OverheadPress': ['Shoulders', 'Triceps'],
+    'UUID-Pullup': ['Back', 'Biceps'],
+    'UUID-LegPress': ['Quadriceps', 'Gluteals'],
+    // ... add mappings for all relevant exercises
+  };
+  */
+  // --- End Placeholder --- 
+ }; 

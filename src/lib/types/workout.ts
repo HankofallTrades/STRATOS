@@ -8,6 +8,7 @@ export interface Exercise {
   default_equipment_type?: string | null; // Renamed from equipmentType, matching DB
   created_by_user_id?: string | null; // Add the creator user ID field
   // variations?: string[]; // Removed - Likely stored in exercise_variations
+  muscle_groups?: string[]; // Added: Array of muscle group names targeted
 }
 
 export interface ExerciseSet {

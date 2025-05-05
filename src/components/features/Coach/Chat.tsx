@@ -6,7 +6,7 @@ import { Send } from 'lucide-react';
 import type { ChatMessage } from '@/lib/llm/llmClient';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { WorkoutGeneratorButton } from './WorkoutGeneratorButton';
+import { WorkoutGenerator } from './WorkoutGenerator'; // Updated import path and name
 
 interface ChatProps {
   messages: ChatMessage[];
@@ -103,7 +103,7 @@ const Chat: React.FC<ChatProps> = ({
 
       <div className="px-4 pb-4">
         <div className="mb-2">
-          <WorkoutGeneratorButton />
+          <WorkoutGenerator /> 
         </div>
         <form onSubmit={onSendMessage} className="flex items-center space-x-2">
           <Input
