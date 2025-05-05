@@ -43,8 +43,7 @@ const selectExercisesForWorkout = (
     availableExercises: Exercise[],
     weeklySets: Record<string, number>,
     minSetsPerWeek = 15,
-    numExercisesToSelect = 4,
-    excludeExerciseIds: string[] = []
+    numExercisesToSelect = 4
 ): Exercise[] => {
     const muscleGroupsBelowTarget: { name: string; deficit: number }[] = [];
     const allTargetedMuscleGroups = new Set<string>(availableExercises.flatMap(ex => ex.muscle_groups || []));
@@ -69,7 +68,6 @@ const selectExercisesForWorkout = (
         const potentialExercises = availableExercises
             .filter(ex => 
                 !selectedExerciseIds.has(ex.id) && 
-                !excludeExerciseIds.includes(ex.id) &&
                 ex.muscle_groups?.includes(targetGroup.name)
             )
             .sort((exA, exB) => {
@@ -91,7 +89,6 @@ const selectExercisesForWorkout = (
         const targetGroup = remainingNeededGroups[0];
         const backupExercise = availableExercises.find(ex => 
             !selectedExerciseIds.has(ex.id) && 
-            !excludeExerciseIds.includes(ex.id) &&
             ex.muscle_groups?.includes(targetGroup.name)
         );
         
@@ -106,10 +103,7 @@ const selectExercisesForWorkout = (
     }
     
     if (selectedExercises.length < numExercisesToSelect) {
-        const fallbackExercises = availableExercises.filter(ex => 
-            !selectedExerciseIds.has(ex.id) && 
-            !excludeExerciseIds.includes(ex.id)
-        );
+        const fallbackExercises = availableExercises.filter(ex => !selectedExerciseIds.has(ex.id));
         const neededCount = numExercisesToSelect - selectedExercises.length;
         selectedExercises.push(...fallbackExercises.slice(0, neededCount));
     }
@@ -150,49 +144,6 @@ export const WorkoutGenerator: React.FC = () => {
     }, [exercisesWithMuscleGroups]);
 
     const handleGenerateWorkout = () => {
-        // --- Determine Number of Exercises based on Last Workout --- 
-        let numExercisesToSelect = 5; // Default to 5
-        let excludeExerciseIds: string[] = []; // Initialize exclusion list
-
-        if (workoutHistory && workoutHistory.length > 0) {
-            // Find the most recent workout date
-            const latestWorkoutDate = workoutHistory.reduce((latest, workout) => {
-                const current = startOfDay(new Date(workout.date));
-                return current > latest ? current : latest;
-            }, new Date(0)); // Initialize with epoch
-
-            const latestWorkout = workoutHistory.find(workout => 
-                startOfDay(new Date(workout.date)).getTime() === latestWorkoutDate.getTime()
-            );
-
-            if (latestWorkoutDate.getTime() > 0) { // Check if a valid date was found
-                const today = startOfDay(new Date());
-                const daysSinceLastWorkout = differenceInDays(today, latestWorkoutDate);
-
-                if (daysSinceLastWorkout <= 1) {
-                    numExercisesToSelect = 3;
-                    if (latestWorkout) {
-                        excludeExerciseIds = latestWorkout.exercises.map(ex => ex.exerciseId);
-                        console.log("Excluding exercises from last workout (<= 1 day ago):", excludeExerciseIds);
-                    }
-                } else if (daysSinceLastWorkout <= 3) {
-                    numExercisesToSelect = 4;
-                    if (latestWorkout) {
-                        excludeExerciseIds = latestWorkout.exercises.map(ex => ex.exerciseId);
-                        console.log("Excluding exercises from last workout (<= 3 days ago):", excludeExerciseIds);
-                    }
-                } else {
-                    numExercisesToSelect = 5;
-                }
-                console.log(`Days since last workout: ${daysSinceLastWorkout}, Selecting ${numExercisesToSelect} exercises.`);
-            } else {
-                console.log("No valid workout dates found in history, selecting 5 exercises.");
-            }
-        } else {
-            console.log("No workout history found, selecting 5 exercises.");
-        }
-        // --- End Determine Number of Exercises ---
-
         if (exercisesWithMuscleGroups.length === 0) {
             console.error("Exercise data with muscle groups is not available.");
             return;
@@ -201,13 +152,7 @@ export const WorkoutGenerator: React.FC = () => {
         const weeklySets = calculateWeeklySetsPerMuscleGroup(workoutHistory, exerciseMap);
         console.log("Weekly Sets Per Muscle Group:", weeklySets);
 
-        const exercisesToCreate = selectExercisesForWorkout(
-            exercisesWithMuscleGroups, 
-            weeklySets, 
-            15, // minSetsPerWeek (keep default)
-            numExercisesToSelect, // Pass the dynamic number
-            excludeExerciseIds // Pass the list of IDs to exclude
-        );
+        const exercisesToCreate = selectExercisesForWorkout(exercisesWithMuscleGroups, weeklySets);
         console.log("Selected Exercises:", exercisesToCreate.map(ex => ex.name));
 
         if (exercisesToCreate.length === 0) {
