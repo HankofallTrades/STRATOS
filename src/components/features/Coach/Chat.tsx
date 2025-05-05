@@ -6,6 +6,7 @@ import { Send } from 'lucide-react';
 import type { ChatMessage } from '@/lib/llm/llmClient';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { WorkoutGeneratorButton } from './WorkoutGeneratorButton';
 
 interface ChatProps {
   messages: ChatMessage[];
@@ -100,19 +101,24 @@ const Chat: React.FC<ChatProps> = ({
         )}
       </div>
 
-      <form onSubmit={onSendMessage} className="flex items-center space-x-2 px-4 pb-4">
-        <Input
-          type="text"
-          value={input}
-          onChange={onInputChange}
-          placeholder="Ask your coach anything..."
-          className="flex-grow"
-          disabled={isLoading}
-        />
-        <Button type="submit" disabled={isLoading || !input.trim()} size="icon" className="">
-          <Send className="h-4 w-4" />
-        </Button>
-      </form>
+      <div className="px-4 pb-4">
+        <div className="mb-2">
+          <WorkoutGeneratorButton />
+        </div>
+        <form onSubmit={onSendMessage} className="flex items-center space-x-2">
+          <Input
+            type="text"
+            value={input}
+            onChange={onInputChange}
+            placeholder="Ask your coach anything..."
+            className="flex-grow"
+            disabled={isLoading}
+          />
+          <Button type="submit" disabled={isLoading || !input.trim()} size="icon" className="">
+            <Send className="h-4 w-4" />
+          </Button>
+        </form>
+      </div>
     </div>
   );
 };

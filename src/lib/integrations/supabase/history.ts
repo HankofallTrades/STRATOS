@@ -282,4 +282,62 @@ export async function fetchLatestMaxRepsForExercises(
     // Return empty array to prevent crashing the UI component
     return []; 
   }
+}
+
+// Define expected structure for daily volume data from the backend
+export interface DailyVolumeData {
+    workout_date: string; // YYYY-MM-DD
+    variation: string | null;
+    equipment_type: string | null;
+    total_sets: number;
+    total_reps: number;
+    total_volume: number; // Sum of (weight * reps) for the day/combo
+}
+
+// Function to fetch the calculated volume history from Supabase RPC
+export async function fetchExerciseVolumeHistory(userId: string, exerciseId: string): Promise<DailyVolumeData[]> {
+  // Basic validation
+  if (!userId || !exerciseId) {
+    console.warn("User ID or Exercise ID missing for fetchExerciseVolumeHistory call");
+    return []; // Return empty array if IDs are missing
+  }
+
+  try {
+    // Call the Supabase RPC function (assumed name)
+    // Cast function name to 'any' to bypass strict type checking until types are updated
+    const { data, error } = await supabase.rpc('fetch_exercise_volume_history' as any, { 
+      p_user_id: userId,
+      p_exercise_id: exerciseId,
+    });
+
+    // Handle potential errors during the RPC call
+    if (error) {
+      console.error('Error fetching volume history from Supabase RPC:', error);
+      throw new Error(`Supabase RPC Error: ${error.message}`);
+    }
+
+    // Explicitly cast the result to the expected array type after checking for null/undefined
+    const results = (data as any[] | null) ?? [];
+
+    // Map and validate data types
+    const formattedData = results.map((item: any) => ({
+      workout_date: String(item.workout_date), // Ensure string
+      variation: item.variation as string | null,
+      equipment_type: item.equipment_type as string | null,
+      total_sets: Number(item.total_sets),
+      total_reps: Number(item.total_reps),
+      total_volume: Number(item.total_volume),
+    })).filter(item => 
+      item.workout_date && 
+      !isNaN(item.total_sets) && 
+      !isNaN(item.total_reps) && 
+      !isNaN(item.total_volume)
+    );
+
+    return formattedData as DailyVolumeData[]; // Final cast for return type safety
+  } catch (error) {
+    console.error("Client-side error in fetchExerciseVolumeHistory:", error);
+    // Depending on needs, might re-throw or return empty array
+    return []; 
+  }
 } 
