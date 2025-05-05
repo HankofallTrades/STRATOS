@@ -296,15 +296,17 @@ const MainAppLayout = () => {
 
   return (
     <div>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/workout" element={<Workout />} />
-        <Route path="/analytics" element={<Analytics />} />
-        <Route path="/coach" element={<Coach />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-      <BottomNav />
+      <main>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/workout" element={<Workout />} />
+          <Route path="/analytics" element={<Analytics />} />
+          <Route path="/coach" element={<Coach />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </main>
+
       {location.pathname !== '/coach' && (
         <div className="fixed bottom-20 right-6 z-20">
           {location.pathname === '/workout' ? (
@@ -312,29 +314,35 @@ const MainAppLayout = () => {
               onClick={handleEndWorkout}
               variant="default"
               size="icon"
-              className="bg-fitnessGreen hover:bg-fitnessGreen/90 rounded-full h-14 w-14 shadow-lg"
+              className="rounded-full h-14 w-14 bg-green-500 hover:bg-green-600 shadow-lg text-white"
             >
-              <Save size={24} className="text-white" />
+              <Save size={24} />
             </Button>
           ) : (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="secondary" size="icon" className="rounded-full w-14 h-14 bg-fitnessBlue hover:bg-blue-600 text-white shadow-lg">
-                  <Plus className="h-6 w-6" />
+                <Button
+                  variant="default"
+                  size="icon"
+                  className="rounded-full h-14 w-14 bg-blue-500 hover:bg-blue-600 shadow-lg"
+                >
+                  <Plus size={24} />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 mb-2">
-                <DropdownMenuItem onClick={handleAddWorkout} className="cursor-pointer">
-                  <span>New Workout Session</span>
+              <DropdownMenuContent align="end" className="mb-1">
+                <DropdownMenuItem onSelect={handleAddWorkout}>
+                  Start Full Workout
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleAddExercise} className="cursor-pointer">
-                  <span>Add Single Exercise</span>
+                <DropdownMenuItem onSelect={handleAddExercise}>
+                  Log Single Exercise
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           )}
         </div>
       )}
+
+      <BottomNav />
 
       <Dialog open={isDiscardConfirmOpen} onOpenChange={setIsDiscardConfirmOpen}>
         <DialogContent>
@@ -355,8 +363,8 @@ const MainAppLayout = () => {
 
       <AddSingleExerciseDialog 
         open={isAddExerciseDialogOpen} 
-        onOpenChange={setIsAddExerciseDialogOpen} 
-        defaultLogData={latestSingleLogData}
+        onOpenChange={setIsAddExerciseDialogOpen}
+        defaultLogData={latestSingleLogData} 
       />
     </div>
   );
