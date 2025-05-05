@@ -82,7 +82,7 @@ const Coach: React.FC = () => {
   return (
     <div 
       className="flex flex-col max-w-screen-md mx-auto pt-4 overflow-hidden"
-      style={{ height: 'calc(100vh - 5rem)' }}
+      style={{ height: 'calc(100vh - 3rem)' }}
     >
       <Chat
         messages={messages}
