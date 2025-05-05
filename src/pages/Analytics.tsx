@@ -6,12 +6,27 @@ import { Exercise } from "@/lib/types/workout";
 import { useAuth } from '@/state/auth/AuthProvider';
 import StrengthBenchmarks from '@/components/features/Benchmarks/StrengthBenchmarks';
 import CalisthenicBenchmarks from '@/components/features/Benchmarks/CalisthenicBenchmarks';
-import ExerciseProgressAnalysis from '@/components/features/Analytics/ExerciseProgressAnalysis';
+import OneRepMax from '@/components/features/Analytics/OneRepMax';
 import PerformanceOverview from '@/components/features/Analytics/PerformanceOverview';
 import RecentWorkouts from '@/components/features/Analytics/RecentWorkouts';
+import Volume from '@/components/features/Analytics/Volume';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/core/select"
+import { ChevronDown } from "lucide-react";
+
+// LocalStorage Key for persistence
+const ANALYTICS_VIEW_STORAGE_KEY = 'selectedAnalyticsView';
 
 // Define Benchmark Type
 type BenchmarkType = 'Strength' | 'Calisthenics';
+
+// Define Analysis Type
+type AnalysisType = 'E1RM' | 'Volume';
 
 // Format date for display (e.g., in Recent Workouts)
 const formatDate = (dateInput: Date | string): string => {
@@ -40,6 +55,28 @@ const Analytics = () => {
   
   // State for selected benchmark type
   const [selectedBenchmarkType, setSelectedBenchmarkType] = useState<BenchmarkType>('Strength');
+  // State for selected analysis type - Initialize from localStorage
+  const [selectedAnalysisType, setSelectedAnalysisType] = useState<AnalysisType>(() => {
+    try {
+      const storedView = localStorage.getItem(ANALYTICS_VIEW_STORAGE_KEY);
+      // Ensure stored value is a valid AnalysisType
+      if (storedView === 'E1RM' || storedView === 'Volume') {
+        return storedView;
+      }
+    } catch (error) {
+      console.error("Error reading analysis view from localStorage:", error);
+    }
+    return 'E1RM'; // Default to E1RM
+  });
+
+  // Effect to save selected analysis type to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(ANALYTICS_VIEW_STORAGE_KEY, selectedAnalysisType);
+    } catch (error) {
+      console.error("Error saving analysis view to localStorage:", error);
+    }
+  }, [selectedAnalysisType]);
 
   return (
     <div className="container mx-auto p-4 max-w-4xl">
@@ -52,13 +89,45 @@ const Analytics = () => {
         <h2 className="text-2xl font-semibold mb-4">Performance Overview</h2>
         <PerformanceOverview />
 
-        {/* Render the ExerciseProgressAnalysis component */}
-        <ExerciseProgressAnalysis
+        {/* Analysis Type Selection - Styled like ExerciseProgressAnalysis dropdown */}
+        <div className="flex items-center mb-4"> 
+            <div className="relative inline-flex items-center cursor-pointer min-w-0"> 
+                {/* Visible text span */}
+                <span className="text-2xl font-semibold truncate"> 
+                    {selectedAnalysisType === 'E1RM' ? 'Estimated 1RM' : 'Volume'}
+                </span>
+                {/* Chevron Icon */}
+                <div className="flex items-center ml-1">
+                    <ChevronDown className="h-4 w-4 text-gray-400" />
+                </div>
+                {/* Hidden select element for functionality */}
+                <select
+                    className="absolute inset-0 w-full h-full opacity-0 appearance-none cursor-pointer" // Make select cover div and hide visually
+                    value={selectedAnalysisType}
+                    onChange={(e) => setSelectedAnalysisType(e.target.value as AnalysisType)} // Cast value
+                >
+                    <option value="E1RM">Estimated 1RM</option>
+                    <option value="Volume">Volume</option>
+                </select>
+            </div>
+        </div>
+
+        {/* Conditionally render Analysis component */}
+        {selectedAnalysisType === 'E1RM' && (
+          <OneRepMax 
+              userId={user?.id}
+              exercises={exercises}
+              isLoadingExercises={isLoadingExercises}
+              errorExercises={errorExercises}
+          />
+        )}
+
+        {selectedAnalysisType === 'Volume' && (
+          // Render the Volume component
+          <Volume 
             userId={user?.id}
-            exercises={exercises}
-            isLoadingExercises={isLoadingExercises}
-            errorExercises={errorExercises}
-        />
+          />
+        )}
 
         {/* Benchmark Section */}
         <div className="mt-8">

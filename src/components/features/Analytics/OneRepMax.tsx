@@ -16,8 +16,8 @@ interface UnifiedDataPoint {
   [combinationKey: string]: number | string | undefined | null;
 }
 
-// Props interface
-interface ExerciseProgressAnalysisProps {
+// Props interface - RENAMED
+interface OneRepMaxProps {
     userId: string | undefined;
     exercises: Exercise[];
     isLoadingExercises: boolean;
@@ -114,7 +114,8 @@ const lineColors = [
 type TimeRange = '1W' | '1M' | '3M' | '6M' | '1Y' | 'ALL';
 const timeRangeOptions: TimeRange[] = ['1W', '1M', '3M', '6M', '1Y', 'ALL'];
 
-const ExerciseProgressAnalysis: React.FC<ExerciseProgressAnalysisProps> = ({
+// Component - RENAMED
+const OneRepMax: React.FC<OneRepMaxProps> = ({
     userId,
     exercises,
     isLoadingExercises,
@@ -453,41 +454,6 @@ const ExerciseProgressAnalysis: React.FC<ExerciseProgressAnalysisProps> = ({
 
     return (
         <>
-            {/* Moved dropdown logic here and restyled */}
-            {/* Outer flex container for title */}
-            <div className="flex items-center mb-4">
-                {/* Dropdown part */}
-                <div className="relative inline-flex items-center cursor-pointer min-w-0"> 
-                    {/* Visible text span - Just exercise name now */}
-                    <span className="text-2xl font-semibold truncate" title={selectedExercise?.name || 'Exercise'}> 
-                        {selectedExercise ? selectedExercise.name : "Exercise"}
-                    </span>
-                    {/* Chevron Icon */}
-                    <div className="flex items-center ml-1">
-                        <ChevronDown className="h-4 w-4 text-gray-400" />
-                    </div>
-                    {/* Hidden select element for functionality */}
-                    <select
-                        className="absolute inset-0 w-full h-full opacity-0 appearance-none cursor-pointer" // Make select cover div and hide visually
-                        value={selectedExercise?.id || ""}
-                        onChange={(e) => {
-                            const selected = exercises.find(ex => ex.id === e.target.value);
-                            setSelectedExercise(selected || null);
-                        }}
-                        disabled={isLoadingExercises}
-                    >
-                        <option value="" disabled={!!selectedExercise}>-- Select an Exercise --</option> {/* Optionally disable placeholder if something selected */}
-                        {exercises.map((exercise) => (
-                            <option key={exercise.id} value={exercise.id}>
-                                {exercise.name}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-                {/* Static "Progress" text */}
-                <span className="text-2xl font-semibold ml-2">Progress</span>
-            </div>
-            
             {/* Conditional Rendering for loading/error/card */}
             {isLoadingExercises ? (
                 <p className="text-gray-500 italic">Loading exercises...</p>
@@ -496,15 +462,42 @@ const ExerciseProgressAnalysis: React.FC<ExerciseProgressAnalysisProps> = ({
             ) : exercises.length > 0 ? (
                 <Card className="mb-8 border-0 shadow-none bg-transparent p-0 md:border md:shadow md:bg-card md:p-6">
                     <CardHeader className="p-0 mb-4 md:p-4 md:pb-0">
+                        {/* MOVED: Title and dropdown logic now here */}
+                        {/* Outer flex container for title */}
+                        <div className="flex items-center mb-4"> 
+                            {/* Dropdown part */}
+                            <div className="relative inline-flex items-center cursor-pointer min-w-0"> 
+                                {/* Visible text span - Just exercise name now */}
+                                <span className="text-2xl font-semibold truncate" title={selectedExercise?.name || 'Exercise'}> 
+                                    {selectedExercise ? selectedExercise.name : "Exercise"}
+                                </span>
+                                {/* Chevron Icon */}
+                                <div className="flex items-center ml-1">
+                                    <ChevronDown className="h-4 w-4 text-gray-400" />
+                                </div>
+                                {/* Hidden select element for functionality */}
+                                <select
+                                    className="absolute inset-0 w-full h-full opacity-0 appearance-none cursor-pointer" // Make select cover div and hide visually
+                                    value={selectedExercise?.id || ""}
+                                    onChange={(e) => {
+                                        const selected = exercises.find(ex => ex.id === e.target.value);
+                                        setSelectedExercise(selected || null);
+                                    }}
+                                    disabled={isLoadingExercises}
+                                >
+                                    <option value="" disabled={!!selectedExercise}>-- Select an Exercise --</option> {/* Optionally disable placeholder if something selected */}
+                                    {exercises.map((exercise) => (
+                                        <option key={exercise.id} value={exercise.id}>
+                                            {exercise.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
                         {/* Moved title and buttons into header */}
                         {selectedExercise && (
                             <>
-                                {/* Container for title ONLY */}
-                                <div className="mb-4"> 
-                                    <h3 className="text-lg font-medium flex items-center">
-                                        <TrendingUp className="mr-2 h-5 w-5" /> Estimated 1RM
-                                    </h3>
-                                </div>
                                 {/* Moved Time Range Buttons here, centered */}
                                 <div className="flex justify-center space-x-1 mb-4"> 
                                     {timeRangeOptions.map(range => (
@@ -625,4 +618,4 @@ const ExerciseProgressAnalysis: React.FC<ExerciseProgressAnalysisProps> = ({
     );
 };
 
-export default ExerciseProgressAnalysis; 
+export default OneRepMax; // Renamed default export 

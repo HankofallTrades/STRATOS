@@ -9,16 +9,47 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      exercise_muscle_groups: {
+        Row: {
+          created_at: string | null
+          exercise_id: string
+          muscle_group_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          exercise_id: string
+          muscle_group_id: string
+        }
+        Update: {
+          created_at?: string | null
+          exercise_id?: string
+          muscle_group_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercise_muscle_groups_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_muscle_groups_muscle_group_id_fkey"
+            columns: ["muscle_group_id"]
+            isOneToOne: false
+            referencedRelation: "muscle_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exercise_sets: {
         Row: {
           completed: boolean
           created_at: string | null
           equipment_type: string | null
-          exercise_name: string | null
           id: string
           reps: number
           set_number: number
-          user: string | null
           variation: string | null
           weight: number
           workout_exercise_id: string
@@ -27,11 +58,9 @@ export type Database = {
           completed?: boolean
           created_at?: string | null
           equipment_type?: string | null
-          exercise_name?: string | null
           id?: string
           reps: number
           set_number: number
-          user?: string | null
           variation?: string | null
           weight: number
           workout_exercise_id: string
@@ -40,23 +69,14 @@ export type Database = {
           completed?: boolean
           created_at?: string | null
           equipment_type?: string | null
-          exercise_name?: string | null
           id?: string
           reps?: number
           set_number?: number
-          user?: string | null
           variation?: string | null
           weight?: number
           workout_exercise_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "exercise_sets_exercise_name_fkey"
-            columns: ["exercise_name"]
-            isOneToOne: false
-            referencedRelation: "exercises"
-            referencedColumns: ["name"]
-          },
           {
             foreignKeyName: "exercise_sets_workout_exercise_id_fkey"
             columns: ["workout_exercise_id"]
@@ -122,30 +142,80 @@ export type Database = {
         }
         Relationships: []
       }
-      profiles: {
+      muscle_groups: {
         Row: {
-          avatar_url: string | null
-          bodyweight: number | null
-          created_at: string
+          created_at: string | null
+          description: string | null
           id: string
-          updated_at: string
-          username: string | null
+          name: string
+          parent_muscle_group_id: string | null
         }
         Insert: {
-          avatar_url?: string | null
-          bodyweight?: number | null
-          created_at?: string
-          id: string
-          updated_at?: string
-          username?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          parent_muscle_group_id?: string | null
         }
         Update: {
-          avatar_url?: string | null
-          bodyweight?: number | null
-          created_at?: string
+          created_at?: string | null
+          description?: string | null
           id?: string
+          name?: string
+          parent_muscle_group_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "muscle_groups_parent_muscle_group_id_fkey"
+            columns: ["parent_muscle_group_id"]
+            isOneToOne: false
+            referencedRelation: "muscle_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          age: number | null
+          avatar_url: string | null
+          created_at: string
+          focus: string | null
+          height: number | null
+          id: string
+          preferred_distance_unit: string | null
+          preferred_height_unit: string | null
+          preferred_weight_unit: string | null
+          updated_at: string
+          username: string | null
+          weight: number | null
+        }
+        Insert: {
+          age?: number | null
+          avatar_url?: string | null
+          created_at?: string
+          focus?: string | null
+          height?: number | null
+          id: string
+          preferred_distance_unit?: string | null
+          preferred_height_unit?: string | null
+          preferred_weight_unit?: string | null
           updated_at?: string
           username?: string | null
+          weight?: number | null
+        }
+        Update: {
+          age?: number | null
+          avatar_url?: string | null
+          created_at?: string
+          focus?: string | null
+          height?: number | null
+          id?: string
+          preferred_distance_unit?: string | null
+          preferred_height_unit?: string | null
+          preferred_weight_unit?: string | null
+          updated_at?: string
+          username?: string | null
+          weight?: number | null
         }
         Relationships: []
       }
@@ -263,34 +333,97 @@ export type Database = {
         Row: {
           completed: boolean
           created_at: string | null
-          date: string
           duration_seconds: number | null
           id: string
+          is_single_log: boolean
+          type: string | null
           user_id: string
         }
         Insert: {
           completed?: boolean
           created_at?: string | null
-          date?: string
           duration_seconds?: number | null
           id?: string
+          is_single_log?: boolean
+          type?: string | null
           user_id: string
         }
         Update: {
           completed?: boolean
           created_at?: string | null
-          date?: string
           duration_seconds?: number | null
           id?: string
+          is_single_log?: boolean
+          type?: string | null
           user_id?: string
         }
         Relationships: []
       }
     }
     Views: {
-      [_ in never]: never
+      exercise_sets_readable: {
+        Row: {
+          completed: boolean | null
+          created_at: string | null
+          equipment_type: string | null
+          exercise_name: string | null
+          id: string | null
+          reps: number | null
+          set_number: number | null
+          username: string | null
+          variation: string | null
+          weight: number | null
+          workout_exercise_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercise_sets_workout_exercise_id_fkey"
+            columns: ["workout_exercise_id"]
+            isOneToOne: false
+            referencedRelation: "workout_exercises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exercise_variations_readable: {
+        Row: {
+          created_at: string | null
+          exercise_id: string | null
+          exercise_name: string | null
+          id: string | null
+          variation_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercise_variations_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      fetch_exercise_volume_history: {
+        Args: { p_user_id: string; p_exercise_id: string }
+        Returns: {
+          workout_date: string
+          variation: string
+          equipment_type: string
+          total_sets: number
+          total_reps: number
+          total_volume: number
+        }[]
+      }
+      fetch_weekly_sets_per_muscle_group: {
+        Args: { p_user_id: string }
+        Returns: {
+          l1_parent_name: string
+          muscle_group_name: string
+          total_sets: number
+        }[]
+      }
       get_exercise_max_e1rm_history: {
         Args: { p_user_id: string; p_exercise_id: string }
         Returns: {
@@ -305,6 +438,7 @@ export type Database = {
         Returns: {
           exercise_id: string
           max_e1rm: number
+          equipment_type: string
         }[]
       }
       get_latest_max_reps_for_exercises: {
@@ -312,6 +446,24 @@ export type Database = {
         Returns: {
           exercise_id: string
           max_reps: number
+        }[]
+      }
+      get_recent_workouts_summary: {
+        Args: { p_user_id: string; p_limit?: number }
+        Returns: {
+          workout_id: string
+          workout_created_at: string
+          duration_seconds: number
+          total_completed_sets: number
+          exercise_names: string[]
+        }[]
+      }
+      get_user_performance_stats: {
+        Args: { p_user_id: string }
+        Returns: {
+          total_workouts: number
+          total_duration_seconds: number
+          most_common_exercise_id: string
         }[]
       }
     }
