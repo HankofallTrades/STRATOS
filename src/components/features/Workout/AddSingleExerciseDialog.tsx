@@ -19,6 +19,8 @@ import { Exercise } from "@/lib/types/workout";
 import { Tables, TablesInsert } from '@/lib/integrations/supabase/types';
 import { Loader2, Plus, Minus } from 'lucide-react'; // For loading state and Plus/Minus icons
 import { cn } from "@/lib/utils/cn"; // For conditional class names
+import { Input } from "@/components/core/input"; // Corrected casing
+import { Label } from "@/components/core/label"; // Corrected casing
 
 // --- Constants ---
 const EQUIPMENT_TYPES = ['Barbell', 'Dumbbell', 'Machine', 'Kettlebell', 'Bodyweight', 'Other'];
@@ -34,7 +36,9 @@ interface AddSingleExerciseDialogProps {
 // Define the structure needed for the mutation
 interface NewSingleLogData {
   exercise_id: string;
-  reps: number;
+  reps: number | null; // Make reps nullable
+  time_seconds: number | null; // Add time_seconds
+  // is_static: boolean; // No longer needed here, will be derived from selectedExercise in handleSave
   weight: number;
   equipment_type: string | null;
   variation: string | null;
@@ -46,6 +50,9 @@ type Profile = Tables<'profiles'>;
 type ExerciseVariation = Tables<'exercise_variations'>;
 // Assuming Exercise Set type structure
 type ExerciseSet = Tables<'exercise_sets'>;
+
+// Exercise type from DB, expecting it to have is_static
+type ExerciseFromDB = Tables<'exercises'>; 
 
 // Interface for the latest single log data passed as prop
 // (Can be defined here or imported if defined elsewhere)
@@ -59,6 +66,7 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
   const { toast } = useToast();
   const [selectedExerciseId, setSelectedExerciseId] = useState<string>(() => defaultLogData?.exercise_id ?? '');
   const [reps, setReps] = useState<string>(() => defaultLogData?.reps?.toString() ?? '');
+  const [timeInSeconds, setTimeInSeconds] = useState<string>(() => defaultLogData?.time_seconds?.toString() ?? '');
   const [weight, setWeight] = useState<string>(() => defaultLogData?.weight?.toString() ?? '');
   const [selectedEquipment, setSelectedEquipment] = useState<string | null>(() => defaultLogData?.equipment_type ?? null);
   const [selectedVariation, setSelectedVariation] = useState<string | null>(() => defaultLogData?.variation ?? null);
@@ -66,7 +74,7 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
   const [variationPopoverOpen, setVariationPopoverOpen] = useState(false);
 
   // Fetch exercises query
-  const { data: exercises = [], isLoading: isLoadingExercises, error: errorExercises } = useQuery<Exercise[]>({
+  const { data: exercises = [], isLoading: isLoadingExercises, error: errorExercises } = useQuery<ExerciseFromDB[]>({
     queryKey: ['exercises'],
     queryFn: fetchExercisesFromDB,
     staleTime: Infinity, // Exercises list doesn't change often
@@ -140,61 +148,90 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
     return exercises.find(ex => ex.id === selectedExerciseId);
   }, [exercises, selectedExerciseId]);
 
-  // Reset form when dialog opens/closes (overrides initial state if needed)
+  // Effect to reset form state when dialog opens/closes or defaultLogData changes
   useEffect(() => {
     if (open) {
-        // When opening, prioritize defaultLogData for initial state
+        const initialExercise = defaultLogData?.exercise_id ? exercises.find(ex => ex.id === defaultLogData.exercise_id) : null;
+        const isStaticDefault = initialExercise?.is_static ?? false;
+
         setSelectedExerciseId(defaultLogData?.exercise_id ?? '');
-        setReps(defaultLogData?.reps?.toString() ?? '');
         setWeight(defaultLogData?.weight?.toString() ?? '');
         setSelectedEquipment(defaultLogData?.equipment_type ?? null);
         setSelectedVariation(defaultLogData?.variation ?? null);
+
+        if (isStaticDefault) {
+            setTimeInSeconds(defaultLogData?.time_seconds?.toString() ?? '');
+            setReps(''); // Clear reps if static
+        } else {
+            setReps(defaultLogData?.reps?.toString() ?? '');
+            setTimeInSeconds(''); // Clear time if not static
+        }
     } else {
         // When closing, clear everything
         setSelectedExerciseId('');
         setReps('');
+        setTimeInSeconds('');
         setWeight('');
         setSelectedEquipment(null);
         setSelectedVariation(null);
-        // Optional: Reset react-query caches related to this dialog if desired
         queryClient.removeQueries({ queryKey: ['lastSet', user?.id, selectedExerciseId], exact: true });
         queryClient.removeQueries({ queryKey: ['exerciseVariations', selectedExerciseId], exact: true });
     }
-  // Add queryClient and user?.id to dependencies if using resetQueries
-  // Also add defaultLogData to reset when it changes (might cause re-renders if object ref changes)
-  }, [open, defaultLogData, queryClient, user?.id]); 
+  }, [open, defaultLogData, queryClient, user?.id, exercises]);
 
   // Pre-fill form based on *manually changed* selected exercise and last set data
-  // This effect now primarily handles updates AFTER the initial load or manual exercise changes
   useEffect(() => {
-    // Only run if the exercise ID was *changed* after initial load
-    // or if defaultLogData wasn't present initially.
-    // Avoid running if selectedExerciseId matches the defaultLogData exercise_id initially.
-    const isInitialDefault = defaultLogData?.exercise_id && selectedExerciseId === defaultLogData.exercise_id;
-    
-    if (!isInitialDefault && selectedExercise && lastSet !== undefined) { 
-        // Prioritize last set data *for the currently selected exercise*
+    // Avoid running if selectedExerciseId matches the defaultLogData exercise_id during initial load with defaultLogData
+    const isInitialDefaultContext = defaultLogData?.exercise_id && selectedExerciseId === defaultLogData.exercise_id;
+    if (isInitialDefaultContext && open) { // if open and defaultLogData is present, the above useEffect handles it.
+      return;
+    }
+
+    if (selectedExercise) {
+      // Determine if the current selected exercise is static
+      const isStatic = selectedExercise.is_static ?? false;
+
+      if (lastSet !== undefined) { // lastSet can be null if no history
         setWeight(lastSet?.weight?.toString() ?? '');
-        setReps(lastSet?.reps?.toString() ?? '');
         setSelectedEquipment(lastSet?.equipment_type ?? selectedExercise.default_equipment_type ?? null);
         setSelectedVariation(lastSet?.variation ?? null);
-        
-    } else if (!isInitialDefault && selectedExercise) {
-        // No last set data for this *manually selected* exercise, use its defaults
-        setWeight(''); 
-        setReps('');   
+        if (isStatic) {
+          setTimeInSeconds(lastSet?.time_seconds?.toString() ?? '');
+          setReps(''); // Clear reps if static
+        } else {
+          setReps(lastSet?.reps?.toString() ?? '');
+          setTimeInSeconds(''); // Clear time if not static
+        }
+      } else { // No last set, use exercise defaults (or clear)
+        setWeight(''); // Or some default weight if applicable
         setSelectedEquipment(selectedExercise.default_equipment_type ?? null);
-        setSelectedVariation(null); 
+        setSelectedVariation(null); // Or default variation if any
+        if (isStatic) {
+          setTimeInSeconds('');
+          setReps('');
+        } else {
+          setReps('');
+          setTimeInSeconds('');
+        }
+      }
+    } else { // No exercise selected (e.g. after clearing)
+        setWeight('');
+        setReps('');
+        setTimeInSeconds('');
+        setSelectedEquipment(null);
+        setSelectedVariation(null);
     }
-  // Ensure dependencies are correct - only react to changes in these after initial load
-  }, [selectedExercise, lastSet, defaultLogData?.exercise_id]); 
+  // React to changes in selectedExercise (which depends on selectedExerciseId and exercises) and lastSet
+  // Do not include defaultLogData here as it's for initial population or full override.
+  }, [selectedExercise, lastSet, open]); // `open` is included to re-evaluate when dialog becomes visible if needed.
 
   // *** Refactored Mutation ***
   const saveSingleLogMutation = useMutation({
     mutationFn: async (newLogData: NewSingleLogData) => {
       if (!user) throw new Error("User not authenticated.");
       const userId = user.id;
-      const { exercise_id, reps, weight, equipment_type, variation } = newLogData;
+      // Destructure all parts including new ones
+      const { exercise_id, reps, time_seconds, weight, equipment_type, variation } = newLogData;
 
       // --- Transaction Start (Simulated Client-Side) ---
       // NOTE: For true atomicity, use a Supabase Function (rpc).
@@ -243,7 +280,8 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
           workout_exercise_id: newWorkoutExerciseId,
           set_number: 1, // Only one set for a single log
           weight: weight,
-          reps: reps,
+          reps: reps, // Will be null if time_seconds is not, and vice-versa
+          time_seconds: time_seconds, // Will be null if reps is not
           completed: true,
           equipment_type: equipment_type,
           variation: variation,
@@ -286,15 +324,10 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
   });
 
   const handleSave = () => {
-    const repsValue = parseInt(reps, 10);
-    const weightValue = parseFloat(weight) || 0; // Default to 0 if empty or invalid
+    const weightValue = parseFloat(weight) || 0;
 
-    if (!selectedExerciseId) {
+    if (!selectedExerciseId || !selectedExercise) {
       toast({ title: "Missing Info", description: "Please select an exercise.", variant: "destructive" });
-      return;
-    }
-    if (isNaN(repsValue) || repsValue <= 0) {
-      toast({ title: "Invalid Input", description: "Please enter a valid number of reps (> 0).", variant: "destructive" });
       return;
     }
     if (isNaN(weightValue) || weightValue < 0) {
@@ -302,9 +335,28 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
       return;
     }
 
+    const isStaticExercise = selectedExercise.is_static ?? false;
+    let repsValue: number | null = null;
+    let timeValue: number | null = null;
+
+    if (isStaticExercise) {
+      timeValue = parseInt(timeInSeconds, 10);
+      if (isNaN(timeValue) || timeValue <= 0) {
+        toast({ title: "Invalid Input", description: "Please enter a valid time in seconds (> 0).", variant: "destructive" });
+        return;
+      }
+    } else {
+      repsValue = parseInt(reps, 10);
+      if (isNaN(repsValue) || repsValue <= 0) {
+        toast({ title: "Invalid Input", description: "Please enter a valid number of reps (> 0).", variant: "destructive" });
+        return;
+      }
+    }
+
     const newLogData: NewSingleLogData = {
       exercise_id: selectedExerciseId,
       reps: repsValue,
+      time_seconds: timeValue,
       weight: weightValue,
       equipment_type: selectedEquipment,
       variation: selectedVariation,
@@ -314,16 +366,20 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
   };
 
   // Handlers for +/- buttons
-  const handleIncrementDecrement = (field: 'weight' | 'reps', amount: number) => {
+  const handleIncrementDecrement = (field: 'weight' | 'reps' | 'time', amount: number) => {
     if (field === 'weight') {
       const currentValue = parseFloat(weight) || 0;
       const newValue = Math.max(0, currentValue + amount); // Prevent negative weight
-      // Format to avoid excessive decimals from floating point math
-      setWeight(newValue.toFixed(newValue % 1 === 0 ? 0 : 1)); 
+      setWeight(newValue.toFixed(newValue % 1 === 0 ? 0 : (Math.abs(amount) < 1 ? 1 : 0) )); 
     } else if (field === 'reps') {
       const currentValue = parseInt(reps, 10) || 0;
       const newValue = Math.max(1, currentValue + amount); // Prevent reps < 1
       setReps(newValue.toString());
+    } else if (field === 'time') {
+      const currentValue = parseInt(timeInSeconds, 10) || 0;
+      // Allow decrementing to a minimum, e.g., 1 second or 5 seconds
+      const newValue = Math.max(amount > 0 ? 1 : 5, currentValue + amount); // Min 5s if decrementing, else min 1s
+      setTimeInSeconds(newValue.toString());
     }
   };
 
@@ -440,14 +496,14 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
             </div>
           </div>
 
-          {/* --- Weight & Reps Inputs --- */}
+          {/* --- Weight & Reps/Time Inputs --- */}
           <div className="grid grid-cols-2 gap-4">
             {/* Weight Input Group */} 
             <div>
-              <label htmlFor="weight-input" className="block text-sm font-medium mb-1">Weight (kg/lbs)</label>
+              <Label htmlFor="weight-input" className="block text-sm font-medium mb-1">Weight (kg/lbs)</Label>
               {/* Wrap input and buttons in a flex container */}
               <div className="flex items-center gap-2 mt-1">
-                <input 
+                <Input 
                   type="number" 
                   id="weight-input" 
                   value={weight}
@@ -455,7 +511,7 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
                   step="0.5"
                   min="0"
                   inputMode="decimal" 
-                  className="block w-full p-2 border border-input bg-background rounded-md shadow-sm focus:outline-none focus:ring-ring focus:border-ring sm:text-sm text-center flex-grow" // Added flex-grow
+                  className="block w-full p-2 border border-input bg-background rounded-md shadow-sm focus:outline-none focus:ring-ring focus:border-ring sm:text-sm text-center flex-grow"
                   placeholder="0"
                   disabled={isPending}
                 />
@@ -485,48 +541,88 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
               </div>
             </div>
             
-            {/* Reps Input Group */} 
-            <div>
-              <label htmlFor="reps-input" className="block text-sm font-medium mb-1">Reps</label>
-               {/* Wrap input and buttons in a flex container */}
-              <div className="flex items-center gap-2 mt-1">
-                <input 
-                  type="number" 
-                  id="reps-input" 
-                  value={reps}
-                  onChange={(e) => setReps(e.target.value)}
-                  min="1"
-                  inputMode="numeric" 
-                  pattern="[0-9]*" 
-                  className="block w-full p-2 border border-input bg-background rounded-md shadow-sm focus:outline-none focus:ring-ring focus:border-ring sm:text-sm text-center flex-grow" // Added flex-grow
-                  placeholder="Enter reps"
-                  disabled={isPending}
-                />
-                {/* Buttons Container Next to Input */} 
-                <div className="flex items-center justify-center gap-1 flex-shrink-0">
-                   <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-7 w-7 flex-shrink-0 text-muted-foreground hover:bg-accent"
-                    onClick={() => handleIncrementDecrement('reps', -1)}
-                    disabled={isPending || (parseInt(reps, 10) || 0) <= 1} // Disable decrementing below 1
-                    aria-label="Decrease reps by 1"
-                  >
-                    <Minus size={14} />
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-7 w-7 flex-shrink-0 text-muted-foreground hover:bg-accent"
-                    onClick={() => handleIncrementDecrement('reps', 1)}
-                    disabled={isPending}
-                    aria-label="Increase reps by 1"
-                  >
-                    <Plus size={14} />
-                  </Button>
+            {/* Conditional Reps or Time Input Group */} 
+            {selectedExercise && (selectedExercise.is_static ?? false) ? (
+              <div>
+                <Label htmlFor="time-input" className="block text-sm font-medium mb-1">Time (seconds)</Label>
+                <div className="flex items-center gap-2 mt-1">
+                  <Input 
+                    type="number" 
+                    id="time-input" 
+                    value={timeInSeconds}
+                    onChange={(e) => setTimeInSeconds(e.target.value)}
+                    min="1"
+                    inputMode="numeric" 
+                    pattern="[0-9]*" 
+                    className="block w-full p-2 border border-input bg-background rounded-md shadow-sm focus:outline-none focus:ring-ring focus:border-ring sm:text-sm text-center flex-grow"
+                    placeholder="Enter time"
+                    disabled={isPending || !selectedExerciseId}
+                  />
+                  <div className="flex items-center justify-center gap-1 flex-shrink-0">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-7 w-7 flex-shrink-0 text-muted-foreground hover:bg-accent"
+                      onClick={() => handleIncrementDecrement('time', -5)} // e.g., decrement by 5s
+                      disabled={isPending || !selectedExerciseId || (parseInt(timeInSeconds, 10) || 0) <= 5}
+                      aria-label="Decrease time by 5 seconds"
+                    >
+                      <Minus size={14} />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-7 w-7 flex-shrink-0 text-muted-foreground hover:bg-accent"
+                      onClick={() => handleIncrementDecrement('time', 5)} // e.g., increment by 5s
+                      disabled={isPending || !selectedExerciseId}
+                      aria-label="Increase time by 5 seconds"
+                    >
+                      <Plus size={14} />
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div>
+                <Label htmlFor="reps-input" className="block text-sm font-medium mb-1">Reps</Label>
+                <div className="flex items-center gap-2 mt-1">
+                  <Input 
+                    type="number" 
+                    id="reps-input" 
+                    value={reps}
+                    onChange={(e) => setReps(e.target.value)}
+                    min="1"
+                    inputMode="numeric" 
+                    pattern="[0-9]*" 
+                    className="block w-full p-2 border border-input bg-background rounded-md shadow-sm focus:outline-none focus:ring-ring focus:border-ring sm:text-sm text-center flex-grow"
+                    placeholder="Enter reps"
+                    disabled={isPending || !selectedExerciseId}
+                  />
+                  {/* Buttons Container Next to Input */} 
+                  <div className="flex items-center justify-center gap-1 flex-shrink-0">
+                     <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-7 w-7 flex-shrink-0 text-muted-foreground hover:bg-accent"
+                      onClick={() => handleIncrementDecrement('reps', -1)}
+                      disabled={isPending || !selectedExerciseId || (parseInt(reps, 10) || 0) <= 1} // Disable decrementing below 1
+                    >
+                      <Minus size={14} />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-7 w-7 flex-shrink-0 text-muted-foreground hover:bg-accent"
+                      onClick={() => handleIncrementDecrement('reps', 1)}
+                      disabled={isPending}
+                      aria-label="Increase reps by 1"
+                    >
+                      <Plus size={14} />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
         </div>

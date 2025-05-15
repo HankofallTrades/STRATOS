@@ -67,7 +67,7 @@ export const fetchLastWorkoutExerciseInstanceFromDB = async (
   exerciseId: string,
   equipmentType: string | undefined | null,
   variation: string | undefined | null
-): Promise<{ weight: number; reps: number; set_number: number }[] | null> => {
+): Promise<{ weight: number; reps: number | null; time_seconds?: number | null; set_number: number }[] | null> => {
   const targetVariation = variation || 'Standard';
   const targetEquipmentType = equipmentType ?? null;
 
@@ -106,7 +106,7 @@ export const fetchLastWorkoutExerciseInstanceFromDB = async (
     // Step 2: Fetch all completed sets from that specific workout_id matching all criteria again (for safety)
     const { data: historicalSetsData, error: historicalSetsError } = await supabase
       .from('exercise_sets')
-      .select('weight, reps, set_number, variation, equipment_type, workout_exercises!inner(exercise_id, workout_id)')
+      .select('weight, reps, time_seconds, set_number, variation, equipment_type, workout_exercises!inner(exercise_id, workout_id)')
       .eq('workout_exercises.workout_id', lastWorkoutId) // Filter by the workout_id found in step 1
       .eq('workout_exercises.exercise_id', exerciseId) // Filter by exercise_id
       .eq('completed', true) // Only completed sets
@@ -131,7 +131,8 @@ export const fetchLastWorkoutExerciseInstanceFromDB = async (
     // Format the final result
     const formattedSets = historicalSetsData.map(set => ({
       weight: set.weight,
-      reps: set.reps,
+      reps: set.reps as number | null,
+      time_seconds: set.time_seconds as number | null,
       set_number: set.set_number,
     }));
 
