@@ -352,7 +352,7 @@ export const WorkoutExerciseView = ({
                       {isExerciseStatic ? (
                         <TableHead className="w-[60px] text-center px-1 py-1">Time</TableHead>
                       ) : (
-                        <TableHead className="w-[60px] text-center px-1 py-1">Reps</TableHead>
+                      <TableHead className="w-[60px] text-center px-1 py-1">Reps</TableHead>
                       )}
                       <TableHead className="w-[40px] p-0 text-center"><Check size={16} className="mx-auto" /></TableHead>
                     </TableRow>

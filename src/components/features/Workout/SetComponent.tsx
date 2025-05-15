@@ -39,8 +39,8 @@ const PerformanceIndicator: React.FC<{
   let colorClass = "text-muted-foreground";
 
   if (type === 'weight') {
-    IconComponent = ArrowUp;
-    colorClass = "text-green-500";
+      IconComponent = ArrowUp;
+      colorClass = "text-green-500";
   } else if (type === 'reps' && !isStatic) {
     if (previousValue < 8) { IconComponent = ArrowUp; colorClass = "text-green-500"; }
     else { IconComponent = Minus; colorClass = "text-yellow-500"; }
@@ -128,11 +128,11 @@ const SetComponent: React.FC<SetComponentProps> = ({
 
     if (isNowCompleted) {
       let updatedSetData: any = {
-        workoutExerciseId,
-        setId: set.id,
+          workoutExerciseId,
+          setId: set.id,
         weight: weightVal,
-        variation: set.variation ?? undefined,
-        equipmentType: set.equipmentType ?? undefined,
+          variation: set.variation ?? undefined,
+          equipmentType: set.equipmentType ?? undefined,
       };
 
       if (isStatic) {
@@ -148,8 +148,8 @@ const SetComponent: React.FC<SetComponentProps> = ({
         if (weightVal >= 0 && repsVal > 0) {
           updatedSetData.reps = repsVal;
           updatedSetData.time_seconds = null;
-        } else {
-          setIsCompleted(false);
+      } else {
+        setIsCompleted(false);
           console.warn("Cannot complete rep-based set with 0 reps (and non-negative weight).");
           return;
         }
@@ -170,11 +170,11 @@ const SetComponent: React.FC<SetComponentProps> = ({
     
     let shouldUpdate = false;
     let updatePayload: any = {
-        workoutExerciseId,
-        setId: set.id,
+            workoutExerciseId,
+            setId: set.id,
         weight: weightVal,
-        variation: set.variation ?? undefined,
-        equipmentType: set.equipmentType ?? undefined,
+            variation: set.variation ?? undefined,
+            equipmentType: set.equipmentType ?? undefined,
     };
 
     if (isStatic) {
@@ -277,32 +277,32 @@ const SetComponent: React.FC<SetComponentProps> = ({
           />
         </TableCell>
       ) : (
-        <TableCell key={`${set.id}-reps`} className="w-[60px] px-1 py-1 align-middle relative">
-          <div>
-            <Input
-              id={`reps-${set.id}`}
-              type="number"
-              inputMode="numeric"
-              value={localReps}
-              onChange={handleRepsChange}
-              onBlur={() => handleBlur('reps')}
-              className={cn(
-                "h-9 w-full",
-                "text-center",
-                "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-              )}
+      <TableCell key={`${set.id}-reps`} className="w-[60px] px-1 py-1 align-middle relative">
+        <div>
+          <Input
+            id={`reps-${set.id}`}
+            type="number"
+            inputMode="numeric"
+            value={localReps}
+            onChange={handleRepsChange}
+            onBlur={() => handleBlur('reps')}
+            className={cn(
+              "h-9 w-full",
+              "text-center",
+              "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+            )}
               placeholder={previousPerformance ? String(previousPerformance.reps ?? '0') : '0'}
-              aria-label="Repetitions"
-              disabled={isCompleted}
-            />
-          </div>
-          <PerformanceIndicator
-            type="reps"
+            aria-label="Repetitions"
+            disabled={isCompleted}
+          />
+        </div>
+        <PerformanceIndicator
+          type="reps"
             previousValue={previousRepsValue}
             isStatic={isStatic}
-            isVisible={showRepsIndicator}
-          />
-        </TableCell>
+          isVisible={showRepsIndicator}
+        />
+      </TableCell>
       )}
       <TableCell key={`${set.id}-completed`} className="w-[40px] align-middle px-0 py-0">
         <div className="flex justify-center items-center h-full">

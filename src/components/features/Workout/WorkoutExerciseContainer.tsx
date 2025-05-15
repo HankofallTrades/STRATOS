@@ -126,8 +126,8 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
         if (set.weight > max.weight || (set.weight === max.weight && (set.reps ?? 0) > (max.reps ?? 0))) {
           return { weight: set.weight, reps: set.reps, time_seconds: null };
         }
-      }
-      return max;
+        }
+        return max;
     }, null);
   }, [historicalSets, workoutExercise.exercise.is_static]);
 

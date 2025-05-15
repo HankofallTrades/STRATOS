@@ -219,7 +219,7 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
         setReps('');
         setTimeInSeconds('');
         setSelectedEquipment(null);
-        setSelectedVariation(null);
+        setSelectedVariation(null); 
     }
   // React to changes in selectedExercise (which depends on selectedExerciseId and exercises) and lastSet
   // Do not include defaultLogData here as it's for initial population or full override.
@@ -501,8 +501,7 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
             {/* Weight Input Group */} 
             <div>
               <Label htmlFor="weight-input" className="block text-sm font-medium mb-1">Weight (kg/lbs)</Label>
-              {/* Wrap input and buttons in a flex container */}
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex flex-col gap-2">
                 <Input 
                   type="number" 
                   id="weight-input" 
@@ -511,12 +510,12 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
                   step="0.5"
                   min="0"
                   inputMode="decimal" 
-                  className="block w-full p-2 border border-input bg-background rounded-md shadow-sm focus:outline-none focus:ring-ring focus:border-ring sm:text-sm text-center flex-grow"
+                  className="block w-full p-2 border border-input bg-background rounded-md shadow-sm focus:outline-none focus:ring-ring focus:border-ring sm:text-sm text-center"
                   placeholder="0"
                   disabled={isPending}
                 />
-                {/* Buttons Container Next to Input */}
-                <div className="flex items-center justify-center gap-1 flex-shrink-0"> 
+                {/* Buttons Container Below Input */}
+                <div className="flex items-center justify-center gap-1"> 
                   <Button 
                     variant="ghost" 
                     size="icon" 
@@ -542,10 +541,10 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
             </div>
             
             {/* Conditional Reps or Time Input Group */} 
-            {selectedExercise && (selectedExercise.is_static ?? false) ? (
+            {selectedExercise?.is_static ? (
               <div>
                 <Label htmlFor="time-input" className="block text-sm font-medium mb-1">Time (seconds)</Label>
-                <div className="flex items-center gap-2 mt-1">
+                <div className="flex flex-col gap-2">
                   <Input 
                     type="number" 
                     id="time-input" 
@@ -554,16 +553,16 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
                     min="1"
                     inputMode="numeric" 
                     pattern="[0-9]*" 
-                    className="block w-full p-2 border border-input bg-background rounded-md shadow-sm focus:outline-none focus:ring-ring focus:border-ring sm:text-sm text-center flex-grow"
+                    className="block w-full p-2 border border-input bg-background rounded-md shadow-sm focus:outline-none focus:ring-ring focus:border-ring sm:text-sm text-center"
                     placeholder="Enter time"
                     disabled={isPending || !selectedExerciseId}
                   />
-                  <div className="flex items-center justify-center gap-1 flex-shrink-0">
+                  <div className="flex items-center justify-center gap-1">
                     <Button 
                       variant="ghost" 
                       size="icon" 
                       className="h-7 w-7 flex-shrink-0 text-muted-foreground hover:bg-accent"
-                      onClick={() => handleIncrementDecrement('time', -5)} // e.g., decrement by 5s
+                      onClick={() => handleIncrementDecrement('time', -5)}
                       disabled={isPending || !selectedExerciseId || (parseInt(timeInSeconds, 10) || 0) <= 5}
                       aria-label="Decrease time by 5 seconds"
                     >
@@ -573,7 +572,7 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
                       variant="ghost" 
                       size="icon" 
                       className="h-7 w-7 flex-shrink-0 text-muted-foreground hover:bg-accent"
-                      onClick={() => handleIncrementDecrement('time', 5)} // e.g., increment by 5s
+                      onClick={() => handleIncrementDecrement('time', 5)}
                       disabled={isPending || !selectedExerciseId}
                       aria-label="Increase time by 5 seconds"
                     >
@@ -585,7 +584,7 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
             ) : (
               <div>
                 <Label htmlFor="reps-input" className="block text-sm font-medium mb-1">Reps</Label>
-                <div className="flex items-center gap-2 mt-1">
+                <div className="flex flex-col gap-2">
                   <Input 
                     type="number" 
                     id="reps-input" 
@@ -594,18 +593,17 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
                     min="1"
                     inputMode="numeric" 
                     pattern="[0-9]*" 
-                    className="block w-full p-2 border border-input bg-background rounded-md shadow-sm focus:outline-none focus:ring-ring focus:border-ring sm:text-sm text-center flex-grow"
+                    className="block w-full p-2 border border-input bg-background rounded-md shadow-sm focus:outline-none focus:ring-ring focus:border-ring sm:text-sm text-center"
                     placeholder="Enter reps"
                     disabled={isPending || !selectedExerciseId}
                   />
-                  {/* Buttons Container Next to Input */} 
-                  <div className="flex items-center justify-center gap-1 flex-shrink-0">
-                     <Button 
+                  <div className="flex items-center justify-center gap-1">
+                    <Button 
                       variant="ghost" 
                       size="icon" 
                       className="h-7 w-7 flex-shrink-0 text-muted-foreground hover:bg-accent"
                       onClick={() => handleIncrementDecrement('reps', -1)}
-                      disabled={isPending || !selectedExerciseId || (parseInt(reps, 10) || 0) <= 1} // Disable decrementing below 1
+                      disabled={isPending || !selectedExerciseId || (parseInt(reps, 10) || 0) <= 1}
                     >
                       <Minus size={14} />
                     </Button>
@@ -627,11 +625,17 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
 
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>Cancel</Button>
-          <Button onClick={handleSave} disabled={isPending}>
+        <DialogFooter className="flex justify-center gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSave} 
+            disabled={isPending}
+            className="bg-fitnessBlue hover:bg-fitnessBlue/90"
+          >
             {saveSingleLogMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} 
-            Save Exercise
+            Save
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -433,7 +433,7 @@ const ExerciseSelector = () => {
             <div className="p-4 border rounded-lg space-y-3 dark:border-gray-700 dark:bg-gray-800">
               {/* Exercise Name Input on its own line */}
               <div className="space-y-1">
-                <Label htmlFor="new-exercise" className="dark:text-white">New Exercise Name</Label>
+              <Label htmlFor="new-exercise" className="dark:text-white">New Exercise Name</Label>
                 <Input
                   id="new-exercise"
                   value={newExerciseName}
