@@ -9,21 +9,54 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      archetype_muscle_map: {
+        Row: {
+          archetype_id: string
+          muscle_id: string
+          created_at: string | null
+        }
+        Insert: {
+          archetype_id: string
+          muscle_id: string
+          created_at?: string | null
+        }
+        Update: {
+          archetype_id?: string
+          muscle_id?: string
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "archetype_muscle_map_archetype_id_fkey"
+            columns: ["archetype_id"]
+            isOneToOne: false
+            referencedRelation: "movement_archetypes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "archetype_muscle_map_muscle_id_fkey"
+            columns: ["muscle_id"]
+            isOneToOne: false
+            referencedRelation: "muscle_definitions"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       exercise_muscle_groups: {
         Row: {
           created_at: string | null
           exercise_id: string
-          muscle_group_id: string
+          muscle_definition_id: string
         }
         Insert: {
           created_at?: string | null
           exercise_id: string
-          muscle_group_id: string
+          muscle_definition_id: string
         }
         Update: {
           created_at?: string | null
           exercise_id?: string
-          muscle_group_id?: string
+          muscle_definition_id?: string
         }
         Relationships: [
           {
@@ -34,10 +67,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "exercise_muscle_groups_muscle_group_id_fkey"
-            columns: ["muscle_group_id"]
+            foreignKeyName: "exercise_muscle_groups_muscle_definition_id_fkey"
+            columns: ["muscle_definition_id"]
             isOneToOne: false
-            referencedRelation: "muscle_groups"
+            referencedRelation: "muscle_definitions"
             referencedColumns: ["id"]
           },
         ]
@@ -123,6 +156,7 @@ export type Database = {
           id: string
           name: string
           order: number
+          archetype_id: string | null
         }
         Insert: {
           created_at?: string | null
@@ -131,6 +165,7 @@ export type Database = {
           id?: string
           name: string
           order?: number
+          archetype_id?: string | null
         }
         Update: {
           created_at?: string | null
@@ -139,40 +174,56 @@ export type Database = {
           id?: string
           name?: string
           order?: number
-        }
-        Relationships: []
-      }
-      muscle_groups: {
-        Row: {
-          created_at: string | null
-          description: string | null
-          id: string
-          name: string
-          parent_muscle_group_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          name: string
-          parent_muscle_group_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          name?: string
-          parent_muscle_group_id?: string | null
+          archetype_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "muscle_groups_parent_muscle_group_id_fkey"
-            columns: ["parent_muscle_group_id"]
+            foreignKeyName: "fk_exercises_archetype_id_unique"
+            columns: ["archetype_id"]
             isOneToOne: false
-            referencedRelation: "muscle_groups"
+            referencedRelation: "movement_archetypes"
             referencedColumns: ["id"]
-          },
+          }
         ]
+      }
+      movement_archetypes: {
+        Row: {
+          id: string
+          name: string
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          created_at?: string | null
+        }
+        Relationships: []
+      }
+      muscle_definitions: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          created_at?: string | null
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -419,8 +470,9 @@ export type Database = {
       fetch_weekly_sets_per_muscle_group: {
         Args: { p_user_id: string }
         Returns: {
-          l1_parent_name: string
-          muscle_group_name: string
+          base_archetype_name: string
+          archetype_subtype_name: string | null
+          muscle_definition_name: string
           total_sets: number
         }[]
       }

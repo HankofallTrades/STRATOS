@@ -1,0 +1,23 @@
+{
+  "mcpServers": {
+    "supabase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--access-token",
+        "sbp_14369c26aa308b760200d1e64d7dcdfd697e2656"
+      ]
+    },
+    "memory": {
+      "command": "npx", 
+      "args": [
+        "-y",
+        "@itseasy21/mcp-knowledge-graph"
+      ],
+      "env": {
+        "MEMORY_FILE_PATH": "/Users/hank/Programming/STRATOS/.cursor/memory.jsonl"
+      }
+    }
+  }
+}
