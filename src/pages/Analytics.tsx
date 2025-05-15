@@ -17,16 +17,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/core/select"
-import { ChevronDown } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/core/tabs";
+import { Card, CardContent } from "@/components/core/card";
 
 // LocalStorage Key for persistence
-const ANALYTICS_VIEW_STORAGE_KEY = 'selectedAnalyticsView';
+const ANALYTICS_VIEW_STORAGE_KEY = 'selectedAnalyticsView_v2';
 
 // Define Benchmark Type
 type BenchmarkType = 'Strength' | 'Calisthenics';
 
 // Define Analysis Type
-type AnalysisType = 'E1RM' | 'Volume';
+type AnalysisType = 'E1RM' | 'Volume' | 'Benchmarks';
 
 // Format date for display (e.g., in Recent Workouts)
 const formatDate = (dateInput: Date | string): string => {
@@ -53,14 +54,14 @@ const Analytics = () => {
     staleTime: Infinity,
   });
   
-  // State for selected benchmark type
+  // State for selected benchmark type (now used within the Benchmarks tab)
   const [selectedBenchmarkType, setSelectedBenchmarkType] = useState<BenchmarkType>('Strength');
   // State for selected analysis type - Initialize from localStorage
   const [selectedAnalysisType, setSelectedAnalysisType] = useState<AnalysisType>(() => {
     try {
       const storedView = localStorage.getItem(ANALYTICS_VIEW_STORAGE_KEY);
       // Ensure stored value is a valid AnalysisType
-      if (storedView === 'E1RM' || storedView === 'Volume') {
+      if (storedView === 'E1RM' || storedView === 'Volume' || storedView === 'Benchmarks') {
         return storedView;
       }
     } catch (error) {
@@ -89,61 +90,43 @@ const Analytics = () => {
         <h2 className="text-2xl font-semibold mb-4">Performance Overview</h2>
         <PerformanceOverview />
 
-        {/* Analysis Type Selection - Styled like ExerciseProgressAnalysis dropdown */}
-        <div className="flex items-center mb-4"> 
-            <div className="relative inline-flex items-center cursor-pointer min-w-0"> 
-                {/* Visible text span */}
-                <span className="text-2xl font-semibold truncate"> 
-                    {selectedAnalysisType === 'E1RM' ? 'Estimated 1RM' : 'Volume'}
-                </span>
-                {/* Chevron Icon */}
-                <div className="flex items-center ml-1">
-                    <ChevronDown className="h-4 w-4 text-gray-400" />
-                </div>
-                {/* Hidden select element for functionality */}
-                <select
-                    className="absolute inset-0 w-full h-full opacity-0 appearance-none cursor-pointer" // Make select cover div and hide visually
-                    value={selectedAnalysisType}
-                    onChange={(e) => setSelectedAnalysisType(e.target.value as AnalysisType)} // Cast value
-                >
-                    <option value="E1RM">Estimated 1RM</option>
-                    <option value="Volume">Volume</option>
-                </select>
-            </div>
-        </div>
-
-        {/* Conditionally render Analysis component */}
-        {selectedAnalysisType === 'E1RM' && (
-          <OneRepMax 
-              userId={user?.id}
-              exercises={exercises}
-              isLoadingExercises={isLoadingExercises}
-              errorExercises={errorExercises}
-          />
-        )}
-
-        {selectedAnalysisType === 'Volume' && (
-          // Render the Volume component
-          <Volume 
-            userId={user?.id}
-          />
-        )}
-
-        {/* Benchmark Section */}
-        <div className="mt-8">
-          <h2 className="text-2xl font-semibold mb-4">Benchmarks</h2>
-          {selectedBenchmarkType === 'Strength' ? (
-            <StrengthBenchmarks
-              currentType={selectedBenchmarkType}
-              onTypeChange={setSelectedBenchmarkType}
-            />
-          ) : (
-            <CalisthenicBenchmarks
-              currentType={selectedBenchmarkType}
-              onTypeChange={setSelectedBenchmarkType}
-            />
-          )}
-        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <Tabs value={selectedAnalysisType} onValueChange={(value) => setSelectedAnalysisType(value as AnalysisType)} className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="E1RM">Estimated 1RM</TabsTrigger>
+                <TabsTrigger value="Volume">Volume</TabsTrigger>
+                <TabsTrigger value="Benchmarks">Benchmarks</TabsTrigger>
+              </TabsList>
+              <TabsContent value="E1RM">
+                <OneRepMax 
+                    userId={user?.id}
+                    exercises={exercises}
+                    isLoadingExercises={isLoadingExercises}
+                    errorExercises={errorExercises}
+                />
+              </TabsContent>
+              <TabsContent value="Volume">
+                <Volume 
+                  userId={user?.id}
+                />
+              </TabsContent>
+              <TabsContent value="Benchmarks">
+                {selectedBenchmarkType === 'Strength' ? (
+                  <StrengthBenchmarks
+                    currentType={selectedBenchmarkType}
+                    onTypeChange={setSelectedBenchmarkType}
+                  />
+                ) : (
+                  <CalisthenicBenchmarks
+                    currentType={selectedBenchmarkType}
+                    onTypeChange={setSelectedBenchmarkType}
+                  />
+                )}
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
 
         {/* Render the new RecentWorkouts component */}
         <div className="mt-8">
