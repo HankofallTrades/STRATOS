@@ -155,15 +155,15 @@ const Volume: React.FC<VolumeProps> = ({ userId }) => {
     }, [rawData]);
     
     return (
-        <Card className="mb-8 border-0 shadow-none bg-transparent p-0 md:border md:shadow md:bg-card md:p-6">
-            <CardHeader className="p-0 mb-4 md:p-4 md:pb-2">
+        <div className="md:p-6">
+            <CardHeader className="p-0 mb-4 md:pb-2">
                 <CardTitle className="text-2xl font-semibold mb-4 text-center md:text-left">
-                    Weekly Archetype Progress
+                    Movement Archetypes
                 </CardTitle>
                 {/* Temporary User ID display for debugging - REMOVED */}
                 {/* <p className="text-xs text-gray-400 text-center md:text-left">Debugging - User ID: {userId || "undefined"}</p> */}
             </CardHeader>
-            <CardContent className="p-0 md:p-6 md:pt-0">
+            <CardContent className="p-0 pt-0">
                 {isLoadingSets ? (
                     <p className="text-gray-500 italic text-center py-10">Loading weekly set data...</p>
                 ) : errorSets ? (
@@ -235,7 +235,7 @@ const Volume: React.FC<VolumeProps> = ({ userId }) => {
                     </div>
                 )}
             </CardContent>
-        </Card>
+        </div>
     );
 };
 

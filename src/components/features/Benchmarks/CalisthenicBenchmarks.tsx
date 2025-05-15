@@ -218,8 +218,8 @@ const CalisthenicBenchmarks: React.FC<CalisthenicBenchmarksProps> = ({ currentTy
     };
 
     return (
-        <Card className="relative border-0 shadow-none bg-transparent p-0 md:border md:shadow md:bg-card md:p-6">
-            <CardHeader className="p-0 mb-4 md:p-4 md:pb-0">
+        <div className="relative md:p-6">
+            <CardHeader className="p-0 mb-4 md:pb-0">
                 <div className="flex items-center justify-between mb-4">
                     <PersonSimpleRun className="mr-2 h-5 w-5 text-fitnessBlue flex-shrink-0" />
                     <CardTitle className="flex items-center flex-grow mr-2">
@@ -289,10 +289,10 @@ const CalisthenicBenchmarks: React.FC<CalisthenicBenchmarksProps> = ({ currentTy
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="p-0 md:p-6 md:pt-0">
+            <CardContent className="p-0 pt-0">
                 {renderBenchmarkContent()}
             </CardContent>
-        </Card>
+        </div>
     );
 };
 

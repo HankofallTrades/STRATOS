@@ -460,8 +460,8 @@ const OneRepMax: React.FC<OneRepMaxProps> = ({
             ) : errorExercises ? (
                 <p className="text-red-500 italic text-center py-10">Error loading exercises: {errorExercises.message}</p>
             ) : exercises.length > 0 ? (
-                <Card className="mb-8 border-0 shadow-none bg-transparent p-0 md:border md:shadow md:bg-card md:p-6">
-                    <CardHeader className="p-0 mb-4 md:p-4 md:pb-0">
+                <div className="md:p-6"> {/* New root div with original Card's md padding */}
+                    <CardHeader className="p-0 mb-4 md:pb-0"> {/* Adjusted padding: remove md:p-4 */}
                         {/* MOVED: Title and dropdown logic now here */}
                         {/* Outer flex container for title */}
                         <div className="flex items-center mb-4"> 
@@ -517,7 +517,7 @@ const OneRepMax: React.FC<OneRepMaxProps> = ({
                         )}
                     </CardHeader>
                     {/* Removed space-y-6 from CardContent */}
-                    <CardContent className="p-0 md:p-6 md:pt-0">
+                    <CardContent className="p-0 pt-0"> {/* Adjusted padding: remove md:p-6 md:pt-0, ensure pt-0 */}
                         {selectedExercise && (
                             // Removed outer div that previously held title/buttons
                             <>
@@ -610,7 +610,7 @@ const OneRepMax: React.FC<OneRepMaxProps> = ({
                              <p className="text-gray-500 italic text-center py-10">Select an exercise above to see its progress.</p>
                         )}
                     </CardContent>
-                </Card>
+                </div>
             ) : (
                 <p className="text-gray-500 italic">No exercises defined yet. Add some via the workout screen.</p>
             )}
