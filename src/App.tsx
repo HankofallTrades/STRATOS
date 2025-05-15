@@ -331,10 +331,10 @@ const MainAppLayout = () => {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="mb-1">
                 <DropdownMenuItem onSelect={handleAddWorkout}>
-                  Start Full Workout
+                  Start Session
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={handleAddExercise}>
-                  Log Single Exercise
+                  Log Exercise
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
