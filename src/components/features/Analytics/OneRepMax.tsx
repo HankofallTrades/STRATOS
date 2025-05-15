@@ -13,7 +13,10 @@ import { ChevronDown } from "lucide-react"; // Import ChevronDown icon
 interface UnifiedDataPoint {
   workout_timestamp: number; // Use timestamp for numerical axis
   workout_date: string; // Keep original date string for potential reference
-  [combinationKey: string]: number | string | undefined | null;
+  [combinationKey: string]: number | string | undefined | null | Record<string, string | undefined>; // Allow for _originalEquipment
+  _originalEquipment?: {
+    [combinationKey: string]: string | undefined;
+  };
 }
 
 // Props interface - RENAMED
@@ -30,7 +33,10 @@ const getCombinationKey = (
     equipmentType?: string | null // Now just string as returned from DB
 ): string => {
     const varPart = (!variation || variation.toLowerCase() === 'standard') ? 'Default' : variation;
-    const eqPart = equipmentType || 'Default';
+    let eqPart = equipmentType || 'Default';
+    if (equipmentType === 'Dumbbell' || equipmentType === 'Kettlebell') {
+        eqPart = 'DB_KB_COMBO'; // Combined identifier
+    }
     return `${varPart}|${eqPart}`;
 };
 
@@ -74,9 +80,11 @@ const CustomTooltip = ({ active, payload, label }: any) => {
       <div className="custom-tooltip bg-white p-3 border border-gray-300 rounded shadow-lg text-sm space-y-1">
         <p className="label font-semibold mb-1">{`Date: ${formatDate(date)}`}</p> {/* Use original formatDate here */}
         {payload.map((entry: any, index: number) => {
-          const name = entry.name;
+          const name = entry.name; // e.g., "Standard - DB/KB"
           const value = entry.value;
           const color = entry.color;
+          const dataKey = entry.dataKey; // e.g., "Default|DB_KB_COMBO"
+          const pointData = entry.payload; // The UnifiedDataPoint for this timestamp
 
           if (name == null || value == null) {
             return null;
@@ -84,10 +92,39 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
           const parts = name.split(' - ');
           const variation = parts[0] || 'Unknown';
-          const equipmentType = parts[1] || 'Unknown';
+          const equipmentTypeFromDisplayName = parts[1] || 'Unknown'; // This will be "DB/KB" or other equipment
 
           const variationDisplay = variation === 'Default' ? 'Standard' : variation;
-          const equipmentDisplay = equipmentType === 'Default' ? 'Default' : equipmentType;
+          let equipmentDisplay = equipmentTypeFromDisplayName;
+
+          // If this line is the combined DB/KB, try to get the original equipment type
+          if (equipmentTypeFromDisplayName === 'DB/KB' && 
+              pointData._originalEquipment && 
+              pointData._originalEquipment[dataKey]) {
+            const originalEquipment = pointData._originalEquipment[dataKey];
+            if (originalEquipment === 'Dumbbell' || originalEquipment === 'Kettlebell') {
+                equipmentDisplay = originalEquipment; // Show 'Dumbbell' or 'Kettlebell'
+            }
+          } else if (equipmentTypeFromDisplayName === 'Default') {
+            // Handle cases where original equipment was 'Default' (e.g. Bodyweight)
+            // and not part of DB/KB combo, but might appear as 'Default' in legend.
+            // If _originalEquipment exists and has a value for this key, prefer it.
+            if (pointData._originalEquipment && pointData._originalEquipment[dataKey]) {
+                const originalEq = pointData._originalEquipment[dataKey];
+                if (originalEq && originalEq !== 'Default') { // Avoid showing "Default" if more specific is known
+                    equipmentDisplay = originalEq;
+                } else {
+                     equipmentDisplay = 'Bodyweight'; // Or a suitable default for 'Default' equipment
+                }
+            } else if (equipmentTypeFromDisplayName === 'Default' && dataKey && !dataKey.includes('|Default')) { 
+                // If display name says "Default" but key isn't specific, assume bodyweight or similar
+                // This condition might need refinement based on how 'Default' equipment is keyed
+            }
+             else {
+                equipmentDisplay = equipmentTypeFromDisplayName === 'Default' ? 'Default' : equipmentTypeFromDisplayName;
+            }
+          }
+
 
           return (
             <div key={index} className="tooltip-entry">
@@ -347,12 +384,32 @@ const OneRepMax: React.FC<OneRepMaxProps> = ({
             });
 
             dataForDate.forEach(item => {
-                const key = getCombinationKey(item.variation, item.equipment_type);
-                // Only overwrite null if max_e1rm exists and is a valid number
+                const key = getCombinationKey(item.variation, item.equipment_type); // e.g., "Default|DB_KB_COMBO"
+                
                 if (item.max_e1rm != null && !isNaN(item.max_e1rm)) {
-                    point[key] = item.max_e1rm; 
+                    let valueToStore = item.max_e1rm;
+
+                    const isDumbbell = item.equipment_type === 'Dumbbell';
+                    const isKettlebell = item.equipment_type === 'Kettlebell';
+
+                    // Store original equipment type if it's Dumbbell, Kettlebell, or even other types
+                    // for consistency if we later want to show specifics for other 'Default' equipment.
+                    if (!point._originalEquipment) {
+                        point._originalEquipment = {};
+                    }
+                    // Store the actual equipment type that contributed to this key for this date.
+                    point._originalEquipment[key] = item.equipment_type || 'Default';
+
+
+                    if (isDumbbell || isKettlebell) {
+                        // Value doubling logic (Kettlebell doubled here, Dumbbell assumed doubled upstream)
+                        if (isKettlebell) {
+                            valueToStore = valueToStore * 2;
+                        }
+                    }
+                    point[key] = valueToStore;
                 } else {
-                    point[key] = null; // Ensure it's explicitly null
+                    point[key] = null;
                 }
             });
 
@@ -563,14 +620,35 @@ const OneRepMax: React.FC<OneRepMaxProps> = ({
                                             }}
                                             payload={
                                                 allCombinationKeys.map((key, index) => {
-                                                    const displayValue = key.startsWith('Default|')
-                                                        ? key.replace('Default|', 'Standard - ')
-                                                        : key.replace('|', ' - ');
+                                                    const parts = key.split('|');
+                                                    const variationPart = parts[0]; // e.g., "Default", "Incline"
+                                                    const equipmentPart = parts[1]; // e.g., "DB_KB_COMBO", "Barbell", "Default"
+
+                                                    // Determine display variation
+                                                    const displayVariation = (variationPart === 'Default') ? 'Standard' : variationPart;
+
+                                                    // Determine display equipment
+                                                    let displayEquipment;
+                                                    if (equipmentPart === 'DB_KB_COMBO') {
+                                                        displayEquipment = 'DB/KB';
+                                                    } else if (equipmentPart === 'Default') {
+                                                        displayEquipment = 'Bodyweight'; // Or a more general term if preferred
+                                                    } else {
+                                                        displayEquipment = equipmentPart;
+                                                    }
+                                                    
+                                                    // Determine final legend value based on new format
+                                                    let displayValue;
+                                                    if (displayVariation === 'Standard') {
+                                                        displayValue = displayEquipment;
+                                                    } else {
+                                                        displayValue = `${displayEquipment} (${displayVariation})`;
+                                                    }
 
                                                     return {
                                                         id: key,
                                                         type: 'line',
-                                                        value: displayValue,
+                                                        value: displayValue, // Use the new formatted displayValue
                                                         color: lineColors[index % lineColors.length],
                                                     }
                                                 })
@@ -579,12 +657,25 @@ const OneRepMax: React.FC<OneRepMaxProps> = ({
                                             {allCombinationKeys.map((key) => {
                                                 const colorIndex = allCombinationKeys.indexOf(key);
                                                 if (!activeCombinationKeys.includes(key)) return null;
+
+                                                const parts = key.split('|');
+                                                const variationPart = parts[0];
+                                                let equipmentPart = parts[1];
+                                            
+                                                const displayVariation = variationPart === 'Default' ? 'Standard' : variationPart;
+                                                let displayEquipment = equipmentPart === 'Default' ? 'Default' : equipmentPart;
+                                            
+                                                if (equipmentPart === 'DB_KB_COMBO') {
+                                                    displayEquipment = 'DB/KB';
+                                                }
+                                                const displayName = `${displayVariation} - ${displayEquipment}`;
+
                                                 return (
                                                     <Line
                                                         key={key}
                                                         type="monotone"
                                                         dataKey={key}
-                                                        name={key.replace('|', ' - ')}
+                                                        name={displayName} // Use the new formatted displayName
                                                         stroke={lineColors[colorIndex % lineColors.length]}
                                                         strokeWidth={2}
                                                         // Revert dot style to default boolean
