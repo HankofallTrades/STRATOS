@@ -67,9 +67,14 @@ export const fetchExercisesFromDB = async (): Promise<ExerciseRow[]> => {
  * @param exerciseData - The data for the new exercise (requires name).
  */
 export const createExerciseInDB = async (
-  exerciseData: Pick<ExerciseInsert, 'name' | 'default_equipment_type' | 'is_static'>
+  exerciseData: Pick<ExerciseInsert, 'name' | 'default_equipment_type' | 'is_static' | 'archetype_id'>
 ): Promise<ExerciseRow> => {
-  console.log("Creating custom exercise in Supabase:", exerciseData.name, "Static:", exerciseData.is_static);
+  console.log(
+    "Creating custom exercise in Supabase:", 
+    exerciseData.name, 
+    "Static:", exerciseData.is_static,
+    "Archetype ID:", exerciseData.archetype_id
+  );
 
   // Get current user
   const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -84,6 +89,7 @@ export const createExerciseInDB = async (
     name: exerciseData.name,
     default_equipment_type: exerciseData.default_equipment_type,
     is_static: exerciseData.is_static ?? false, // Provide a default if null/undefined
+    archetype_id: exerciseData.archetype_id, // Add archetype_id
     created_by_user_id: user.id, // Set the creator
   };
 
