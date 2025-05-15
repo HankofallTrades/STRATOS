@@ -50,7 +50,15 @@ interface VolumeProps {
 }
 
 // Define colors and archetype styling (archetypeColors might need slight adjustments if new keys are used)
-const GOAL_SETS = 15; // Target sets for each archetype
+// const GOAL_SETS = 15; // Target sets for each archetype
+const GOAL_SETS: Record<ProgressArchetypeName, number> = {
+    'Squat': 7,
+    'Lunge': 7,
+    'Push': 10,
+    'Pull': 10,
+    'Bend': 7,
+    'Twist': 7,
+};
 
 const archetypeColors: {
     [key: string]: {
@@ -100,12 +108,12 @@ const Volume: React.FC<VolumeProps> = ({ userId }) => {
         // console.log('[Volume.tsx Debug] Full rawData (consider stringifying for large objects):', JSON.stringify(rawData, null, 2));
 
         const initialData: Record<ProgressArchetypeName, Omit<DisplayArchetypeData, 'displayColor' | 'displayVerticalColor' | 'displayHorizontalColor'>> = {
-            'Squat': { name: 'Squat', totalSets: 0, verticalSets: 0, horizontalSets: 0, goal: GOAL_SETS },
-            'Lunge': { name: 'Lunge', totalSets: 0, verticalSets: 0, horizontalSets: 0, goal: GOAL_SETS },
-            'Push':  { name: 'Push',  totalSets: 0, verticalSets: 0, horizontalSets: 0, goal: GOAL_SETS },
-            'Pull':  { name: 'Pull',  totalSets: 0, verticalSets: 0, horizontalSets: 0, goal: GOAL_SETS },
-            'Bend':  { name: 'Bend',  totalSets: 0, verticalSets: 0, horizontalSets: 0, goal: GOAL_SETS },
-            'Twist': { name: 'Twist', totalSets: 0, verticalSets: 0, horizontalSets: 0, goal: GOAL_SETS },
+            'Squat': { name: 'Squat', totalSets: 0, verticalSets: 0, horizontalSets: 0, goal: GOAL_SETS['Squat'] },
+            'Lunge': { name: 'Lunge', totalSets: 0, verticalSets: 0, horizontalSets: 0, goal: GOAL_SETS['Lunge'] },
+            'Push':  { name: 'Push',  totalSets: 0, verticalSets: 0, horizontalSets: 0, goal: GOAL_SETS['Push'] },
+            'Pull':  { name: 'Pull',  totalSets: 0, verticalSets: 0, horizontalSets: 0, goal: GOAL_SETS['Pull'] },
+            'Bend':  { name: 'Bend',  totalSets: 0, verticalSets: 0, horizontalSets: 0, goal: GOAL_SETS['Bend'] },
+            'Twist': { name: 'Twist', totalSets: 0, verticalSets: 0, horizontalSets: 0, goal: GOAL_SETS['Twist'] },
         };
 
         rawData.forEach(item => {
@@ -142,7 +150,7 @@ const Volume: React.FC<VolumeProps> = ({ userId }) => {
         return progressArchetypes.map(name => {
             const archSetup = initialData[name];
             const colors = archetypeColors[name] || archetypeColors['Default'];
-            const isGoalMet = archSetup.totalSets >= GOAL_SETS;
+            const isGoalMet = archSetup.totalSets >= archSetup.goal;
 
             let displayColor = isGoalMet ? colors.highlight : colors.default; 
             let displayVerticalColor: string | undefined = undefined;
@@ -187,7 +195,7 @@ const Volume: React.FC<VolumeProps> = ({ userId }) => {
                 ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 md:gap-6">
                         {progressDisplayData.map((archetype) => {
-                            const isGoalMet = archetype.totalSets >= GOAL_SETS;
+                            const isGoalMet = archetype.totalSets >= archetype.goal;
                             const chartData = [archetype];
                             const isPushOrPull = archetype.name === 'Push' || archetype.name === 'Pull';
                             const hasPushPullSegments = isPushOrPull && (archetype.verticalSets > 0 || archetype.horizontalSets > 0);
@@ -221,7 +229,7 @@ const Volume: React.FC<VolumeProps> = ({ userId }) => {
                                                 startAngle={90}
                                                 endAngle={-270}
                                             >
-                                                <PolarAngleAxis type="number" domain={[0, GOAL_SETS]} tick={false} />
+                                                <PolarAngleAxis type="number" domain={[0, archetype.goal]} tick={false} />
 
                                                 {hasPushPullSegments ? (
                                                     <>
@@ -262,7 +270,7 @@ const Volume: React.FC<VolumeProps> = ({ userId }) => {
                                                 {archetype.totalSets}
                                             </span>
                                             <span className="text-xs text-gray-500 dark:text-gray-400">
-                                                / {GOAL_SETS} sets
+                                                / {archetype.goal} sets
                                             </span>
                                         </div>
                                     </div>
@@ -273,7 +281,7 @@ const Volume: React.FC<VolumeProps> = ({ userId }) => {
                 )}
             </CardContent>
 
-            {/* Click-triggered Tooltip */} Ludicrous
+            {/* Click-triggered Tooltip */} 
             {clickedArchetypeData && clickTooltipPosition && (
                 <div
                     style={{
