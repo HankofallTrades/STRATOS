@@ -18,7 +18,6 @@ import {
   SelectValue,
 } from "@/components/core/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/core/tabs";
-import { Card, CardContent } from "@/components/core/card";
 
 // LocalStorage Key for persistence
 const ANALYTICS_VIEW_STORAGE_KEY = 'selectedAnalyticsView_v2';
@@ -90,43 +89,41 @@ const Analytics = () => {
         <h2 className="text-2xl font-semibold mb-4">Performance Overview</h2>
         <PerformanceOverview />
 
-        <Card>
-          <CardContent className="pt-6">
-            <Tabs value={selectedAnalysisType} onValueChange={(value) => setSelectedAnalysisType(value as AnalysisType)} className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="E1RM">Estimated 1RM</TabsTrigger>
-                <TabsTrigger value="Volume">Volume</TabsTrigger>
-                <TabsTrigger value="Benchmarks">Benchmarks</TabsTrigger>
-              </TabsList>
-              <TabsContent value="E1RM">
-                <OneRepMax 
-                    userId={user?.id}
-                    exercises={exercises}
-                    isLoadingExercises={isLoadingExercises}
-                    errorExercises={errorExercises}
-                />
-              </TabsContent>
-              <TabsContent value="Volume">
-                <Volume 
+        <div className="pt-6">
+          <Tabs value={selectedAnalysisType} onValueChange={(value) => setSelectedAnalysisType(value as AnalysisType)} className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="E1RM">Estimated 1RM</TabsTrigger>
+              <TabsTrigger value="Volume">Volume</TabsTrigger>
+              <TabsTrigger value="Benchmarks">Benchmarks</TabsTrigger>
+            </TabsList>
+            <TabsContent value="E1RM">
+              <OneRepMax 
                   userId={user?.id}
+                  exercises={exercises}
+                  isLoadingExercises={isLoadingExercises}
+                  errorExercises={errorExercises}
+              />
+            </TabsContent>
+            <TabsContent value="Volume">
+              <Volume 
+                userId={user?.id}
+              />
+            </TabsContent>
+            <TabsContent value="Benchmarks">
+              {selectedBenchmarkType === 'Strength' ? (
+                <StrengthBenchmarks
+                  currentType={selectedBenchmarkType}
+                  onTypeChange={setSelectedBenchmarkType}
                 />
-              </TabsContent>
-              <TabsContent value="Benchmarks">
-                {selectedBenchmarkType === 'Strength' ? (
-                  <StrengthBenchmarks
-                    currentType={selectedBenchmarkType}
-                    onTypeChange={setSelectedBenchmarkType}
-                  />
-                ) : (
-                  <CalisthenicBenchmarks
-                    currentType={selectedBenchmarkType}
-                    onTypeChange={setSelectedBenchmarkType}
-                  />
-                )}
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
+              ) : (
+                <CalisthenicBenchmarks
+                  currentType={selectedBenchmarkType}
+                  onTypeChange={setSelectedBenchmarkType}
+                />
+              )}
+            </TabsContent>
+          </Tabs>
+        </div>
 
         {/* Render the new RecentWorkouts component */}
         <div className="mt-8">
