@@ -55,6 +55,7 @@ const workoutSlice = createSlice({
         action: PayloadAction<{
             workoutExerciseId: string;
             exerciseId: string;
+            isStatic: boolean; // Added isStatic
             userBodyweight?: number | null; // Add optional bodyweight
         }>
     ) {
@@ -78,10 +79,13 @@ const workoutSlice = createSlice({
           weightForNewSet = action.payload.userBodyweight;
       }
 
+      const isStatic = action.payload.isStatic;
+
       const newSet: ExerciseSet = {
         id: uuidv4(),
         weight: weightForNewSet, // Use calculated initial weight
-        reps: lastSet?.reps ?? 0,
+        reps: isStatic ? null : (lastSet?.reps ?? 0),
+        time_seconds: isStatic ? (lastSet?.time_seconds ?? 0) : null,
         exerciseId: action.payload.exerciseId,
         completed: false,
         variation: lastSet?.variation ?? workoutExercise.variation ?? 'Standard', 
@@ -95,7 +99,8 @@ const workoutSlice = createSlice({
         workoutExerciseId: string;
         setId: string;
         weight: number;
-        reps: number;
+        reps: number | null; // Make reps nullable
+        time_seconds?: number | null; // Add time_seconds
         variation?: string | null; // Add optional variation
         equipmentType?: string | null; // Add optional equipmentType
       }>
@@ -109,6 +114,7 @@ const workoutSlice = createSlice({
       if (set) {
         set.weight = action.payload.weight;
         set.reps = action.payload.reps;
+        set.time_seconds = action.payload.time_seconds; // Assign time_seconds
         if (action.payload.variation !== undefined) {
             set.variation = action.payload.variation ?? undefined; // Handle null
         }

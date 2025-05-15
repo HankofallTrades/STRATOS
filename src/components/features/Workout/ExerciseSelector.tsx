@@ -19,6 +19,7 @@ import { Exercise, WorkoutExercise } from "@/lib/types/workout";
 import { v4 as uuidv4 } from 'uuid';
 import { useToast } from "@/components/core/Toast/use-toast";
 import { useAuth } from '@/state/auth/AuthProvider';
+import { Switch } from "@/components/core/switch"; // Explicitly lowercase 'switch'
 
 const LONG_PRESS_DURATION = 500; // 500ms for long press
 
@@ -31,6 +32,7 @@ const ExerciseSelector = () => {
   // State for UI control remains the same
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [newExerciseName, setNewExerciseName] = useState("");
+  const [isStaticNewExercise, setIsStaticNewExercise] = useState(false); // New state for the toggle
   const [searchQuery, setSearchQuery] = useState("");
   const [open, setOpen] = useState(false);
 
@@ -108,7 +110,9 @@ const ExerciseSelector = () => {
     // Dispatch to add the first default set immediately after
     dispatch(addSetToExercise({ // Corrected: Use the correct action
       workoutExerciseId: newWorkoutExerciseId, // Use the same ID
-      exerciseId: selectedExercise.id // Add the missing exerciseId
+      exerciseId: selectedExercise.id, // Add the missing exerciseId
+      isStatic: selectedExercise.is_static ?? false, // Pass is_static from the selected exercise
+      // userBodyweight can be added here if needed/available, or handled in the slice based on profile
     }));
 
     // Reset UI state
@@ -268,8 +272,10 @@ const ExerciseSelector = () => {
   const handleAddNew = () => {
     if (newExerciseName.trim()) {
       // Use mutation to add the new exercise
-      // Pass only the name, assuming createExerciseInDB handles defaults
-      mutation.mutate({ name: newExerciseName.trim() }); 
+      mutation.mutate({ 
+        name: newExerciseName.trim(),
+        is_static: isStaticNewExercise // Pass the new is_static state
+      }); 
     }
   };
 
@@ -279,6 +285,7 @@ const ExerciseSelector = () => {
         setSearchQuery("");
         setIsAddingNew(false);
         setNewExerciseName("");
+        setIsStaticNewExercise(false); // Reset new exercise type state
         // Also clear any potential long press state if main dialog is closed
         clearLongPressTimer();
         setIsConfirmDeleteDialogOpen(false); // Ensure delete dialog is closed too
@@ -290,6 +297,7 @@ const ExerciseSelector = () => {
   useEffect(() => {
     return () => {
       clearLongPressTimer();
+      setIsStaticNewExercise(false); // Reset on unmount too
     };
   }, []);
 
@@ -383,34 +391,59 @@ const ExerciseSelector = () => {
 
           {isAddingNew ? (
             <div className="p-4 border rounded-lg space-y-3 dark:border-gray-700 dark:bg-gray-800">
-              <Label htmlFor="new-exercise" className="dark:text-white">New Exercise Name</Label>
-              <div className="flex space-x-2">
-                <Input
-                  id="new-exercise"
-                  value={newExerciseName}
-                  onChange={(e) => setNewExerciseName(e.target.value)}
-                  placeholder="Enter exercise name"
-                  className="flex-1 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  disabled={mutation.isPending} // Disable input while adding
-                />
+              {/* Combined Row for Input and Toggle */}
+              <div className="flex items-start space-x-3"> {/* items-start to align labels at top */}
+                {/* Left Column: Exercise Name Input */}
+                <div className="flex-grow space-y-1">
+                  <Label htmlFor="new-exercise" className="dark:text-white">New Exercise Name</Label>
+                  <Input
+                    id="new-exercise"
+                    value={newExerciseName}
+                    onChange={(e) => setNewExerciseName(e.target.value)}
+                    placeholder="Enter exercise name"
+                    className="w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    disabled={mutation.isPending}
+                  />
+                </div>
+                
+                {/* Right Column: Timed Toggle */}
+                <div className="flex-shrink-0 space-y-1 pt-1"> {/* pt-1 to roughly align with input field visually if label heights differ */}
+                  <Label htmlFor="timed-toggle" className="block text-center dark:text-white"> {/* block and text-center for label above switch */}
+                    Timed
+                  </Label>
+                  <div className="flex justify-center"> {/* Center the switch below its label */}
+                    <Switch
+                      id="timed-toggle"
+                      checked={isStaticNewExercise}
+                      onCheckedChange={setIsStaticNewExercise}
+                      disabled={mutation.isPending}
+                      // Assuming the Switch has appropriate styling for on/off states
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              {/* Moved Add and Cancel buttons here - they are below the input/toggle row */}
+              <div className="flex space-x-2 pt-3">
                 <Button
                   variant="default"
-                  className="bg-fitnessGreen hover:bg-fitnessGreen/90"
+                  className="flex-1 bg-fitnessGreen hover:bg-fitnessGreen/90" // flex-1 to take available space
                   onClick={handleAddNew}
                   disabled={!newExerciseName.trim() || mutation.isPending || isActionPending} // Disable if adding or removing
                 >
-                  {mutation.isPending ? 'Adding...' : 'Add'}
+                  {mutation.isPending ? 'Adding...' : 'Add Exercise'}
                 </Button>
                 <Button
                   variant="outline"
+                  className="flex-1 dark:border-gray-700 dark:text-white dark:hover:bg-gray-700" // flex-1
                   onClick={() => {
                     setIsAddingNew(false);
                     setNewExerciseName("");
+                    setIsStaticNewExercise(false); // Reset toggle state on cancel
                   }}
-                  className="dark:border-gray-700 dark:text-white dark:hover:bg-gray-700"
                   disabled={mutation.isPending || isActionPending} // Disable if adding or removing
                 >
-                  <X size={16} />
+                  Cancel
                 </Button>
               </div>
               {mutation.isError && (

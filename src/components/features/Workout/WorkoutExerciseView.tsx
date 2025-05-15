@@ -40,11 +40,17 @@ const EQUIPMENT_CHOICES = ["Barbell", "Dumbbell", "Kettlebell", "Cable", "Bodywe
 
 // Define props passed from WorkoutExerciseContainer
 interface WorkoutExerciseViewProps {
-  workoutExercise: { id: string; exerciseId: string; exercise: Exercise; sets: ExerciseSet[]; equipmentType?: string }; // Changed EquipmentType to string
+  workoutExercise: { 
+    id: string; 
+    exerciseId: string; 
+    exercise: Exercise & { is_static?: boolean | null }; // Ensure is_static is available
+    sets: ExerciseSet[]; 
+    equipmentType?: string 
+  };
   // Removed equipmentTypes prop
   // equipmentTypes: Readonly<EquipmentType[]>;
-  overallLastPerformance: { weight: number; reps: number } | null;
-  historicalSetPerformances: Record<number, { weight: number; reps: number } | null>;
+  overallLastPerformance: { weight: number; reps: number | null; time_seconds?: number | null } | null; // Updated for time
+  historicalSetPerformances: Record<number, { weight: number; reps: number | null; time_seconds?: number | null } | null>; // Updated for time
   userBodyweight?: number | null; // Add user bodyweight prop
   onAddSet: () => void;
   onEquipmentChange: (value: string) => void; // Changed signature to accept string
@@ -60,7 +66,7 @@ interface WorkoutExerciseViewProps {
   onNewVariationNameChange: (value: string) => void;
   onSaveNewVariation: () => void;
   onCancelAddVariation: () => void;
-  onUpdateLastSet: (field: 'weight' | 'reps', change: number) => void; // Add new prop
+  onUpdateLastSet: (field: 'weight' | 'reps' | 'time', change: number) => void; // Add new prop, added 'time'
 }
 
 const DEFAULT_VARIATION = 'Standard'; // Define default variation
@@ -69,9 +75,12 @@ const SWIPE_THRESHOLD = -60; // Pixels to swipe left to reveal
 const REVEAL_WIDTH = 75; // Width of the revealed delete button area
 
 // Helper function for formatting previous performance
-const formatPrevious = (perf: { weight: number; reps: number } | null): string => {
+const formatPrevious = (perf: { weight: number; reps: number | null; time_seconds?: number | null } | null, isStatic: boolean): string => {
   if (!perf) return '-';
-  return `${perf.weight}kg x ${perf.reps}`;
+  if (isStatic) {
+    return perf.time_seconds ? `${perf.weight}kg x ${perf.time_seconds}s` : (perf.weight ? `${perf.weight}kg` : '-');
+  }
+  return perf.reps ? `${perf.weight}kg x ${perf.reps}` : (perf.weight ? `${perf.weight}kg` : '-');
 };
 
 export const WorkoutExerciseView = ({
@@ -115,6 +124,8 @@ export const WorkoutExerciseView = ({
     [-REVEAL_WIDTH * 0.8, 0], // Map x from -80% revealed to 0
     [1, 0] // To opacity 1 to 0
   );
+
+  const isExerciseStatic = useMemo(() => workoutExercise.exercise.is_static ?? false, [workoutExercise.exercise.is_static]);
 
   // --- Handlers ---
   const handleReveal = (id: string) => {
@@ -165,6 +176,10 @@ export const WorkoutExerciseView = ({
     onDeleteExercise(); // Just call the delete handler directly
     handleHide(); // Still hide the button state locally if needed
   };
+
+  const overallLastPerformanceFormatted = useMemo(() => {
+    return formatPrevious(overallLastPerformance, isExerciseStatic);
+  }, [overallLastPerformance, isExerciseStatic]);
 
   // --- Memos ---
   // Removed sortedEquipmentTypes useMemo hook
@@ -334,7 +349,11 @@ export const WorkoutExerciseView = ({
                       <TableHead className="w-[35px] text-center px-1 py-1">Set</TableHead>
                       <TableHead className="w-[70px] text-center px-1 py-1">Previous</TableHead>
                       <TableHead className="w-[75px] text-center px-1 py-1">Weight</TableHead>
-                      <TableHead className="w-[60px] text-center px-1 py-1">Reps</TableHead>
+                      {isExerciseStatic ? (
+                        <TableHead className="w-[60px] text-center px-1 py-1">Time</TableHead>
+                      ) : (
+                        <TableHead className="w-[60px] text-center px-1 py-1">Reps</TableHead>
+                      )}
                       <TableHead className="w-[40px] p-0 text-center"><Check size={16} className="mx-auto" /></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -343,6 +362,7 @@ export const WorkoutExerciseView = ({
                       {workoutExercise.sets.map((set, index) => {
                         const setNumber = index + 1;
                         const previousPerformanceForSet = historicalSetPerformances?.[setNumber] ?? null;
+                        
                         return (
                           <SetComponent
                             key={set.id}
@@ -351,6 +371,7 @@ export const WorkoutExerciseView = ({
                             setIndex={index}
                             previousPerformance={previousPerformanceForSet}
                             userBodyweight={userBodyweight}
+                            isStatic={isExerciseStatic}
                             initial={{ opacity: 0, height: 0 }}
                             animate={{ opacity: 1, height: 'auto' }}
                             exit={{ opacity: 0, height: 0 }}
@@ -400,9 +421,9 @@ export const WorkoutExerciseView = ({
                               variant="ghost" 
                               size="icon" 
                               className="h-6 w-6 hover:bg-transparent"
-                              onClick={() => onUpdateLastSet('reps', -1)}
+                              onClick={() => onUpdateLastSet(isExerciseStatic ? 'time' : 'reps', -1)}
                               disabled={workoutExercise.sets.length === 0}
-                              aria-label="Decrease reps of last set by 1"
+                              aria-label={isExerciseStatic ? "Decrease time of last set by 1" : "Decrease reps of last set by 1"}
                             >
                               <Minus size={14} />
                             </Button>
@@ -410,9 +431,9 @@ export const WorkoutExerciseView = ({
                               variant="ghost" 
                               size="icon" 
                               className="h-6 w-6 hover:bg-transparent"
-                              onClick={() => onUpdateLastSet('reps', 1)}
+                              onClick={() => onUpdateLastSet(isExerciseStatic ? 'time' : 'reps', 1)}
                               disabled={workoutExercise.sets.length === 0}
-                              aria-label="Increase reps of last set by 1"
+                              aria-label={isExerciseStatic ? "Increase time of last set by 1" : "Increase reps of last set by 1"}
                             >
                               <Plus size={14} />
                             </Button>

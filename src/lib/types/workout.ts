@@ -9,12 +9,14 @@ export interface Exercise {
   created_by_user_id?: string | null; // Add the creator user ID field
   // variations?: string[]; // Removed - Likely stored in exercise_variations
   muscle_groups?: string[]; // Added: Array of muscle group names targeted
+  is_static?: boolean | null; // Added is_static
 }
 
 export interface ExerciseSet {
   id: string;
   weight: number;
-  reps: number;
+  reps: number | null; // Made reps nullable
+  time_seconds?: number | null; // Added time_seconds
   exerciseId: string; // Links to Exercise.id
   completed: boolean;
   equipmentType?: string; // Changed to string

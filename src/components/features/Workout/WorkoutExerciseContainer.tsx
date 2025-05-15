@@ -27,7 +27,8 @@ interface WorkoutExerciseContainerProps {
 export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> = ({ workoutExercise }) => {
   const dispatch = useAppDispatch();
   const queryClient = useQueryClient();
-  const exerciseId = workoutExercise.exerciseId;
+  const workoutExerciseId = workoutExercise.id;
+  const exerciseId = workoutExercise.exercise.id;
   const DEFAULT_VARIATION = 'Standard';
   const { user } = useAuth();
   const userId = user?.id;
@@ -109,22 +110,35 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
 
   const overallLastPerformance = useMemo(() => {
     if (!historicalSets || historicalSets.length === 0) return null;
-    return historicalSets.reduce((max: { weight: number; reps: number } | null, set) => {
-        if (!max || set.weight > max.weight || (set.weight === max.weight && set.reps > max.reps)) {
-            return { weight: set.weight, reps: set.reps };
+    const isStatic = workoutExercise.exercise.is_static ?? false;
+
+    return historicalSets.reduce((max: { weight: number; reps: number | null; time_seconds: number | null } | null, set) => {
+      if (!max) {
+        return { weight: set.weight, reps: set.reps, time_seconds: set.time_seconds };
+      }
+      if (isStatic) {
+        // For static, prioritize weight, then longer time
+        if (set.weight > max.weight || (set.weight === max.weight && (set.time_seconds ?? 0) > (max.time_seconds ?? 0))) {
+          return { weight: set.weight, reps: null, time_seconds: set.time_seconds };
         }
-        return max;
+      } else {
+        // For non-static, prioritize weight, then more reps
+        if (set.weight > max.weight || (set.weight === max.weight && (set.reps ?? 0) > (max.reps ?? 0))) {
+          return { weight: set.weight, reps: set.reps, time_seconds: null };
+        }
+      }
+      return max;
     }, null);
-  }, [historicalSets]);
+  }, [historicalSets, workoutExercise.exercise.is_static]);
 
   const historicalSetPerformances = useMemo(() => {
     if (!historicalSets) return {};
 
-    const performances: Record<number, { weight: number; reps: number } | null> = {};
+    const performances: Record<number, { weight: number; reps: number | null; time_seconds: number | null } | null> = {};
 
     historicalSets.forEach(set => {
       if (set.set_number && set.set_number > 0) {
-        performances[set.set_number] = { weight: set.weight, reps: set.reps };
+        performances[set.set_number] = { weight: set.weight, reps: set.reps, time_seconds: set.time_seconds };
       }
     });
 
@@ -179,37 +193,44 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
     dispatch(
       addSetToExerciseAction({
         workoutExerciseId: workoutExercise.id,
-        exerciseId: workoutExercise.exerciseId,
+        exerciseId: workoutExercise.exercise.id,
+        isStatic: workoutExercise.exercise.is_static ?? false,
         userBodyweight: userProfile?.weight ?? null,
       })
     );
   };
 
-  const handleUpdateLastSet = (field: 'weight' | 'reps', change: number) => {
+  const handleUpdateLastSet = (field: 'weight' | 'reps' | 'time', change: number) => {
     const sets = workoutExercise.sets;
     if (sets.length === 0) return;
 
+    const isStatic = workoutExercise.exercise.is_static ?? false;
     const lastSetIndex = sets.length - 1;
     const lastSet = sets[lastSetIndex];
     const previousPerformanceForLastSet = historicalSetPerformances?.[lastSetIndex + 1] ?? null;
 
-    const currentWeight = lastSet.weight > 0 ? lastSet.weight : (previousPerformanceForLastSet?.weight ?? 0);
-    const currentReps = lastSet.reps > 0 ? lastSet.reps : (previousPerformanceForLastSet?.reps ?? 0);
+    let currentWeight = lastSet.weight > 0 ? lastSet.weight : (previousPerformanceForLastSet?.weight ?? 0);
+    let currentReps = !isStatic && (lastSet.reps && lastSet.reps > 0) ? lastSet.reps : (previousPerformanceForLastSet?.reps ?? 0);
+    let currentTime = isStatic && (lastSet.time_seconds && lastSet.time_seconds > 0) ? lastSet.time_seconds : (previousPerformanceForLastSet?.time_seconds ?? 0);
 
     let newWeight = currentWeight;
     let newReps = currentReps;
+    let newTime = currentTime;
 
     if (field === 'weight') {
       newWeight = Math.max(0, currentWeight + change);
-    } else if (field === 'reps') {
-      newReps = Math.max(0, currentReps + change);
+    } else if (field === 'reps' && !isStatic) {
+      newReps = Math.max(0, (currentReps || 0) + change); // Ensure currentReps is not null for calculation
+    } else if (field === 'time' && isStatic) {
+      newTime = Math.max(0, (currentTime || 0) + change); // Ensure currentTime is not null for calculation
     }
 
     dispatch(updateSetAction({
       workoutExerciseId: workoutExercise.id,
       setId: lastSet.id,
       weight: newWeight,
-      reps: newReps,
+      reps: isStatic ? null : newReps,
+      time_seconds: isStatic ? newTime : null,
       variation: lastSet.variation ?? undefined,
       equipmentType: lastSet.equipmentType ?? undefined,
     }));
