@@ -586,7 +586,7 @@ const OneRepMax: React.FC<OneRepMaxProps> = ({
                                     <ResponsiveContainer width="100%" height={400}>
                                         <LineChart 
                                             data={chartData} 
-                                            margin={{ top: 5, right: 0, left: 20, bottom: 5 }}
+                                            margin={{ top: 5, right: -15, left: 20, bottom: 5 }}
                                         >
                                             {/* <CartesianGrid strokeDasharray="3 3" stroke="rgba(229, 231, 235, 0.25)" /> // Removed this line */}
                                             <XAxis
