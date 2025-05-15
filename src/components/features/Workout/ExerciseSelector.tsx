@@ -11,6 +11,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'; /
 import { fetchExercisesFromDB, createExerciseInDB, deleteExerciseFromDB, hideExerciseForUser } from '@/lib/integrations/supabase/exercises'; // Add Supabase function imports
 import { fetchLastConfigForExercise, fetchLastWorkoutExerciseInstanceFromDB } from '@/lib/integrations/supabase/history'; // Import the new function
 import { Button } from "@/components/core/button";
+import { supabase } from "@/lib/integrations/supabase/client"; // Added supabase client import
 import { Plus, Search, X, Trash2 } from "lucide-react";
 import { Label } from "@/components/core/label";
 import { Input } from "@/components/core/input";
@@ -20,6 +21,25 @@ import { v4 as uuidv4 } from 'uuid';
 import { useToast } from "@/components/core/Toast/use-toast";
 import { useAuth } from '@/state/auth/AuthProvider';
 import { Switch } from "@/components/core/switch"; // Explicitly lowercase 'switch'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/core/select"; // Added Select imports
+
+// Define a type for Movement Archetype based on expected structure
+interface MovementArchetype {
+  id: string;
+  name: string;
+}
+
+// Helper function to format archetype names
+const formatArchetypeName = (name: string): string => {
+  if (!name) return "";
+  const parts = name.split('_');
+  const firstPart = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+  if (parts.length > 1) {
+    const secondPart = parts.slice(1).join(' '); // Join remaining parts if there are multiple underscores
+    return `${firstPart} (${secondPart})`;
+  }
+  return firstPart;
+};
 
 const LONG_PRESS_DURATION = 500; // 500ms for long press
 
@@ -33,6 +53,7 @@ const ExerciseSelector = () => {
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [newExerciseName, setNewExerciseName] = useState("");
   const [isStaticNewExercise, setIsStaticNewExercise] = useState(false); // New state for the toggle
+  const [selectedArchetypeId, setSelectedArchetypeId] = useState<string | null>(null); // New state for selected archetype
   const [searchQuery, setSearchQuery] = useState("");
   const [open, setOpen] = useState(false);
 
@@ -47,6 +68,18 @@ const ExerciseSelector = () => {
     queryFn: () => user ? fetchExercisesFromDB() : [], // Call without arguments
     refetchOnWindowFocus: false, 
     enabled: !!user, // Only fetch if user is loaded
+  });
+
+  // Fetch movement archetypes
+  const { data: movementArchetypes = [], isLoading: isLoadingArchetypes, error: errorArchetypes } = useQuery<MovementArchetype[]>({
+    queryKey: ['movementArchetypes'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('movement_archetypes').select('id, name');
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: Infinity, // Archetypes are unlikely to change often
+    enabled: open && isAddingNew, // Only fetch when dialog is open and in add new mode
   });
 
   // Modify handleSelectExercise to accept the full Exercise object and make it async
@@ -271,10 +304,15 @@ const ExerciseSelector = () => {
 
   const handleAddNew = () => {
     if (newExerciseName.trim()) {
-      // Use mutation to add the new exercise
+      if (!selectedArchetypeId) {
+        toast({ title: "Missing Info", description: "Please select an exercise type (archetype).", variant: "destructive" });
+        return;
+      }
       mutation.mutate({ 
         name: newExerciseName.trim(),
-        is_static: isStaticNewExercise // Pass the new is_static state
+        is_static: isStaticNewExercise,
+        archetype_id: selectedArchetypeId,
+        // default_equipment_type can be null or set to a default if desired
       }); 
     }
   };
@@ -285,7 +323,8 @@ const ExerciseSelector = () => {
         setSearchQuery("");
         setIsAddingNew(false);
         setNewExerciseName("");
-        setIsStaticNewExercise(false); // Reset new exercise type state
+        setIsStaticNewExercise(false);
+        setSelectedArchetypeId(null); // Reset selected archetype
         // Also clear any potential long press state if main dialog is closed
         clearLongPressTimer();
         setIsConfirmDeleteDialogOpen(false); // Ensure delete dialog is closed too
@@ -297,12 +336,13 @@ const ExerciseSelector = () => {
   useEffect(() => {
     return () => {
       clearLongPressTimer();
-      setIsStaticNewExercise(false); // Reset on unmount too
+      setIsStaticNewExercise(false);
+      setSelectedArchetypeId(null); // Reset on unmount too
     };
   }, []);
 
   // Determine if any mutation is pending
-  const isActionPending = deleteExerciseMutation.isPending || hideExerciseMutation.isPending;
+  const isActionPending = deleteExerciseMutation.isPending || hideExerciseMutation.isPending || mutation.isPending;
 
   return (
     // Added wrapper div for right alignment
@@ -391,59 +431,81 @@ const ExerciseSelector = () => {
 
           {isAddingNew ? (
             <div className="p-4 border rounded-lg space-y-3 dark:border-gray-700 dark:bg-gray-800">
-              {/* Combined Row for Input and Toggle */}
-              <div className="flex items-start space-x-3"> {/* items-start to align labels at top */}
-                {/* Left Column: Exercise Name Input */}
+              {/* Exercise Name Input on its own line */}
+              <div className="space-y-1">
+                <Label htmlFor="new-exercise" className="dark:text-white">New Exercise Name</Label>
+                <Input
+                  id="new-exercise"
+                  value={newExerciseName}
+                  onChange={(e) => setNewExerciseName(e.target.value)}
+                  placeholder="Enter exercise name"
+                  className="w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  disabled={mutation.isPending}
+                />
+              </div>
+
+              {/* Second Line: Type Dropdown (Placeholder) and Timed Toggle */}
+              <div className="flex items-end space-x-4 pt-2"> {/* items-end to align bottom of elements if heights differ */}
+                {/* Left Side: Type (Movement Archetype) */}
                 <div className="flex-grow space-y-1">
-                  <Label htmlFor="new-exercise" className="dark:text-white">New Exercise Name</Label>
-                  <Input
-                    id="new-exercise"
-                    value={newExerciseName}
-                    onChange={(e) => setNewExerciseName(e.target.value)}
-                    placeholder="Enter exercise name"
-                    className="w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    disabled={mutation.isPending}
-                  />
+                  <Label htmlFor="movement-type-select" className="dark:text-white">Type</Label>
+                  <Select 
+                    value={selectedArchetypeId ?? undefined} 
+                    onValueChange={setSelectedArchetypeId}
+                    disabled={isLoadingArchetypes || mutation.isPending}
+                  >
+                    <SelectTrigger id="movement-type-select" className="w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                      <SelectValue placeholder={isLoadingArchetypes ? "Loading types..." : "Select type..."} />
+                    </SelectTrigger>
+                    <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
+                      {errorArchetypes && <SelectItem value="error" disabled className="text-red-500">Error loading types</SelectItem>}
+                      {movementArchetypes.map(archetype => (
+                        <SelectItem key={archetype.id} value={archetype.id} className="dark:text-white dark:hover:bg-gray-700">
+                          {formatArchetypeName(archetype.name)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                
-                {/* Right Column: Timed Toggle */}
-                <div className="flex-shrink-0 space-y-1 pt-1"> {/* pt-1 to roughly align with input field visually if label heights differ */}
-                  <Label htmlFor="timed-toggle" className="block text-center dark:text-white"> {/* block and text-center for label above switch */}
+
+                {/* Right Side: Timed Toggle */}
+                <div className="flex-shrink-0 space-y-1 pb-1"> {/* pb-1 to align switch with bottom of placeholder box */}
+                  <Label htmlFor="timed-toggle" className="block text-center dark:text-white">
                     Timed
                   </Label>
-                  <div className="flex justify-center"> {/* Center the switch below its label */}
+                  <div className="flex justify-center">
                     <Switch
                       id="timed-toggle"
                       checked={isStaticNewExercise}
                       onCheckedChange={setIsStaticNewExercise}
                       disabled={mutation.isPending}
-                      // Assuming the Switch has appropriate styling for on/off states
                     />
                   </div>
                 </div>
               </div>
               
-              {/* Moved Add and Cancel buttons here - they are below the input/toggle row */}
+              {/* Buttons Row: Cancel on Left, Add on Right */}
               <div className="flex space-x-2 pt-3">
                 <Button
-                  variant="default"
-                  className="flex-1 bg-fitnessGreen hover:bg-fitnessGreen/90" // flex-1 to take available space
-                  onClick={handleAddNew}
-                  disabled={!newExerciseName.trim() || mutation.isPending || isActionPending} // Disable if adding or removing
-                >
-                  {mutation.isPending ? 'Adding...' : 'Add Exercise'}
-                </Button>
-                <Button
                   variant="outline"
-                  className="flex-1 dark:border-gray-700 dark:text-white dark:hover:bg-gray-700" // flex-1
+                  className="flex-1 dark:border-gray-700 dark:text-white dark:hover:bg-gray-700"
                   onClick={() => {
                     setIsAddingNew(false);
                     setNewExerciseName("");
-                    setIsStaticNewExercise(false); // Reset toggle state on cancel
+                    setIsStaticNewExercise(false);
+                    setSelectedArchetypeId(null); // Reset archetype on cancel
                   }}
-                  disabled={mutation.isPending || isActionPending} // Disable if adding or removing
+                  disabled={mutation.isPending || isActionPending}
                 >
                   Cancel
+                </Button>
+                <Button
+                  variant="default"
+                  className="flex-1 bg-fitnessGreen hover:bg-fitnessGreen/90"
+                  onClick={handleAddNew}
+                  disabled={!newExerciseName.trim() || mutation.isPending || isActionPending}
+                >
+                  {mutation.isPending ? 'Adding...' : 'Add'} {/* Changed label to 'Add' */}
                 </Button>
               </div>
               {mutation.isError && (
