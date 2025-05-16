@@ -238,7 +238,7 @@ const Volume: React.FC<VolumeProps> = ({ userId }) => {
                                                                 dataKey="verticalSets"
                                                                 fill={archetype.displayVerticalColor}
                                                                 stackId="a"
-                                                                cornerRadius={6}
+                                                                cornerRadius={0}
                                                                 isAnimationActive={false}
                                                                 background={false}
                                                             />
@@ -248,7 +248,7 @@ const Volume: React.FC<VolumeProps> = ({ userId }) => {
                                                                 dataKey="horizontalSets"
                                                                 fill={archetype.displayHorizontalColor}
                                                                 stackId="a"
-                                                                cornerRadius={6}
+                                                                cornerRadius={0}
                                                                 isAnimationActive={true}
                                                                 background={{ fill: 'rgba(128, 128, 128, 0.08)' }}
                                                             />
@@ -258,7 +258,7 @@ const Volume: React.FC<VolumeProps> = ({ userId }) => {
                                                     <RadialBar
                                                         dataKey="totalSets"
                                                         fill={archetype.displayColor}
-                                                        cornerRadius={6}
+                                                        cornerRadius={1}
                                                         isAnimationActive={true}
                                                         background={{ fill: 'rgba(128, 128, 128, 0.08)' }}
                                                     />
