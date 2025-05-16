@@ -7,7 +7,6 @@ import { useAuth } from '@/state/auth/AuthProvider';
 import StrengthBenchmarks from '@/components/features/Benchmarks/StrengthBenchmarks';
 import CalisthenicBenchmarks from '@/components/features/Benchmarks/CalisthenicBenchmarks';
 import OneRepMax from '@/components/features/Analytics/OneRepMax';
-import PerformanceOverview from '@/components/features/Analytics/PerformanceOverview';
 import RecentWorkouts from '@/components/features/Analytics/RecentWorkouts';
 import Volume from '@/components/features/Analytics/Volume';
 import {
@@ -132,8 +131,8 @@ const Analytics = () => {
       </header>
 
       <main className="space-y-8">
-        <h2 className="text-2xl font-semibold mb-4">Performance Overview</h2>
-        <PerformanceOverview />
+        {/* <h2 className="text-2xl font-semibold mb-4">Performance Overview</h2> */}
+        {/* <PerformanceOverview /> */}
 
         {/* Protein Intake Section */}
         <Card className="mt-8">
