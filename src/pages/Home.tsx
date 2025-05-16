@@ -5,9 +5,9 @@ import { selectCurrentWorkout, selectWorkoutStartTime, startWorkout as startWork
 import { Clock } from "lucide-react";
 import { formatTime } from "@/lib/utils/timeUtils";
 import WorkoutComponent from "@/components/features/Workout/WorkoutComponent";
-import { Barbell } from "@phosphor-icons/react";
+// import { Barbell } from "@phosphor-icons/react"; // Removed as it was for the old Start Workout section
 import { useAuth } from '@/state/auth/AuthProvider'; // Assuming this path is correct
-import { Link } from "react-router-dom"; // Removed Link import as it's unused
+// Removed Link import as it's unused
 import { useElapsedTime } from "@/hooks/useElapsedTime"; // Import the new hook
 import { useNavigate } from 'react-router-dom'; // Import useNavigate
 import { useMemo, useState, useEffect } from 'react'; // ADDED useState, useEffect
@@ -15,7 +15,9 @@ import { useQuery } from '@tanstack/react-query';
 import { getUserProfile, UserProfileData } from '@/lib/integrations/supabase/user';
 import { getDailyProteinIntake, DailyProteinIntake } from '@/lib/integrations/supabase/nutrition';
 import CircularProgressDisplay from '@/components/core/charts/CircularProgressDisplay';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/core/card';
+import PerformanceOverview from '@/components/features/Analytics/PerformanceOverview'; // Import PerformanceOverview
+
+// type BenchmarkType = 'Strength' | 'Calisthenics'; // REMOVED
 
 const Home = () => {
   const navigate = useNavigate();
@@ -26,6 +28,8 @@ const Home = () => {
   const todayDate = useMemo(() => new Date().toISOString().split('T')[0], []);
 
   const [startAnimation, setStartAnimation] = useState(false);
+  // Removed selectedBenchmarkType state
+  // const [selectedBenchmarkType, setSelectedBenchmarkType] = useState<BenchmarkType>('Strength'); 
 
   const { data: userProfile, isLoading: isLoadingProfile } = useQuery<
     UserProfileData | null,
@@ -145,35 +149,31 @@ const Home = () => {
             Stratos
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mb-6">Elevate your game</p>
-        </header>
-
-        <main>
-          <div className="flex flex-col items-center justify-center py-12 px-4 bg-gray-50 dark:bg-gray-800 rounded-lg shadow-sm">
-            <Barbell size={64} className="text-fitnessBlue mb-6" />
-            <h2 className="text-2xl font-semibold mb-4 dark:text-white text-center">Ready to start your session?</h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-8 text-center">
-              Track your exercises, sets, and reps to monitor your progress over time.
-            </p>
-            <Button 
+           {/* Button to start workout - moved to header for better prominence or could be a floating action button later */}
+          {/* <Button 
               onClick={handleStartWorkout}
               size="lg" 
-              className="bg-fitnessBlue hover:bg-blue-600 text-white font-semibold px-8"
+              className="bg-fitnessBlue hover:bg-blue-600 text-white font-semibold px-8 mt-4"
             >
-              Start Workout
-            </Button>
+              Start New Workout
+            </Button> */}
+        </header>
+
+        <main className="mt-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+            {/* Left Column: Protein Intake */}
+            <div className="flex flex-col items-center justify-start md:sticky md:top-24">
+              {renderProteinProgress()}
+            </div>
+
+            {/* Right Column: Performance Overview */}
+            <div className="w-full">
+              {/* Removed Benchmarks Title */}
+              {/* <h2 className="text-2xl font-semibold mb-4 text-center md:text-left">Benchmarks</h2> */}
+              <PerformanceOverview />
+            </div>
           </div>
         </main>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-xl">Protein Intake</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col justify-center items-center min-h-[250px]">
-              {renderProteinProgress()}
-            </CardContent>
-          </Card>
-        </div>
     </div>
   );
 };

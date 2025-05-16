@@ -22,6 +22,7 @@ import {
 import { Button } from "@/components/core/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/core/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/core/popover"; // Import Popover components
+import { getUserProfile, UserProfileData } from '@/lib/integrations/supabase/user';
 
 // Define benchmark exercises 
 const BENCHMARK_NAMES = ["Deadlift", "Squat", "Bench Press", "Row", "Overhead Press"] as const;
@@ -111,28 +112,14 @@ const StrengthBenchmarks: React.FC<StrengthBenchmarksProps> = ({ currentType, on
     });
 
     // Fetch user profile data (including bodyweight)
-    const { data: userProfile, isLoading: isLoadingProfile, error: errorProfile } = useQuery({
-        queryKey: ['userProfile', user?.id],
+    const { data: userProfile, isLoading: isLoadingProfile, error: errorProfile } = useQuery<UserProfileData | null, Error>({
+        queryKey: ['userProfile', user?.id], // Same query key as Home.tsx and Analytics.tsx for potential caching benefits
         queryFn: async () => {
             if (!user?.id) return null;
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('weight, username')
-                .eq('id', user.id)
-                .single();
-            if (error) {
-                if (error.code === 'PGRST116') {
-                    console.warn("User profile not found for benchmarks.");
-                    return null;
-                } else {
-                    console.error("Error fetching user profile for benchmarks:", error);
-                    throw error;
-                }
-            }
-            return data;
+            return getUserProfile(user.id); // Use the shared function
         },
         enabled: !!user?.id,
-        staleTime: 5 * 60 * 1000,
+        staleTime: 5 * 60 * 1000, // 5 minutes
     });
 
     // Identify benchmark exercise IDs once exercises are loaded
@@ -163,9 +150,9 @@ const StrengthBenchmarks: React.FC<StrengthBenchmarksProps> = ({ currentType, on
 
     // Calculate benchmark progress
     const calculatedBenchmarks = useMemo((): CalculatedBenchmark[] => {
-        const weight = userProfile?.weight;
+        const weightInKg = userProfile?.weight_kg; // Use weight_kg from UserProfileData
         // Add explicit check for exercises data too
-        if (isLoadingExercises || isLoadingBenchmarks || isLoadingProfile || exercises.length === 0 || !weight) {
+        if (isLoadingExercises || isLoadingBenchmarks || isLoadingProfile || exercises.length === 0 || !weightInKg) { // Check for !weightInKg
             return [];
         }
 
@@ -208,7 +195,7 @@ const StrengthBenchmarks: React.FC<StrengthBenchmarksProps> = ({ currentType, on
 
             // Use multiplier for the selected level
             const multiplier = currentMultipliers[name];
-            const goalE1RM = weight ? weight * multiplier : null;
+            const goalE1RM = weightInKg ? weightInKg * multiplier : null; // Use weightInKg
             let progress = 0;
             if (currentE1RM && goalE1RM && goalE1RM > 0) {
                 // Use the potentially doubled currentE1RM for progress calculation
@@ -237,7 +224,7 @@ const StrengthBenchmarks: React.FC<StrengthBenchmarksProps> = ({ currentType, on
             return <p className="text-red-500 italic text-center py-4">Error loading profile data.</p>;
         }
         // Then check bodyweight
-        if (!userProfile?.weight) {
+        if (!userProfile?.weight_kg) { // Check for weight_kg
              return (
                  <Alert variant="default" className="bg-blue-50 border-blue-200">
                      <Target className="h-4 w-4 !text-blue-700" />
