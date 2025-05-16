@@ -1,6 +1,31 @@
 import { supabase } from './client';
 import { DailyMaxE1RM } from '@/lib/types/analytics';
 
+// Define types for detailed workout data
+export interface WorkoutSet {
+  set_number: number;
+  reps: number | null;
+  weight: number;
+  time_seconds: number | null;
+  completed: boolean;
+  // equipment_type?: string | null; // Future enhancement
+  // variation?: string | null; // Future enhancement
+}
+
+export interface WorkoutExerciseDetail {
+  exercise_id: string;
+  exercise_name: string;
+  order: number; // To maintain original exercise order in the workout
+  sets: WorkoutSet[];
+  completed_sets_count: number;
+}
+
+export interface DetailedWorkout {
+  workout_id: string;
+  workout_created_at: string; // Already in summary, but good to have here too
+  exercises: WorkoutExerciseDetail[];
+}
+
 /**
  * Fetches the last used equipment type and variation for a specific exercise by a user.
  *
@@ -140,6 +165,89 @@ export const fetchLastWorkoutExerciseInstanceFromDB = async (
 
   } catch (error) {
     console.error("Error fetching last workout exercise instance (revised logic):", error);
+    return null;
+  }
+};
+
+/**
+ * Fetches detailed information for a specific workout, including all exercises and their sets.
+ *
+ * @param userId The UUID of the user (for RLS and ensuring data ownership).
+ * @param workoutId The UUID of the workout.
+ * @returns A DetailedWorkout object or null if not found or error.
+ */
+export const fetchDetailedWorkoutById = async (
+  userId: string,
+  workoutId: string
+): Promise<DetailedWorkout | null> => {
+  if (!userId || !workoutId) {
+    console.warn("User ID or Workout ID missing for fetchDetailedWorkoutById call");
+    return null;
+  }
+
+  try {
+    // Step 1: Fetch the workout itself to confirm existence and get created_at
+    const { data: workoutData, error: workoutError } = await supabase
+      .from('workouts')
+      .select('id, created_at, user_id')
+      .eq('id', workoutId)
+      .eq('user_id', userId) // Ensure the user owns this workout
+      .single();
+
+    if (workoutError) throw workoutError;
+    if (!workoutData) {
+      console.log(`Workout with ID ${workoutId} not found for user ${userId}.`);
+      return null;
+    }
+
+    // Step 2: Fetch workout_exercises, their associated exercise names, and their sets
+    const { data: workoutExercisesData, error: exercisesError } = await supabase
+      .from('workout_exercises')
+      .select(`
+        exercise_id,
+        order,
+        exercises ( name ),
+        exercise_sets ( set_number, reps, weight, time_seconds, completed )
+      `)
+      .eq('workout_id', workoutId)
+      .order('order', { ascending: true }) // Order exercises by their sequence in the workout
+      .order('set_number', { foreignTable: 'exercise_sets', ascending: true }); // Order sets
+
+    if (exercisesError) throw exercisesError;
+    if (!workoutExercisesData) {
+      console.log(`No exercises found for workout ID ${workoutId}.`);
+      return { // Return workout with empty exercises array
+          workout_id: workoutData.id,
+          workout_created_at: workoutData.created_at as string,
+          exercises: [],
+      };
+    }
+
+    const exercises: WorkoutExerciseDetail[] = workoutExercisesData.map((we: any) => {
+      const sets = (we.exercise_sets || []).map((s: any) => ({
+        set_number: s.set_number,
+        reps: s.reps,
+        weight: s.weight,
+        time_seconds: s.time_seconds,
+        completed: s.completed,
+      }));
+      return {
+        exercise_id: we.exercise_id,
+        exercise_name: we.exercises?.name || 'Unknown Exercise',
+        order: we.order,
+        sets: sets,
+        completed_sets_count: sets.filter((s: WorkoutSet) => s.completed).length,
+      };
+    });
+
+    return {
+      workout_id: workoutData.id,
+      workout_created_at: workoutData.created_at as string,
+      exercises: exercises,
+    };
+
+  } catch (error: any) {
+    console.error(`Error fetching detailed workout for ID ${workoutId}:`, error.message);
     return null;
   }
 };

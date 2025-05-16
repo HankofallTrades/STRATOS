@@ -18,6 +18,9 @@ import {
   SelectValue,
 } from "@/components/core/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/core/tabs";
+import { getUserWeight, getDailyProteinIntake, DailyProteinIntake, UserWeight } from "@/lib/integrations/supabase/nutrition";
+import { ProgressBar } from "@/components/core/ProgressBar";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/core/card";
 
 // LocalStorage Key for persistence
 const ANALYTICS_VIEW_STORAGE_KEY = 'selectedAnalyticsView_v2';
@@ -45,6 +48,7 @@ const formatDate = (dateInput: Date | string): string => {
 const Analytics = () => {
   // Get user object for ID
   const { user } = useAuth();
+  const userId = user?.id;
   
   // Fetch list of all exercises (needed for ExerciseProgressAnalysis)
   const { data: exercises = [], isLoading: isLoadingExercises, error: errorExercises } = useQuery({
@@ -78,6 +82,48 @@ const Analytics = () => {
     }
   }, [selectedAnalysisType]);
 
+  const todayDate = useMemo(() => new Date().toISOString().split('T')[0], []);
+
+  const { data: userWeightData, isLoading: isLoadingUserWeight } = useQuery<
+    UserWeight | null,
+    Error
+  >(
+    {
+      queryKey: ['userWeight', userId],
+      queryFn: async () => {
+        if (!userId) return null;
+        return getUserWeight(userId);
+      },
+      enabled: !!userId,
+      staleTime: 5 * 60 * 1000,
+    }
+  );
+
+  const { data: dailyProteinData, isLoading: isLoadingDailyProtein } = useQuery<
+    DailyProteinIntake | null,
+    Error
+  >(
+    {
+      queryKey: ['dailyProteinIntake', userId, todayDate],
+      queryFn: async () => {
+        if (!userId) return null;
+        return getDailyProteinIntake(userId, todayDate);
+      },
+      enabled: !!userId,
+      staleTime: 1 * 60 * 1000,
+      refetchInterval: 1 * 60 * 1000,
+    }
+  );
+
+  const proteinGoal = useMemo(() => {
+    if (userWeightData?.weight_kg) {
+      return Math.round(userWeightData.weight_kg * 2);
+    }
+    return 0;
+  }, [userWeightData]);
+
+  const currentProtein = dailyProteinData?.total_protein || 0;
+
   return (
     <div className="container mx-auto p-4 max-w-4xl">
       <header className="flex flex-col items-center justify-between mb-8 text-center">
@@ -88,6 +134,35 @@ const Analytics = () => {
       <main className="space-y-8">
         <h2 className="text-2xl font-semibold mb-4">Performance Overview</h2>
         <PerformanceOverview />
+
+        {/* Protein Intake Section */}
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle className="text-xl font-semibold">Daily Protein Goal</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {(isLoadingUserWeight || isLoadingDailyProtein) && <p>Loading protein data...</p>}
+            {!isLoadingUserWeight && !userWeightData?.weight_kg && !isLoadingDailyProtein && (
+              <p className="text-sm text-muted-foreground">
+                Set your weight in your profile to calculate your protein goal (2g per kg).
+                {/* Optional: Link to profile/settings page */}
+              </p>
+            )}
+            {proteinGoal > 0 && (
+              <>
+                <ProgressBar value={currentProtein} max={proteinGoal} />
+                <p className="text-center text-muted-foreground">
+                  {currentProtein} / {proteinGoal} g logged today
+                </p>
+              </>
+            )}
+            {proteinGoal === 0 && !isLoadingUserWeight && userWeightData?.weight_kg && (
+                 <p className="text-center text-muted-foreground">
+                  Current Protein: {currentProtein} g (Goal not set due to missing weight)
+                </p>
+            )}
+          </CardContent>
+        </Card>
 
         <div className="pt-6">
           <Tabs value={selectedAnalysisType} onValueChange={(value) => setSelectedAnalysisType(value as AnalysisType)} className="w-full">

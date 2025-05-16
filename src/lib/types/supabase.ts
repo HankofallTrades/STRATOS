@@ -12,18 +12,18 @@ export type Database = {
       archetype_muscle_map: {
         Row: {
           archetype_id: string
-          muscle_id: string
           created_at: string | null
+          muscle_id: string
         }
         Insert: {
           archetype_id: string
-          muscle_id: string
           created_at?: string | null
+          muscle_id: string
         }
         Update: {
           archetype_id?: string
-          muscle_id?: string
           created_at?: string | null
+          muscle_id?: string
         }
         Relationships: [
           {
@@ -81,8 +81,9 @@ export type Database = {
           created_at: string | null
           equipment_type: string | null
           id: string
-          reps: number
+          reps: number | null
           set_number: number
+          time_seconds: number | null
           variation: string | null
           weight: number
           workout_exercise_id: string
@@ -92,8 +93,9 @@ export type Database = {
           created_at?: string | null
           equipment_type?: string | null
           id?: string
-          reps: number
+          reps?: number | null
           set_number: number
+          time_seconds?: number | null
           variation?: string | null
           weight: number
           workout_exercise_id: string
@@ -103,8 +105,9 @@ export type Database = {
           created_at?: string | null
           equipment_type?: string | null
           id?: string
-          reps?: number
+          reps?: number | null
           set_number?: number
+          time_seconds?: number | null
           variation?: string | null
           weight?: number
           workout_exercise_id?: string
@@ -150,33 +153,43 @@ export type Database = {
       }
       exercises: {
         Row: {
+          archetype_id: string | null
           created_at: string | null
           created_by_user_id: string | null
           default_equipment_type: string | null
           id: string
+          is_static: boolean | null
           name: string
           order: number
-          archetype_id: string | null
         }
         Insert: {
+          archetype_id?: string | null
           created_at?: string | null
           created_by_user_id?: string | null
           default_equipment_type?: string | null
           id?: string
+          is_static?: boolean | null
           name: string
           order?: number
-          archetype_id?: string | null
         }
         Update: {
+          archetype_id?: string | null
           created_at?: string | null
           created_by_user_id?: string | null
           default_equipment_type?: string | null
           id?: string
+          is_static?: boolean | null
           name?: string
           order?: number
-          archetype_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_exercise_archetype"
+            columns: ["archetype_id"]
+            isOneToOne: false
+            referencedRelation: "movement_archetypes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "fk_exercises_archetype_id_unique"
             columns: ["archetype_id"]
@@ -188,40 +201,40 @@ export type Database = {
       }
       movement_archetypes: {
         Row: {
+          created_at: string | null
           id: string
           name: string
-          created_at: string | null
         }
         Insert: {
+          created_at?: string | null
           id?: string
           name: string
-          created_at?: string | null
         }
         Update: {
+          created_at?: string | null
           id?: string
           name?: string
-          created_at?: string | null
         }
         Relationships: []
       }
       muscle_definitions: {
         Row: {
+          created_at: string | null
+          description: string | null
           id: string
           name: string
-          description: string | null
-          created_at: string | null
         }
         Insert: {
+          created_at?: string | null
+          description?: string | null
           id?: string
           name: string
-          description?: string | null
-          created_at?: string | null
         }
         Update: {
+          created_at?: string | null
+          description?: string | null
           id?: string
           name?: string
-          description?: string | null
-          created_at?: string | null
         }
         Relationships: []
       }
@@ -267,6 +280,30 @@ export type Database = {
           updated_at?: string
           username?: string | null
           weight?: number | null
+        }
+        Relationships: []
+      }
+      protein_intake: {
+        Row: {
+          amount_grams: number
+          created_at: string | null
+          date: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          amount_grams: number
+          created_at?: string | null
+          date: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          amount_grams?: number
+          created_at?: string | null
+          date?: string
+          id?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -467,11 +504,19 @@ export type Database = {
           total_volume: number
         }[]
       }
+      fetch_weekly_archetype_sets: {
+        Args: { p_user_id: string }
+        Returns: {
+          base_archetype_name: string
+          archetype_subtype_name: string
+          total_sets: number
+        }[]
+      }
       fetch_weekly_sets_per_muscle_group: {
         Args: { p_user_id: string }
         Returns: {
           base_archetype_name: string
-          archetype_subtype_name: string | null
+          archetype_subtype_name: string
           muscle_definition_name: string
           total_sets: number
         }[]
@@ -484,6 +529,10 @@ export type Database = {
           equipment_type: string
           max_e1rm: number
         }[]
+      }
+      get_exercise_muscle_group_map: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
       get_latest_max_e1rm_for_exercises: {
         Args: { p_user_id: string; p_exercise_ids: string[] }
