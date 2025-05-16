@@ -114,6 +114,8 @@ export const WorkoutExerciseView = ({
   // State for Popover open state
   const [equipmentOpen, setEquipmentOpen] = useState(false)
   const [variationOpen, setVariationOpen] = useState(false)
+  const [showNewEquipmentInput, setShowNewEquipmentInput] = useState(false);
+  const [newEquipmentName, setNewEquipmentName] = useState("");
 
   // Motion value to track card's x position
   const cardX = useMotionValue(0);
@@ -247,20 +249,71 @@ export const WorkoutExerciseView = ({
                           {choice}
                         </Button>
                       ))}
-                      {/* Add New Equipment Button */}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full justify-start h-8 px-2 text-xs text-blue-600 dark:text-blue-400 mt-1"
-                        onClick={() => {
-                          // TODO: Implement logic to handle adding a new equipment type
-                          // For now, just calling onEquipmentChange with a special value
-                          onEquipmentChange('add_new'); // Using 'any' temporarily
-                          setEquipmentOpen(false);
-                        }}
-                      >
-                        <Plus size={14} className="mr-1" /> Add New
-                      </Button>
+                      {/* Add New Equipment Button / Input */}
+                      {showNewEquipmentInput ? (
+                        <div className="flex items-center gap-1 mt-1">
+                          <Input
+                            type="text"
+                            placeholder="New Equipment"
+                            value={newEquipmentName}
+                            onChange={(e) => setNewEquipmentName(e.target.value)}
+                            className="h-8 px-2 text-xs flex-grow"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && newEquipmentName.trim()) {
+                                onEquipmentChange(newEquipmentName.trim());
+                                setNewEquipmentName("");
+                                setShowNewEquipmentInput(false);
+                                setEquipmentOpen(false);
+                              } else if (e.key === 'Escape') {
+                                setNewEquipmentName("");
+                                setShowNewEquipmentInput(false);
+                              }
+                            }}
+                          />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 p-0" 
+                            onClick={() => {
+                              if (newEquipmentName.trim()) {
+                                onEquipmentChange(newEquipmentName.trim());
+                                setNewEquipmentName("");
+                                setShowNewEquipmentInput(false);
+                                setEquipmentOpen(false);
+                              }
+                            }}
+                            disabled={!newEquipmentName.trim()}
+                          >
+                            <Check size={16} />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 p-0"
+                            onClick={() => {
+                              setNewEquipmentName("");
+                              setShowNewEquipmentInput(false);
+                            }}
+                          >
+                            <X size={16} />
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full justify-start h-8 px-2 text-xs text-blue-600 dark:text-blue-400 mt-1"
+                          onClick={() => {
+                            setShowNewEquipmentInput(true);
+                            setNewEquipmentName(""); // Clear any previous input
+                            // Do not call onEquipmentChange('add_new');
+                            // Do not close popover here, allow input first
+                          }}
+                        >
+                          <Plus size={14} className="mr-1" /> Add New
+                        </Button>
+                      )}
                     </div>
                   </PopoverContent>
                 </Popover>
