@@ -228,7 +228,7 @@ const SetComponent: React.FC<SetComponentProps> = ({
           <Input
             id={`weight-${set.id}`}
             type="number"
-            inputMode="numeric"
+            inputMode="decimal"
             value={localWeight}
             onChange={handleWeightChange}
             onBlur={() => handleBlur('weight')}
