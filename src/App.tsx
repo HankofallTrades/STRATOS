@@ -53,6 +53,7 @@ import {
 import AddSingleExerciseDialog from '@/components/features/Workout/AddSingleExerciseDialog';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/state/auth/AuthProvider';
+import ProteinLogging from "./components/features/Nutrition/ProteinLogging";
 
 const queryClient = new QueryClient();
 
@@ -72,6 +73,8 @@ const MainAppLayout = () => {
   const workoutStartTime = useAppSelector(selectWorkoutStartTime);
   const [isDiscardConfirmOpen, setIsDiscardConfirmOpen] = useState(false);
   const [isAddExerciseDialogOpen, setIsAddExerciseDialogOpen] = useState(false);
+  const [isProteinModalOpen, setIsProteinModalOpen] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   // *** Query to fetch the latest single exercise log ***
   const { data: latestSingleLogData, isLoading: isLoadingLatestLog } = useQuery<LatestSingleLogData | null>({
@@ -120,6 +123,19 @@ const MainAppLayout = () => {
       enabled: !!user?.id,
       staleTime: 5 * 60 * 1000, 
   });
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError) {
+        console.error("Error fetching user:", authError);
+        setCurrentUserId(null);
+      } else {
+        setCurrentUserId(user?.id || null);
+      }
+    };
+    fetchUser();
+  }, []);
 
   const handleAddWorkout = () => {
     dispatch(startWorkoutAction());
@@ -336,11 +352,20 @@ const MainAppLayout = () => {
                 <DropdownMenuItem onSelect={handleAddExercise}>
                   Log Exercise
                 </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setIsProteinModalOpen(true)}>
+                  Log Protein
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           )}
         </div>
       )}
+
+      <ProteinLogging 
+        isOpen={isProteinModalOpen} 
+        onClose={() => setIsProteinModalOpen(false)} 
+        userId={currentUserId}
+      />
 
       <BottomNav />
 

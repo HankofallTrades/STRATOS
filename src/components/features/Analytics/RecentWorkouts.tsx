@@ -1,13 +1,30 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/integrations/supabase/client';
 import { useAuth } from '@/state/auth/AuthProvider';
-import { fetchExercisesFromDB } from '@/lib/integrations/supabase/exercises';
+// import { fetchExercisesFromDB } from '@/lib/integrations/supabase/exercises'; // Not directly used for this enhancement
 import { formatTime } from '@/lib/utils/timeUtils';
-import { Clock } from "lucide-react";
+import { Clock, Info, Loader2, AlertTriangle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/core/card";
 import { Skeleton } from "@/components/core/skeleton";
-import { Exercise } from '@/lib/types/workout'; // Keep for exercise name lookup
+// import { Exercise } from '@/lib/types/workout'; // Keep for exercise name lookup // No longer needed for this specific component
+
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+    DialogClose,
+} from "@/components/core/Dialog/dialog";
+import { Button } from "@/components/core/button"; // Assuming button exists
+import {
+    fetchDetailedWorkoutById,
+    DetailedWorkout,
+    WorkoutExerciseDetail,
+    WorkoutSet
+} from '@/lib/integrations/supabase/history'; // Adjusted path
 
 // Define the expected structure of the summary returned by the RPC
 // Option 1: Simple summary
@@ -68,6 +85,9 @@ const RecentWorkouts: React.FC = () => {
     const { user } = useAuth();
     const userId = user?.id;
 
+    const [selectedWorkoutId, setSelectedWorkoutId] = useState<string | null>(null);
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+
     // Fetch recent workout summaries
     const { data: recentWorkouts = [], isLoading: isLoadingWorkouts, error: errorWorkouts } = useQuery<RecentWorkoutSummary[], Error>({
         queryKey: ['recentWorkoutsSummary', userId],
@@ -75,6 +95,33 @@ const RecentWorkouts: React.FC = () => {
         enabled: !!userId,
         staleTime: 1 * 60 * 1000, // Cache for 1 minute
     });
+
+    // Fetch detailed workout data when a workout is selected
+    const {
+        data: detailedWorkout,
+        isLoading: isLoadingDetailedWorkout,
+        error: errorDetailedWorkout,
+        refetch: refetchDetailedWorkout,
+    } = useQuery<DetailedWorkout | null, Error>({
+        queryKey: ['detailedWorkout', selectedWorkoutId, userId],
+        queryFn: () => {
+            if (!selectedWorkoutId || !userId) return Promise.resolve(null);
+            return fetchDetailedWorkoutById(userId, selectedWorkoutId);
+        },
+        enabled: !!selectedWorkoutId && !!userId && isDialogOpen, // Only fetch when dialog is open and IDs are available
+        staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    });
+
+    const handleCardClick = (workoutId: string) => {
+        setSelectedWorkoutId(workoutId);
+        setIsDialogOpen(true);
+        // refetchDetailedWorkout(); // Not strictly needed due to `enabled` but can ensure fresh data
+    };
+
+    const handleDialogClose = () => {
+        setIsDialogOpen(false);
+        setSelectedWorkoutId(null); // Clear selected ID when dialog closes
+    };
 
     if (isLoadingWorkouts) {
         return (
@@ -105,7 +152,11 @@ const RecentWorkouts: React.FC = () => {
             {recentWorkouts.length > 0 ? (
                 <div className="space-y-4">
                     {recentWorkouts.map((workout) => (
-                        <Card key={workout.workout_id}>
+                        <Card
+                            key={workout.workout_id}
+                            onClick={() => handleCardClick(workout.workout_id)}
+                            className="cursor-pointer hover:shadow-md transition-shadow"
+                        >
                             <CardHeader className="pb-2">
                                 <CardTitle className="text-lg flex justify-between">
                                     <span>Workout on {formatDate(workout.workout_created_at)}</span>
@@ -135,6 +186,78 @@ const RecentWorkouts: React.FC = () => {
                 </div>
             ) : (
                 <p className="text-gray-500 italic">No workout history available yet. Complete a workout to see it here!</p>
+            )}
+
+            {selectedWorkoutId && (
+                <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
+                    <DialogContent className="sm:max-w-lg md:max-w-xl max-h-[80vh] overflow-y-auto">
+                        <DialogHeader>
+                            <DialogTitle>Workout Details</DialogTitle>
+                            {detailedWorkout && (
+                                <DialogDescription>
+                                    Details for workout on {formatDate(detailedWorkout.workout_created_at)}.
+                                </DialogDescription>
+                            )}
+                        </DialogHeader>
+                        
+                        {isLoadingDetailedWorkout && (
+                            <div className="flex items-center justify-center py-8">
+                                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                                <p className="ml-2">Loading workout details...</p>
+                            </div>
+                        )}
+
+                        {errorDetailedWorkout && !isLoadingDetailedWorkout && (
+                            <div className="flex flex-col items-center justify-center py-8 text-red-600">
+                                <AlertTriangle className="h-8 w-8 mb-2" />
+                                <p>Error loading workout details.</p>
+                                <p className="text-sm text-red-500">{errorDetailedWorkout.message}</p>
+                            </div>
+                        )}
+
+                        {!isLoadingDetailedWorkout && !errorDetailedWorkout && detailedWorkout && (
+                            <div className="mt-4 space-y-4">
+                                {detailedWorkout.exercises.length > 0 ? detailedWorkout.exercises.map(exercise => (
+                                    <div key={exercise.exercise_id} className="p-3 border rounded-md bg-slate-50 dark:bg-slate-800">
+                                        <h4 className="font-semibold text-md mb-1.5">{exercise.exercise_name}</h4>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                                            {exercise.completed_sets_count} completed set{exercise.completed_sets_count !== 1 ? 's' : ''}
+                                        </p>
+                                        {exercise.sets.length > 0 ? (
+                                            <ul className="space-y-1 text-sm list-disc list-inside pl-1">
+                                                {exercise.sets.filter(set => set.completed).map(set => (
+                                                    <li key={set.set_number} className="text-gray-700 dark:text-gray-300">
+                                                        Set {set.set_number}:
+                                                        {set.reps !== null && set.weight !== null ?
+                                                            ` ${set.reps}x${set.weight}` :
+                                                            set.time_seconds !== null && set.weight !== null ?
+                                                                ` ${set.time_seconds}s x ${set.weight}` :
+                                                                set.reps !== null ? // Case for reps without weight (e.g. bodyweight)
+                                                                    ` ${set.reps} reps` :
+                                                                    set.time_seconds !== null ? // Case for time without weight
+                                                                        ` ${set.time_seconds}s` :
+                                                                        '' // Fallback, though unlikely given data structure
+                                                        }
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        ) : (
+                                            <p className="text-xs text-gray-400 italic">No sets recorded for this exercise.</p>
+                                        )}
+                                    </div>
+                                )) : (
+                                    <p className="text-gray-500 italic">No exercises found in this workout.</p>
+                                )}
+                            </div>
+                        )}
+                        
+                        <DialogFooter className="mt-6">
+                            <DialogClose asChild>
+                                <Button type="button" variant="outline">Close</Button>
+                            </DialogClose>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             )}
         </div>
     );

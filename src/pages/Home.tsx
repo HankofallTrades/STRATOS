@@ -6,46 +6,140 @@ import { Clock } from "lucide-react";
 import { formatTime } from "@/lib/utils/timeUtils";
 import WorkoutComponent from "@/components/features/Workout/WorkoutComponent";
 import { Barbell } from "@phosphor-icons/react";
-// import { useAuth } from "@/state/auth/AuthProvider"; // Removed useAuth import as it's unused
-// import { Link } from "react-router-dom"; // Removed Link import as it's unused
+import { useAuth } from '@/state/auth/AuthProvider'; // Assuming this path is correct
+import { Link } from "react-router-dom"; // Removed Link import as it's unused
 import { useElapsedTime } from "@/hooks/useElapsedTime"; // Import the new hook
 import { useNavigate } from 'react-router-dom'; // Import useNavigate
-import { useEffect } from 'react'; // Import useEffect
+import { useMemo, useState, useEffect } from 'react'; // ADDED useState, useEffect
+import { useQuery } from '@tanstack/react-query';
+import { getUserProfile, UserProfileData } from '@/lib/integrations/supabase/user';
+import { getDailyProteinIntake, DailyProteinIntake } from '@/lib/integrations/supabase/nutrition';
+import CircularProgressDisplay from '@/components/core/charts/CircularProgressDisplay';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/core/card';
 
-const Home = () => { // Changed component name to Home
-  const navigate = useNavigate(); // Add useNavigate hook
+const Home = () => {
+  const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const currentWorkout = useAppSelector(selectCurrentWorkout);
-  // const workoutStartTime = useAppSelector(selectWorkoutStartTime); // No longer needed here
-  // const displayTime = useElapsedTime(workoutStartTime); // No longer needed here
+  const { user } = useAuth();
+  const userId = user?.id;
+  const todayDate = useMemo(() => new Date().toISOString().split('T')[0], []);
 
-  // Redirect to workout page if a workout is already active
-  /*
-  useEffect(() => {
-    if (currentWorkout) {
-      navigate('/workout');
+  const [startAnimation, setStartAnimation] = useState(false);
+
+  const { data: userProfile, isLoading: isLoadingProfile } = useQuery<
+    UserProfileData | null,
+    Error
+  >(
+    {
+      queryKey: ['userProfile', userId],
+      queryFn: async () => {
+        if (!userId) return null;
+        const profile = await getUserProfile(userId);
+        return profile;
+      },
+      enabled: !!userId,
+      staleTime: 5 * 60 * 1000,
     }
-  }, [currentWorkout, navigate]);
-  */ // Commented out the redirect logic
+  );
+
+  const { 
+    data: dailyProtein, 
+    isLoading: isLoadingProtein, 
+    isError: isErrorProtein, 
+    error: proteinError 
+  } = useQuery<
+    DailyProteinIntake,
+    Error
+  >(
+    {
+      queryKey: ['dailyProteinIntake', userId, todayDate],
+      queryFn: async () => {
+        if (!userId) { 
+            return { total_protein: 0 }; 
+        }
+        const intake = await getDailyProteinIntake(userId, todayDate);
+        return intake;
+      },
+      enabled: !!userId, 
+      staleTime: 1 * 60 * 1000, 
+    }
+  );
+
+  useEffect(() => {
+    let animationTimer: NodeJS.Timeout;
+    if (!isLoadingProtein && dailyProtein) {
+      animationTimer = setTimeout(() => {
+        setStartAnimation(true);
+      }, 50); 
+    } else if (isLoadingProtein) {
+      setStartAnimation(false);
+    }
+    return () => {
+      clearTimeout(animationTimer);
+    };
+  }, [isLoadingProtein, dailyProtein]);
+
+  const currentProteinIntake = dailyProtein?.total_protein ?? 0;
+
+  const proteinGoalKgFactor = useMemo(() => {
+    if (!userProfile || !userProfile.focus) return 1.5;
+    const focus = userProfile.focus.toLowerCase();
+    if (focus === 'strength' || focus === 'hypertrophy' || focus === 'strength/hypertrophy') {
+      return 2.0;
+    }
+    return 1.5;
+  }, [userProfile]);
+
+  const calculatedProteinGoal = useMemo(() => {
+    if (!userProfile || typeof userProfile.weight_kg !== 'number') return 0;
+    return Math.round(userProfile.weight_kg * proteinGoalKgFactor);
+  }, [userProfile, proteinGoalKgFactor]);
+
+  const renderProteinProgress = () => {
+    if (isErrorProtein) {
+      return <p className="text-sm text-destructive text-center">Error: {proteinError?.message || 'Could not load protein intake'}</p>;
+    }
+
+    const goalReady = !isLoadingProfile && userProfile && typeof userProfile.weight_kg === 'number';
+    const actualDisplayGoal = goalReady ? calculatedProteinGoal : 0;
+
+    const displayCurrent = startAnimation ? currentProteinIntake : 0;
+    const displayGoal = startAnimation ? actualDisplayGoal : 0; 
+    const progressKey = startAnimation ? `protein-loaded-${currentProteinIntake}-${actualDisplayGoal}` : 'protein-initial-state';
+
+    const goalStatusMessage =
+      (startAnimation || !isLoadingProtein) && isLoadingProfile && userId && !userProfile ? "Loading goal..." :
+      (startAnimation || !isLoadingProtein) && !isLoadingProfile && userId && (!userProfile || typeof userProfile.weight_kg !== 'number') ? "Set weight in profile for goal" :
+      null;
+
+    return (
+      <>
+        <CircularProgressDisplay
+          key={progressKey}
+          currentValue={displayCurrent} 
+          goalValue={displayGoal}
+          label="Today's Protein"
+          unit="g"
+          size={180}
+          barSize={14}
+          showTooltip={startAnimation && goalReady}
+          showCenterText={startAnimation}
+        />
+        {goalStatusMessage && (
+          <p className="text-xs text-center text-muted-foreground mt-2">{goalStatusMessage}</p>
+        )}
+      </>
+    );
+  };
 
   const handleStartWorkout = () => {
     dispatch(startWorkoutAction());
-    navigate('/workout'); // Navigate after starting
+    navigate('/workout');
   };
 
-  // If a workout is active, this component will redirect. 
-  // If not, show the start workout prompt.
-  // We add a check to prevent rendering the prompt briefly before redirecting.
-  /* // Commenting out this check as well, since we no longer redirect
-  if (currentWorkout) {
-    return null; // Or a loading indicator
-  }
-  */
-
   return (
-    // Reverted to standard container layout, starts at top
     <div className="container mx-auto p-4">
-      {/* Removed wrapper div */}
         <header className="flex flex-col items-center justify-between mb-8 text-center mt-8">
           <h1 className="text-5xl md:text-6xl font-bold mb-2 text-fitnessBlue dark:text-fitnessBlue uppercase font-montserrat">
             Stratos
@@ -54,7 +148,6 @@ const Home = () => { // Changed component name to Home
         </header>
 
         <main>
-          {/* Always show the Start Workout prompt if no workout is active */}
           <div className="flex flex-col items-center justify-center py-12 px-4 bg-gray-50 dark:bg-gray-800 rounded-lg shadow-sm">
             <Barbell size={64} className="text-fitnessBlue mb-6" />
             <h2 className="text-2xl font-semibold mb-4 dark:text-white text-center">Ready to start your session?</h2>
@@ -70,9 +163,19 @@ const Home = () => { // Changed component name to Home
             </Button>
           </div>
         </main>
-      {/* Removed wrapper div */}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl">Protein Intake</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col justify-center items-center min-h-[250px]">
+              {renderProteinProgress()}
+            </CardContent>
+          </Card>
+        </div>
     </div>
   );
 };
 
-export default Home; // Changed export to Home 
+export default Home; 
