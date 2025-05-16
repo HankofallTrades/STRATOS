@@ -9,6 +9,7 @@ import CalisthenicBenchmarks from '@/components/features/Benchmarks/CalisthenicB
 import OneRepMax from '@/components/features/Analytics/OneRepMax';
 import RecentWorkouts from '@/components/features/Analytics/RecentWorkouts';
 import Volume from '@/components/features/Analytics/Volume';
+import PerformanceOverview from '@/components/features/Analytics/PerformanceOverview';
 import {
   Select,
   SelectContent,
@@ -125,43 +126,9 @@ const Analytics = () => {
 
   return (
     <div className="container mx-auto p-4 max-w-4xl">
-      <header className="flex flex-col items-center justify-between mb-8 text-center">
-        <h1 className="text-3xl md:text-4xl font-bold mb-2 text-fitnessIndigo">Analytics</h1>
-        <p className="text-gray-600 mb-6">Track your progress and visualize your gains</p>
-      </header>
 
       <main className="space-y-8">
-        {/* <h2 className="text-2xl font-semibold mb-4">Performance Overview</h2> */}
-        {/* <PerformanceOverview /> */}
-
-        {/* Protein Intake Section */}
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold">Daily Protein Goal</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {(isLoadingUserWeight || isLoadingDailyProtein) && <p>Loading protein data...</p>}
-            {!isLoadingUserWeight && !userWeightData?.weight_kg && !isLoadingDailyProtein && (
-              <p className="text-sm text-muted-foreground">
-                Set your weight in your profile to calculate your protein goal (2g per kg).
-                {/* Optional: Link to profile/settings page */}
-              </p>
-            )}
-            {proteinGoal > 0 && (
-              <>
-                <ProgressBar value={currentProtein} max={proteinGoal} />
-                <p className="text-center text-muted-foreground">
-                  {currentProtein} / {proteinGoal} g logged today
-                </p>
-              </>
-            )}
-            {proteinGoal === 0 && !isLoadingUserWeight && userWeightData?.weight_kg && (
-                 <p className="text-center text-muted-foreground">
-                  Current Protein: {currentProtein} g (Goal not set due to missing weight)
-                </p>
-            )}
-          </CardContent>
-        </Card>
+        <PerformanceOverview />
 
         <div className="pt-6">
           <Tabs value={selectedAnalysisType} onValueChange={(value) => setSelectedAnalysisType(value as AnalysisType)} className="w-full">

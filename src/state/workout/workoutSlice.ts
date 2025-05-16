@@ -30,13 +30,9 @@ const workoutSlice = createSlice({
     },
     endWorkout(state) {
       if (state.currentWorkout && state.workoutStartTime) {
-        const endTime = Date.now();
-        const durationInSeconds = Math.round((endTime - state.workoutStartTime) / 1000);
-        state.currentWorkout.completed = true;
-        state.currentWorkout.duration = durationInSeconds; // Save calculated duration
-        // Keep currentWorkout until it's saved/discarded by the component
-        // state.currentWorkout = null; // Don't nullify here
-        state.workoutStartTime = null; // Clear start time
+        state.currentWorkout.duration = Math.round((Date.now() - state.workoutStartTime) / 1000); // Duration in seconds
+        state.currentWorkout.completed = true; // Mark as completed
+        // Optionally, prepare for history or reset
       }
     },
     clearWorkout(state) {
@@ -45,9 +41,7 @@ const workoutSlice = createSlice({
     },
     addExerciseToWorkout(state, action: PayloadAction<WorkoutExercise>) {
         if (state.currentWorkout) {
-            if (!state.currentWorkout.exercises.some(ex => ex.exerciseId === action.payload.exerciseId)) {
-                state.currentWorkout.exercises.push(action.payload);
-            }
+            state.currentWorkout.exercises.push(action.payload);
         }
     },
     addSetToExercise(

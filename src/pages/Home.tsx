@@ -15,7 +15,8 @@ import { useQuery } from '@tanstack/react-query';
 import { getUserProfile, UserProfileData } from '@/lib/integrations/supabase/user';
 import { getDailyProteinIntake, DailyProteinIntake } from '@/lib/integrations/supabase/nutrition';
 import CircularProgressDisplay from '@/components/core/charts/CircularProgressDisplay';
-import PerformanceOverview from '@/components/features/Analytics/PerformanceOverview'; // Import PerformanceOverview
+// import PerformanceOverview from '@/components/features/Analytics/PerformanceOverview'; // Import PerformanceOverview - REMOVED
+import Volume from '@/components/features/Analytics/Volume'; // Import Volume component
 
 // type BenchmarkType = 'Strength' | 'Calisthenics'; // REMOVED
 
@@ -144,34 +145,31 @@ const Home = () => {
 
   return (
     <div className="container mx-auto p-4">
-        <header className="flex flex-col items-center justify-between mb-8 text-center mt-8">
+        {/* <header className="flex flex-col items-center justify-between mb-8 text-center mt-8">
           <h1 className="text-5xl md:text-6xl font-bold mb-2 text-fitnessBlue dark:text-fitnessBlue uppercase font-montserrat">
             Stratos
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mb-6">Elevate your game</p>
-           {/* Button to start workout - moved to header for better prominence or could be a floating action button later */}
-          {/* <Button 
-              onClick={handleStartWorkout}
-              size="lg" 
-              className="bg-fitnessBlue hover:bg-blue-600 text-white font-semibold px-8 mt-4"
-            >
-              Start New Workout
-            </Button> */}
-        </header>
+        </header> */}
 
         <main className="mt-12">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-            {/* Left Column: Protein Intake */}
-            <div className="flex flex-col items-center justify-start md:sticky md:top-24">
+          <div className="grid grid-cols-1 gap-8 items-start"> {/* Changed to single column */}
+            {/* Single Column: Protein Intake & Volume */}
+            <div className="flex flex-col items-center justify-start"> {/* Removed sticky positioning */}
               {renderProteinProgress()}
+              <div className="mt-8 w-full"> 
+                <Volume userId={userId} />
+              </div>
             </div>
 
-            {/* Right Column: Performance Overview */}
+            {/* Right Column: Performance Overview - REMOVED */}
+            {/* 
             <div className="w-full">
-              {/* Removed Benchmarks Title */}
-              {/* <h2 className="text-2xl font-semibold mb-4 text-center md:text-left">Benchmarks</h2> */}
+              
+              
               <PerformanceOverview />
-            </div>
+            </div> 
+            */}
           </div>
         </main>
     </div>
