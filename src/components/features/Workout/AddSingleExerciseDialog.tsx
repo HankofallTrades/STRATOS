@@ -10,20 +10,21 @@ import {
   // DialogClose, // No longer using DialogClose directly with button
 } from "@/components/core/Dialog";
 import { Button } from "@/components/core/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/core/popover";
+// import { Popover, PopoverContent, PopoverTrigger } from "@/components/core/popover"; // No longer directly needed here
 import { supabase } from '@/lib/integrations/supabase/client';
 import { fetchExercisesFromDB } from '@/lib/integrations/supabase/exercises'; // Assuming this function exists
 import { useAuth } from '@/state/auth/AuthProvider'; // Assuming this hook exists
 import { useToast } from "@/hooks/use-toast";
 import { Exercise } from "@/lib/types/workout";
 import { Tables, TablesInsert } from '@/lib/integrations/supabase/types';
-import { Loader2, Plus, Minus } from 'lucide-react'; // For loading state and Plus/Minus icons
+import { Loader2, Plus, Minus, Check, X as XIcon } from 'lucide-react'; // Added Check, XIcon
 import { cn } from "@/lib/utils/cn"; // For conditional class names
 import { Input } from "@/components/core/input"; // Corrected casing
 import { Label } from "@/components/core/label"; // Corrected casing
+import EquipmentSelector from './EquipmentSelector'; // Added import
+import VariationSelector from './VariationSelector'; // Added import
 
 // --- Constants ---
-const EQUIPMENT_TYPES = ['Barbell', 'Dumbbell', 'Machine', 'Kettlebell', 'Bodyweight', 'Other'];
 const DEFAULT_VARIATION = 'Standard'; // Use consistent default naming
 
 // --- Interfaces ---
@@ -52,7 +53,9 @@ type ExerciseVariation = Tables<'exercise_variations'>;
 type ExerciseSet = Tables<'exercise_sets'>;
 
 // Exercise type from DB, expecting it to have is_static
-type ExerciseFromDB = Tables<'exercises'>; 
+type ExerciseFromDB = Tables<'exercises'>;
+// Equipment type from DB
+type DbEquipmentType = Tables<'equipment_types'>; // Use generated type
 
 // Interface for the latest single log data passed as prop
 // (Can be defined here or imported if defined elsewhere)
@@ -72,6 +75,8 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
   const [selectedVariation, setSelectedVariation] = useState<string | null>(() => defaultLogData?.variation ?? null);
   const [equipmentPopoverOpen, setEquipmentPopoverOpen] = useState(false);
   const [variationPopoverOpen, setVariationPopoverOpen] = useState(false);
+  const [isAddingVariation, setIsAddingVariation] = useState(false); // New state
+  const [newVariationName, setNewVariationName] = useState(""); // New state
 
   // Fetch exercises query
   const { data: exercises = [], isLoading: isLoadingExercises, error: errorExercises } = useQuery<ExerciseFromDB[]>({
@@ -99,17 +104,38 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
   });
 
   // Fetch Variations for selected exercise
-  const { data: variations = [], isLoading: isLoadingVariations } = useQuery<ExerciseVariation[]>({
+  const { data: variations = [], isLoading: isLoadingVariations, refetch: refetchVariations } = useQuery<ExerciseVariation[]>({
       queryKey: ['exerciseVariations', selectedExerciseId],
       queryFn: async () => {
+          if (!selectedExerciseId) return []; 
           const { data, error } = await supabase
               .from('exercise_variations')
               .select('*')
-              .eq('exercise_id', selectedExerciseId);
+              .eq('exercise_id', selectedExerciseId)
+              // Do not fetch 'Standard' if it's stored; it's handled conceptually
+              .not('variation_name', 'ilike', DEFAULT_VARIATION); 
           if (error) throw error;
-          return data ?? [];
+          return data ?? []; 
       },
-      enabled: !!selectedExerciseId && open, // Only fetch if an exercise is selected and dialog is open
+      enabled: !!selectedExerciseId && open,
+  });
+
+  // Fetch Equipment Types from DB
+  const { data: dbEquipmentTypes = [], isLoading: isLoadingDbEquipmentTypes, refetch: refetchDbEquipmentTypes } = useQuery<DbEquipmentType[]> ({
+    queryKey: ['dbEquipmentTypes'],
+    queryFn: async () => {
+        const { data, error } = await supabase
+            .from('equipment_types') // Assuming this is your table name
+            .select('id, name');
+        if (error) {
+            console.error("Error fetching equipment types:", error);
+            toast({ title: "Error", description: "Could not load equipment types.", variant: "destructive" });
+            return [];
+        }
+        return data || [];
+    },
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    enabled: open, // Fetch when dialog is open
   });
 
   // Fetch Last Set for selected exercise
@@ -157,7 +183,14 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
         setSelectedExerciseId(defaultLogData?.exercise_id ?? '');
         setWeight(defaultLogData?.weight?.toString() ?? '');
         setSelectedEquipment(defaultLogData?.equipment_type ?? null);
-        setSelectedVariation(defaultLogData?.variation ?? null);
+        
+        // Handle initial variation from defaultLogData
+        const initialVariation = defaultLogData?.variation;
+        if (initialVariation && initialVariation.toLowerCase() !== DEFAULT_VARIATION.toLowerCase()) {
+            setSelectedVariation(initialVariation);
+        } else {
+            setSelectedVariation(null); // Default to Standard (null)
+        }
 
         if (isStaticDefault) {
             setTimeInSeconds(defaultLogData?.time_seconds?.toString() ?? '');
@@ -166,6 +199,9 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
             setReps(defaultLogData?.reps?.toString() ?? '');
             setTimeInSeconds(''); // Clear time if not static
         }
+        // Reset variation adding state
+        setIsAddingVariation(false);
+        setNewVariationName('');
     } else {
         // When closing, clear everything
         setSelectedExerciseId('');
@@ -194,7 +230,12 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
       if (lastSet !== undefined) { // lastSet can be null if no history
         setWeight(lastSet?.weight?.toString() ?? '');
         setSelectedEquipment(lastSet?.equipment_type ?? selectedExercise.default_equipment_type ?? null);
-        setSelectedVariation(lastSet?.variation ?? null);
+        const lastVariation = lastSet?.variation;
+        if (lastVariation && lastVariation.toLowerCase() !== DEFAULT_VARIATION.toLowerCase()) {
+            setSelectedVariation(lastVariation);
+        } else {
+            setSelectedVariation(null); // Default to Standard/null
+        }
         if (isStatic) {
           setTimeInSeconds(lastSet?.time_seconds?.toString() ?? '');
           setReps(''); // Clear reps if static
@@ -205,7 +246,7 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
       } else { // No last set, use exercise defaults (or clear)
         setWeight(''); // Or some default weight if applicable
         setSelectedEquipment(selectedExercise.default_equipment_type ?? null);
-        setSelectedVariation(null); // Or default variation if any
+        setSelectedVariation(null); // Default to Standard/null
         if (isStatic) {
           setTimeInSeconds('');
           setReps('');
@@ -224,6 +265,79 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
   // React to changes in selectedExercise (which depends on selectedExerciseId and exercises) and lastSet
   // Do not include defaultLogData here as it's for initial population or full override.
   }, [selectedExercise, lastSet, open]); // `open` is included to re-evaluate when dialog becomes visible if needed.
+
+  // Mutation to add a new equipment type
+  const addEquipmentTypeMutation = useMutation({
+    mutationFn: async ({ name }: { name: string }) => {
+      // Check if equipment type already exists (case-insensitive)
+      const existingType = dbEquipmentTypes.find(et => et.name.toLowerCase() === name.toLowerCase());
+      if (existingType) {
+        // toast({ title: "Equipment Exists", description: `"${name}" already exists.`, variant: "default" });
+        return existingType; // Return existing type
+      }
+      const { data: newType, error } = await supabase
+        .from('equipment_types')
+        .insert({ name })
+        .select('id, name')
+        .single();
+      if (error) throw error;
+      return newType;
+    },
+    onSuccess: (data) => {
+      if (data) {
+        toast({ title: "Equipment Saved", description: `"${data.name}" is now available.` });
+      }
+      refetchDbEquipmentTypes();
+    },
+    onError: (error: any) => {
+      console.error("Error adding equipment type:", error);
+      toast({ title: "Equipment Error", description: error.message || "Could not save equipment type.", variant: "destructive"});
+    },
+  });
+
+  // Mutation to add a new variation
+  const addVariationMutation = useMutation({
+    mutationFn: async ({ exerciseId, variationName }: { exerciseId: string; variationName: string }) => {
+      if (!exerciseId) throw new Error("Exercise ID is required to add a variation.");
+      
+      // Prevent adding "Standard" or case-insensitive variants
+      if (variationName.toLowerCase() === DEFAULT_VARIATION.toLowerCase()) {
+        // toast({ title: "Default Variation", description: `"${DEFAULT_VARIATION}" is the default and is not saved as a separate variation.`, variant: "default" });
+        return null; // Indicate not to save, but handle as success for UI flow
+      }
+
+      // Check if variation already exists for this exercise (case-insensitive)
+      const existingVariation = variations.find(v => v.variation_name.toLowerCase() === variationName.toLowerCase());
+      if (existingVariation) {
+        return existingVariation; 
+      }
+
+      const { data: newVariation, error } = await supabase
+        .from('exercise_variations')
+        .insert({ exercise_id: exerciseId, variation_name: variationName })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return newVariation;
+    },
+    onSuccess: (data) => { // data can be ExerciseVariation or null
+      if (data) { // A new or existing variation was returned
+        toast({ title: "Variation Saved", description: `"${data.variation_name}" is now available.` });
+        setSelectedVariation(data.variation_name); // Select the new/existing variation
+        refetchVariations(); 
+      } else { // Null was returned, meaning "Standard" was entered
+        toast({ title: "Default Selected", description: `Using "${DEFAULT_VARIATION}" variation.`});
+        setSelectedVariation(null); // Explicitly set to null for Standard
+      }
+      setIsAddingVariation(false);
+      setNewVariationName("");
+    },
+    onError: (error: any) => {
+      console.error("Error adding variation:", error);
+      toast({ title: "Variation Error", description: error.message || "Could not save variation.", variant: "destructive" });
+    },
+  });
 
   // *** Refactored Mutation ***
   const saveSingleLogMutation = useMutation({
@@ -383,7 +497,56 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
     }
   };
 
-  const isPending = saveSingleLogMutation.isPending || isLoadingExercises || isLoadingVariations || isLoadingLastSet;
+  const handleTriggerAddNewVariation = () => {
+    setIsAddingVariation(true);
+    setVariationPopoverOpen(false); // Close the popover if it was open
+  };
+
+  const handleSaveNewVariation = () => {
+    const trimmedName = newVariationName.trim();
+    if (!trimmedName) {
+      toast({ title: "Missing Name", description: "Please enter a variation name.", variant: "destructive" });
+      return;
+    }
+    if (!selectedExerciseId) {
+      toast({ title: "No Exercise", description: "Please select an exercise first.", variant: "destructive" });
+      return;
+    }
+    
+    if (trimmedName.toLowerCase() === DEFAULT_VARIATION.toLowerCase()) {
+        // User typed "Standard" or "standard", etc.
+        // addVariationMutation will handle setting selectedVariation to null
+        addVariationMutation.mutate({ exerciseId: selectedExerciseId, variationName: DEFAULT_VARIATION }); 
+        return;
+    }
+    
+    // Check if it's already in the fetched variations list (excluding DEFAULT_VARIATION which isn't fetched that way)
+    if (variations.some(v => v.variation_name.toLowerCase() === trimmedName.toLowerCase())) {
+        toast({ title: "Variation Exists", description: `"${trimmedName}" already exists. Selecting it.`, variant: "default" });
+        setSelectedVariation(trimmedName); // Select existing
+        setIsAddingVariation(false);
+        setNewVariationName("");
+        return;
+    }
+    
+    addVariationMutation.mutate({ exerciseId: selectedExerciseId, variationName: trimmedName });
+  };
+
+  const handleCancelAddNewVariation = () => {
+    setIsAddingVariation(false);
+    setNewVariationName("");
+  };
+
+  // Handler for when equipment is selected/added in EquipmentSelector
+  const handleEquipmentSelected = (equipmentName: string | null) => {
+    setSelectedEquipment(equipmentName);
+    if (equipmentName && !dbEquipmentTypes.some(et => et.name.toLowerCase() === equipmentName.toLowerCase())) {
+      // If it's a new equipment name not in the current DB list, add it
+      addEquipmentTypeMutation.mutate({ name: equipmentName });
+    }
+  };
+
+  const isPending = saveSingleLogMutation.isPending || isLoadingExercises || isLoadingDbEquipmentTypes || isLoadingLastSet || addVariationMutation.isPending || addEquipmentTypeMutation.isPending; // Include addEquipmentTypeMutation.isPending
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -423,76 +586,60 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
             </div>
 
             <div className="flex items-center gap-2 flex-shrink-0">
-              <Popover open={equipmentPopoverOpen} onOpenChange={setEquipmentPopoverOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="rounded-full h-8 px-3 text-xs w-auto border-border" disabled={isPending}>
-                    {selectedEquipment ?? "Equipment"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-1">
-                  <div className="flex flex-col gap-1">
-                    {EQUIPMENT_TYPES.map((type) => (
-                      <Button
-                        key={type}
-                        variant="ghost"
-                        size="sm"
-                        className="w-full justify-start h-8 px-2 text-xs"
-                        onClick={() => {
-                          setSelectedEquipment(type);
-                          setEquipmentPopoverOpen(false);
-                        }}
-                        disabled={selectedEquipment === type}
-                      >
-                        {type}
-                      </Button>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
-
-              <Popover open={variationPopoverOpen} onOpenChange={setVariationPopoverOpen}>
-                <PopoverTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="rounded-full h-8 px-3 text-xs w-auto border-border min-w-[90px] justify-center"
-                    disabled={isPending || isLoadingVariations || !selectedExerciseId}
+              <EquipmentSelector
+                selectedEquipment={selectedEquipment}
+                onSelectEquipment={handleEquipmentSelected} // Use the new handler
+                equipmentTypes={dbEquipmentTypes.map(et => et.name)} // Pass names from DB
+                disabled={isPending}
+                popoverOpen={equipmentPopoverOpen}
+                setPopoverOpen={setEquipmentPopoverOpen}
+              />
+              {isAddingVariation ? (
+                <div className="flex items-center gap-1 flex-shrink-0 h-8">
+                  <Input
+                    type="text"
+                    placeholder="New Variation Name"
+                    value={newVariationName}
+                    onChange={(e) => setNewVariationName(e.target.value)}
+                    className="h-full w-[120px] sm:w-[150px] text-xs"
+                    disabled={addVariationMutation.isPending}
+                    autoFocus
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleSaveNewVariation(); if (e.key === 'Escape') handleCancelAddNewVariation();}}
+                  />
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-full w-8 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/50 flex-shrink-0"
+                    onClick={handleSaveNewVariation}
+                    disabled={!newVariationName.trim() || addVariationMutation.isPending}
+                    aria-label="Save new variation"
                   >
-                    {isLoadingVariations && selectedExerciseId ? <Loader2 className="h-3 w-3 animate-spin"/> : (selectedVariation ?? DEFAULT_VARIATION)}
+                    {addVariationMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check size={16} />}
                   </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-1">
-                  <div className="flex flex-col gap-1">
-                    <Button 
-                      variant="ghost"
-                      size="sm"
-                      className="w-full justify-start h-8 px-2 text-xs italic"
-                      onClick={() => {
-                        setSelectedVariation(null);
-                        setVariationPopoverOpen(false);
-                      }}
-                      disabled={selectedVariation === null}
-                    >
-                      {DEFAULT_VARIATION}
-                    </Button>
-                    {variations.map((variation) => (
-                      <Button
-                        key={variation.id}
-                        variant="ghost"
-                        size="sm"
-                        className="w-full justify-start h-8 px-2 text-xs"
-                        onClick={() => {
-                          setSelectedVariation(variation.variation_name);
-                          setVariationPopoverOpen(false);
-                        }}
-                        disabled={selectedVariation === variation.variation_name}
-                      >
-                        {variation.variation_name}
-                      </Button>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-full w-8 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50 flex-shrink-0"
+                    onClick={handleCancelAddNewVariation}
+                    disabled={addVariationMutation.isPending}
+                    aria-label="Cancel adding variation"
+                  >
+                    <XIcon size={16} />
+                  </Button>
+                </div>
+              ) : (
+                <VariationSelector
+                  selectedVariation={selectedVariation}
+                  onSelectVariation={setSelectedVariation}
+                  variations={variations}
+                  onTriggerAddNewVariation={handleTriggerAddNewVariation} // Pass new handler
+                  defaultVariationText={DEFAULT_VARIATION}
+                  isLoading={isLoadingVariations} // Pass loading state for variations
+                  disabled={isPending || !selectedExerciseId}
+                  popoverOpen={variationPopoverOpen}
+                  setPopoverOpen={setVariationPopoverOpen}
+                />
+              )}
             </div>
           </div>
 

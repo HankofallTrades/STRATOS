@@ -64,6 +64,7 @@ const ProteinLogging: React.FC<ProteinLoggingProps> = ({ isOpen, onClose, userId
             <Input
               id="proteinAmount"
               type="number"
+              inputMode="numeric"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="e.g., 30"
