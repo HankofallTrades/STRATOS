@@ -23,6 +23,7 @@ import { Input } from "@/components/core/input"; // Corrected casing
 import { Label } from "@/components/core/label"; // Corrected casing
 import EquipmentSelector from './EquipmentSelector'; // Added import
 import VariationSelector from './VariationSelector'; // Added import
+import SwipeableIncrementer from '@/components/core/Controls/SwipeableIncrementer'; // Added import
 
 // --- Constants ---
 const DEFAULT_VARIATION = 'Standard'; // Use consistent default naming
@@ -79,7 +80,7 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
   const [newVariationName, setNewVariationName] = useState(""); // New state
 
   // Fetch exercises query
-  const { data: exercises = [], isLoading: isLoadingExercises, error: errorExercises } = useQuery<ExerciseFromDB[]>({
+  const { data: exercises = [], isLoading: isLoadingExercises, error: errorExercises } = useQuery<ExerciseFromDB[], Error, ExerciseFromDB[]>({
     queryKey: ['exercises'],
     queryFn: fetchExercisesFromDB,
     staleTime: Infinity, // Exercises list doesn't change often
@@ -121,9 +122,9 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
   });
 
   // Fetch Equipment Types from DB
-  const { data: dbEquipmentTypes = [], isLoading: isLoadingDbEquipmentTypes, refetch: refetchDbEquipmentTypes } = useQuery<DbEquipmentType[]> ({
+  const { data: dbEquipmentTypes = [], isLoading: isLoadingDbEquipmentTypes, refetch: refetchDbEquipmentTypes } = useQuery<DbEquipmentType[], Error, DbEquipmentType[]> ({
     queryKey: ['dbEquipmentTypes'],
-    queryFn: async () => {
+    queryFn: async (): Promise<DbEquipmentType[]> => {
         const { data, error } = await supabase
             .from('equipment_types') // Assuming this is your table name
             .select('id, name');
@@ -270,7 +271,7 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
   const addEquipmentTypeMutation = useMutation({
     mutationFn: async ({ name }: { name: string }) => {
       // Check if equipment type already exists (case-insensitive)
-      const existingType = dbEquipmentTypes.find(et => et.name.toLowerCase() === name.toLowerCase());
+      const existingType = (dbEquipmentTypes as DbEquipmentType[]).find(et => et.name.toLowerCase() === name.toLowerCase());
       if (existingType) {
         // toast({ title: "Equipment Exists", description: `"${name}" already exists.`, variant: "default" });
         return existingType; // Return existing type
@@ -479,20 +480,27 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
     saveSingleLogMutation.mutate(newLogData);
   };
 
-  // Handlers for +/- buttons
-  const handleIncrementDecrement = (field: 'weight' | 'reps' | 'time', amount: number) => {
+  // Simplified handler, SwipeableIncrementer now provides the exact adjustment amount
+  const handleIncrementDecrement = (field: 'weight' | 'reps' | 'time', adjustment: number) => {
     if (field === 'weight') {
       const currentValue = parseFloat(weight) || 0;
-      const newValue = Math.max(0, currentValue + amount); // Prevent negative weight
-      setWeight(newValue.toFixed(newValue % 1 === 0 ? 0 : (Math.abs(amount) < 1 ? 1 : 0) )); 
+      let newValue = currentValue + adjustment;
+      newValue = Math.max(0, newValue); // Prevent negative weight
+      
+      const decimalPlaces = Math.abs(adjustment % 1) > 0 ? 1 : 0; 
+      const finalDecimalPlaces = newValue % 1 === 0 ? 0 : decimalPlaces;
+      setWeight(newValue.toFixed(finalDecimalPlaces));
+
     } else if (field === 'reps') {
       const currentValue = parseInt(reps, 10) || 0;
-      const newValue = Math.max(1, currentValue + amount); // Prevent reps < 1
+      let newValue = currentValue + adjustment;
+      newValue = Math.max(1, newValue); // Prevent reps < 1
       setReps(newValue.toString());
+
     } else if (field === 'time') {
       const currentValue = parseInt(timeInSeconds, 10) || 0;
-      // Allow decrementing to a minimum, e.g., 1 second or 5 seconds
-      const newValue = Math.max(amount > 0 ? 1 : 5, currentValue + amount); // Min 5s if decrementing, else min 1s
+      let newValue = currentValue + adjustment;
+      newValue = Math.max(1, newValue); // Prevent time < 1
       setTimeInSeconds(newValue.toString());
     }
   };
@@ -540,7 +548,7 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
   // Handler for when equipment is selected/added in EquipmentSelector
   const handleEquipmentSelected = (equipmentName: string | null) => {
     setSelectedEquipment(equipmentName);
-    if (equipmentName && !dbEquipmentTypes.some(et => et.name.toLowerCase() === equipmentName.toLowerCase())) {
+    if (equipmentName && !(dbEquipmentTypes as DbEquipmentType[]).some(et => et.name.toLowerCase() === equipmentName.toLowerCase())) {
       // If it's a new equipment name not in the current DB list, add it
       addEquipmentTypeMutation.mutate({ name: equipmentName });
     }
@@ -589,7 +597,7 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
               <EquipmentSelector
                 selectedEquipment={selectedEquipment}
                 onSelectEquipment={handleEquipmentSelected} // Use the new handler
-                equipmentTypes={dbEquipmentTypes.map(et => et.name)} // Pass names from DB
+                equipmentTypes={(dbEquipmentTypes as DbEquipmentType[]).map(et => et.name)} // Pass names from DB
                 disabled={isPending}
                 popoverOpen={equipmentPopoverOpen}
                 setPopoverOpen={setEquipmentPopoverOpen}
@@ -662,27 +670,21 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
                   disabled={isPending}
                 />
                 {/* Buttons Container Below Input */}
-                <div className="flex items-center justify-center gap-1"> 
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-7 w-7 flex-shrink-0 text-muted-foreground hover:bg-accent" 
-                    onClick={() => handleIncrementDecrement('weight', -0.5)}
+                <div className="flex items-center justify-center"> 
+                  <SwipeableIncrementer
+                    onAdjust={(adj) => handleIncrementDecrement('weight', adj)}
+                    smallStepPositive={0.5}
+                    smallStepNegative={-0.5}
+                    swipeUpStep={5}
+                    swipeDownStep={-5}
+                    swipeRightStep={2.5}
+                    swipeLeftStep={-2.5}
                     disabled={isPending}
-                    aria-label="Decrease weight by 0.5"
-                  >
-                    <Minus size={14} />
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-7 w-7 flex-shrink-0 text-muted-foreground hover:bg-accent"
-                    onClick={() => handleIncrementDecrement('weight', 0.5)}
-                    disabled={isPending}
-                    aria-label="Increase weight by 0.5"
-                  >
-                    <Plus size={14} />
-                  </Button>
+                    label="Adjust weight"
+                    buttonSize="icon"
+                    iconSize={14}
+                    wrapperClassName="gap-1" // Maintain original gap if desired, or adjust
+                  />
                 </div>
               </div>
             </div>
@@ -704,27 +706,21 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
                     placeholder="Enter time"
                     disabled={isPending || !selectedExerciseId}
                   />
-                  <div className="flex items-center justify-center gap-1">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-7 w-7 flex-shrink-0 text-muted-foreground hover:bg-accent"
-                      onClick={() => handleIncrementDecrement('time', -5)}
-                      disabled={isPending || !selectedExerciseId || (parseInt(timeInSeconds, 10) || 0) <= 5}
-                      aria-label="Decrease time by 5 seconds"
-                    >
-                      <Minus size={14} />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-7 w-7 flex-shrink-0 text-muted-foreground hover:bg-accent"
-                      onClick={() => handleIncrementDecrement('time', 5)}
+                  <div className="flex items-center justify-center"> 
+                    <SwipeableIncrementer
+                      onAdjust={(adj) => handleIncrementDecrement('time', adj)}
+                      smallStepPositive={1}
+                      smallStepNegative={-1}
+                      swipeUpStep={5}
+                      swipeDownStep={-5}
+                      swipeRightStep={2} // Adjusted from 2.5 for time
+                      swipeLeftStep={-2}  // Adjusted from -2.5 for time
                       disabled={isPending || !selectedExerciseId}
-                      aria-label="Increase time by 5 seconds"
-                    >
-                      <Plus size={14} />
-                    </Button>
+                      label="Adjust time"
+                      buttonSize="icon"
+                      iconSize={14}
+                      wrapperClassName="gap-1"
+                    />
                   </div>
                 </div>
               </div>
@@ -744,26 +740,21 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
                     placeholder="Enter reps"
                     disabled={isPending || !selectedExerciseId}
                   />
-                  <div className="flex items-center justify-center gap-1">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-7 w-7 flex-shrink-0 text-muted-foreground hover:bg-accent"
-                      onClick={() => handleIncrementDecrement('reps', -1)}
-                      disabled={isPending || !selectedExerciseId || (parseInt(reps, 10) || 0) <= 1}
-                    >
-                      <Minus size={14} />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-7 w-7 flex-shrink-0 text-muted-foreground hover:bg-accent"
-                      onClick={() => handleIncrementDecrement('reps', 1)}
-                      disabled={isPending}
-                      aria-label="Increase reps by 1"
-                    >
-                      <Plus size={14} />
-                    </Button>
+                  <div className="flex items-center justify-center"> 
+                    <SwipeableIncrementer
+                      onAdjust={(adj) => handleIncrementDecrement('reps', adj)}
+                      smallStepPositive={1}
+                      smallStepNegative={-1}
+                      swipeUpStep={10}     // New: Reps swipe up by 10
+                      swipeDownStep={-10}  // New: Reps swipe down by -10
+                      swipeRightStep={5}   // New: Reps swipe right by 5
+                      swipeLeftStep={-5}   // New: Reps swipe left by -5
+                      disabled={isPending || !selectedExerciseId}
+                      label="Adjust reps"
+                      buttonSize="icon"
+                      iconSize={14}
+                      wrapperClassName="gap-1"
+                    />
                   </div>
                 </div>
               </div>
