@@ -42,6 +42,30 @@ export type Database = {
           },
         ]
       }
+      equipment_types: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          order: number
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          order?: number
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          order?: number
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       exercise_muscle_groups: {
         Row: {
           created_at: string | null
@@ -280,6 +304,30 @@ export type Database = {
           updated_at?: string
           username?: string | null
           weight?: number | null
+        }
+        Relationships: []
+      }
+      protein_intake: {
+        Row: {
+          amount_grams: number
+          created_at: string | null
+          date: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          amount_grams: number
+          created_at?: string | null
+          date: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          amount_grams?: number
+          created_at?: string | null
+          date?: string
+          id?: string
+          user_id?: string
         }
         Relationships: []
       }

@@ -1,5 +1,5 @@
-import React, { Fragment, useMemo, useState } from 'react';
-import { motion, useMotionValue, useTransform, animate, AnimatePresence } from 'framer-motion';
+import React, { Fragment, useMemo, useState, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 // TanStack Query - Removed hooks, just keep types if needed
 // import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MutationStatus } from '@tanstack/react-query'; // Keep MutationStatus type
@@ -14,12 +14,14 @@ import { Button } from '@/components/core/button';
 // import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/core/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/core/card'; // Re-added CardTitle
 import { Plus, Check, X, Trash2, Minus } from 'lucide-react'; // Added Check, X, Minus icons
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/core/Dialog'; // Added Dialog imports
 import SetComponent from './SetComponent'; // Assuming SetComponent exists in the same directory
 // Removed Supabase function imports
 // import { addExerciseVariationToDB, fetchExerciseVariationsFromDB } from '@/lib/integrations/supabase/exercises';
 import { Input } from '@/components/core/input'; // Import Input component
 // ADD ToggleGroup imports
 // import { ToggleGroup, ToggleGroupItem } from '@/components/core/Toggle/toggle-group';
+import SwipeableIncrementer from '@/components/core/Controls/SwipeableIncrementer'; // Added import
 // ADD Table component imports
 import {
   Table,
@@ -70,9 +72,11 @@ interface WorkoutExerciseViewProps {
 }
 
 const DEFAULT_VARIATION = 'Standard'; // Define default variation
-// Swipe constants
-const SWIPE_THRESHOLD = -60; // Pixels to swipe left to reveal
-const REVEAL_WIDTH = 75; // Width of the revealed delete button area
+// Swipe constants REMOVED
+// const SWIPE_THRESHOLD = -60; 
+// const REVEAL_WIDTH = 75; 
+
+const LONG_PRESS_DURATION = 700; // milliseconds
 
 // Helper function for formatting previous performance
 const formatPrevious = (perf: { weight: number; reps: number | null; time_seconds?: number | null } | null, isStatic: boolean): string => {
@@ -109,74 +113,50 @@ export const WorkoutExerciseView = ({
   // Removed state: selectedVariation, isAddingVariation, newVariationName
   // Removed queryClient
   const exerciseId = workoutExercise.exerciseId;
-  const [revealedItemId, setRevealedItemId] = useState<string | null>(null); // 'title' or set.id
+  // REMOVED revealedItemId, cardX, deleteOpacity
+  // const [revealedItemId, setRevealedItemId] = useState<string | null>(null); 
 
   // State for Popover open state
-  const [equipmentOpen, setEquipmentOpen] = useState(false)
-  const [variationOpen, setVariationOpen] = useState(false)
+  const [equipmentOpen, setEquipmentOpen] = useState(false);
+  const [variationOpen, setVariationOpen] = useState(false);
   const [showNewEquipmentInput, setShowNewEquipmentInput] = useState(false);
   const [newEquipmentName, setNewEquipmentName] = useState("");
+  const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false); // New state for delete dialog
 
-  // Motion value to track card's x position
-  const cardX = useMotionValue(0);
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Transform cardX to delete button opacity (fade in as card moves left)
-  const deleteOpacity = useTransform(
-    cardX,
-    [-REVEAL_WIDTH * 0.8, 0], // Map x from -80% revealed to 0
-    [1, 0] // To opacity 1 to 0
-  );
+  // REMOVED Motion value and transform
+  // const cardX = useMotionValue(0);
+  // const deleteOpacity = useTransform(...);
 
   const isExerciseStatic = useMemo(() => workoutExercise.exercise.is_static ?? false, [workoutExercise.exercise.is_static]);
 
   // --- Handlers ---
-  const handleReveal = (id: string) => {
-    setRevealedItemId(id);
-  };
-  const handleHide = () => {
-    setRevealedItemId(null);
-  };
+  // REMOVED handleReveal, handleHide, handleDragEnd
 
-  const handleDragEnd = (
-    event: MouseEvent | TouchEvent | PointerEvent,
-    info: { offset: { x: number; y: number }; velocity: { x: number; y: number } }
-  ) => {
-    const offset = info.offset.x;
-    const velocity = info.velocity.x;
-    const currentX = cardX.get(); // Get current position
-
-    // Determine target position based on offset and velocity
-    let targetX = 0;
-    if (offset < SWIPE_THRESHOLD || (velocity < -300 && currentX < -REVEAL_WIDTH / 3)) {
-      targetX = -REVEAL_WIDTH;
-      handleReveal('title'); // Still set state for other logic (e.g., tabIndex)
-    } else {
-      targetX = 0;
-      handleHide();
+  const clearLongPressTimer = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
     }
-
-    // Animate cardX to the target position
-    animate(cardX, targetX, {
-      type: "spring",
-      stiffness: 400,
-      damping: 40,
-    });
   };
 
-  const handleDeleteExerciseClick = () => {
-    // Remove the animation logic here. Parent handles removal & AnimatePresence handles animation.
-    // if (cardX.get() < 0) {
-    //     animate(cardX, 0, {
-    //       type: "spring",
-    //       stiffness: 400,
-    //       damping: 40,
-    //       onComplete: onDeleteExercise // Call actual delete *after* animation
-    //     });
-    // } else {
-    //     onDeleteExercise(); // Delete immediately if not revealed
-    // }
-    onDeleteExercise(); // Just call the delete handler directly
-    handleHide(); // Still hide the button state locally if needed
+  const handleLongPress = () => {
+    setShowDeleteConfirmDialog(true);
+  };
+
+  const handlePointerDown = () => {
+    // Ensure no existing timer is running
+    clearLongPressTimer();
+    // Start a new timer
+    longPressTimerRef.current = setTimeout(handleLongPress, LONG_PRESS_DURATION);
+  };
+
+
+  // handleDeleteExerciseClick is now only called from the confirmation dialog
+  const handleDeleteConfirmed = () => {
+    onDeleteExercise();
+    setShowDeleteConfirmDialog(false);
   };
 
   const overallLastPerformanceFormatted = useMemo(() => {
@@ -198,18 +178,19 @@ export const WorkoutExerciseView = ({
 
   return (
     <Fragment>
-      {/* Static Relative Wrapper for Positioning and Clipping */}
-      <div className="relative overflow-hidden rounded-lg">
-        {/* Draggable Card Area */}
-        <motion.div
-          className="relative cursor-grab z-20 bg-card" // Has background to cover delete button
-          drag="x"
-          dragConstraints={{ left: -REVEAL_WIDTH, right: 0 }}
-          dragElastic={0.1}
-          onDragEnd={handleDragEnd} // Use the correct handler
-          style={{ x: cardX, touchAction: 'pan-y' }}
-        >
-          <Card className="w-full rounded-lg border-0 shadow-none bg-transparent p-0 md:border md:shadow md:bg-card md:rounded-lg">
+      {/* Static Relative Wrapper for Positioning and Clipping - No longer needs overflow-hidden if card doesn't move */}
+      <div className="relative rounded-lg">
+        {/* Card Area - Removed motion.div wrapper and its drag props */}
+        <Card className="w-full rounded-lg border-0 shadow-none bg-transparent p-0 md:border md:shadow md:bg-card md:rounded-lg">
+          <motion.div // Added motion.div here for long press on header
+            onPointerDown={handlePointerDown}
+            onPointerUp={clearLongPressTimer}
+            onPointerLeave={clearLongPressTimer} // Clear timer if pointer leaves the element
+            // Optionally, add visual feedback for press:
+            // whileTap={{ scale: 0.98, backgroundColor: "rgba(0,0,0,0.05)" }} 
+            // style={{ touchAction: 'pan-y' }} // Allow vertical scroll if header is part of a scrollable list
+            className="cursor-pointer" // Indicate interactivity
+          >
             <CardHeader className="flex flex-row justify-between items-center gap-2 p-0 md:p-2 md:sm:p-4">
               {/* Title Area */}
               <div className="flex-grow min-w-0">
@@ -393,133 +374,128 @@ export const WorkoutExerciseView = ({
                 )}
               </div>
             </CardHeader>
+          </motion.div>
 
-            <CardContent className="p-0 pt-0 md:pt-0 md:pb-2 md:px-2 md:sm:px-4">
-              <div className="">
-                <Table className="w-full">
-                  <TableHeader>
-                    <TableRow className="text-xs">
-                      <TableHead className="w-[35px] text-center px-1 py-1">Set</TableHead>
-                      <TableHead className="w-[70px] text-center px-1 py-1">Previous</TableHead>
-                      <TableHead className="w-[75px] text-center px-1 py-1">Weight</TableHead>
-                      {isExerciseStatic ? (
-                        <TableHead className="w-[60px] text-center px-1 py-1">Time</TableHead>
-                      ) : (
-                      <TableHead className="w-[60px] text-center px-1 py-1">Reps</TableHead>
-                      )}
-                      <TableHead className="w-[40px] p-0 text-center"><Check size={16} className="mx-auto" /></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    <AnimatePresence initial={false}>
-                      {workoutExercise.sets.map((set, index) => {
-                        const setNumber = index + 1;
-                        const previousPerformanceForSet = historicalSetPerformances?.[setNumber] ?? null;
-                        
-                        return (
-                          <SetComponent
-                            key={set.id}
-                            workoutExerciseId={workoutExercise.id}
-                            set={set}
-                            setIndex={index}
-                            previousPerformance={previousPerformanceForSet}
-                            userBodyweight={userBodyweight}
-                            isStatic={isExerciseStatic}
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            transition={{ type: 'tween', duration: 0.5 }}
-                            layout
+          <CardContent className="p-0 pt-0 md:pt-0 md:pb-2 md:px-2 md:sm:px-4">
+            <div className="">
+              <Table className="w-full">
+                <TableHeader>
+                  <TableRow className="text-xs">
+                    <TableHead className="w-[35px] text-center px-1 py-1">Set</TableHead>
+                    <TableHead className="w-[70px] text-center px-1 py-1">Previous</TableHead>
+                    <TableHead className="w-[75px] text-center px-1 py-1">Weight</TableHead>
+                    {isExerciseStatic ? (
+                      <TableHead className="w-[60px] text-center px-1 py-1">Time</TableHead>
+                    ) : (
+                    <TableHead className="w-[60px] text-center px-1 py-1">Reps</TableHead>
+                    )}
+                    <TableHead className="w-[40px] p-0 text-center"><Check size={16} className="mx-auto" /></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <AnimatePresence initial={false}>
+                    {workoutExercise.sets.map((set, index) => {
+                      const setNumber = index + 1;
+                      const previousPerformanceForSet = historicalSetPerformances?.[setNumber] ?? null;
+                      
+                      return (
+                        <SetComponent
+                          key={set.id}
+                          workoutExerciseId={workoutExercise.id}
+                          set={set}
+                          setIndex={index}
+                          previousPerformance={previousPerformanceForSet}
+                          userBodyweight={userBodyweight}
+                          isStatic={isExerciseStatic}
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ type: 'tween', duration: 0.5 }}
+                          layout
+                        />
+                      );
+                    })}
+                    <motion.tr
+                      key="add-set-row"
+                      layout={false}
+                      className="border-b-0"
+                    >
+                      <TableCell className="p-1 text-center align-middle">
+                        <Button variant="ghost" size="icon" onClick={onAddSet} className="h-7 w-7" aria-label="Add set">
+                          <Plus size={16} />
+                        </Button>
+                      </TableCell>
+                      <TableCell className="p-1 align-middle"></TableCell>
+                      <TableCell className="p-1 align-middle">
+                        <div className="flex items-center justify-center">
+                          <SwipeableIncrementer
+                            onAdjust={(adjustment) => onUpdateLastSet('weight', adjustment)}
+                            smallStepPositive={1}
+                            smallStepNegative={-1}
+                            swipeUpStep={5}
+                            swipeDownStep={-5}
+                            swipeRightStep={2.5}
+                            swipeLeftStep={-2.5}
+                            disabled={workoutExercise.sets.length === 0}
+                            label="Adjust weight of last set"
+                            buttonSize="sm"
+                            iconSize={14}
+                            buttonClassName="hover:bg-transparent h-6 w-6"
+                            wrapperClassName="gap-1"
                           />
-                        );
-                      })}
-                      <motion.tr
-                        key="add-set-row"
-                        layout={false}
-                        className="border-b-0"
-                      >
-                        <TableCell className="p-1 text-center align-middle">
-                          <Button variant="ghost" size="icon" onClick={onAddSet} className="h-7 w-7" aria-label="Add set">
-                            <Plus size={16} />
-                          </Button>
-                        </TableCell>
-                        <TableCell className="p-1 align-middle"></TableCell>
-                        <TableCell className="p-1 align-middle">
-                          <div className="flex items-center justify-center gap-1">
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-6 w-6 hover:bg-transparent"
-                              onClick={() => onUpdateLastSet('weight', -1)}
-                              disabled={workoutExercise.sets.length === 0}
-                              aria-label="Decrease weight of last set by 1"
-                            >
-                              <Minus size={14} />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-6 w-6 hover:bg-transparent"
-                              onClick={() => onUpdateLastSet('weight', 1)}
-                              disabled={workoutExercise.sets.length === 0}
-                              aria-label="Increase weight of last set by 1"
-                            >
-                              <Plus size={14} />
-                            </Button>
-                          </div>
-                        </TableCell>
-                        <TableCell className="p-1 align-middle">
-                          <div className="flex items-center justify-center gap-1">
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-6 w-6 hover:bg-transparent"
-                              onClick={() => onUpdateLastSet(isExerciseStatic ? 'time' : 'reps', -1)}
-                              disabled={workoutExercise.sets.length === 0}
-                              aria-label={isExerciseStatic ? "Decrease time of last set by 1" : "Decrease reps of last set by 1"}
-                            >
-                              <Minus size={14} />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-6 w-6 hover:bg-transparent"
-                              onClick={() => onUpdateLastSet(isExerciseStatic ? 'time' : 'reps', 1)}
-                              disabled={workoutExercise.sets.length === 0}
-                              aria-label={isExerciseStatic ? "Increase time of last set by 1" : "Increase reps of last set by 1"}
-                            >
-                              <Plus size={14} />
-                            </Button>
-                          </div>
-                        </TableCell>
-                        <TableCell className="p-1 align-middle"></TableCell>
-                      </motion.tr>
-                    </AnimatePresence>
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Stationary Delete Button Area - Use style opacity, add rounded-lg */}
-        <motion.div
-          className="absolute top-0 right-0 h-full flex items-center justify-center bg-destructive z-10 cursor-pointer rounded-lg"
-          style={{ opacity: deleteOpacity, width: REVEAL_WIDTH }}
-          aria-hidden={revealedItemId !== 'title'}
-        >
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-full w-full rounded-none text-lg text-white hover:bg-destructive/80"
-            onClick={handleDeleteExerciseClick}
-            aria-label="Delete exercise from workout"
-            tabIndex={revealedItemId === 'title' ? 0 : -1}
-          >
-            <Trash2 className="h-5 w-5" />
-          </Button>
-        </motion.div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="p-1 align-middle">
+                        <div className="flex items-center justify-center">
+                          <SwipeableIncrementer
+                            onAdjust={(adjustment) => onUpdateLastSet(isExerciseStatic ? 'time' : 'reps', adjustment)}
+                            smallStepPositive={1}
+                            smallStepNegative={-1}
+                            swipeUpStep={isExerciseStatic ? 5 : 10}
+                            swipeDownStep={isExerciseStatic ? -5 : -10}
+                            swipeRightStep={isExerciseStatic ? 2 : 5}
+                            swipeLeftStep={isExerciseStatic ? -2 : -5}
+                            disabled={workoutExercise.sets.length === 0}
+                            label={isExerciseStatic ? "Adjust time of last set" : "Adjust reps of last set"}
+                            buttonSize="sm"
+                            iconSize={14}
+                            buttonClassName="hover:bg-transparent h-6 w-6"
+                            wrapperClassName="gap-1"
+                          />
+                        </div>
+                      </TableCell>
+                      <TableCell className="p-1 align-middle"></TableCell>
+                    </motion.tr>
+                  </AnimatePresence>
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+        {/* REMOVED Stationary Delete Button Area */}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      {showDeleteConfirmDialog && (
+        <Dialog open={showDeleteConfirmDialog} onOpenChange={setShowDeleteConfirmDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Discard Exercise</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to remove "{workoutExercise.exercise.name}" from your workout?
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2 sm:justify-end">
+              <Button variant="outline" onClick={() => setShowDeleteConfirmDialog(false)}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleDeleteConfirmed}>
+                Discard
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </Fragment>
   );
 };

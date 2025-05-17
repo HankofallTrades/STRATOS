@@ -182,7 +182,7 @@ const Volume: React.FC<VolumeProps> = ({ userId }) => {
         <div className="md:p-6">
             <CardHeader className="p-0 mb-4 md:pb-2">
                 <CardTitle className="text-2xl font-semibold mb-4 text-center md:text-left">
-                    Movement Archetypes
+                    Volume
                 </CardTitle>
                 {/* Temporary User ID display for debugging - REMOVED */}
                 {/* <p className="text-xs text-gray-400 text-center md:text-left">Debugging - User ID: {userId || "undefined"}</p> */}
