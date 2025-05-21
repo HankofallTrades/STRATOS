@@ -4,6 +4,7 @@ import { addProteinIntake } from '@/lib/integrations/supabase/nutrition';
 import { Button } from '@/components/core/button';
 import { Input } from '@/components/core/input';
 import { toast } from 'sonner';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface ProteinLoggingProps {
   isOpen: boolean;
@@ -14,11 +15,31 @@ interface ProteinLoggingProps {
 const ProteinLogging: React.FC<ProteinLoggingProps> = ({ isOpen, onClose, userId }) => {
   // const { user } = useAuth(); // Removed
   const [amount, setAmount] = useState<string>('');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const queryClient = useQueryClient();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Get today's date for the query key
+  const today = new Date().toISOString().split('T')[0];
+
+  const mutation = useMutation({
+    mutationFn: async (amountGrams: number) => {
+      if (!userId) throw new Error('User not identified.');
+      await addProteinIntake(userId, amountGrams, today);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dailyProteinIntake', userId, today] });
+      toast.success('Protein logged successfully!');
+      setAmount('');
+      onClose();
+    },
+    onError: (error: any) => {
+      console.error('Failed to log protein:', error);
+      toast.error('Failed to log protein. Please try again.');
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userId) { // Check userId prop
+    if (!userId) {
       toast.error('User not identified. Please try again.');
       return;
     }
@@ -26,26 +47,12 @@ const ProteinLogging: React.FC<ProteinLoggingProps> = ({ isOpen, onClose, userId
       toast.error('Please enter an amount.');
       return;
     }
-
     const amountGrams = parseInt(amount, 10);
     if (isNaN(amountGrams) || amountGrams <= 0) {
       toast.error('Please enter a valid positive number for grams.');
       return;
     }
-
-    setIsLoading(true);
-    try {
-      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-      await addProteinIntake(userId, amountGrams, today); // Use userId prop
-      toast.success('Protein logged successfully!');
-      setAmount('');
-      onClose();
-    } catch (error) {
-      console.error('Failed to log protein:', error);
-      toast.error('Failed to log protein. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
+    mutation.mutate(amountGrams);
   };
 
   if (!isOpen) {
@@ -68,15 +75,15 @@ const ProteinLogging: React.FC<ProteinLoggingProps> = ({ isOpen, onClose, userId
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="e.g., 30"
-              disabled={isLoading}
+              disabled={mutation.isPending}
             />
           </div>
           <div className="flex justify-end space-x-2">
-            <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
+            <Button type="button" variant="outline" onClick={onClose} disabled={mutation.isPending}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Logging...' : 'Log Protein'}
+            <Button type="submit" disabled={mutation.isPending}>
+              {mutation.isPending ? 'Logging...' : 'Log Protein'}
             </Button>
           </div>
         </form>

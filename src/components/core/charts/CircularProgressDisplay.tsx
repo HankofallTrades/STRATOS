@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import {
   RadialBarChart,
   RadialBar,
@@ -45,7 +45,40 @@ const CircularProgressDisplay: React.FC<CircularProgressDisplayProps> = ({
   const effectiveGoal = goalValue > 0 ? goalValue : 1;
   const percentage = goalValue > 0 ? (currentValue / goalValue) * 100 : 0;
 
-  const chartData = [{ name: label || 'Progress', value: currentValue, goal: effectiveGoal }];
+  // Animation logic: animate from previous value to currentValue
+  const prevValueRef = useRef(currentValue);
+  const [animatedValue, setAnimatedValue] = useState(currentValue);
+
+  useEffect(() => {
+    if (currentValue === prevValueRef.current) return;
+    let frame: number;
+    const duration = 500; // ms
+    const start = performance.now();
+    const from = prevValueRef.current;
+    const to = currentValue;
+    const animate = (now: number) => {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const value = from + (to - from) * progress;
+      setAnimatedValue(value);
+      if (progress < 1) {
+        frame = requestAnimationFrame(animate);
+      } else {
+        prevValueRef.current = to;
+      }
+    };
+    frame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(frame);
+  }, [currentValue]);
+
+  useEffect(() => {
+    // If the component mounts or goal changes, sync everything
+    prevValueRef.current = currentValue;
+    setAnimatedValue(currentValue);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [goalValue]);
+
+  const chartData = [{ name: label || 'Progress', value: animatedValue, goal: effectiveGoal }];
 
   return (
     <div 
@@ -103,7 +136,7 @@ const CircularProgressDisplay: React.FC<CircularProgressDisplayProps> = ({
         {showCenterText && (
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
             <span className={cn("text-2xl font-bold text-foreground", textClassName)}>
-              {currentValue}
+              {Math.round(animatedValue)}
             </span>
             {goalValue > 0 && (
               <span className={cn("text-xs text-muted-foreground", textClassName)}>

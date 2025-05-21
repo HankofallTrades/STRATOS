@@ -426,6 +426,9 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
       queryClient.invalidateQueries({ queryKey: ['lastSet', user?.id, selectedExerciseId] });
       queryClient.invalidateQueries({ queryKey: ['exerciseHistory', selectedExerciseId] }); // Example if you have such a query
       queryClient.invalidateQueries({ queryKey: ['analyticsData'] });
+      if (user?.id) {
+        queryClient.invalidateQueries({ queryKey: ['weeklyArchetypeSets_v2', user.id] });
+      }
       onOpenChange(false);
     },
     onError: (error: any) => {
