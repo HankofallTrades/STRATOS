@@ -118,17 +118,7 @@ const Volume: React.FC<VolumeProps> = ({ userId }) => {
         refetchInterval: 15 * 60 * 1000,
     });
 
-    // Debug: Log rawData from Supabase
-    console.log('[Volume.tsx] Raw data from Supabase:', rawData);
-
     const progressDisplayData = useMemo((): DisplayArchetypeData[] => {
-        // Log rawData specifically for Push and Pull to diagnose - REMOVING
-        // console.log(
-        //     '[Volume.tsx Debug] Raw data items for Push/Pull:',
-        //     rawData.filter(item => item.base_archetype_name === 'Push' || item.base_archetype_name === 'Pull')
-        // );
-        // console.log('[Volume.tsx Debug] Full rawData (consider stringifying for large objects):', JSON.stringify(rawData, null, 2));
-
         const initialData: Record<ProgressArchetypeName, Omit<DisplayArchetypeData, 'displayColor' | 'displayVerticalColor' | 'displayHorizontalColor'>> = {
             'Squat': { name: 'Squat', totalSets: 0, verticalSets: 0, horizontalSets: 0, goal: GOAL_SETS['Squat'] },
             'Lunge': { name: 'Lunge', totalSets: 0, verticalSets: 0, horizontalSets: 0, goal: GOAL_SETS['Lunge'] },
@@ -162,13 +152,6 @@ const Volume: React.FC<VolumeProps> = ({ userId }) => {
         initialData['Push'].totalSets = initialData['Push'].verticalSets + initialData['Push'].horizontalSets;
         initialData['Pull'].totalSets = initialData['Pull'].verticalSets + initialData['Pull'].horizontalSets;
         
-        // Temporary log to inspect processed data before final mapping - REMOVED
-        // console.log('[Volume.tsx] Processed initialData in useMemo:', JSON.parse(JSON.stringify(initialData)));
-
-        // Log processed initialData for Push/Pull - REMOVING
-        // console.log('[Volume.tsx Debug] Processed initialData for Push:', JSON.parse(JSON.stringify(initialData['Push'])));
-        // console.log('[Volume.tsx Debug] Processed initialData for Pull:', JSON.parse(JSON.stringify(initialData['Pull'])));
-
         return progressArchetypes.map(name => {
             const archSetup = initialData[name];
             const colors = archetypeColors[name] || archetypeColors['Default'];
