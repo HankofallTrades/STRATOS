@@ -24,6 +24,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/core/popover"; // Import Popover components
 import { getUserProfile, UserProfileData } from '@/lib/integrations/supabase/user';
 import { useAnimatedValue } from '@/hooks/useAnimatedValue';
+import AnimatedLinearProgress from '@/components/core/AnimatedLinearProgress';
 
 // Define benchmark exercises 
 const BENCHMARK_NAMES = ["Deadlift", "Squat", "Bench Press", "Row", "Overhead Press"] as const;
@@ -72,9 +73,10 @@ interface CalculatedBenchmark {
 interface StrengthBenchmarksProps {
   currentType: BenchmarkTypeOption;
   onTypeChange: (newType: BenchmarkTypeOption) => void;
+  shouldAnimate?: boolean;
 }
 
-const StrengthBenchmarks: React.FC<StrengthBenchmarksProps> = ({ currentType, onTypeChange }) => {
+const StrengthBenchmarks: React.FC<StrengthBenchmarksProps> = ({ currentType, onTypeChange, shouldAnimate = true }) => {
     const { user } = useAuth();
     const LOCAL_STORAGE_KEY = 'userBenchmarkLevel';
 
@@ -94,6 +96,17 @@ const StrengthBenchmarks: React.FC<StrengthBenchmarksProps> = ({ currentType, on
 
     // State for Popover open state
     const [levelPopoverOpen, setLevelPopoverOpen] = useState(false)
+
+    // Animation trigger state
+    const [startAnimation, setStartAnimation] = useState(false);
+    useEffect(() => {
+        if (shouldAnimate) {
+            const timer = setTimeout(() => setStartAnimation(true), 80);
+            return () => clearTimeout(timer);
+        } else {
+            setStartAnimation(false);
+        }
+    }, [shouldAnimate]);
 
     // Effect to save selected level to localStorage
     useEffect(() => {
@@ -214,6 +227,21 @@ const StrengthBenchmarks: React.FC<StrengthBenchmarksProps> = ({ currentType, on
         });
     }, [exercises, isLoadingExercises, latestMaxE1RMs, isLoadingBenchmarks, userProfile, isLoadingProfile, selectedLevel]);
 
+    // --- Animate progress for each benchmark at the top level (to obey Rules of Hooks) ---
+    const animatedProgress0 = useAnimatedValue(startAnimation ? calculatedBenchmarks[0]?.progress ?? 0 : 0);
+    const animatedProgress1 = useAnimatedValue(startAnimation ? calculatedBenchmarks[1]?.progress ?? 0 : 0);
+    const animatedProgress2 = useAnimatedValue(startAnimation ? calculatedBenchmarks[2]?.progress ?? 0 : 0);
+    const animatedProgress3 = useAnimatedValue(startAnimation ? calculatedBenchmarks[3]?.progress ?? 0 : 0);
+    const animatedProgress4 = useAnimatedValue(startAnimation ? calculatedBenchmarks[4]?.progress ?? 0 : 0);
+
+    const animatedBenchmarks = [
+      calculatedBenchmarks[0] ? { ...calculatedBenchmarks[0], progress: animatedProgress0 } : undefined,
+      calculatedBenchmarks[1] ? { ...calculatedBenchmarks[1], progress: animatedProgress1 } : undefined,
+      calculatedBenchmarks[2] ? { ...calculatedBenchmarks[2], progress: animatedProgress2 } : undefined,
+      calculatedBenchmarks[3] ? { ...calculatedBenchmarks[3], progress: animatedProgress3 } : undefined,
+      calculatedBenchmarks[4] ? { ...calculatedBenchmarks[4], progress: animatedProgress4 } : undefined,
+    ].filter(Boolean);
+
     // Helper to render benchmark section content
     const renderBenchmarkContent = () => {
         // Combined loading checks
@@ -254,10 +282,10 @@ const StrengthBenchmarks: React.FC<StrengthBenchmarksProps> = ({ currentType, on
              return <p className="text-gray-500 italic text-center py-4">No exercises found. Add exercises first.</p>;
          }
 
-
+        if (!startAnimation) return <div className="space-y-5" />;
         return (
             <div className="space-y-5">
-                {calculatedBenchmarks.map((bench, index) => (
+                {animatedBenchmarks.map((bench, index) => (
                     <div key={index}>
                         <div className="flex justify-between items-center mb-1">
                             <span className="font-medium text-sm">{bench.name}</span>
@@ -267,15 +295,11 @@ const StrengthBenchmarks: React.FC<StrengthBenchmarksProps> = ({ currentType, on
                                     : `No Data / ${bench.goalE1RM?.toFixed(1)} kg Goal`}
                             </span>
                         </div>
-                        {(() => {
-                            const animatedProgress = useAnimatedValue(bench.progress);
-                            return (
-                                <Progress
-                                    value={animatedProgress}
-                                    className="h-2 [&>div]:bg-green-500"
-                                />
-                            );
-                        })()}
+                        <AnimatedLinearProgress
+                            value={bench.progress}
+                            className="h-2"
+                            barClassName="bg-green-500"
+                        />
                         {bench.progress >= 100 && (
                            <p className="text-xs text-green-600 font-medium mt-1 flex items-center">
                                <CheckCircle className="h-3 w-3 mr-1" /> Benchmark Met!

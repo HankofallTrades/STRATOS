@@ -4,6 +4,7 @@
 export interface Exercise {
   id: string;
   name: string;
+  archetype_id?: string | null; // Added for movement archetype support
   // oneRepMax?: number; // Removed - Likely stored in user_exercise_stats
   default_equipment_type?: string | null; // Renamed from equipmentType, matching DB
   created_by_user_id?: string | null; // Add the creator user ID field

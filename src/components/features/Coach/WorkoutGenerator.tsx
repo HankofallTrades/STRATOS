@@ -13,13 +13,32 @@ import type { ExerciseMuscleGroupMapping } from '@/lib/integrations/supabase/exe
 import type { Exercise, ExerciseSet, WorkoutExercise, Workout } from '@/lib/types/workout';
 import { Skeleton } from '@/components/core/skeleton';
 
-const calculateWeeklySetsPerMuscleGroup = (
+// Archetype targets (using DB archetype names)
+const ARCHETYPE_TARGETS: Record<string, number> = {
+    'squat': 7,
+    'lunge': 7,
+    'push_vertical': 5,
+    'push_horizontal': 5,
+    'pull_vertical': 5,
+    'pull_horizontal': 5,
+    'bend': 7,
+    'twist': 7,
+};
+
+// Helper to get archetype name from exercise (using archetype_id and archetypeMap)
+const getArchetypeName = (exercise: Exercise, archetypeMap: Map<string, string>): string | undefined => {
+    if (!exercise.archetype_id) return undefined;
+    return archetypeMap.get(exercise.archetype_id)?.toLowerCase();
+};
+
+// Calculate weekly sets per archetype
+const calculateWeeklySetsPerArchetype = (
     workoutHistory: Workout[],
-    exerciseMap: Map<string, Exercise>
+    exerciseMap: Map<string, Exercise>,
+    archetypeMap: Map<string, string>
 ): Record<string, number> => {
     const weeklySets: Record<string, number> = {};
     const today = startOfDay(new Date());
-
     workoutHistory.forEach(workout => {
         const workoutDate = startOfDay(new Date(workout.date));
         if (differenceInDays(today, workoutDate) < 7) {
@@ -27,11 +46,11 @@ const calculateWeeklySetsPerMuscleGroup = (
                 const completedSets = workoutExercise.sets.filter(set => set.completed);
                 if (completedSets.length > 0) {
                     const exerciseDetails = exerciseMap.get(workoutExercise.exerciseId);
-                    if (exerciseDetails?.muscle_groups) {
-                        exerciseDetails.muscle_groups.forEach(muscleGroup => {
-                            weeklySets[muscleGroup] = (weeklySets[muscleGroup] || 0) + completedSets.length;
-                        });
-                    }
+                    if (!exerciseDetails) return;
+                    const archetype = getArchetypeName(exerciseDetails, archetypeMap);
+                    if (!archetype) return;
+                    if (!weeklySets[archetype]) weeklySets[archetype] = 0;
+                    weeklySets[archetype] += completedSets.length;
                 }
             });
         }
@@ -39,81 +58,51 @@ const calculateWeeklySetsPerMuscleGroup = (
     return weeklySets;
 };
 
+// Select exercises for workout based on archetype deficits
 const selectExercisesForWorkout = (
     availableExercises: Exercise[],
     weeklySets: Record<string, number>,
-    minSetsPerWeek = 15,
+    archetypeMap: Map<string, string>,
     numExercisesToSelect = 4,
     excludeExerciseIds: string[] = []
 ): Exercise[] => {
-    const muscleGroupsBelowTarget: { name: string; deficit: number }[] = [];
-    const allTargetedMuscleGroups = new Set<string>(availableExercises.flatMap(ex => ex.muscle_groups || []));
-
-    allTargetedMuscleGroups.forEach(group => {
-        const setsDone = weeklySets[group] || 0;
-        if (setsDone < minSetsPerWeek) {
-            muscleGroupsBelowTarget.push({ name: group, deficit: minSetsPerWeek - setsDone });
+    // Find archetypes below target
+    const archetypeDeficits: { name: string; deficit: number }[] = [];
+    Object.entries(ARCHETYPE_TARGETS).forEach(([archetype, target]) => {
+        const sets = weeklySets[archetype] || 0;
+        if (sets < target) {
+            archetypeDeficits.push({ name: archetype, deficit: target - sets });
         }
     });
-
-    muscleGroupsBelowTarget.sort((a, b) => b.deficit - a.deficit);
+    archetypeDeficits.sort((a, b) => b.deficit - a.deficit);
 
     const selectedExercises: Exercise[] = [];
     const selectedExerciseIds = new Set<string>();
-    const coveredMuscleGroups = new Set<string>();
+    const coveredArchetypes = new Set<string>();
 
-    for (const targetGroup of muscleGroupsBelowTarget) {
+    for (const target of archetypeDeficits) {
         if (selectedExercises.length >= numExercisesToSelect) break;
-        if (coveredMuscleGroups.has(targetGroup.name)) continue;
-
-        const potentialExercises = availableExercises
-            .filter(ex => 
-                !selectedExerciseIds.has(ex.id) && 
-                !excludeExerciseIds.includes(ex.id) &&
-                ex.muscle_groups?.includes(targetGroup.name)
-            )
-            .sort((exA, exB) => {
-                const scoreA = exA.muscle_groups?.filter(mg => !coveredMuscleGroups.has(mg) && muscleGroupsBelowTarget.some(t => t.name === mg)).length || 0;
-                const scoreB = exB.muscle_groups?.filter(mg => !coveredMuscleGroups.has(mg) && muscleGroupsBelowTarget.some(t => t.name === mg)).length || 0;
-                return scoreB - scoreA;
-            });
-        
+        if (coveredArchetypes.has(target.name)) continue;
+        const potentialExercises = availableExercises.filter(ex => {
+            if (selectedExerciseIds.has(ex.id) || excludeExerciseIds.includes(ex.id)) return false;
+            const archetype = getArchetypeName(ex, archetypeMap);
+            return archetype === target.name;
+        });
         if (potentialExercises.length > 0) {
             const bestExercise = potentialExercises[0];
             selectedExercises.push(bestExercise);
             selectedExerciseIds.add(bestExercise.id);
-            bestExercise.muscle_groups?.forEach(mg => coveredMuscleGroups.add(mg));
+            coveredArchetypes.add(target.name);
         }
     }
-
-    let remainingNeededGroups = muscleGroupsBelowTarget.filter(mg => !coveredMuscleGroups.has(mg.name));
-    while (selectedExercises.length < numExercisesToSelect && remainingNeededGroups.length > 0) {
-        const targetGroup = remainingNeededGroups[0];
-        const backupExercise = availableExercises.find(ex => 
-            !selectedExerciseIds.has(ex.id) && 
-            !excludeExerciseIds.includes(ex.id) &&
-            ex.muscle_groups?.includes(targetGroup.name)
-        );
-        
-        if (backupExercise) {
-            selectedExercises.push(backupExercise);
-            selectedExerciseIds.add(backupExercise.id);
-            backupExercise.muscle_groups?.forEach(mg => coveredMuscleGroups.add(mg));
-            remainingNeededGroups = muscleGroupsBelowTarget.filter(mg => !coveredMuscleGroups.has(mg.name));
-        } else {
-            remainingNeededGroups.shift(); 
-        }
-    }
-    
+    // Fallback: fill with any remaining exercises
     if (selectedExercises.length < numExercisesToSelect) {
-        const fallbackExercises = availableExercises.filter(ex => 
-            !selectedExerciseIds.has(ex.id) && 
-            !excludeExerciseIds.includes(ex.id)
+        const fallbackExercises = availableExercises.filter(ex =>
+            !selectedExerciseIds.has(ex.id) && !excludeExerciseIds.includes(ex.id)
         );
         const neededCount = numExercisesToSelect - selectedExercises.length;
         selectedExercises.push(...fallbackExercises.slice(0, neededCount));
     }
-
     return selectedExercises;
 };
 
@@ -129,98 +118,81 @@ export const WorkoutGenerator: React.FC = () => {
         refetchOnWindowFocus: false,
     });
 
-    const { data: muscleGroupMappings, isLoading: isLoadingMappings, error: errorMappings } = useQuery<ExerciseMuscleGroupMapping, Error>({
-        queryKey: ['exerciseMuscleGroupMappings'],
-        queryFn: fetchExerciseMuscleGroupMappings,
+    // Fetch movement archetypes for mapping id -> name
+    const { data: movementArchetypes } = useQuery<{ id: string; name: string }[], Error>({
+        queryKey: ['movementArchetypes'],
+        queryFn: async () => {
+            const { data, error } = await import('@/lib/integrations/supabase/client').then(m => m.supabase.from('movement_archetypes').select('id, name'));
+            if (error) throw error;
+            return data || [];
+        },
         staleTime: Infinity,
-        refetchOnWindowFocus: false,
         enabled: !!baseExercises,
     });
 
-    const exercisesWithMuscleGroups = useMemo((): Exercise[] => {
-        if (!baseExercises || !muscleGroupMappings) return [];
-        return baseExercises.map(ex => ({
-            ...ex,
-            muscle_groups: muscleGroupMappings[ex.id] || [],
-        }));
-    }, [baseExercises, muscleGroupMappings]);
-    
+    const archetypeMap = useMemo(() => {
+        if (!movementArchetypes) return new Map();
+        return new Map(movementArchetypes.map(a => [a.id, a.name]));
+    }, [movementArchetypes]);
+
+    const exercisesWithArchetypes = useMemo((): Exercise[] => {
+        if (!baseExercises) return [];
+        return baseExercises.filter(ex => ex.archetype_id && archetypeMap.has(ex.archetype_id));
+    }, [baseExercises, archetypeMap]);
+
     const exerciseMap = useMemo((): Map<string, Exercise> => {
-         return new Map(exercisesWithMuscleGroups.map(ex => [ex.id, ex]));
-    }, [exercisesWithMuscleGroups]);
+        return new Map(exercisesWithArchetypes.map(ex => [ex.id, ex]));
+    }, [exercisesWithArchetypes]);
 
     const handleGenerateWorkout = () => {
-        // --- Determine Number of Exercises based on Last Workout --- 
-        let numExercisesToSelect = 5; // Default to 5
-        let excludeExerciseIds: string[] = []; // Initialize exclusion list
-
+        let numExercisesToSelect = 5;
+        let excludeExerciseIds: string[] = [];
         if (workoutHistory && workoutHistory.length > 0) {
-            // Find the most recent workout date
             const latestWorkoutDate = workoutHistory.reduce((latest, workout) => {
                 const current = startOfDay(new Date(workout.date));
                 return current > latest ? current : latest;
-            }, new Date(0)); // Initialize with epoch
-
-            const latestWorkout = workoutHistory.find(workout => 
+            }, new Date(0));
+            const latestWorkout = workoutHistory.find(workout =>
                 startOfDay(new Date(workout.date)).getTime() === latestWorkoutDate.getTime()
             );
-
-            if (latestWorkoutDate.getTime() > 0) { // Check if a valid date was found
+            if (latestWorkoutDate.getTime() > 0) {
                 const today = startOfDay(new Date());
                 const daysSinceLastWorkout = differenceInDays(today, latestWorkoutDate);
-
                 if (daysSinceLastWorkout <= 1) {
                     numExercisesToSelect = 3;
                     if (latestWorkout) {
                         excludeExerciseIds = latestWorkout.exercises.map(ex => ex.exerciseId);
-                        console.log("Excluding exercises from last workout (<= 1 day ago):", excludeExerciseIds);
                     }
                 } else if (daysSinceLastWorkout <= 3) {
                     numExercisesToSelect = 4;
                     if (latestWorkout) {
                         excludeExerciseIds = latestWorkout.exercises.map(ex => ex.exerciseId);
-                        console.log("Excluding exercises from last workout (<= 3 days ago):", excludeExerciseIds);
                     }
                 } else {
                     numExercisesToSelect = 5;
                 }
-                console.log(`Days since last workout: ${daysSinceLastWorkout}, Selecting ${numExercisesToSelect} exercises.`);
-            } else {
-                console.log("No valid workout dates found in history, selecting 5 exercises.");
             }
-        } else {
-            console.log("No workout history found, selecting 5 exercises.");
         }
-        // --- End Determine Number of Exercises ---
-
-        if (exercisesWithMuscleGroups.length === 0) {
-            console.error("Exercise data with muscle groups is not available.");
+        if (exercisesWithArchetypes.length === 0) {
+            console.error("Exercise data with archetypes is not available.");
             return;
         }
-
-        const weeklySets = calculateWeeklySetsPerMuscleGroup(workoutHistory, exerciseMap);
-        console.log("Weekly Sets Per Muscle Group:", weeklySets);
-
+        const weeklySets = calculateWeeklySetsPerArchetype(workoutHistory, exerciseMap, archetypeMap);
         const exercisesToCreate = selectExercisesForWorkout(
-            exercisesWithMuscleGroups, 
-            weeklySets, 
-            15, // minSetsPerWeek (keep default)
-            numExercisesToSelect, // Pass the dynamic number
-            excludeExerciseIds // Pass the list of IDs to exclude
+            exercisesWithArchetypes,
+            weeklySets,
+            archetypeMap,
+            numExercisesToSelect,
+            excludeExerciseIds
         );
-        console.log("Selected Exercises:", exercisesToCreate.map(ex => ex.name));
-
         if (exercisesToCreate.length === 0) {
             console.error("Failed to select any exercises based on history. Generating default workout.");
             return;
         }
-
         dispatch(startWorkout());
-
         exercisesToCreate.forEach(exercise => {
             const defaultEquipment = exercise.default_equipment_type ?? undefined;
             const defaultVariation = 'Standard';
-
             const defaultSet: ExerciseSet = {
                 id: uuidv4(),
                 weight: 0,
@@ -230,7 +202,6 @@ export const WorkoutGenerator: React.FC = () => {
                 equipmentType: defaultEquipment,
                 variation: defaultVariation,
             };
-
             const workoutExercise: WorkoutExercise = {
                 id: uuidv4(),
                 exerciseId: exercise.id,
@@ -241,27 +212,22 @@ export const WorkoutGenerator: React.FC = () => {
             };
             dispatch(addExerciseToWorkout(workoutExercise));
         });
-
         navigate('/workout');
     };
 
-    const isLoading = isLoadingExercises || isLoadingMappings;
-    const error = errorExercises || errorMappings;
-
+    const isLoading = isLoadingExercises;
+    const error = errorExercises;
     if (error) {
-        const errorMessage = errorExercises?.message || errorMappings?.message || 'Error loading workout data';
-        console.error("Workout Generator Error:", error);
+        const errorMessage = errorExercises?.message || 'Error loading workout data';
         return (
             <Button variant="destructive" size="sm" disabled className="w-full">
                 {errorMessage}
             </Button>
         );
     }
-
     if (isLoading) {
         return <Skeleton className="h-9 w-full" />;
     }
-
     return (
         <Button
             onClick={handleGenerateWorkout}
