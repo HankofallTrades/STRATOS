@@ -30,12 +30,31 @@ interface DisplayArchetypeData {
 }
 
 // Define the RPC function name (remains the same)
-const FETCH_WEEKLY_SETS_FUNCTION = 'fetch_weekly_archetype_sets'; // Changed to new RPC
+const FETCH_WEEKLY_SETS_FUNCTION = 'fetch_weekly_archetype_sets_v2'; // New RPC with date range
+
+// Helper to get current week (Monday-Sunday)
+function getCurrentWeekRange() {
+  const now = new Date();
+  const day = now.getDay();
+  // Monday as start of week (0=Sunday, 1=Monday, ...)
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - ((day + 6) % 7));
+  monday.setHours(0, 0, 0, 0);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
+  return {
+    start: monday.toISOString().split('T')[0],
+    end: sunday.toISOString().split('T')[0],
+  };
+}
 
 // Fetch function updated for new return type
-async function fetchWeeklySets(userId: string): Promise<WeeklyArchetypeSetData[]> {
-    const { data, error } = await supabase.rpc(FETCH_WEEKLY_SETS_FUNCTION, { 
-        p_user_id: userId
+async function fetchWeeklySets(userId: string, start: string, end: string): Promise<WeeklyArchetypeSetData[]> {
+    const { data, error } = await supabase.rpc(FETCH_WEEKLY_SETS_FUNCTION as any, { 
+        p_user_id: userId,
+        p_start_date: start,
+        p_end_date: end,
     });
     if (error) {
         console.error('Error fetching weekly sets per muscle group:', error);
@@ -82,22 +101,24 @@ const Volume: React.FC<VolumeProps> = ({ userId }) => {
     const [clickedArchetypeData, setClickedArchetypeData] = useState<DisplayArchetypeData | null>(null);
     const [clickTooltipPosition, setClickTooltipPosition] = useState<{ top: number, left: number } | null>(null);
 
+    const weekRange = getCurrentWeekRange();
+
     const { data: rawData = [], isLoading: isLoadingSets, error: errorSets } = useQuery<
         WeeklyArchetypeSetData[], 
         Error
     >({ 
-        queryKey: ['weeklyArchetypeSets_v2', userId],
+        queryKey: ['weeklyArchetypeSets_v2', userId, weekRange.start, weekRange.end],
         queryFn: async () => {
             if (!userId) return [];
-            return fetchWeeklySets(userId); 
+            return fetchWeeklySets(userId, weekRange.start, weekRange.end); 
         },
         enabled: !!userId,
         staleTime: 5 * 60 * 1000,
         refetchInterval: 15 * 60 * 1000,
     });
 
-    // Temporary log to inspect rawData from Supabase - REMOVED
-    // console.log('[Volume.tsx] Raw data from fetchWeeklySets:', rawData);
+    // Debug: Log rawData from Supabase
+    console.log('[Volume.tsx] Raw data from Supabase:', rawData);
 
     const progressDisplayData = useMemo((): DisplayArchetypeData[] => {
         // Log rawData specifically for Push and Pull to diagnose - REMOVING
@@ -121,10 +142,7 @@ const Volume: React.FC<VolumeProps> = ({ userId }) => {
             if (progressArchetypes.includes(baseName)) {
                 const archetype = initialData[baseName];
 
-                // Add to totalSets for all archetypes
-                archetype.totalSets += item.total_sets;
-                
-                // If Push or Pull, also categorize into vertical/horizontal if subtype is available
+                // If Push or Pull, categorize into vertical/horizontal if subtype is available
                 if (baseName === 'Push' || baseName === 'Pull') {
                     const subType = item.archetype_subtype_name?.toLowerCase();
                     if (subType === 'vertical') {
@@ -132,13 +150,16 @@ const Volume: React.FC<VolumeProps> = ({ userId }) => {
                     } else if (subType === 'horizontal') {
                         archetype.horizontalSets += item.total_sets;
                     }
+                } else {
+                    // For other archetypes, just add to totalSets
+                    archetype.totalSets += item.total_sets;
                 }
             }
         });
 
-        // REMOVE: Finalize totalSets for Push/Pull as sum of their components - this is now handled above
-        // initialData['Push'].totalSets = initialData['Push'].verticalSets + initialData['Push'].horizontalSets;
-        // initialData['Pull'].totalSets = initialData['Pull'].verticalSets + initialData['Pull'].horizontalSets;
+        // For Push and Pull, totalSets = verticalSets + horizontalSets
+        initialData['Push'].totalSets = initialData['Push'].verticalSets + initialData['Push'].horizontalSets;
+        initialData['Pull'].totalSets = initialData['Pull'].verticalSets + initialData['Pull'].horizontalSets;
         
         // Temporary log to inspect processed data before final mapping - REMOVED
         // console.log('[Volume.tsx] Processed initialData in useMemo:', JSON.parse(JSON.stringify(initialData)));
