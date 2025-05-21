@@ -21,6 +21,7 @@ import { Button } from "@/components/core/button";
 import { Exercise } from "@/lib/types/workout";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/core/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/core/popover";
+import { useAnimatedValue } from '@/hooks/useAnimatedValue';
 
 // Define benchmark exercises
 const CALISTHENIC_BENCHMARK_NAMES = ["Pull-up", "Push-up"] as const;
@@ -202,10 +203,15 @@ const CalisthenicBenchmarks: React.FC<CalisthenicBenchmarksProps> = ({ currentTy
                                     : `No Data / ${bench.goalReps} reps Goal`}
                             </span>
                         </div>
-                        <Progress
-                            value={bench.progress}
-                            className="h-2 [&>div]:bg-blue-500"
-                        />
+                        {(() => {
+                            const animatedProgress = useAnimatedValue(bench.progress);
+                            return (
+                                <Progress
+                                    value={animatedProgress}
+                                    className="h-2 [&>div]:bg-blue-500"
+                                />
+                            );
+                        })()}
                         {bench.progress >= 100 && (
                            <p className="text-xs text-blue-600 font-medium mt-1 flex items-center">
                                <CheckCircle className="h-3 w-3 mr-1" /> Benchmark Met!

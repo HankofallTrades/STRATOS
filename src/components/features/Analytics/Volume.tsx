@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { RadialBarChart, RadialBar, PolarAngleAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/core/card";
 import { supabase } from '@/lib/integrations/supabase/client';
+import { useAnimatedValue } from '@/hooks/useAnimatedValue';
 
 // New data structure from RPC
 interface WeeklyArchetypeSetData {
@@ -199,6 +200,51 @@ const Volume: React.FC<VolumeProps> = ({ userId }) => {
 
     }, [rawData]);
     
+    // --- Animate values for each archetype at the top level (to obey Rules of Hooks) ---
+    const animatedSquatTotal = useAnimatedValue(progressDisplayData[0]?.totalSets ?? 0);
+    const animatedLungeTotal = useAnimatedValue(progressDisplayData[1]?.totalSets ?? 0);
+    const animatedPushTotal = useAnimatedValue(progressDisplayData[2]?.totalSets ?? 0);
+    const animatedPullTotal = useAnimatedValue(progressDisplayData[3]?.totalSets ?? 0);
+    const animatedBendTotal = useAnimatedValue(progressDisplayData[4]?.totalSets ?? 0);
+    const animatedTwistTotal = useAnimatedValue(progressDisplayData[5]?.totalSets ?? 0);
+
+    const animatedPushVertical = useAnimatedValue(progressDisplayData[2]?.verticalSets ?? 0);
+    const animatedPushHorizontal = useAnimatedValue(progressDisplayData[2]?.horizontalSets ?? 0);
+    const animatedPullVertical = useAnimatedValue(progressDisplayData[3]?.verticalSets ?? 0);
+    const animatedPullHorizontal = useAnimatedValue(progressDisplayData[3]?.horizontalSets ?? 0);
+
+    // Map animated values back to archetype data for rendering
+    const animatedDisplayData = [
+      {
+        ...progressDisplayData[0],
+        totalSets: animatedSquatTotal,
+      },
+      {
+        ...progressDisplayData[1],
+        totalSets: animatedLungeTotal,
+      },
+      {
+        ...progressDisplayData[2],
+        totalSets: animatedPushTotal,
+        verticalSets: animatedPushVertical,
+        horizontalSets: animatedPushHorizontal,
+      },
+      {
+        ...progressDisplayData[3],
+        totalSets: animatedPullTotal,
+        verticalSets: animatedPullVertical,
+        horizontalSets: animatedPullHorizontal,
+      },
+      {
+        ...progressDisplayData[4],
+        totalSets: animatedBendTotal,
+      },
+      {
+        ...progressDisplayData[5],
+        totalSets: animatedTwistTotal,
+      },
+    ];
+
     return (
         <div className="md:p-6">
             <CardHeader className="p-0 mb-4 md:pb-2">
@@ -215,23 +261,20 @@ const Volume: React.FC<VolumeProps> = ({ userId }) => {
                     <p className="text-red-500 italic text-center py-10">Error loading data: {errorSets.message}</p>
                 ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 md:gap-6">
-                        {progressDisplayData.map((archetype) => {
+                        {animatedDisplayData.map((archetype) => {
                             const isGoalMet = archetype.totalSets >= archetype.goal;
-                            const chartData = [archetype];
                             const isPushOrPull = archetype.name === 'Push' || archetype.name === 'Pull';
                             const hasPushPullSegments = isPushOrPull && (archetype.verticalSets > 0 || archetype.horizontalSets > 0);
-                            
+                            const chartData = [archetype];
                             return (
                                 <div 
                                     key={archetype.name} 
                                     className="flex flex-col items-center p-3 border rounded-lg shadow-sm bg-card hover:shadow-md transition-shadow cursor-pointer"
                                     onClick={(e) => {
                                         if (clickedArchetypeData && clickedArchetypeData.name === archetype.name) {
-                                            // Clicked same card again, hide tooltip
                                             setClickedArchetypeData(null);
                                             setClickTooltipPosition(null);
                                         } else {
-                                            // Clicked a new card (or first click)
                                             setClickedArchetypeData(archetype);
                                             setClickTooltipPosition({ top: e.pageY + 10, left: e.pageX + 10 });
                                         }
@@ -251,7 +294,6 @@ const Volume: React.FC<VolumeProps> = ({ userId }) => {
                                                 endAngle={-270}
                                             >
                                                 <PolarAngleAxis type="number" domain={[0, archetype.goal]} tick={false} />
-
                                                 {hasPushPullSegments ? (
                                                     <>
                                                         {archetype.verticalSets > 0 && (
@@ -288,7 +330,7 @@ const Volume: React.FC<VolumeProps> = ({ userId }) => {
                                         </ResponsiveContainer>
                                         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                                             <span className="text-xl sm:text-2xl font-bold text-foreground">
-                                                {archetype.totalSets}
+                                                {Math.round(archetype.totalSets)}
                                             </span>
                                             <span className="text-xs text-gray-500 dark:text-gray-400">
                                                 / {archetype.goal} sets
