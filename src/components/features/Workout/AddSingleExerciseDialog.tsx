@@ -230,7 +230,7 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
 
       if (lastSet !== undefined) { // lastSet can be null if no history
         setWeight(lastSet?.weight?.toString() ?? '');
-        setSelectedEquipment(lastSet?.equipment_type ?? selectedExercise.default_equipment_type ?? null);
+        setSelectedEquipment(lastSet?.equipment_type ?? selectedExercise.default_equipment_type ?? 'Bodyweight');
         const lastVariation = lastSet?.variation;
         if (lastVariation && lastVariation.toLowerCase() !== DEFAULT_VARIATION.toLowerCase()) {
             setSelectedVariation(lastVariation);
@@ -244,9 +244,9 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
           setReps(lastSet?.reps?.toString() ?? '');
           setTimeInSeconds(''); // Clear time if not static
         }
-      } else { // No last set, use exercise defaults (or clear)
+      } else { // No last set, use hardcoded defaults
         setWeight(''); // Or some default weight if applicable
-        setSelectedEquipment(selectedExercise.default_equipment_type ?? null);
+        setSelectedEquipment('Bodyweight'); // Always default to Bodyweight if no previous
         setSelectedVariation(null); // Default to Standard/null
         if (isStatic) {
           setTimeInSeconds('');

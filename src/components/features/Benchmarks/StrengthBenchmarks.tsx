@@ -23,6 +23,7 @@ import { Button } from "@/components/core/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/core/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/core/popover"; // Import Popover components
 import { getUserProfile, UserProfileData } from '@/lib/integrations/supabase/user';
+import { useAnimatedValue } from '@/hooks/useAnimatedValue';
 
 // Define benchmark exercises 
 const BENCHMARK_NAMES = ["Deadlift", "Squat", "Bench Press", "Row", "Overhead Press"] as const;
@@ -262,14 +263,19 @@ const StrengthBenchmarks: React.FC<StrengthBenchmarksProps> = ({ currentType, on
                             <span className="font-medium text-sm">{bench.name}</span>
                             <span className="text-xs text-gray-600">
                                 {bench.currentE1RM !== null
-                                    ? `~${bench.currentE1RM.toFixed(1)} kg / ${bench.goalE1RM?.toFixed(1)} kg Goal` // Display the adjusted E1RM
+                                    ? `~${bench.currentE1RM.toFixed(1)} kg / ${bench.goalE1RM?.toFixed(1)} kg Goal`
                                     : `No Data / ${bench.goalE1RM?.toFixed(1)} kg Goal`}
                             </span>
                         </div>
-                        <Progress
-                            value={bench.progress}
-                            className="h-2 [&>div]:bg-green-500"
-                        />
+                        {(() => {
+                            const animatedProgress = useAnimatedValue(bench.progress);
+                            return (
+                                <Progress
+                                    value={animatedProgress}
+                                    className="h-2 [&>div]:bg-green-500"
+                                />
+                            );
+                        })()}
                         {bench.progress >= 100 && (
                            <p className="text-xs text-green-600 font-medium mt-1 flex items-center">
                                <CheckCircle className="h-3 w-3 mr-1" /> Benchmark Met!

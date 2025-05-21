@@ -121,7 +121,6 @@ const Home = () => {
     return (
       <>
         <CircularProgressDisplay
-          key={progressKey}
           currentValue={displayCurrent} 
           goalValue={displayGoal}
           label="Today's Protein"
