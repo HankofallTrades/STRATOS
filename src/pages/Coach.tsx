@@ -17,12 +17,18 @@ const Coach: React.FC = () => {
     content: coachPrompts.systemPromptV1,
   };
 
-  const handleSend = async (e?: React.FormEvent<HTMLFormElement>) => {
-    e?.preventDefault();
-    const trimmedInput = input.trim();
-    if (!trimmedInput) return;
+  const handleSend = async (textOrEvent?: string | React.FormEvent<HTMLFormElement>) => {
+    let messageToSend = '';
+    if (typeof textOrEvent === 'string') {
+      messageToSend = textOrEvent.trim();
+    } else {
+      textOrEvent?.preventDefault();
+      messageToSend = input.trim();
+    }
 
-    const newUserMessage: ChatMessage = { role: 'user', content: trimmedInput };
+    if (!messageToSend) return;
+
+    const newUserMessage: ChatMessage = { role: 'user', content: messageToSend };
     const updatedMessages = [...messages, newUserMessage];
     setMessages(updatedMessages);
     setInput('');

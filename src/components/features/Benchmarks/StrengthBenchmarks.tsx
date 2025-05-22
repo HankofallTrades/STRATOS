@@ -99,9 +99,14 @@ const StrengthBenchmarks: React.FC<StrengthBenchmarksProps> = ({ currentType, on
 
     // Animation trigger state
     const [startAnimation, setStartAnimation] = useState(false);
+    const [animationKey, setAnimationKey] = useState(0);
     useEffect(() => {
         if (shouldAnimate) {
-            const timer = setTimeout(() => setStartAnimation(true), 80);
+            setStartAnimation(false);
+            const timer = setTimeout(() => {
+                setStartAnimation(true);
+                setAnimationKey(prev => prev + 1);
+            }, 80);
             return () => clearTimeout(timer);
         } else {
             setStartAnimation(false);
@@ -282,9 +287,9 @@ const StrengthBenchmarks: React.FC<StrengthBenchmarksProps> = ({ currentType, on
              return <p className="text-gray-500 italic text-center py-4">No exercises found. Add exercises first.</p>;
          }
 
-        if (!startAnimation) return <div className="space-y-5" />;
+        if (!startAnimation) return null;
         return (
-            <div className="space-y-5">
+            <div key={animationKey} className="space-y-5">
                 {animatedBenchmarks.map((bench, index) => (
                     <div key={index}>
                         <div className="flex justify-between items-center mb-1">
