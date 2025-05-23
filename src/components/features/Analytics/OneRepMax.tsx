@@ -387,10 +387,7 @@ const OneRepMax: React.FC<OneRepMaxProps> = ({
                 const key = getCombinationKey(item.variation, item.equipment_type); // e.g., "Default|DB_KB_COMBO"
                 
                 if (item.max_e1rm != null && !isNaN(item.max_e1rm)) {
-                    let valueToStore = item.max_e1rm;
-
-                    const isDumbbell = item.equipment_type === 'Dumbbell';
-                    const isKettlebell = item.equipment_type === 'Kettlebell';
+                    let valueToStore = item.max_e1rm; // Use max_e1rm directly
 
                     // Store original equipment type if it's Dumbbell, Kettlebell, or even other types
                     // for consistency if we later want to show specifics for other 'Default' equipment.
@@ -400,13 +397,6 @@ const OneRepMax: React.FC<OneRepMaxProps> = ({
                     // Store the actual equipment type that contributed to this key for this date.
                     point._originalEquipment[key] = item.equipment_type || 'Default';
 
-
-                    if (isDumbbell || isKettlebell) {
-                        // Value doubling logic (Kettlebell doubled here, Dumbbell assumed doubled upstream)
-                        if (isKettlebell) {
-                            valueToStore = valueToStore * 2;
-                        }
-                    }
                     point[key] = valueToStore;
                 } else {
                     point[key] = null;
