@@ -56,7 +56,13 @@ type ExerciseSet = Tables<'exercise_sets'>;
 // Exercise type from DB, expecting it to have is_static
 type ExerciseFromDB = Tables<'exercises'>;
 // Equipment type from DB
-type DbEquipmentType = Tables<'equipment_types'>; // Use generated type
+// type DbEquipmentType = Tables<'equipment_types'>; // Use generated type
+
+// Simplified type for fetched equipment types
+interface FetchedEquipmentType {
+  id: string;
+  name: string;
+}
 
 // Interface for the latest single log data passed as prop
 // (Can be defined here or imported if defined elsewhere)
@@ -122,9 +128,9 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
   });
 
   // Fetch Equipment Types from DB
-  const { data: dbEquipmentTypes = [], isLoading: isLoadingDbEquipmentTypes, refetch: refetchDbEquipmentTypes } = useQuery<DbEquipmentType[], Error, DbEquipmentType[]> ({
+  const { data: dbEquipmentTypes = [], isLoading: isLoadingDbEquipmentTypes, refetch: refetchDbEquipmentTypes } = useQuery<FetchedEquipmentType[], Error, FetchedEquipmentType[]> ({
     queryKey: ['dbEquipmentTypes'],
-    queryFn: async (): Promise<DbEquipmentType[]> => {
+    queryFn: async (): Promise<FetchedEquipmentType[]> => {
         const { data, error } = await supabase
             .from('equipment_types') // Assuming this is your table name
             .select('id, name');
@@ -216,7 +222,8 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
     }
   }, [open, defaultLogData, queryClient, user?.id, exercises]);
 
-  // Pre-fill form based on *manually changed* selected exercise and last set data
+  // React to changes in selectedExercise (which depends on selectedExerciseId and exercises) and lastSet
+  // Do not include defaultLogData here as it's for initial population or full override.
   useEffect(() => {
     // Avoid running if selectedExerciseId matches the defaultLogData exercise_id during initial load with defaultLogData
     const isInitialDefaultContext = defaultLogData?.exercise_id && selectedExerciseId === defaultLogData.exercise_id;
@@ -228,26 +235,35 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
       // Determine if the current selected exercise is static
       const isStatic = selectedExercise.is_static ?? false;
 
-      if (lastSet !== undefined) { // lastSet can be null if no history
-        setWeight(lastSet?.weight?.toString() ?? '');
-        setSelectedEquipment(lastSet?.equipment_type ?? selectedExercise.default_equipment_type ?? 'Bodyweight');
-        const lastVariation = lastSet?.variation;
+      if (lastSet) { // lastSet is an object (successfully fetched last set data)
+        setWeight(lastSet.weight?.toString() ?? '');
+        // Directly use lastSet's equipment_type. If null, it means "no specific equipment" or that bodyweight was used.
+        setSelectedEquipment(lastSet.equipment_type); 
+        
+        const lastVariation = lastSet.variation;
         if (lastVariation && lastVariation.toLowerCase() !== DEFAULT_VARIATION.toLowerCase()) {
-            setSelectedVariation(lastVariation);
+            setSelectedVariation(lastVariation); // Use lastSet's variation
         } else {
-            setSelectedVariation(null); // Default to Standard/null
+            // If lastSet.variation is null or 'Standard' (case-insensitive), set to null (conceptual Standard)
+            setSelectedVariation(null);
         }
+
         if (isStatic) {
-          setTimeInSeconds(lastSet?.time_seconds?.toString() ?? '');
+          setTimeInSeconds(lastSet.time_seconds?.toString() ?? '');
           setReps(''); // Clear reps if static
         } else {
-          setReps(lastSet?.reps?.toString() ?? '');
+          setReps(lastSet.reps?.toString() ?? '');
           setTimeInSeconds(''); // Clear time if not static
         }
-      } else { // No last set, use hardcoded defaults
-        setWeight(''); // Or some default weight if applicable
-        setSelectedEquipment('Bodyweight'); // Always default to Bodyweight if no previous
-        setSelectedVariation(null); // Default to Standard/null
+      } else { 
+        // This 'else' covers:
+        // 1. lastSet is null (query ran, no prior set found for this user/exercise)
+        // 2. lastSet is undefined (query is loading or hasn't run for the current selectedExercise)
+        // In both these cases, default to the exercise's default equipment and 'Standard' variation.
+        setWeight(''); 
+        setSelectedEquipment(selectedExercise.default_equipment_type ?? 'Bodyweight'); 
+        setSelectedVariation(null); // Default to Standard
+
         if (isStatic) {
           setTimeInSeconds('');
           setReps('');
@@ -263,15 +279,14 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
         setSelectedEquipment(null);
         setSelectedVariation(null); 
     }
-  // React to changes in selectedExercise (which depends on selectedExerciseId and exercises) and lastSet
-  // Do not include defaultLogData here as it's for initial population or full override.
-  }, [selectedExercise, lastSet, open]); // `open` is included to re-evaluate when dialog becomes visible if needed.
+  // Ensure all relevant dependencies are included for correct re-evaluation.
+  }, [open, defaultLogData, selectedExerciseId, selectedExercise, lastSet]);
 
   // Mutation to add a new equipment type
   const addEquipmentTypeMutation = useMutation({
     mutationFn: async ({ name }: { name: string }) => {
       // Check if equipment type already exists (case-insensitive)
-      const existingType = (dbEquipmentTypes as DbEquipmentType[]).find(et => et.name.toLowerCase() === name.toLowerCase());
+      const existingType = (dbEquipmentTypes as FetchedEquipmentType[]).find(et => et.name.toLowerCase() === name.toLowerCase());
       if (existingType) {
         // toast({ title: "Equipment Exists", description: `"${name}" already exists.`, variant: "default" });
         return existingType; // Return existing type
@@ -551,7 +566,7 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
   // Handler for when equipment is selected/added in EquipmentSelector
   const handleEquipmentSelected = (equipmentName: string | null) => {
     setSelectedEquipment(equipmentName);
-    if (equipmentName && !(dbEquipmentTypes as DbEquipmentType[]).some(et => et.name.toLowerCase() === equipmentName.toLowerCase())) {
+    if (equipmentName && !(dbEquipmentTypes as FetchedEquipmentType[]).some(et => et.name.toLowerCase() === equipmentName.toLowerCase())) {
       // If it's a new equipment name not in the current DB list, add it
       addEquipmentTypeMutation.mutate({ name: equipmentName });
     }
@@ -600,7 +615,7 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
               <EquipmentSelector
                 selectedEquipment={selectedEquipment}
                 onSelectEquipment={handleEquipmentSelected} // Use the new handler
-                equipmentTypes={(dbEquipmentTypes as DbEquipmentType[]).map(et => et.name)} // Pass names from DB
+                equipmentTypes={(dbEquipmentTypes as FetchedEquipmentType[]).map(et => et.name)} // Pass names from DB
                 disabled={isPending}
                 popoverOpen={equipmentPopoverOpen}
                 setPopoverOpen={setEquipmentPopoverOpen}
