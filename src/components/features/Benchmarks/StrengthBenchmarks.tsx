@@ -195,16 +195,18 @@ const StrengthBenchmarks: React.FC<StrengthBenchmarksProps> = ({ currentType, on
                 // console.log(`  Raw E1RM for ${name} (ID: ${exerciseId}): ${rawE1RM}, Equipment from Set: ${actualEquipmentType}`); // Log raw data
 
                 if (rawE1RM !== null) {
-                    // Check if equipment type requires doubling (case-insensitive check for full names)
-                    if (actualEquipmentType && (actualEquipmentType.toLowerCase() === 'dumbbell' || actualEquipmentType.toLowerCase() === 'kettlebell')) {
-                        currentE1RM = rawE1RM * 2;
-                        displayE1RM = currentE1RM; // Display the doubled value
-                        // console.log(`  ${name} is Dumbbell/Kettlebell. Doubled E1RM: ${currentE1RM}`); // Log doubling
-                    } else {
-                        currentE1RM = rawE1RM;
-                        displayE1RM = currentE1RM; // Display the original value
-                        // console.log(`  ${name} is not Dumbbell/Kettlebell. Using raw E1RM: ${currentE1RM}`); // Log non-doubling
-                    }
+                    // REMOVED: Doubling logic for Dumbbell/Kettlebell
+                    // if (actualEquipmentType && (actualEquipmentType.toLowerCase() === 'dumbbell' || actualEquipmentType.toLowerCase() === 'kettlebell')) {
+                    //     currentE1RM = rawE1RM * 2;
+                    //     displayE1RM = currentE1RM; // Display the doubled value
+                    //     // console.log(`  ${name} is Dumbbell/Kettlebell. Doubled E1RM: ${currentE1RM}`); // Log doubling
+                    // } else {
+                    //     currentE1RM = rawE1RM;
+                    //     displayE1RM = currentE1RM; // Display the original value
+                    //     // console.log(`  ${name} is not Dumbbell/Kettlebell. Using raw E1RM: ${currentE1RM}`); // Log non-doubling
+                    // }
+                    currentE1RM = rawE1RM; // Use rawE1RM directly
+                    displayE1RM = currentE1RM; // Display the rawE1RM
                 } else {
                     // console.log(`  No raw E1RM data found for ${name}`);
                 }
