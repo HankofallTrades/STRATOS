@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 import { useQuery } from '@tanstack/react-query';
@@ -14,10 +14,16 @@ import type { Exercise, ExerciseSet, WorkoutExercise, Workout } from '@/lib/type
 import { Skeleton } from '@/components/core/skeleton';
 
 const calculateWeeklySetsPerMuscleGroup = (
-    workoutHistory: Workout[],
+    workoutHistoryInput: Workout[] | undefined,
     exerciseMap: Map<string, Exercise>
 ): Record<string, number> => {
     const weeklySets: Record<string, number> = {};
+    const workoutHistory = workoutHistoryInput || [];
+
+    if (workoutHistory.length === 0) {
+        return weeklySets;
+    }
+
     const today = startOfDay(new Date());
 
     workoutHistory.forEach(workout => {
@@ -115,6 +121,7 @@ export const WorkoutGenerator: React.FC = () => {
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
     const workoutHistory = useAppSelector(selectWorkoutHistory);
+    const [generationStatusMessage, setGenerationStatusMessage] = useState<string | null>(null);
 
     const { data: baseExercises, isLoading: isLoadingExercises, error: errorExercises } = useQuery<Exercise[], Error>({
         queryKey: ['exercises'],
@@ -132,10 +139,11 @@ export const WorkoutGenerator: React.FC = () => {
     });
 
     const exercisesWithMuscleGroups = useMemo((): Exercise[] => {
-        if (!baseExercises || !muscleGroupMappings) return [];
+        if (!baseExercises) return [];
+        const mappings = muscleGroupMappings || {};
         return baseExercises.map(ex => ({
             ...ex,
-            muscle_groups: muscleGroupMappings[ex.id] || [],
+            muscle_groups: mappings[ex.id] || [],
         }));
     }, [baseExercises, muscleGroupMappings]);
     
@@ -144,8 +152,16 @@ export const WorkoutGenerator: React.FC = () => {
     }, [exercisesWithMuscleGroups]);
 
     const handleGenerateWorkout = () => {
+        setGenerationStatusMessage(null);
+        console.log("handleGenerateWorkout called.");
+        console.log("Raw baseExercises data:", baseExercises);
+        console.log("Raw muscleGroupMappings data:", muscleGroupMappings);
+        console.log("Processed exercisesWithMuscleGroups length:", exercisesWithMuscleGroups.length);
+
         if (exercisesWithMuscleGroups.length === 0) {
-            console.error("Exercise data with muscle groups is not available.");
+            const msg = "Exercise data with muscle groups is not available. Cannot generate workout.";
+            console.error(msg);
+            setGenerationStatusMessage(msg);
             return;
         }
 
@@ -156,7 +172,9 @@ export const WorkoutGenerator: React.FC = () => {
         console.log("Selected Exercises:", exercisesToCreate.map(ex => ex.name));
 
         if (exercisesToCreate.length === 0) {
-            console.error("Failed to select any exercises based on history. Generating default workout.");
+            const msg = "Failed to select any exercises based on history. Please try again later or adjust your activities.";
+            console.error(msg);
+            setGenerationStatusMessage(msg);
             return;
         }
 
@@ -208,14 +226,21 @@ export const WorkoutGenerator: React.FC = () => {
     }
 
     return (
-        <Button
-            onClick={handleGenerateWorkout}
-            disabled={isLoading}
-            variant="outline"
-            size="sm"
-            className="w-full"
-        >
-            Generate Strength Workout
-        </Button>
+        <>
+            <Button
+                onClick={handleGenerateWorkout}
+                disabled={isLoading}
+                variant="outline"
+                size="sm"
+                className="w-full"
+            >
+                Generate Strength Workout
+            </Button>
+            {generationStatusMessage && (
+                <p className="text-sm text-red-500 mt-2 text-center">
+                    {generationStatusMessage}
+                </p>
+            )}
+        </>
     );
 }; 
