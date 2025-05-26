@@ -13,6 +13,7 @@ interface SunExposureLoggingProps {
 
 const SunExposureLogging: React.FC<SunExposureLoggingProps> = ({ isOpen, onClose, userId }) => {
   const [hours, setHours] = useState<string>('');
+  const [minutes, setMinutes] = useState<string>('');
   const queryClient = useQueryClient();
 
   const today = new Date().toISOString().split('T')[0];
@@ -27,6 +28,7 @@ const SunExposureLogging: React.FC<SunExposureLoggingProps> = ({ isOpen, onClose
       queryClient.invalidateQueries({ queryKey: ['dailySunExposure', userId, today] });
       toast.success('Sun exposure logged successfully!');
       setHours('');
+      setMinutes('');
       onClose();
     },
     onError: (error: any) => {
@@ -41,16 +43,26 @@ const SunExposureLogging: React.FC<SunExposureLoggingProps> = ({ isOpen, onClose
       toast.error('User not identified. Please try again.');
       return;
     }
-    if (!hours) {
-      toast.error('Please enter the number of hours.');
+
+    const parsedHours = hours ? parseInt(hours, 10) : 0;
+    const parsedMinutes = minutes ? parseInt(minutes, 10) : 0;
+
+    if (isNaN(parsedHours) || parsedHours < 0) {
+      toast.error('Please enter a valid non-negative number for hours.');
       return;
     }
-    const exposureAmount = parseFloat(hours);
-    if (isNaN(exposureAmount) || exposureAmount <= 0) {
-      toast.error('Please enter a valid positive number for hours.');
+    if (isNaN(parsedMinutes) || parsedMinutes < 0 || parsedMinutes > 59) {
+      toast.error('Please enter a valid number of minutes (0-59).');
       return;
     }
-    mutation.mutate(exposureAmount);
+    if (parsedHours === 0 && parsedMinutes === 0) {
+      toast.error('Please enter some sun exposure time.');
+      return;
+    }
+
+    const totalExposureHours = parsedHours + (parsedMinutes / 60);
+    
+    mutation.mutate(totalExposureHours);
   };
 
   if (!isOpen) {
@@ -62,19 +74,38 @@ const SunExposureLogging: React.FC<SunExposureLoggingProps> = ({ isOpen, onClose
       <div className="bg-background p-6 rounded-lg shadow-xl w-full max-w-md">
         <h2 className="text-xl font-semibold mb-4">Log Sun Exposure</h2>
         <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label htmlFor="sunExposureHours" className="block text-sm font-medium text-muted-foreground mb-1">
-              Hours of Sun Exposure
-            </label>
-            <Input
-              id="sunExposureHours"
-              type="number"
-              inputMode="decimal" // Allow decimal for hours
-              value={hours}
-              onChange={(e) => setHours(e.target.value)}
-              placeholder="e.g., 1.5"
-              disabled={mutation.isPending}
-            />
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <label htmlFor="sunExposureHoursInput" className="block text-sm font-medium text-muted-foreground mb-1">
+                Hours
+              </label>
+              <Input
+                id="sunExposureHoursInput"
+                type="number"
+                inputMode="numeric"
+                value={hours}
+                onChange={(e) => setHours(e.target.value)}
+                placeholder="e.g., 1"
+                min="0"
+                disabled={mutation.isPending}
+              />
+            </div>
+            <div>
+              <label htmlFor="sunExposureMinutesInput" className="block text-sm font-medium text-muted-foreground mb-1">
+                Minutes
+              </label>
+              <Input
+                id="sunExposureMinutesInput"
+                type="number"
+                inputMode="numeric"
+                value={minutes}
+                onChange={(e) => setMinutes(e.target.value)}
+                placeholder="e.g., 30"
+                min="0"
+                max="59"
+                disabled={mutation.isPending}
+              />
+            </div>
           </div>
           <div className="flex justify-end space-x-2">
             <Button type="button" variant="outline" onClick={onClose} disabled={mutation.isPending}>
