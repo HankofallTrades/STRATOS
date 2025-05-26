@@ -39,8 +39,32 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "muscle_definitions"
             referencedColumns: ["id"]
-          }
+          },
         ]
+      }
+      equipment_types: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          order: number
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          order?: number
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          order?: number
+          user_id?: string | null
+        }
+        Relationships: []
       }
       exercise_muscle_groups: {
         Row: {
@@ -196,7 +220,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "movement_archetypes"
             referencedColumns: ["id"]
-          }
+          },
         ]
       }
       movement_archetypes: {
@@ -306,6 +330,38 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      sun_exposure_log: {
+        Row: {
+          created_at: string
+          date: string
+          hours: number
+          id: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          hours: number
+          id?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          hours?: number
+          id?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sun_exposure_log_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_exercise_stats: {
         Row: {
@@ -506,6 +562,14 @@ export type Database = {
       }
       fetch_weekly_archetype_sets: {
         Args: { p_user_id: string }
+        Returns: {
+          base_archetype_name: string
+          archetype_subtype_name: string
+          total_sets: number
+        }[]
+      }
+      fetch_weekly_archetype_sets_v2: {
+        Args: { p_user_id: string; p_start_date: string; p_end_date: string }
         Returns: {
           base_archetype_name: string
           archetype_subtype_name: string

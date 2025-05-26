@@ -78,6 +78,11 @@ const CircularProgressDisplay: React.FC<CircularProgressDisplayProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [goalValue]);
 
+  const R = size / 2;
+  const ir = R > barSize ? R - barSize : 0; // Ensure inner radius is not negative
+  const innerRadiusPercentage = R > 0 ? (ir / R) * 100 : 65; // Default to 65 if R is 0
+  const outerRadiusPercentage = 100;
+
   const chartData = [{ name: label || 'Progress', value: animatedValue, goal: effectiveGoal }];
 
   return (
@@ -95,8 +100,8 @@ const CircularProgressDisplay: React.FC<CircularProgressDisplayProps> = ({
           <RadialBarChart
             cx="50%"
             cy="50%"
-            innerRadius="65%" // Adjust for aesthetics
-            outerRadius="85%" // Adjust for aesthetics
+            innerRadius={`${innerRadiusPercentage}%`}
+            outerRadius={`${outerRadiusPercentage}%`}
             barSize={barSize}
             data={chartData}
             startAngle={90}

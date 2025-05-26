@@ -17,8 +17,13 @@ import { getDailyProteinIntake, DailyProteinIntake } from '@/lib/integrations/su
 import CircularProgressDisplay from '@/components/core/charts/CircularProgressDisplay';
 // import PerformanceOverview from '@/components/features/Analytics/PerformanceOverview'; // Import PerformanceOverview - REMOVED
 import Volume from '@/components/features/Analytics/Volume'; // Import Volume component
+import SunMoonProgress from '@/components/core/charts/SunMoonProgress'; // Import SunMoonProgress
+import { getDailySunExposure } from '@/lib/integrations/supabase/wellbeing'; // Import sun exposure fetcher
 
-// type BenchmarkType = 'Strength' | 'Calisthenics'; // REMOVED
+// Interface for daily sun exposure data
+interface DailySunExposureData {
+  total_hours: number;
+}
 
 const Home = () => {
   const navigate = useNavigate();
@@ -28,9 +33,8 @@ const Home = () => {
   const userId = user?.id;
   const todayDate = useMemo(() => new Date().toISOString().split('T')[0], []);
 
-  const [startAnimation, setStartAnimation] = useState(false);
-  // Removed selectedBenchmarkType state
-  // const [selectedBenchmarkType, setSelectedBenchmarkType] = useState<BenchmarkType>('Strength'); 
+  const [startProteinAnimation, setStartProteinAnimation] = useState(false);
+  const [startSunAnimation, setStartSunAnimation] = useState(false);
 
   const { data: userProfile, isLoading: isLoadingProfile } = useQuery<
     UserProfileData | null,
@@ -71,21 +75,61 @@ const Home = () => {
     }
   );
 
+  const { 
+    data: dailySunExposure, 
+    isLoading: isLoadingSunExposure, 
+    isError: isErrorSunExposure, 
+    error: sunExposureError 
+  } = useQuery<
+    DailySunExposureData,
+    Error
+  >(
+    {
+      queryKey: ['dailySunExposure', userId, todayDate],
+      queryFn: async () => {
+        if (!userId) { 
+            return { total_hours: 0 }; 
+        }
+        // Assuming getDailySunExposure is already created and returns { total_hours: number }
+        const exposure = await getDailySunExposure(userId, todayDate);
+        return exposure;
+      },
+      enabled: !!userId, 
+      staleTime: 1 * 60 * 1000, 
+    }
+  );
+
   useEffect(() => {
-    let animationTimer: NodeJS.Timeout;
+    let proteinTimer: NodeJS.Timeout;
     if (!isLoadingProtein && dailyProtein) {
-      animationTimer = setTimeout(() => {
-        setStartAnimation(true);
+      proteinTimer = setTimeout(() => {
+        setStartProteinAnimation(true);
       }, 50); 
     } else if (isLoadingProtein) {
-      setStartAnimation(false);
+      setStartProteinAnimation(false);
     }
     return () => {
-      clearTimeout(animationTimer);
+      clearTimeout(proteinTimer);
     };
   }, [isLoadingProtein, dailyProtein]);
 
+  useEffect(() => {
+    let sunTimer: NodeJS.Timeout;
+    if (!isLoadingSunExposure && dailySunExposure) {
+      sunTimer = setTimeout(() => {
+        setStartSunAnimation(true);
+      }, 50); 
+    } else if (isLoadingSunExposure) {
+      setStartSunAnimation(false);
+    }
+    return () => {
+      clearTimeout(sunTimer);
+    };
+  }, [isLoadingSunExposure, dailySunExposure]);
+
   const currentProteinIntake = dailyProtein?.total_protein ?? 0;
+  const currentSunExposureHours = dailySunExposure?.total_hours ?? 0;
+  const sunExposureGoalHours = 2; // Hardcoded goal for now
 
   const proteinGoalKgFactor = useMemo(() => {
     if (!userProfile || !userProfile.focus) return 1.5;
@@ -109,17 +153,16 @@ const Home = () => {
     const goalReady = !isLoadingProfile && userProfile && typeof userProfile.weight_kg === 'number';
     const actualDisplayGoal = goalReady ? calculatedProteinGoal : 0;
 
-    const displayCurrent = startAnimation ? currentProteinIntake : 0;
-    const displayGoal = startAnimation ? actualDisplayGoal : 0; 
-    const progressKey = startAnimation ? `protein-loaded-${currentProteinIntake}-${actualDisplayGoal}` : 'protein-initial-state';
+    const displayCurrent = startProteinAnimation ? currentProteinIntake : 0;
+    const displayGoal = startProteinAnimation ? actualDisplayGoal : 0; 
 
     const goalStatusMessage =
-      (startAnimation || !isLoadingProtein) && isLoadingProfile && userId && !userProfile ? "Loading goal..." :
-      (startAnimation || !isLoadingProtein) && !isLoadingProfile && userId && (!userProfile || typeof userProfile.weight_kg !== 'number') ? "Set weight in profile for goal" :
+      (startProteinAnimation || !isLoadingProtein) && isLoadingProfile && userId && !userProfile ? "Loading goal..." :
+      (startProteinAnimation || !isLoadingProtein) && !isLoadingProfile && userId && (!userProfile || typeof userProfile.weight_kg !== 'number') ? "Set weight in profile for goal" :
       null;
 
     return (
-      <>
+      <div className="flex flex-col items-center">
         <CircularProgressDisplay
           currentValue={displayCurrent} 
           goalValue={displayGoal}
@@ -127,13 +170,32 @@ const Home = () => {
           unit="g"
           size={180}
           barSize={14}
-          showTooltip={startAnimation && goalReady}
-          showCenterText={startAnimation}
+          showTooltip={startProteinAnimation && goalReady}
+          showCenterText={startProteinAnimation}
         />
         {goalStatusMessage && (
           <p className="text-xs text-center text-muted-foreground mt-2">{goalStatusMessage}</p>
         )}
-      </>
+      </div>
+    );
+  };
+
+  const renderSunExposureProgress = () => {
+    if (isErrorSunExposure) {
+      return <p className="text-sm text-destructive text-center">Error: {sunExposureError?.message || 'Could not load sun exposure'}</p>;
+    }
+    
+    const displayCurrentSun = startSunAnimation ? currentSunExposureHours : 0;
+    const displayGoalSun = startSunAnimation ? sunExposureGoalHours : 0;
+
+    return (
+      <SunMoonProgress 
+        currentHours={displayCurrentSun}
+        goalHours={displayGoalSun}
+        size={180}
+        barSize={12}
+        label="Daily Sun Exposure"
+      />
     );
   };
 
@@ -152,23 +214,15 @@ const Home = () => {
         </header> */}
 
         <main className="mt-12">
-          <div className="grid grid-cols-1 gap-8 items-start"> {/* Changed to single column */}
-            {/* Single Column: Protein Intake & Volume */}
-            <div className="flex flex-col items-center justify-start"> {/* Removed sticky positioning */}
-              {renderProteinProgress()}
-              <div className="mt-8 w-full"> 
-                <Volume userId={userId} />
-              </div>
-            </div>
+          {/* Flex container for side-by-side trackers */}
+          <div className="flex flex-col md:flex-row justify-center md:justify-around items-center gap-8 mb-8">
+            {renderProteinProgress()} 
+            {renderSunExposureProgress()}
+          </div>
 
-            {/* Right Column: Performance Overview - REMOVED */}
-            {/* 
-            <div className="w-full">
-              
-              
-              <PerformanceOverview />
-            </div> 
-            */}
+          {/* Volume component underneath */}
+          <div className="w-full"> 
+            <Volume userId={userId} />
           </div>
         </main>
     </div>
