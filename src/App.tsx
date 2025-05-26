@@ -54,6 +54,7 @@ import AddSingleExerciseDialog from '@/components/features/Workout/AddSingleExer
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/state/auth/AuthProvider';
 import ProteinLogging from "./components/features/Nutrition/ProteinLogging";
+import SunExposureLogging from "./components/features/Nutrition/SunExposureLogging";
 
 const queryClient = new QueryClient();
 
@@ -74,6 +75,7 @@ const MainAppLayout = () => {
   const [isDiscardConfirmOpen, setIsDiscardConfirmOpen] = useState(false);
   const [isAddExerciseDialogOpen, setIsAddExerciseDialogOpen] = useState(false);
   const [isProteinModalOpen, setIsProteinModalOpen] = useState(false);
+  const [isSunExposureModalOpen, setIsSunExposureModalOpen] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   // *** Query to fetch the latest single exercise log ***
@@ -144,6 +146,14 @@ const MainAppLayout = () => {
 
   const handleAddExercise = () => {
     setIsAddExerciseDialogOpen(true);
+  };
+
+  const handleLogProtein = () => {
+    setIsProteinModalOpen(true);
+  };
+
+  const handleLogSunExposure = () => {
+    setIsSunExposureModalOpen(true);
   };
 
   const handleDiscardWorkout = () => {
@@ -345,15 +355,18 @@ const MainAppLayout = () => {
                   <Plus size={24} />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="mb-1">
+              <DropdownMenuContent side="top" align="end" className="w-56">
                 <DropdownMenuItem onSelect={handleAddWorkout}>
-                  Start Session
+                  Start New Workout
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={handleAddExercise}>
-                  Log Exercise
+                  Log Single Exercise
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setIsProteinModalOpen(true)}>
+                <DropdownMenuItem onSelect={handleLogProtein}>
                   Log Protein
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={handleLogSunExposure}>
+                  Log Sun Exposure
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -364,6 +377,12 @@ const MainAppLayout = () => {
       <ProteinLogging 
         isOpen={isProteinModalOpen} 
         onClose={() => setIsProteinModalOpen(false)} 
+        userId={currentUserId}
+      />
+
+      <SunExposureLogging 
+        isOpen={isSunExposureModalOpen} 
+        onClose={() => setIsSunExposureModalOpen(false)} 
         userId={currentUserId}
       />
 
