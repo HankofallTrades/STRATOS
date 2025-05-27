@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 import { useQuery } from '@tanstack/react-query';
@@ -110,6 +110,7 @@ export const WorkoutGenerator: React.FC = () => {
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
     const workoutHistory = useAppSelector(selectWorkoutHistory);
+    const [generationStatusMessage, setGenerationStatusMessage] = useState<string | null>(null);
 
     const { data: baseExercises, isLoading: isLoadingExercises, error: errorExercises } = useQuery<Exercise[], Error>({
         queryKey: ['exercises'],
@@ -145,6 +146,7 @@ export const WorkoutGenerator: React.FC = () => {
     }, [exercisesWithArchetypes]);
 
     const handleGenerateWorkout = () => {
+        setGenerationStatusMessage(null);
         let numExercisesToSelect = 5;
         let excludeExerciseIds: string[] = [];
         if (workoutHistory && workoutHistory.length > 0) {
@@ -174,7 +176,9 @@ export const WorkoutGenerator: React.FC = () => {
             }
         }
         if (exercisesWithArchetypes.length === 0) {
-            console.error("Exercise data with archetypes is not available.");
+            const msg = "Exercise data with archetypes is not available. Cannot generate workout.";
+            console.error(msg);
+            setGenerationStatusMessage(msg);
             return;
         }
         const weeklySets = calculateWeeklySetsPerArchetype(workoutHistory, exerciseMap, archetypeMap);
@@ -186,7 +190,9 @@ export const WorkoutGenerator: React.FC = () => {
             excludeExerciseIds
         );
         if (exercisesToCreate.length === 0) {
-            console.error("Failed to select any exercises based on history. Generating default workout.");
+            const msg = "Failed to select any exercises based on archetype history. Please try again later or adjust your activities.";
+            console.error(msg);
+            setGenerationStatusMessage(msg);
             return;
         }
         dispatch(startWorkout());
@@ -229,14 +235,21 @@ export const WorkoutGenerator: React.FC = () => {
         return <Skeleton className="h-9 w-full" />;
     }
     return (
-        <Button
-            onClick={handleGenerateWorkout}
-            disabled={isLoading}
-            variant="outline"
-            size="sm"
-            className="w-full"
-        >
-            Generate Strength Workout
-        </Button>
+        <>
+            <Button
+                onClick={handleGenerateWorkout}
+                disabled={isLoading}
+                variant="outline"
+                size="sm"
+                className="w-full"
+            >
+                Generate Strength Workout
+            </Button>
+            {generationStatusMessage && (
+                <p className="text-sm text-red-500 mt-2 text-center">
+                    {generationStatusMessage}
+                </p>
+            )}
+        </>
     );
 }; 
