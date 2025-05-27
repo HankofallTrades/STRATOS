@@ -14,16 +14,10 @@ import type { Exercise, ExerciseSet, WorkoutExercise, Workout } from '@/lib/type
 import { Skeleton } from '@/components/core/skeleton';
 
 const calculateWeeklySetsPerMuscleGroup = (
-    workoutHistoryInput: Workout[] | undefined,
+    workoutHistory: Workout[],
     exerciseMap: Map<string, Exercise>
 ): Record<string, number> => {
     const weeklySets: Record<string, number> = {};
-    const workoutHistory = workoutHistoryInput || [];
-
-    if (workoutHistory.length === 0) {
-        return weeklySets;
-    }
-
     const today = startOfDay(new Date());
 
     workoutHistory.forEach(workout => {
