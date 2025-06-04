@@ -120,15 +120,27 @@ export const WorkoutGenerator: React.FC = () => {
     });
 
     // Fetch movement archetypes for mapping id -> name
-    const { data: movementArchetypes } = useQuery<{ id: string; name: string }[], Error>({
+    const { data: movementArchetypes, error: errorMovementArchetypes, isLoading: isLoadingMovementArchetypes } = useQuery<{ id: string; name: string }[], Error>({
         queryKey: ['movementArchetypes'],
         queryFn: async () => {
-            const { data, error } = await import('@/lib/integrations/supabase/client').then(m => m.supabase.from('movement_archetypes').select('id, name'));
-            if (error) throw error;
-            return data || [];
+            console.log("Attempting to fetch movement_archetypes...");
+            try {
+                const clientModule = await import('@/lib/integrations/supabase/client');
+                const { data, error } = await clientModule.supabase.from('movement_archetypes').select('id, name');
+                
+                if (error) {
+                    console.error("Error fetching movement_archetypes:", JSON.stringify(error)); 
+                    throw error; 
+                }
+                console.log("Successfully fetched movement_archetypes:", data);
+                return data || [];
+            } catch (catchError: any) {
+                console.error("Caught exception fetching movement_archetypes:", JSON.stringify(catchError));
+                throw catchError;
+            }
         },
         staleTime: Infinity,
-        enabled: !!baseExercises,
+        enabled: !!baseExercises, 
     });
 
     const archetypeMap = useMemo(() => {
@@ -221,10 +233,11 @@ export const WorkoutGenerator: React.FC = () => {
         navigate('/workout');
     };
 
-    const isLoading = isLoadingExercises;
-    const error = errorExercises;
+    const isLoading = isLoadingExercises || isLoadingMovementArchetypes;
+    const error = errorExercises || errorMovementArchetypes;
+    
     if (error) {
-        const errorMessage = errorExercises?.message || 'Error loading workout data';
+        const errorMessage = errorExercises?.message || errorMovementArchetypes?.message || 'Error loading workout data';
         return (
             <Button variant="destructive" size="sm" disabled className="w-full">
                 {errorMessage}

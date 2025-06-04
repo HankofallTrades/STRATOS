@@ -134,16 +134,41 @@ const Chat: React.FC<ChatProps> = ({
     staleTime: Infinity,
     refetchOnWindowFocus: false,
   });
-  const { data: movementArchetypes } = useQuery<{ id: string; name: string }[], Error>({
+  const { data: movementArchetypes, isLoading: isLoadingMovementArchetypes, error: errorMovementArchetypes } = useQuery<{ id: string; name: string }[], Error>({
     queryKey: ['movementArchetypes'],
     queryFn: async () => {
-      const { data, error } = await import('@/lib/integrations/supabase/client').then(m => m.supabase.from('movement_archetypes').select('id, name'));
-      if (error) throw error;
-      return data || [];
+      console.log("Chat: Attempting to fetch movement_archetypes...");
+      try {
+        const { data, error } = await import('@/lib/integrations/supabase/client').then(m => m.supabase.from('movement_archetypes').select('id, name'));
+        if (error) {
+          console.error("Chat: Error fetching movement_archetypes:", JSON.stringify(error));
+          throw error;
+        }
+        console.log("Chat: Successfully fetched movement_archetypes:", data);
+        return data || [];
+      } catch (catchError: any) {
+        console.error("Chat: Caught exception fetching movement_archetypes:", JSON.stringify(catchError));
+        throw catchError;
+      }
     },
     staleTime: Infinity,
     enabled: !!baseExercises,
   });
+
+  // Debug logging for button state
+  React.useEffect(() => {
+    console.log("Chat button debug:", {
+      isLoadingExercises,
+      baseExercises: !!baseExercises,
+      baseExercisesLength: baseExercises?.length,
+      isLoadingMovementArchetypes,
+      movementArchetypes: !!movementArchetypes,
+      movementArchetypesLength: movementArchetypes?.length,
+      errorExercises: !!errorExercises,
+      errorMovementArchetypes: !!errorMovementArchetypes,
+      buttonWillBeDisabled: isLoadingExercises || !baseExercises || !movementArchetypes
+    });
+  }, [isLoadingExercises, baseExercises, isLoadingMovementArchetypes, movementArchetypes, errorExercises, errorMovementArchetypes]);
 
   const archetypeMap = useMemo(() => {
     if (!movementArchetypes) return new Map();
@@ -321,7 +346,7 @@ const Chat: React.FC<ChatProps> = ({
               buttons={[{
                 label: 'Generate Strength Workout',
                 onClick: handleGenerateWorkout,
-                disabled: isLoadingExercises || !baseExercises || !movementArchetypes,
+                disabled: isLoadingExercises || isLoadingMovementArchetypes || !baseExercises || !movementArchetypes,
               }, {
                 label: 'How can I get max swol?',
                 onClick: () => simulatePrompt('How can I get max swol?'),
