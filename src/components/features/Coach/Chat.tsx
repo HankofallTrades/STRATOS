@@ -139,16 +139,36 @@ const Chat: React.FC<ChatProps> = ({
     queryFn: async () => {
       console.log("Chat: Attempting to fetch movement_archetypes...");
       try {
-        const { data, error } = await import('@/lib/integrations/supabase/client').then(m => m.supabase.from('movement_archetypes').select('id, name'));
+        console.log("Chat: Starting dynamic import of supabase client...");
+        const clientModule = await import('@/lib/integrations/supabase/client');
+        console.log("Chat: Dynamic import successful, calling supabase query...");
+        
+        const { data, error } = await clientModule.supabase.from('movement_archetypes').select('id, name');
+        
+        console.log("Chat: Supabase query completed. Error:", error, "Data length:", data?.length);
+        
         if (error) {
-          console.error("Chat: Error fetching movement_archetypes:", JSON.stringify(error));
-          throw error;
+          console.error("Chat: Supabase error fetching movement_archetypes:", {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code,
+            fullError: error
+          });
+          throw new Error(`Supabase error: ${error.message || 'Unknown error'}`);
         }
         console.log("Chat: Successfully fetched movement_archetypes:", data);
         return data || [];
       } catch (catchError: any) {
-        console.error("Chat: Caught exception fetching movement_archetypes:", JSON.stringify(catchError));
-        throw catchError;
+        console.error("Chat: Caught exception fetching movement_archetypes:");
+        console.error("Error type:", typeof catchError);
+        console.error("Error constructor:", catchError?.constructor?.name);
+        console.error("Error message:", catchError?.message);
+        console.error("Error stack:", catchError?.stack);
+        console.error("Full error object:", catchError);
+        
+        // Re-throw with more context
+        throw new Error(`Failed to fetch movement archetypes: ${catchError?.message || 'Unknown error'}`);
       }
     },
     staleTime: Infinity,
