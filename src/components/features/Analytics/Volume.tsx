@@ -52,16 +52,24 @@ function getCurrentWeekRange() {
 
 // Fetch function updated for new return type
 async function fetchWeeklySets(userId: string, start: string, end: string): Promise<WeeklyArchetypeSetData[]> {
-    const { data, error } = await supabase.rpc(FETCH_WEEKLY_SETS_FUNCTION as any, { 
-        p_user_id: userId,
-        p_start_date: start,
-        p_end_date: end,
-    });
-    if (error) {
-        console.error('Error fetching weekly sets per muscle group:', error);
-        throw new Error(`Failed to fetch weekly set data: ${error.message}`);
+    try {
+        console.log("Attempting to call RPC fetch_weekly_archetype_sets_v2...");
+        const { data, error } = await supabase.rpc(FETCH_WEEKLY_SETS_FUNCTION as any, { 
+            p_user_id: userId,
+            p_start_date: start,
+            p_end_date: end,
+        });
+        if (error) {
+            console.error('Error calling RPC fetch_weekly_archetype_sets_v2:', JSON.stringify(error));
+            throw new Error(`Failed to fetch weekly set data: ${error.message}`);
+        }
+        console.log("Successfully called RPC fetch_weekly_archetype_sets_v2:", data);
+        return (data || []) as WeeklyArchetypeSetData[]; 
+    } catch (catchError: any) {
+        console.error('Caught exception calling RPC fetch_weekly_archetype_sets_v2:', JSON.stringify(catchError));
+        // Return empty array instead of throwing, so the component can still render
+        return [];
     }
-    return (data || []) as WeeklyArchetypeSetData[]; 
 }
 
 // Props interface (remains the same)
