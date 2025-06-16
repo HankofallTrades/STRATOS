@@ -4,12 +4,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/integrations/supabase/client';
 import {
   addSetToExercise as addSetToExerciseAction,
+  addCardioSetToExercise as addCardioSetToExerciseAction,
   updateWorkoutExerciseEquipment as updateWorkoutExerciseEquipmentAction,
   updateWorkoutExerciseVariation as updateWorkoutExerciseVariationAction,
   deleteWorkoutExercise as deleteWorkoutExerciseAction,
   updateSet as updateSetAction,
+  updateCardioSet as updateCardioSetAction,
 } from "@/state/workout/workoutSlice";
-import { WorkoutExercise, ExerciseSet, Exercise } from "@/lib/types/workout";
+import { WorkoutExercise, ExerciseSet, Exercise, isCardioExercise, isCardioSet, isStrengthSet } from "@/lib/types/workout";
 import { addExerciseVariationToDB, fetchExerciseVariationsFromDB } from '@/lib/integrations/supabase/exercises';
 import { fetchLastWorkoutExerciseInstanceFromDB } from '@/lib/integrations/supabase/history';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/core/Dialog";
@@ -190,50 +192,83 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
   };
 
   const handleAddSet = () => {
-    dispatch(
-      addSetToExerciseAction({
-        workoutExerciseId: workoutExercise.id,
-        exerciseId: workoutExercise.exercise.id,
-        isStatic: workoutExercise.exercise.is_static ?? false,
-        userBodyweight: userProfile?.weight ?? null,
-      })
-    );
+    if (isCardioExercise(workoutExercise.exercise)) {
+      dispatch(
+        addCardioSetToExerciseAction({
+          workoutExerciseId: workoutExercise.id,
+          exerciseId: workoutExercise.exercise.id,
+        })
+      );
+    } else {
+      dispatch(
+        addSetToExerciseAction({
+          workoutExerciseId: workoutExercise.id,
+          exerciseId: workoutExercise.exercise.id,
+          isStatic: workoutExercise.exercise.is_static ?? false,
+          userBodyweight: userProfile?.weight ?? null,
+        })
+      );
+    }
   };
 
-  const handleUpdateLastSet = (field: 'weight' | 'reps' | 'time', change: number) => {
+  const handleUpdateLastSet = (field: 'weight' | 'reps' | 'time' | 'distance', change: number) => {
     const sets = workoutExercise.sets;
     if (sets.length === 0) return;
 
-    const isStatic = workoutExercise.exercise.is_static ?? false;
+    const isExerciseCardio = isCardioExercise(workoutExercise.exercise);
+    const isExerciseStatic = workoutExercise.exercise.is_static ?? false;
     const lastSetIndex = sets.length - 1;
     const lastSet = sets[lastSetIndex];
     const previousPerformanceForLastSet = historicalSetPerformances?.[lastSetIndex + 1] ?? null;
 
-    let currentWeight = lastSet.weight > 0 ? lastSet.weight : (previousPerformanceForLastSet?.weight ?? 0);
-    let currentReps = !isStatic && (lastSet.reps && lastSet.reps > 0) ? lastSet.reps : (previousPerformanceForLastSet?.reps ?? 0);
-    let currentTime = isStatic && (lastSet.time_seconds && lastSet.time_seconds > 0) ? lastSet.time_seconds : (previousPerformanceForLastSet?.time_seconds ?? 0);
+    if (isExerciseCardio && isCardioSet(lastSet)) {
+      // Handle cardio set updates
+      let currentDuration = lastSet.duration_seconds > 0 ? lastSet.duration_seconds : 0;
+      let currentDistance = lastSet.distance_km && lastSet.distance_km > 0 ? lastSet.distance_km : 0;
 
-    let newWeight = currentWeight;
-    let newReps = currentReps;
-    let newTime = currentTime;
+      let newDuration = currentDuration;
+      let newDistance = currentDistance;
 
-    if (field === 'weight') {
-      newWeight = Math.max(0, currentWeight + change);
-    } else if (field === 'reps' && !isStatic) {
-      newReps = Math.max(0, (currentReps || 0) + change); // Ensure currentReps is not null for calculation
-    } else if (field === 'time' && isStatic) {
-      newTime = Math.max(0, (currentTime || 0) + change); // Ensure currentTime is not null for calculation
+      if (field === 'time') {
+        newDuration = Math.max(0, currentDuration + change);
+      } else if (field === 'distance') {
+        newDistance = Math.max(0, currentDistance + change);
+      }
+
+      dispatch(updateCardioSetAction({
+        workoutExerciseId: workoutExercise.id,
+        setId: lastSet.id,
+        duration_seconds: newDuration,
+        distance_km: newDistance,
+      }));
+    } else if (isStrengthSet(lastSet)) {
+      // Handle strength set updates (existing logic)
+      let currentWeight = lastSet.weight > 0 ? lastSet.weight : (previousPerformanceForLastSet?.weight ?? 0);
+      let currentReps = !isExerciseStatic && (lastSet.reps && lastSet.reps > 0) ? lastSet.reps : (previousPerformanceForLastSet?.reps ?? 0);
+      let currentTime = isExerciseStatic && (lastSet.time_seconds && lastSet.time_seconds > 0) ? lastSet.time_seconds : (previousPerformanceForLastSet?.time_seconds ?? 0);
+
+      let newWeight = currentWeight;
+      let newReps = currentReps;
+      let newTime = currentTime;
+
+      if (field === 'weight') {
+        newWeight = Math.max(0, currentWeight + change);
+      } else if (field === 'reps' && !isExerciseStatic) {
+        newReps = Math.max(0, (currentReps || 0) + change);
+      } else if (field === 'time' && isExerciseStatic) {
+        newTime = Math.max(0, (currentTime || 0) + change);
+      }
+
+      dispatch(updateSetAction({
+        workoutExerciseId: workoutExercise.id,
+        setId: lastSet.id,
+        weight: newWeight,
+        reps: isExerciseStatic ? null : newReps,
+        time_seconds: isExerciseStatic ? newTime : null,
+        variation: lastSet.variation ?? undefined,
+        equipmentType: lastSet.equipmentType ?? undefined,
+      }));
     }
-
-    dispatch(updateSetAction({
-      workoutExerciseId: workoutExercise.id,
-      setId: lastSet.id,
-      weight: newWeight,
-      reps: isStatic ? null : newReps,
-      time_seconds: isStatic ? newTime : null,
-      variation: lastSet.variation ?? undefined,
-      equipmentType: lastSet.equipmentType ?? undefined,
-    }));
   };
 
   if (variationsError) {
