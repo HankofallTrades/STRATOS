@@ -39,7 +39,7 @@ import {
 import { addWorkoutToHistory } from "@/state/history/historySlice";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from '@/lib/integrations/supabase/client';
-import { Workout as WorkoutType, isStrengthSet, isCardioSet } from "@/lib/types/workout";
+import { Workout as WorkoutType, isStrengthSet, isCardioSet, timeToSeconds } from "@/lib/types/workout";
 import { TablesInsert, Tables } from '@/lib/integrations/supabase/types';
 import {
   Dialog,
@@ -278,7 +278,7 @@ const MainAppLayout = () => {
                             set_number: index + 1,
                             weight: set.weight,
                             reps: set.reps,
-                            time_seconds: set.time_seconds,
+                            time_seconds: set.time ? timeToSeconds(set.time) : null,
                             completed: true,
                             equipment_type: set.equipmentType || null,
                             variation: set.variation || null,
@@ -290,15 +290,10 @@ const MainAppLayout = () => {
                             set_number: index + 1,
                             weight: 0, // Default weight for cardio
                             reps: null, // No reps for cardio
+                            time_seconds: timeToSeconds(set.time), // Convert ExerciseTime to seconds
                             completed: true,
                             // Cardio-specific fields
-                            duration_seconds: set.duration_seconds,
                             distance_km: set.distance_km,
-                            pace_min_per_km: set.pace_min_per_km,
-                            heart_rate_bpm: set.heart_rate_bpm,
-                            target_heart_rate_zone: set.target_heart_rate_zone,
-                            perceived_exertion: set.perceived_exertion,
-                            calories_burned: set.calories_burned,
                         } as TablesInsert<'exercise_sets'>);
                     }
                  }
