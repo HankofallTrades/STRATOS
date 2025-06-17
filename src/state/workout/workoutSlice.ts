@@ -1,7 +1,7 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { v4 as uuidv4 } from 'uuid';
 import type { Workout, ExerciseSet, WorkoutExercise, StrengthSet, CardioSet, SessionFocus } from '../../lib/types/workout';
-import { isCardioSet, isStrengthSet, getTargetHeartRateZone } from '../../lib/types/workout';
+import { isCardioSet, isStrengthSet, timeToSeconds, secondsToTime } from '../../lib/types/workout';
 import type { RootState } from '../store'; // Import RootState for selectors
 
 interface WorkoutState {
@@ -110,7 +110,7 @@ const workoutSlice = createSlice({
         id: uuidv4(),
         weight: weightForNewSet, // Use calculated initial weight
         reps: isStatic ? null : (lastSet && isStrengthSet(lastSet) ? lastSet.reps : 0),
-        time_seconds: isStatic ? (lastSet && isStrengthSet(lastSet) ? lastSet.time_seconds : 0) : null,
+        time: isStatic ? (lastSet && isStrengthSet(lastSet) ? lastSet.time : secondsToTime(30)) : null,
         exerciseId: action.payload.exerciseId,
         completed: false,
         variation: lastSet && isStrengthSet(lastSet) ? lastSet.variation : workoutExercise.variation ?? 'Standard', 
@@ -135,19 +135,11 @@ const workoutSlice = createSlice({
       const lastSet = workoutExercise.sets.length > 0 ? workoutExercise.sets[workoutExercise.sets.length - 1] : null;
       const lastCardioSet = lastSet && isCardioSet(lastSet) ? lastSet : null;
 
-      // Auto-set target heart rate zone based on session focus
-      const targetZone = state.currentWorkout.session_focus ? getTargetHeartRateZone(state.currentWorkout.session_focus) : null;
-
       const newSet: CardioSet = {
         id: uuidv4(),
         exerciseId: action.payload.exerciseId,
-        duration_seconds: lastCardioSet?.duration_seconds ?? 0,
+        time: lastCardioSet?.time ?? secondsToTime(300), // Default to 5 minutes
         distance_km: lastCardioSet?.distance_km,
-        pace_min_per_km: lastCardioSet?.pace_min_per_km,
-        heart_rate_bpm: lastCardioSet?.heart_rate_bpm,
-        target_heart_rate_zone: (targetZone as 1 | 2 | 3 | 4 | 5) || lastCardioSet?.target_heart_rate_zone,
-        perceived_exertion: lastCardioSet?.perceived_exertion,
-        calories_burned: lastCardioSet?.calories_burned,
         completed: false,
       };
       workoutExercise.sets.push(newSet);
@@ -159,7 +151,7 @@ const workoutSlice = createSlice({
         setId: string;
         weight: number;
         reps: number | null; // Make reps nullable
-        time_seconds?: number | null; // Add time_seconds
+        time?: { hours: number; minutes: number; seconds: number } | null; // Add time structure
         variation?: string | null; // Add optional variation
         equipmentType?: string | null; // Add optional equipmentType
       }>
@@ -173,7 +165,7 @@ const workoutSlice = createSlice({
       if (set && isStrengthSet(set)) {
         set.weight = action.payload.weight;
         set.reps = action.payload.reps;
-        set.time_seconds = action.payload.time_seconds; // Assign time_seconds
+        set.time = action.payload.time; // Assign time structure
         if (action.payload.variation !== undefined) {
             set.variation = action.payload.variation ?? undefined; // Handle null
         }
@@ -187,13 +179,8 @@ const workoutSlice = createSlice({
       action: PayloadAction<{
         workoutExerciseId: string;
         setId: string;
-        duration_seconds: number;
+        time: { hours: number; minutes: number; seconds: number };
         distance_km?: number;
-        pace_min_per_km?: number;
-        heart_rate_bpm?: number[];
-        target_heart_rate_zone?: 1 | 2 | 3 | 4 | 5;
-        perceived_exertion?: number;
-        calories_burned?: number;
       }>
     ) {
       if (!state.currentWorkout) return;
@@ -203,13 +190,8 @@ const workoutSlice = createSlice({
       if (!workoutExercise) return;
       const set = workoutExercise.sets.find((s) => s.id === action.payload.setId);
       if (set && isCardioSet(set)) {
-        set.duration_seconds = action.payload.duration_seconds;
+        set.time = action.payload.time;
         set.distance_km = action.payload.distance_km;
-        set.pace_min_per_km = action.payload.pace_min_per_km;
-        set.heart_rate_bpm = action.payload.heart_rate_bpm;
-        set.target_heart_rate_zone = action.payload.target_heart_rate_zone;
-        set.perceived_exertion = action.payload.perceived_exertion;
-        set.calories_burned = action.payload.calories_burned;
       }
     },
     deleteSet(state, action: PayloadAction<{ workoutExerciseId: string; setId: string }>) {

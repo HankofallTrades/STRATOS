@@ -38,13 +38,50 @@ export interface CardioExercise extends Exercise {
 }
 
 /**
+ * Time structure for exercises (timed sets, cardio duration)
+ */
+export interface ExerciseTime {
+  hours: number;
+  minutes: number;
+  seconds: number;
+}
+
+/**
+ * Helper function to convert time object to total seconds
+ */
+export function timeToSeconds(time: ExerciseTime): number {
+  return time.hours * 3600 + time.minutes * 60 + time.seconds;
+}
+
+/**
+ * Helper function to convert total seconds to time object
+ */
+export function secondsToTime(totalSeconds: number): ExerciseTime {
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return { hours, minutes, seconds };
+}
+
+/**
+ * Helper function to format time as string
+ */
+export function formatTime(time: ExerciseTime): string {
+  if (time.hours > 0) {
+    return `${time.hours}:${time.minutes.toString().padStart(2, '0')}:${time.seconds.toString().padStart(2, '0')}`;
+  } else {
+    return `${time.minutes}:${time.seconds.toString().padStart(2, '0')}`;
+  }
+}
+
+/**
  * Strength-specific set data structure (existing)
  */
 export interface StrengthSet {
   id: string;
   weight: number;
   reps: number | null; // Made reps nullable
-  time_seconds?: number | null; // Added time_seconds
+  time?: ExerciseTime | null; // Changed to use ExerciseTime structure
   exerciseId: string; // Links to Exercise.id
   completed: boolean;
   equipmentType?: string; // Changed to string
@@ -57,13 +94,8 @@ export interface StrengthSet {
 export interface CardioSet {
   id: string;
   exerciseId: string;
-  duration_seconds: number;
+  time: ExerciseTime; // Using structured time for better UX
   distance_km?: number;
-  pace_min_per_km?: number;
-  heart_rate_bpm?: number[]; // Array for heart rate zones/readings
-  target_heart_rate_zone?: 1 | 2 | 3 | 4 | 5; // Heart rate training zones
-  perceived_exertion?: number; // RPE scale 1-10
-  calories_burned?: number;
   completed: boolean;
 }
 
@@ -83,7 +115,7 @@ export function isStrengthSet(set: ExerciseSet): set is StrengthSet {
  * Type guard to check if set is a cardio set
  */
 export function isCardioSet(set: ExerciseSet): set is CardioSet {
-  return 'duration_seconds' in set && !('weight' in set);
+  return 'time' in set && !('weight' in set) && !('reps' in set);
 }
 
 /**
@@ -110,16 +142,16 @@ export function getRecommendedRepRange(focus: SessionFocus): { min: number; max:
 }
 
 /**
- * Helper function to get target heart rate zones for cardio focuses
+ * Helper function to get recommended cardio intensity description for different focuses
  */
-export function getTargetHeartRateZone(focus: SessionFocus): number | null {
+export function getCardioIntensityDescription(focus: SessionFocus): string | null {
   switch (focus) {
     case 'zone2':
-      return 2;
+      return 'Low-moderate intensity, conversational pace';
     case 'zone5':
-      return 5;
+      return 'High intensity, near maximum effort';
     case 'recovery':
-      return 1;
+      return 'Very low intensity, easy recovery pace';
     default:
       return null;
   }
