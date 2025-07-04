@@ -449,4 +449,108 @@ export async function fetchExerciseVolumeHistory(userId: string, exerciseId: str
     // Depending on needs, might re-throw or return empty array
     return []; 
   }
-} 
+}
+
+/**
+ * Fetches the most recent performance for a specific exercise with a specific session focus
+ * within the last 6 weeks, used for performance indicator logic.
+ *
+ * @param userId The UUID of the user.
+ * @param exerciseId The UUID of the exercise.
+ * @param sessionFocus The session focus to filter by ('strength', 'hypertrophy', etc.).
+ * @param equipmentType The equipment type to match (optional).
+ * @param variation The variation to match (optional).
+ * @returns Performance data or null if not found.
+ */
+export const fetchRecentFocusPerformance = async (
+  userId: string,
+  exerciseId: string,
+  sessionFocus: string,
+  equipmentType?: string | null,
+  variation?: string | null
+): Promise<{
+  reps?: number;
+  time_seconds?: number;
+  withinTimeframe: boolean;
+} | null> => {
+  const targetVariation = variation || 'Standard';
+  const targetEquipmentType = equipmentType ?? null;
+  const sixWeeksAgo = new Date();
+  sixWeeksAgo.setDate(sixWeeksAgo.getDate() - 42); // 6 weeks = 42 days
+
+  try {
+    // For now, just get the most recent workout with this exercise - we'll add session_focus filtering later
+    // TODO: Add session_focus column to workouts table and filter by it
+    const { data: recentWorkoutData, error: recentWorkoutError } = await supabase
+      .from('workouts')
+      .select(`
+        id, 
+        created_at,
+        type,
+        workout_exercises!inner(
+          exercise_id, 
+          exercise_sets!inner(
+            completed, 
+            variation, 
+            equipment_type, 
+            reps, 
+            time_seconds
+          )
+        )
+      `)
+      .eq('user_id', userId)
+      // TODO: .eq('session_focus', sessionFocus) // Will add this once column exists
+      .eq('workout_exercises.exercise_id', exerciseId)
+      .eq('workout_exercises.exercise_sets.completed', true)
+      .filter('workout_exercises.exercise_sets.equipment_type', 
+        targetEquipmentType === null ? 'is' : 'eq', 
+        targetEquipmentType
+      )
+      .filter('workout_exercises.exercise_sets.variation',
+        targetVariation === 'Standard' ? 'in' : 'eq',
+        targetVariation === 'Standard' ? '("Standard", "", null)' : targetVariation
+      )
+      .gte('created_at', sixWeeksAgo.toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (recentWorkoutError) throw recentWorkoutError;
+
+    if (!recentWorkoutData) {
+      console.log(`No recent ${sessionFocus} session found for exercise ${exerciseId} within 6 weeks`);
+      return null;
+    }
+
+    // Get the best performing set from that workout (highest reps or longest time)
+    const sets = recentWorkoutData.workout_exercises[0]?.exercise_sets || [];
+    
+    if (sets.length === 0) {
+      return null;
+    }
+
+    // For reps-based exercises, find the set with the highest reps
+    // For time-based exercises, find the set with the longest time
+    let bestSet = sets[0];
+    
+    for (const set of sets) {
+      if (set.reps !== null && (bestSet.reps === null || set.reps > bestSet.reps)) {
+        bestSet = set;
+      } else if (set.time_seconds !== null && (bestSet.time_seconds === null || set.time_seconds > bestSet.time_seconds)) {
+        bestSet = set;
+      }
+    }
+
+    const isWithinTimeframe = new Date(recentWorkoutData.created_at) >= sixWeeksAgo;
+
+    return {
+      reps: bestSet.reps || undefined,
+      time_seconds: bestSet.time_seconds || undefined,
+      withinTimeframe: isWithinTimeframe
+    };
+
+  } catch (error) {
+    console.error("Error fetching recent focus performance:", error);
+    return null;
+  }
+}; 
