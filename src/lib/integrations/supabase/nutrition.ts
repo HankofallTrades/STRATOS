@@ -98,4 +98,35 @@ export const updateUserWeight = async (userId: string, weightKg: number): Promis
     console.error('Error updating user weight in profiles:', error);
     throw error;
   }
+};
+
+export interface WeeklyZone2CardioData {
+  total_minutes: number;
+}
+
+/**
+ * Gets the total weekly zone 2 cardio minutes for a user.
+ * @param userId The ID of the user.
+ * @returns An object containing the total minutes for the current week.
+ */
+export const getWeeklyZone2CardioMinutes = async (userId: string): Promise<WeeklyZone2CardioData> => {
+  // Calculate the start of the current week (Monday)
+  const now = new Date();
+  const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // If Sunday, go back 6 days; otherwise, go back (dayOfWeek - 1) days
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - daysToMonday);
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  const { data, error } = await supabase.rpc('get_weekly_zone2_cardio_minutes' as any, {
+    user_id: userId,
+    start_date: startOfWeek.toISOString()
+  });
+
+  if (error) {
+    console.error('Error getting weekly zone 2 cardio minutes:', error);
+    return { total_minutes: 0 };
+  }
+
+  return { total_minutes: (data as number) || 0 };
 }; 

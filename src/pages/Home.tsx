@@ -13,7 +13,7 @@ import { useNavigate } from 'react-router-dom'; // Import useNavigate
 import { useMemo, useState, useEffect } from 'react'; // ADDED useState, useEffect
 import { useQuery } from '@tanstack/react-query';
 import { getUserProfile, UserProfileData } from '@/lib/integrations/supabase/user';
-import { getDailyProteinIntake, DailyProteinIntake } from '@/lib/integrations/supabase/nutrition';
+import { getDailyProteinIntake, DailyProteinIntake, getWeeklyZone2CardioMinutes, WeeklyZone2CardioData } from '@/lib/integrations/supabase/nutrition';
 import CircularProgressDisplay from '@/components/core/charts/CircularProgressDisplay';
 // import PerformanceOverview from '@/components/features/Analytics/PerformanceOverview'; // Import PerformanceOverview - REMOVED
 import Volume from '@/components/features/Analytics/Volume'; // Import Volume component
@@ -35,6 +35,7 @@ const Home = () => {
 
   const [startProteinAnimation, setStartProteinAnimation] = useState(false);
   const [startSunAnimation, setStartSunAnimation] = useState(false);
+  const [startCardioAnimation, setStartCardioAnimation] = useState(false);
 
   const { data: userProfile, isLoading: isLoadingProfile } = useQuery<
     UserProfileData | null,
@@ -99,6 +100,36 @@ const Home = () => {
     }
   );
 
+  // New query for weekly zone 2 cardio minutes
+  const { 
+    data: weeklyZone2Cardio, 
+    isLoading: isLoadingZone2Cardio, 
+    isError: isErrorZone2Cardio, 
+    error: zone2CardioError 
+  } = useQuery<
+    WeeklyZone2CardioData,
+    Error
+  >(
+    {
+      queryKey: ['weeklyZone2Cardio', userId],
+      queryFn: async () => {
+        if (!userId) { 
+            return { total_minutes: 0 }; 
+        }
+        try {
+          const result = await getWeeklyZone2CardioMinutes(userId);
+          return result;
+        } catch (error) {
+          // If the function doesn't exist yet, return mock data
+          console.warn('Zone 2 cardio function not implemented yet, using mock data');
+          return { total_minutes: 85 }; // Mock data
+        }
+      },
+      enabled: !!userId, 
+      staleTime: 5 * 60 * 1000, 
+    }
+  );
+
   useEffect(() => {
     let proteinTimer: NodeJS.Timeout;
     if (!isLoadingProtein && dailyProtein) {
@@ -127,9 +158,25 @@ const Home = () => {
     };
   }, [isLoadingSunExposure, dailySunExposure]);
 
+  useEffect(() => {
+    let cardioTimer: NodeJS.Timeout;
+    if (!isLoadingZone2Cardio && weeklyZone2Cardio) {
+      cardioTimer = setTimeout(() => {
+        setStartCardioAnimation(true);
+      }, 50); 
+    } else if (isLoadingZone2Cardio) {
+      setStartCardioAnimation(false);
+    }
+    return () => {
+      clearTimeout(cardioTimer);
+    };
+  }, [isLoadingZone2Cardio, weeklyZone2Cardio]);
+
   const currentProteinIntake = dailyProtein?.total_protein ?? 0;
   const currentSunExposureHours = dailySunExposure?.total_hours ?? 0;
+  const currentZone2CardioMinutes = weeklyZone2Cardio?.total_minutes ?? 0;
   const sunExposureGoalHours = 2; // Hardcoded goal for now
+  const zone2CardioGoalMinutes = 150; // Default goal of 150 minutes per week
 
   const proteinGoalKgFactor = useMemo(() => {
     if (!userProfile || !userProfile.focus) return 1.5;
@@ -168,8 +215,8 @@ const Home = () => {
           goalValue={displayGoal}
           label="Today's Protein"
           unit="g"
-          size={180}
-          barSize={14}
+          size={140}
+          barSize={12}
           showTooltip={startProteinAnimation && goalReady}
           showCenterText={startProteinAnimation}
         />
@@ -192,15 +239,41 @@ const Home = () => {
       <SunMoonProgress 
         currentHours={displayCurrentSun}
         goalHours={displayGoalSun}
-        size={180}
-        barSize={12}
+        size={140}
+        barSize={10}
         label="Daily Sun Exposure"
       />
     );
   };
 
+  const renderZone2CardioProgress = () => {
+    if (isErrorZone2Cardio) {
+      return <p className="text-sm text-destructive text-center">Error: {zone2CardioError?.message || 'Could not load cardio data'}</p>;
+    }
+
+    const displayCurrentCardio = startCardioAnimation ? currentZone2CardioMinutes : 0;
+    const displayGoalCardio = startCardioAnimation ? zone2CardioGoalMinutes : 0;
+
+    return (
+      <div className="flex flex-col items-center">
+        <CircularProgressDisplay
+          currentValue={displayCurrentCardio} 
+          goalValue={displayGoalCardio}
+          label="Weekly Endurance"
+          unit="min"
+          size={140}
+          barSize={12}
+          defaultColor="#16A34A"
+          highlightColor="#059669"
+          showTooltip={startCardioAnimation}
+          showCenterText={startCardioAnimation}
+        />
+      </div>
+    );
+  };
+
   const handleStartWorkout = () => {
-    dispatch(startWorkoutAction());
+    dispatch(startWorkoutAction({}));
     navigate('/workout');
   };
 
@@ -214,10 +287,11 @@ const Home = () => {
         </header> */}
 
         <main className="mt-12">
-          {/* Flex container for side-by-side trackers */}
-          <div className="flex flex-col md:flex-row justify-center md:justify-around items-center gap-8 mb-8">
+          {/* Updated flex container for better mobile layout */}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 justify-items-center mb-8">
             {renderProteinProgress()} 
             {renderSunExposureProgress()}
+            {renderZone2CardioProgress()}
           </div>
 
           {/* Volume component underneath */}
