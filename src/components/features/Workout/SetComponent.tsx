@@ -11,13 +11,14 @@ import {
 import { Input } from "@/components/core/input";
 import { Button } from "@/components/core/button";
 import { Checkbox } from "@/components/core/checkbox";
-import { Trash2, ArrowUp, ArrowDown, Minus, Timer, MapPin } from "lucide-react";
+import { Trash2, Timer, MapPin } from "lucide-react";
 import {
   TableRow,
   TableCell,
 } from "@/components/core/table";
 import { cn } from "@/lib/utils/cn";
 import CardioSetComponent from "./CardioSetComponent";
+import PerformanceIndicator from "./PerformanceIndicator";
 
 interface SetComponentProps extends MotionProps {
   workoutExerciseId: string;
@@ -28,39 +29,7 @@ interface SetComponentProps extends MotionProps {
   isStatic: boolean;
 }
 
-const PerformanceIndicator: React.FC<{
-  type: 'weight' | 'reps' | 'time';
-  previousValue: number | undefined;
-  currentValue?: number;
-  isStatic?: boolean;
-  isVisible: boolean;
-}> = ({ type, previousValue, isVisible, isStatic }) => {
-  if (!isVisible || previousValue === undefined) return null;
 
-  let IconComponent: React.ElementType | null = null;
-  let colorClass = "text-muted-foreground";
-
-  if (type === 'weight') {
-      IconComponent = ArrowUp;
-      colorClass = "text-green-500";
-  } else if (type === 'reps' && !isStatic) {
-    if (previousValue < 8) { IconComponent = ArrowUp; colorClass = "text-green-500"; }
-    else { IconComponent = Minus; colorClass = "text-yellow-500"; }
-  } else if (type === 'time' && isStatic) {
-    if (previousValue > 30) { IconComponent = ArrowUp; colorClass = "text-green-500"; }
-    else { IconComponent = Minus; colorClass = "text-yellow-500"; }
-  }
-  
-  if (!IconComponent) return null;
-
-  return (
-    <IconComponent
-      size={16}
-      className={cn("absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none", colorClass)}
-      aria-hidden="true"
-    />
-  );
-};
 
 // Helper function to format duration as MM:SS
 const formatDuration = (seconds: number) => {
@@ -367,7 +336,7 @@ const SetComponent: React.FC<SetComponentProps> = ({
     dispatch(deleteSetAction({ workoutExerciseId, setId: strengthSet.id }));
   };
 
-  const showWeightIndicator = previousPerformance && !weightTouched && localWeight === '';
+  const showWeightIndicator = previousPerformance && !weightTouched && (localWeight === '' || parseFloat(localWeight) === previousPerformance.weight);
   const showRepsIndicator = !isStatic && previousPerformance && !repsTouched && localReps === '';
   const showTimeIndicator = isStatic && previousPerformance && !timeTouched && localTime === '';
   
@@ -412,10 +381,10 @@ const SetComponent: React.FC<SetComponentProps> = ({
           />
         </div>
         <PerformanceIndicator
-          type="weight"
-          previousValue={isStatic ? previousTimeValue : previousRepsValue}
+          metric="weight"
+          previousValue={previousRepsValue}
           isStatic={isStatic}
-          isVisible={showWeightIndicator}
+          visible={showWeightIndicator}
         />
       </TableCell>
       {isStatic ? (
@@ -439,10 +408,10 @@ const SetComponent: React.FC<SetComponentProps> = ({
             />
           </div>
           <PerformanceIndicator
-            type="time"
+            metric="time"
             previousValue={previousTimeValue}
             isStatic={isStatic}
-            isVisible={showTimeIndicator}
+            visible={showTimeIndicator}
           />
         </TableCell>
       ) : (
@@ -466,10 +435,10 @@ const SetComponent: React.FC<SetComponentProps> = ({
           />
         </div>
         <PerformanceIndicator
-          type="reps"
-            previousValue={previousRepsValue}
-            isStatic={isStatic}
-          isVisible={showRepsIndicator}
+          metric="reps"
+          previousValue={previousRepsValue}
+          isStatic={isStatic}
+          visible={showRepsIndicator}
         />
       </TableCell>
       )}
