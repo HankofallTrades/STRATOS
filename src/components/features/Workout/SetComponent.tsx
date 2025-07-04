@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, MotionProps } from 'framer-motion';
-import { ExerciseSet, StrengthSet, CardioSet, isStrengthSet, isCardioSet } from "@/lib/types/workout";
+import { ExerciseSet, StrengthSet, CardioSet, isStrengthSet, isCardioSet, timeToSeconds, secondsToTime } from "@/lib/types/workout";
 import { useAppDispatch } from "@/hooks/redux";
 import { 
   updateSet as updateSetAction, 
@@ -58,13 +58,13 @@ const SetComponent: React.FC<SetComponentProps> = ({
   // Handle cardio sets with table layout
   if (isCardioSet(set)) {
     const cardioSet: CardioSet = set;
-    const [localDuration, setLocalDuration] = useState(() => cardioSet.duration_seconds.toString());
+    const [localDuration, setLocalDuration] = useState(() => timeToSeconds(cardioSet.time).toString());
     const [localDistance, setLocalDistance] = useState(() => (cardioSet.distance_km || 0).toString());
     const [isCompleted, setIsCompleted] = useState(cardioSet.completed);
 
     useEffect(() => {
-      setLocalDuration(cardioSet.duration_seconds.toString());
-    }, [cardioSet.duration_seconds]);
+      setLocalDuration(timeToSeconds(cardioSet.time).toString());
+    }, [cardioSet.time]);
 
     useEffect(() => {
       setLocalDistance((cardioSet.distance_km || 0).toString());
@@ -89,7 +89,7 @@ const SetComponent: React.FC<SetComponentProps> = ({
         dispatch(updateCardioSetAction({
           workoutExerciseId,
           setId: cardioSet.id,
-          duration_seconds: durationVal,
+          time: secondsToTime(durationVal),
           distance_km: distanceVal > 0 ? distanceVal : undefined,
         }));
         dispatch(completeSetAction({ workoutExerciseId, setId: cardioSet.id, completed: true }));
@@ -105,14 +105,14 @@ const SetComponent: React.FC<SetComponentProps> = ({
       const distanceVal = parseFloat(localDistance) || 0;
       
       let shouldUpdate = false;
-      if (field === 'duration' && durationVal !== cardioSet.duration_seconds) shouldUpdate = true;
+      if (field === 'duration' && durationVal !== timeToSeconds(cardioSet.time)) shouldUpdate = true;
       if (field === 'distance' && distanceVal !== (cardioSet.distance_km || 0)) shouldUpdate = true;
 
       if (shouldUpdate) {
         dispatch(updateCardioSetAction({
           workoutExerciseId,
           setId: cardioSet.id,
-          duration_seconds: durationVal,
+          time: secondsToTime(durationVal),
           distance_km: distanceVal > 0 ? distanceVal : undefined,
         }));
       }
@@ -211,7 +211,7 @@ const SetComponent: React.FC<SetComponentProps> = ({
 
   const [localWeight, setLocalWeight] = useState(() => (strengthSet.weight > 0 ? strengthSet.weight.toString() : ''));
   const [localReps, setLocalReps] = useState(() => (strengthSet.reps ? strengthSet.reps.toString() : ''));
-  const [localTime, setLocalTime] = useState(() => (strengthSet.time_seconds ? strengthSet.time_seconds.toString() : ''));
+  const [localTime, setLocalTime] = useState(() => (strengthSet.time ? timeToSeconds(strengthSet.time).toString() : ''));
   const [weightTouched, setWeightTouched] = useState(false);
   const [repsTouched, setRepsTouched] = useState(false);
   const [timeTouched, setTimeTouched] = useState(false);
@@ -238,8 +238,8 @@ const SetComponent: React.FC<SetComponentProps> = ({
   }, [strengthSet.reps]);
 
   useEffect(() => {
-    setLocalTime(strengthSet.time_seconds ? strengthSet.time_seconds.toString() : '');
-  }, [strengthSet.time_seconds]);
+    setLocalTime(strengthSet.time ? timeToSeconds(strengthSet.time).toString() : '');
+  }, [strengthSet.time]);
 
   const handleWeightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setLocalWeight(e.target.value);
@@ -276,7 +276,7 @@ const SetComponent: React.FC<SetComponentProps> = ({
       if (isStatic) {
         if (weightVal >= 0 && timeVal > 0) {
           updatedSetData.reps = null;
-          updatedSetData.time_seconds = timeVal;
+          updatedSetData.time = secondsToTime(timeVal);
         } else {
           setIsCompleted(false);
           console.warn("Cannot complete static set with 0 time.");
@@ -285,7 +285,7 @@ const SetComponent: React.FC<SetComponentProps> = ({
       } else {
         if (weightVal >= 0 && repsVal > 0) {
           updatedSetData.reps = repsVal;
-          updatedSetData.time_seconds = null;
+          updatedSetData.time = null;
       } else {
         setIsCompleted(false);
           console.warn("Cannot complete rep-based set with 0 reps (and non-negative weight).");
@@ -317,12 +317,12 @@ const SetComponent: React.FC<SetComponentProps> = ({
 
     if (isStatic) {
       updatePayload.reps = null;
-      updatePayload.time_seconds = timeVal;
+      updatePayload.time = secondsToTime(timeVal);
       if (field === 'weight' && weightVal >= 0 && weightVal !== strengthSet.weight) shouldUpdate = true;
-      if (field === 'time' && timeVal > 0 && timeVal !== strengthSet.time_seconds) shouldUpdate = true;
+      if (field === 'time' && timeVal > 0 && timeVal !== (strengthSet.time ? timeToSeconds(strengthSet.time) : 0)) shouldUpdate = true;
     } else {
       updatePayload.reps = repsVal;
-      updatePayload.time_seconds = null;
+      updatePayload.time = null;
       if (field === 'weight' && weightVal >= 0 && weightVal !== strengthSet.weight) shouldUpdate = true;
       if (field === 'reps' && repsVal > 0 && repsVal !== strengthSet.reps) shouldUpdate = true;
     }

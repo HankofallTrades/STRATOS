@@ -48,12 +48,12 @@ const Workout = () => {
         icon: <Flame className="h-4 w-4" />
       },
       zone2: { 
-        title: 'Zone 2 Cardio', 
+        title: 'Endurance', 
         color: 'bg-green-500',
         icon: <Heart className="h-4 w-4" />
       },
       zone5: { 
-        title: 'Zone 5 Cardio', 
+        title: 'Max HR', 
         color: 'bg-purple-500',
         icon: <Zap className="h-4 w-4" />
       },

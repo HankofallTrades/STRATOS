@@ -41,7 +41,7 @@ const focusOptions: FocusOption[] = [
   },
   {
     focus: 'zone2',
-    title: 'Zone 2 Cardio',
+    title: 'Endurance',
     description: 'Aerobic base building, steady state',
     icon: <Heart className="h-5 w-5" />,
     color: 'bg-green-500',
@@ -49,7 +49,7 @@ const focusOptions: FocusOption[] = [
   },
   {
     focus: 'zone5',
-    title: 'Zone 5 Cardio',
+    title: 'Max HR',
     description: 'High intensity, VO2 max work',
     icon: <Zap className="h-5 w-5" />,
     color: 'bg-purple-500',

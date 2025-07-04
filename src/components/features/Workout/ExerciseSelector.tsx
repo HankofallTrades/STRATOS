@@ -5,7 +5,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useAppDispatch } from "@/hooks/redux"; // Keep dispatch for adding to workout
 import { 
     addExerciseToWorkout as addExerciseToWorkoutAction,
-    addSetToExercise // Corrected: Import action to add a set
+    addSetToExercise, // Corrected: Import action to add a set
+    addCardioSetToExercise // Import action to add cardio sets
 } from "@/state/workout/workoutSlice"; // Keep workout actions
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'; // Add TanStack Query imports
 import { fetchExercisesFromDB, createExerciseInDB, deleteExerciseFromDB, hideExerciseForUser } from '@/lib/integrations/supabase/exercises'; // Add Supabase function imports
@@ -16,7 +17,7 @@ import { Plus, Search, X, Trash2 } from "lucide-react";
 import { Label } from "@/components/core/label";
 import { Input } from "@/components/core/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/core/Dialog";
-import { Exercise, WorkoutExercise } from "@/lib/types/workout";
+import { Exercise, WorkoutExercise, isCardioExercise } from "@/lib/types/workout";
 import { v4 as uuidv4 } from 'uuid';
 import { useToast } from "@/components/core/Toast/use-toast";
 import { useAuth } from '@/state/auth/AuthProvider';
@@ -141,12 +142,21 @@ const ExerciseSelector = () => {
     dispatch(addExerciseToWorkoutAction(workoutExercisePayload));
 
     // Dispatch to add the first default set immediately after
-    dispatch(addSetToExercise({ // Corrected: Use the correct action
-      workoutExerciseId: newWorkoutExerciseId, // Use the same ID
-      exerciseId: selectedExercise.id, // Add the missing exerciseId
-      isStatic: selectedExercise.is_static ?? false, // Pass is_static from the selected exercise
-      // userBodyweight can be added here if needed/available, or handled in the slice based on profile
-    }));
+    if (isCardioExercise(selectedExercise)) {
+      // For cardio exercises, create a cardio set
+      dispatch(addCardioSetToExercise({
+        workoutExerciseId: newWorkoutExerciseId,
+        exerciseId: selectedExercise.id,
+      }));
+    } else {
+      // For strength exercises, create a strength set
+      dispatch(addSetToExercise({
+        workoutExerciseId: newWorkoutExerciseId,
+        exerciseId: selectedExercise.id,
+        isStatic: selectedExercise.is_static ?? false,
+        // userBodyweight can be added here if needed/available, or handled in the slice based on profile
+      }));
+    }
 
     // Reset UI state
     setOpen(false); // Close the dialog after selection
