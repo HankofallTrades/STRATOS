@@ -18,9 +18,12 @@ import {
   SelectValue,
 } from "@/components/core/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/core/tabs";
-import { getUserWeight, getDailyProteinIntake, DailyProteinIntake, UserWeight } from "@/lib/integrations/supabase/nutrition";
+import { getUserWeight, getDailyProteinIntake, DailyProteinIntake, UserWeight, getWeeklyZone2CardioMinutes, WeeklyZone2CardioData } from "@/lib/integrations/supabase/nutrition";
 import { ProgressBar } from "@/components/core/ProgressBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/core/card";
+import CircularProgressDisplay from '@/components/core/charts/CircularProgressDisplay';
+import SunMoonProgress from '@/components/core/charts/SunMoonProgress';
+import { getDailySunExposure } from '@/lib/integrations/supabase/wellbeing';
 
 // LocalStorage Key for persistence
 const ANALYTICS_VIEW_STORAGE_KEY = 'selectedAnalyticsView_v2';
@@ -115,6 +118,30 @@ const Analytics = () => {
     }
   );
 
+  const { data: dailySunExposure } = useQuery<{ total_hours: number } | null, Error>({
+    queryKey: ['dailySunExposure', userId, todayDate],
+    queryFn: async () => {
+      if (!userId) return null;
+      return getDailySunExposure(userId, todayDate);
+    },
+    enabled: !!userId,
+    staleTime: 1 * 60 * 1000,
+  });
+
+  const { data: weeklyZone2Cardio } = useQuery<WeeklyZone2CardioData | null, Error>({
+    queryKey: ['weeklyZone2Cardio', userId],
+    queryFn: async () => {
+      if (!userId) return null;
+      try {
+        return await getWeeklyZone2CardioMinutes(userId);
+      } catch {
+        return { total_minutes: 0 } as WeeklyZone2CardioData;
+      }
+    },
+    enabled: !!userId,
+    staleTime: 5 * 60 * 1000,
+  });
+
   const proteinGoal = useMemo(() => {
     if (userWeightData?.weight_kg) {
       return Math.round(userWeightData.weight_kg * 2);
@@ -123,11 +150,58 @@ const Analytics = () => {
   }, [userWeightData]);
 
   const currentProtein = dailyProteinData?.total_protein || 0;
+  const currentSunHours = dailySunExposure?.total_hours || 0;
+  const currentZone2Minutes = weeklyZone2Cardio?.total_minutes || 0;
+
+  const sunExposureGoalHours = 2; // default
+  const zone2CardioGoalMinutes = 150; // default
 
   return (
     <div className="container mx-auto p-4 max-w-4xl">
 
       <main className="space-y-8">
+        {/* Top analytics: Volume and wellness widgets */}
+        <section className="space-y-6">
+          <div>
+            <Volume userId={user?.id} />
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 justify-items-center">
+            <div className="flex flex-col items-center">
+              <CircularProgressDisplay
+                currentValue={currentProtein}
+                goalValue={proteinGoal}
+                label="Today's Protein"
+                unit="g"
+                size={140}
+                barSize={12}
+                showTooltip={!!userId && proteinGoal > 0}
+                showCenterText={true}
+              />
+            </div>
+            <SunMoonProgress 
+              currentHours={currentSunHours}
+              goalHours={sunExposureGoalHours}
+              size={140}
+              barSize={10}
+              label="Daily Sun Exposure"
+            />
+            <div className="flex flex-col items-center">
+              <CircularProgressDisplay
+                currentValue={currentZone2Minutes}
+                goalValue={zone2CardioGoalMinutes}
+                label="Weekly Endurance"
+                unit="min"
+                size={140}
+                barSize={12}
+                defaultColor="#16A34A"
+                highlightColor="#059669"
+                showTooltip={true}
+                showCenterText={true}
+              />
+            </div>
+          </div>
+        </section>
+
         <PerformanceOverview />
 
         <div className="pt-6">
