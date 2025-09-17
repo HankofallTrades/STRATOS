@@ -1,24 +1,23 @@
 import { Button } from "@/components/core/button";
-// import { WorkoutProvider, useWorkout } from "@/state/workout/WorkoutContext"; // Remove old context import
 import { useAppSelector, useAppDispatch } from "@/hooks/redux"; // Import Redux hooks
 import { selectCurrentWorkout, selectWorkoutStartTime, startWorkout as startWorkoutAction } from "@/state/workout/workoutSlice"; // Import selectors and actions
-import { Clock } from "lucide-react";
+import { Clock, Sun, Feather } from "lucide-react";
+import { FlowerLotus } from "@phosphor-icons/react";
 import { formatTime } from "@/lib/utils/timeUtils";
 import WorkoutComponent from "@/components/features/Workout/WorkoutComponent";
-// import { Barbell } from "@phosphor-icons/react"; // Removed as it was for the old Start Workout section
 import { useAuth } from '@/state/auth/AuthProvider'; // Assuming this path is correct
-// Removed Link import as it's unused
 import { useElapsedTime } from "@/hooks/useElapsedTime"; // Import the new hook
 import { useNavigate } from 'react-router-dom'; // Import useNavigate
-import { useMemo, useState, useEffect } from 'react'; // ADDED useState, useEffect
+import { useMemo, useState, useEffect, useCallback } from 'react'; // ADDED useState, useEffect
 import { useQuery } from '@tanstack/react-query';
 import { getUserProfile, UserProfileData } from '@/lib/integrations/supabase/user';
 import { getDailyProteinIntake, DailyProteinIntake, getWeeklyZone2CardioMinutes, WeeklyZone2CardioData } from '@/lib/integrations/supabase/nutrition';
 import CircularProgressDisplay from '@/components/core/charts/CircularProgressDisplay';
-// import PerformanceOverview from '@/components/features/Analytics/PerformanceOverview'; // Import PerformanceOverview - REMOVED
 import Volume from '@/components/features/Analytics/Volume'; // Import Volume component
 import SunMoonProgress from '@/components/core/charts/SunMoonProgress'; // Import SunMoonProgress
 import { getDailySunExposure } from '@/lib/integrations/supabase/wellbeing'; // Import sun exposure fetcher
+import { Toggle } from '@/components/core/Toggle/toggle';
+import { ensureTriadHabits, getHabitCompletionsForDate, setHabitCompletion } from '@/lib/integrations/supabase/habits';
 
 // Interface for daily sun exposure data
 interface DailySunExposureData {
@@ -32,6 +31,100 @@ const Home = () => {
   const { user } = useAuth();
   const userId = user?.id;
   const todayDate = useMemo(() => new Date().toISOString().split('T')[0], []);
+  type DisciplineKey = 'meditation' | 'movement' | 'writing'
+  type DisciplineState = Record<DisciplineKey, boolean>
+
+  const getStorageKey = useCallback(() => {
+    const keyUser = userId ?? 'anon'
+    return `discipline:${keyUser}:${todayDate}`
+  }, [userId, todayDate])
+
+  const [discipline, setDiscipline] = useState<DisciplineState>({
+    meditation: false,
+    movement: false,
+    writing: false,
+  })
+  const [habitIdMap, setHabitIdMap] = useState<Record<DisciplineKey, string>>({
+    meditation: '',
+    movement: '',
+    writing: '',
+  })
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(getStorageKey())
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<DisciplineState>
+        setDiscipline((prev) => ({ ...prev, ...parsed }))
+      } else {
+        // new day or new user: reset to defaults
+        setDiscipline({ meditation: false, movement: false, writing: false })
+      }
+    } catch {
+      // ignore malformed localStorage
+    }
+  }, [getStorageKey])
+
+  // Sync with Supabase when logged in
+  useEffect(() => {
+    const sync = async () => {
+      if (!userId) return
+      try {
+        const triad = await ensureTriadHabits(userId)
+        const byTitle: Record<string, string> = {}
+        for (const h of triad) byTitle[h.title.toLowerCase()] = h.id
+        setHabitIdMap({
+          meditation: byTitle['meditation'] ?? '',
+          movement: byTitle['movement'] ?? '',
+          writing: byTitle['writing'] ?? '',
+        })
+
+        const serverMap = await getHabitCompletionsForDate(userId, todayDate)
+
+        // merge server completions into local state (server is source of truth if true)
+        setDiscipline((prev) => {
+          const next = { ...prev }
+          const entries: [DisciplineKey, string][] = [
+            ['meditation', byTitle['meditation'] ?? ''],
+            ['movement', byTitle['movement'] ?? ''],
+            ['writing', byTitle['writing'] ?? ''],
+          ]
+          for (const [k, id] of entries) {
+            if (id && serverMap[id]) next[k] = true
+          }
+          return next
+        })
+      } catch (e) {
+        console.warn('Failed to sync habits with Supabase', e)
+      }
+    }
+    sync()
+  }, [userId, todayDate])
+
+  const setDisciplineAndPersist = useCallback((next: DisciplineState) => {
+    setDiscipline(next)
+    try {
+      localStorage.setItem(getStorageKey(), JSON.stringify(next))
+    } catch {
+      // ignore storage failures
+    }
+  }, [getStorageKey])
+
+  const toggleDiscipline = useCallback(async (key: DisciplineKey) => {
+    const next = { ...discipline, [key]: !discipline[key] }
+    setDisciplineAndPersist(next)
+    // best-effort server sync
+    try {
+      if (userId) {
+        const habitId = habitIdMap[key]
+        if (habitId) {
+          await setHabitCompletion(userId, habitId, todayDate, next[key])
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to set habit completion', e)
+    }
+  }, [discipline, setDisciplineAndPersist, userId, habitIdMap, todayDate])
 
   const [startProteinAnimation, setStartProteinAnimation] = useState(false);
   const [startSunAnimation, setStartSunAnimation] = useState(false);
@@ -272,6 +365,58 @@ const Home = () => {
     );
   };
 
+  const renderDisciplineTriad = () => {
+    const size = 64
+    const onColor = 'text-white'
+    const offColor = 'text-muted-foreground'
+
+    return (
+      <section className="mb-6">
+        <h2 className="text-center text-base font-semibold tracking-wide text-muted-foreground">Discipline</h2>
+        <div className="relative mx-auto mt-4" style={{ width: 220, height: 190 }}>
+          {/* Top vertex - Meditation */}
+          <div className="absolute left-1/2 -translate-x-1/2" style={{ top: 0 }}>
+            <Toggle
+              pressed={discipline.meditation}
+              onPressedChange={() => toggleDiscipline('meditation')}
+              aria-label="Meditation habit"
+              className={`h-16 w-16 rounded-full border ${discipline.meditation ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-background '}`}
+            >
+              <FlowerLotus size={size / 2} className={discipline.meditation ? onColor : offColor} />
+            </Toggle>
+            <p className="mt-2 text-center text-xs text-muted-foreground">Meditation</p>
+          </div>
+
+          {/* Bottom-left vertex - Movement */}
+          <div className="absolute" style={{ left: 10, bottom: 0 }}>
+            <Toggle
+              pressed={discipline.movement}
+              onPressedChange={() => toggleDiscipline('movement')}
+              aria-label="Movement habit"
+              className={`h-16 w-16 rounded-full border ${discipline.movement ? 'bg-amber-500 text-white border-amber-500 shadow-md' : 'bg-background '}`}
+            >
+              <Sun size={size / 2} className={discipline.movement ? 'text-white' : offColor} />
+            </Toggle>
+            <p className="mt-2 text-center text-xs text-muted-foreground">Movement</p>
+          </div>
+
+          {/* Bottom-right vertex - Writing */}
+          <div className="absolute" style={{ right: 10, bottom: 0 }}>
+            <Toggle
+              pressed={discipline.writing}
+              onPressedChange={() => toggleDiscipline('writing')}
+              aria-label="Writing habit"
+              className={`h-16 w-16 rounded-full border ${discipline.writing ? 'bg-primary text-primary-foreground border-blue-600 shadow-md' : 'bg-background '}`}
+            >
+              <Feather size={size / 2} className={discipline.writing ? 'text-white' : offColor} />
+            </Toggle>
+            <p className="mt-2 text-center text-xs text-muted-foreground">Writing</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   const handleStartWorkout = () => {
     dispatch(startWorkoutAction({}));
     navigate('/workout');
@@ -287,17 +432,8 @@ const Home = () => {
         </header> */}
 
         <main className="mt-12">
-          {/* Updated flex container for better mobile layout */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 justify-items-center mb-8">
-            {renderProteinProgress()} 
-            {renderSunExposureProgress()}
-            {renderZone2CardioProgress()}
-          </div>
-
-          {/* Volume component underneath */}
-          <div className="w-full"> 
-            <Volume userId={userId} />
-          </div>
+          {renderDisciplineTriad()}
+          {/* Widgets moved to Analytics page */}
         </main>
     </div>
   );

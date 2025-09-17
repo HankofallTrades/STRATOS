@@ -1,85 +1,96 @@
 # Project Overview: STRATOS
 
-This document provides a high-level overview of the project structure to aid in development and feature additions.
+This document clarifies the vision and the architecture used across the codebase so we can iterate quickly and consistently.
 
-**Core Technologies:**
+## Vision
 
-*   **Framework/Library:** React
-*   **Build Tool:** Vite
-*   **Language:** TypeScript
-*   **UI Components:** shadcn/ui
-*   **Styling:** Tailwind CSS
-*   **Backend/Database:** Supabase (implied by `supabase/` directory)
-*   **State Management:** Redux Toolkit (implied by `src/hooks/redux.ts` and `src/state/store.ts`)
+STRATOS is a single-repo personal performance and life OS. It starts with fitness (workouts, analytics) and extends to daily habits, weekly goals/reflections, and an RPG-style character sheet that visualizes progress across domains.
 
-**Key Configuration Files:**
+Guiding principles:
+- Keep iteration speed high by staying single-repo and single Supabase project.
+- Define clean domain boundaries with a simple, explicit data contract (SQL views/RPCs).
+- Keep UI thin. Derive heavy/aggregated data in SQL where possible.
 
-*   `package.json`: Manages Node.js dependencies, scripts (`dev`, `build`, `lint`), and project metadata.
-*   `vite.config.ts`: Configures the Vite development server and build process.
-*   `tsconfig.json` (and variants): Defines TypeScript compiler options for the project.
-*   `tailwind.config.ts`: Configures Tailwind CSS, including theme customizations, plugins, and content paths.
-*   `postcss.config.js`: Configures PostCSS, often used with Tailwind.
-*   `components.json`: Likely configuration for `shadcn/ui` component management.
-*   `eslint.config.js`: Configuration for ESLint code linting.
-*   `supabase/config.toml`: Configuration for the Supabase instance.
+## Architecture at a glance
 
-**Source Code (`src/`) Structure:**
+- Runtime: React + TypeScript + Vite SPA.
+- Backend/Data: Supabase (Postgres, RLS policies, SQL views/RPCs).
+- State: React Query for server state; Redux Toolkit only where cross-page, cross-session global state is needed.
+- UI: shadcn/ui primitives in `src/components/core`, feature/domain views in `src/domains/*/view`.
+- Organization: Domain‑scoped MVC for clarity and testability.
 
-*   **`main.tsx`**: The main application entry point. Initializes React and renders the root component (`App`).
-*   **`App.tsx`**: The root React component. Likely sets up routing, global layout, and providers (e.g., Redux store).
-*   **`index.css` / `App.css`**: Global CSS styles and base styles.
-*   **`pages/`**: Contains top-level components representing application pages/routes.
-    *   `Index.tsx`: Main landing page or dashboard.
-    *   `Analytics.tsx`: Page for viewing workout analytics.
-    *   `Settings.tsx`: Page for application settings.
-    *   `NotFound.tsx`: Page displayed for invalid routes.
-*   **`components/`**: Reusable UI components.
-    *   `core/`: Basic, general-purpose UI components (e.g., `Dialog`, `Toast`, `Toggle`). Likely contains base shadcn/ui components.
-    *   `features/`: Components specific to certain application features.
-    *   `layout/`: Components defining page structure and layout (e.g., Header, Sidebar, Footer).
-*   **`lib/`**: Shared libraries, utilities, and external service integrations.
-    *   `constants.ts`: Application-wide constant values.
-    *   `integrations/`: Code for interacting with external services (e.g., `supabase/`).
-    *   `types/`: TypeScript type definitions and interfaces.
-    *   `utils/`: General utility functions used across the application.
-    *   `workout/`: Logic specifically related to workout functionality.
-*   **`state/`**: State management configuration and slices (likely Redux Toolkit).
-    *   `store.ts`: Configures the main Redux store, combining reducers and middleware.
-    *   `exercise/`: State logic related to exercises.
-    *   `history/`: State logic related to workout history.
-    *   `workout/`: State logic related to the active workout session.
-*   **`hooks/`**: Custom React hooks for reusable logic and state access.
-    *   `redux.ts`: Typed hooks (`useAppDispatch`, `useAppSelector`) for interacting with the Redux store.
-    *   `use-mobile.tsx`: Hook to detect if the app is running on a mobile device.
-    *   `use-toast.ts`: Hook for displaying toast notifications (likely integrates with `shadcn/ui` Toast).
-    *   `useWorkoutTimer.ts`: Hook for managing workout timers.
+### Domain‑scoped MVC
+Each domain follows the same structure and responsibilities. Example for `habits`:
 
-**Other Important Directories:**
+```
+src/domains/
+  habits/
+    model/         # Pure TS (no React)
+      types.ts     # zod + TS types
+      repository.ts# Supabase CRUD/RPC; the only place that does I/O
+      logic.ts     # Pure derivations/business rules; no I/O
+      slice.ts     # Optional Redux slice if the domain needs global state
+    controller/    # React-only orchestration (hooks)
+      useTriad.ts
+      useCompletions.ts
+    view/          # Presentational JSX only; no data access
+      Triad.tsx
+    index.ts       # Barrel re-export (public API for the domain)
+```
 
-*   **`public/`**: Static assets (images, fonts, etc.) directly served by the webserver.
-*   **`supabase/`**: Contains Supabase configuration (`config.toml`) and potentially database migrations or functions (though `.temp/` might be ignored artifacts).
-*   **`docs/`**: Documentation files (if any).
+Responsibilities:
+- Model: Types, validation, repositories (data access), business logic (pure functions). No React.
+- Controller: Hooks that orchestrate repositories/logic, wire React Query, handle optimistic updates. No JSX.
+- View: Presentational components. Receive data/handlers via props only. No Supabase/Redux imports.
 
-**Adding New Features - General Workflow:**
+### Data contract
+- Keep tables in `public` with strict RLS.
+- Expose cross-domain/aggregated data through SQL views or RPCs. Example: an RPC `get_character_sheet(user_id)` that returns XP/Level from habits, workouts, and nutrition.
+- Frontend controllers call `supabase.rpc(...)` and never assemble complex cross-domain joins in components.
 
-1.  **Define Requirements:** Clearly outline the feature's functionality and UI.
-2.  **Create Page (if necessary):** Add a new component in `src/pages/`.
-3.  **Add Route:** Update routing logic (likely in `src/App.tsx` or a dedicated routing file) to include the new page.
-4.  **Develop Components:**
-    *   Create feature-specific components in `src/components/features/`.
-    *   Utilize or create core components in `src/components/core/`.
-    *   Use layout components from `src/components/layout/`.
-5.  **Manage State:**
-    *   Define necessary state slices in `src/state/`.
-    *   Use `useAppSelector` and `useAppDispatch` hooks (`src/hooks/redux.ts`) to interact with the state in components.
-6.  **Implement Logic:**
-    *   Add utility functions in `src/lib/utils/`.
-    *   Create feature-specific logic modules (e.g., in `src/lib/` or within feature components).
-    *   Encapsulate reusable logic in custom hooks in `src/hooks/`.
-7.  **Data Interaction:**
-    *   Add functions to interact with Supabase (or other backends) in `src/lib/integrations/`.
-    *   Update Supabase schema/config in `supabase/` if needed.
-8.  **Add Types:** Define necessary TypeScript types in `src/lib/types/`.
-9.  **Styling:** Use Tailwind CSS utility classes for styling. Add custom styles to relevant CSS files if necessary.
-10. **Testing:** Add unit/integration tests (if applicable).
-11. **Dependencies:** Add any new required libraries to `package.json` using `npm install` or `bun install`.
+## Source structure
+
+- `src/`
+  - `domains/` (primary organization)
+    - `workout/`, `habits/`, `goals/`, `rpg/`, `notes/` (as needed)
+      - `model/`, `controller/`, `view/`, `index.ts`
+  - `components/`
+    - `core/` shadcn-style primitives (buttons, dialogs, inputs, etc.)
+    - `layout/` global layout components (e.g., navigation)
+  - `hooks/` shared/utility hooks not tied to a single domain (e.g., `use-mobile.tsx`, `useElapsedTime.ts`)
+  - `lib/`
+    - `constants.ts`, `utils/*`, `prompts/*`, etc.
+    - `integrations/supabase/client.ts` (shared Supabase client)
+  - `pages/` route-level components that compose domain views
+  - `state/` Redux store and slices used by multiple pages (only if necessary)
+
+- `supabase/`
+  - `migrations/` DDL, RLS, views, and RPCs (source of truth for the backend contract)
+  - `config.toml` Supabase local/dev configuration
+
+- `docs/`
+  - `overview.md` (this doc)
+  - `plan.md` (active implementation plan with checklist)
+
+- Key configs: `package.json`, `vite.config.ts`, `tsconfig*.json`, `tailwind.config.ts`, `postcss.config.js`, `eslint.config.js`.
+
+## Coding conventions
+
+- Views never import Supabase or Redux directly; they consume props from controllers.
+- Controllers use React Query for server state; repository functions are the query/mutation fetchers.
+- Repositories are the only place that perform I/O. Keep them thin and typed, and re-use them across controllers.
+- Prefer SQL views/RPCs for non-trivial aggregations so frontends remain simple and portable.
+- Export only from each domain’s `index.ts` to keep a clean public surface.
+- Use clear, descriptive names; avoid abbreviations; favor pure functions and early returns.
+
+## Adding new features (workflow)
+
+1. Define the domain or extend an existing one.
+2. Model: add/adjust tables/migrations and repository functions; add types/validation.
+3. Controller: add hooks that wrap repository calls with React Query and orchestration.
+4. View: build presentational components that consume the controller hooks via props.
+5. Route: wire a page in `src/pages` if needed and compose domain views.
+6. Keep RLS and RPCs updated in `supabase/migrations` when data shapes change.
+
+## Roadmap snapshot
+See `docs/plan.md` for the active, checkable implementation plan (PR0–PR5), starting with the `habits` domain as the pilot.
