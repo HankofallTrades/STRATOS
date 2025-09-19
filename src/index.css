@@ -138,3 +138,28 @@
     @apply border-green-800;
   }
 }
+
+/* Papyrus texture effect */
+.papyrus-texture {
+  background-image: 
+    radial-gradient(circle at 25% 25%, rgba(139, 69, 19, 0.1) 1px, transparent 1px),
+    radial-gradient(circle at 75% 75%, rgba(160, 82, 45, 0.08) 1px, transparent 1px),
+    radial-gradient(circle at 50% 10%, rgba(139, 69, 19, 0.05) 2px, transparent 2px),
+    radial-gradient(circle at 20% 80%, rgba(160, 82, 45, 0.06) 1px, transparent 1px),
+    radial-gradient(circle at 90% 30%, rgba(139, 69, 19, 0.04) 1px, transparent 1px),
+    linear-gradient(45deg, transparent 25%, rgba(139, 69, 19, 0.02) 25%, rgba(139, 69, 19, 0.02) 50%, transparent 50%, transparent 75%, rgba(139, 69, 19, 0.02) 75%);
+  background-size: 
+    20px 20px, 
+    30px 30px, 
+    40px 40px, 
+    25px 25px, 
+    35px 35px,
+    8px 8px;
+  background-position: 
+    0 0, 
+    10px 10px, 
+    5px 5px, 
+    15px 15px, 
+    20px 20px,
+    0 0;
+}
