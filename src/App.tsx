@@ -6,7 +6,8 @@ import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { store, persistor } from './state/store';
-import { ThemeProvider } from "next-themes";
+import { ThemeProvider as NextThemeProvider } from "next-themes";
+import { ThemeProvider } from "@/lib/themes";
 import BottomNav from "@/components/layout/BottomNav";
 import ProtectedRoute from "@/components/layout/ProtectedRoute";
 import Home from "./pages/Home";
@@ -453,8 +454,9 @@ const App = () => {
   return (
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
-          <TooltipProvider>
+        <NextThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+          <ThemeProvider>
+            <TooltipProvider>
             <Toaster />
             <Sonner />
             <Router>
@@ -474,8 +476,9 @@ const App = () => {
                 />
               </Routes>
             </Router>
-          </TooltipProvider>
-        </ThemeProvider>
+            </TooltipProvider>
+          </ThemeProvider>
+        </NextThemeProvider>
       </PersistGate>
     </Provider>
   );

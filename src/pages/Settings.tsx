@@ -14,6 +14,7 @@ import {
 } from "@/components/core/select";
 import { RadioGroup, RadioGroupItem } from "@/components/core/radio-group";
 import { toast } from "sonner";
+import { useTheme } from '@/lib/themes';
 
 // Keys for localStorage
 const LLM_PROVIDER_PREF_KEY = 'llmProviderPref';
@@ -30,6 +31,7 @@ const defaultOpenRouterModel = 'deepseek/deepseek-chat-v3-0324:free';
 
 const Settings: React.FC = () => {
   const { signOut, user, triggerOnboarding } = useAuth();
+  const { currentTheme, setTheme, availableThemes } = useTheme();
   const [loadingSignOut, setLoadingSignOut] = useState(false);
   const [loadingBodyweight, setLoadingBodyweight] = useState(false);
   const [bodyweight, setBodyweight] = useState<number | string>('');
@@ -196,6 +198,34 @@ const Settings: React.FC = () => {
       {user && (
         <p className="text-muted-foreground">Logged in as: {user.email}</p>
       )}
+
+      <div className="border p-4 rounded-md space-y-4">
+        <h2 className="text-lg font-medium">App Theme</h2>
+        <div className="space-y-2">
+          <Label htmlFor="theme-select">Theme</Label>
+          <Select
+            value={currentTheme.id}
+            onValueChange={(value) => setTheme(value as any)}
+          >
+            <SelectTrigger id="theme-select">
+              <SelectValue placeholder="Select Theme" />
+            </SelectTrigger>
+            <SelectContent>
+              {availableThemes.map((theme) => (
+                <SelectItem key={theme.id} value={theme.id}>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{theme.name}</span>
+                    <span className="text-xs text-muted-foreground">{theme.description}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Choose your preferred app theme. Changes apply immediately.
+          </p>
+        </div>
+      </div>
 
       <form onSubmit={handleUpdateBodyweight} className="space-y-4 border p-4 rounded-md">
          <h2 className="text-lg font-medium">Profile Information</h2>

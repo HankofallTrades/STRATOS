@@ -18,6 +18,7 @@ import Volume from '@/components/features/Analytics/Volume'; // Import Volume co
 import SunMoonProgress from '@/components/core/charts/SunMoonProgress'; // Import SunMoonProgress
 import { getDailySunExposure } from '@/lib/integrations/supabase/wellbeing'; // Import sun exposure fetcher
 import { useTriad, useHabitCompletions, HabitButton } from '@/domains/habits';
+import { useTheme } from '@/lib/themes';
 
 // Interface for daily sun exposure data
 interface DailySunExposureData {
@@ -29,6 +30,7 @@ const Home = () => {
   const dispatch = useAppDispatch();
   const currentWorkout = useAppSelector(selectCurrentWorkout);
   const { user } = useAuth();
+  const { currentTheme } = useTheme();
   const userId = user?.id;
   const todayDate = useMemo(() => new Date().toISOString().split('T')[0], []);
   const { habits, isLoading: isLoadingHabits } = useTriad(userId)
@@ -275,8 +277,11 @@ const Home = () => {
 
   const renderDisciplineTriad = () => {
     return (
-      <section className="mb-6">
-        <h2 className="text-center text-base font-semibold tracking-wide text-muted-foreground">Discipline</h2>
+      <section className={`${currentTheme.components.disciplineCard.containerClasses} ${currentTheme.colors.background.card}`}>
+        <h2 className={`${currentTheme.components.disciplineCard.titleClasses} ${currentTheme.brand.font}`}>DISCIPLINE</h2>
+        <div className="text-center mb-6">
+          <div className={currentTheme.components.disciplineCard.dividerClasses}></div>
+        </div>
         <div className="relative mx-auto mt-4" style={{ width: 220, height: 190 }}>
           {/* Meditation */}
           <div className="absolute left-1/2 -translate-x-1/2" style={{ top: 0 }}>
@@ -289,7 +294,7 @@ const Home = () => {
                 if (!h) return; const next = !completions[h.id]; toggleCompletion(h.id, next);
               }}
               icon={<FlowerLotus size={32} /> }
-              activeClassName="bg-indigo-600 text-white border-indigo-600 shadow-md"
+              activeClassName="bg-gradient-to-br from-indigo-600 to-purple-700 text-white border-indigo-500"
             />
           </div>
 
@@ -304,7 +309,7 @@ const Home = () => {
                 if (!h) return; const next = !completions[h.id]; toggleCompletion(h.id, next);
               }}
               icon={<Sun size={32} /> }
-              activeClassName="bg-amber-500 text-white border-amber-500 shadow-md"
+              activeClassName="bg-gradient-to-br from-amber-500 to-orange-600 text-white border-amber-400"
             />
           </div>
 
@@ -319,7 +324,7 @@ const Home = () => {
                 if (!h) return; const next = !completions[h.id]; toggleCompletion(h.id, next);
               }}
               icon={<Feather size={32} /> }
-              activeClassName="bg-primary text-primary-foreground border-blue-600 shadow-md"
+              activeClassName="bg-gradient-to-br from-blue-600 to-cyan-700 text-white border-blue-500"
             />
           </div>
         </div>
@@ -333,18 +338,23 @@ const Home = () => {
   };
 
   return (
-    <div className="container mx-auto p-4">
-        {/* <header className="flex flex-col items-center justify-between mb-8 text-center mt-8">
-          <h1 className="text-5xl md:text-6xl font-bold mb-2 text-fitnessBlue dark:text-fitnessBlue uppercase font-montserrat">
-            Stratos
+    <div className={`min-h-screen ${currentTheme.colors.background.primary}`}>
+      <div className="container mx-auto p-4">
+        <header className={currentTheme.components.header.containerClasses}>
+          <h1 className={`${currentTheme.components.header.titleClasses} ${currentTheme.brand.font}`}>
+            {currentTheme.brand.name}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">Elevate your game</p>
-        </header> */}
+          <p className={`${currentTheme.components.header.taglineClasses} ${currentTheme.brand.font}`}>
+            {currentTheme.brand.tagline}
+          </p>
+          <div className="w-32 h-0.5 bg-gradient-to-r from-transparent via-amber-500 to-transparent opacity-60"></div>
+        </header>
 
-        <main className="mt-12">
+        <main className="mt-8">
           {renderDisciplineTriad()}
           {/* Widgets moved to Analytics page */}
         </main>
+      </div>
     </div>
   );
 };

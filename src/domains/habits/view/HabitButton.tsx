@@ -1,5 +1,6 @@
 import React from 'react'
 import { Toggle } from '@/components/core/Toggle/toggle'
+import { useTheme } from '@/lib/themes'
 
 export type HabitButtonProps = {
   label: string
@@ -18,6 +19,8 @@ export const HabitButton: React.FC<HabitButtonProps> = ({
   icon,
   activeClassName,
 }) => {
+  const { currentTheme } = useTheme()
+  
   return (
     <div className="flex flex-col items-center">
       <Toggle
@@ -25,11 +28,21 @@ export const HabitButton: React.FC<HabitButtonProps> = ({
         onPressedChange={onPressedChange}
         aria-label={`${label} habit`}
         disabled={disabled}
-        className={`h-16 w-16 rounded-full border ${pressed ? activeClassName : 'bg-background '}`}
+        className={`${currentTheme.components.habitButton.defaultClasses} ${
+          pressed 
+            ? `${activeClassName} ${currentTheme.components.habitButton.activeClasses}` 
+            : `${currentTheme.colors.button.default} ${currentTheme.colors.accent.border} ${currentTheme.colors.button.hover}`
+        }`}
       >
-        <span className={pressed ? 'text-white' : 'text-muted-foreground'}>{icon}</span>
+        <span className={`${currentTheme.components.habitButton.iconClasses} ${
+          pressed ? 'text-white drop-shadow-sm' : currentTheme.colors.text.secondary
+        }`}>
+          {icon}
+        </span>
       </Toggle>
-      <p className="mt-2 text-center text-xs text-muted-foreground">{label}</p>
+      <p className={currentTheme.components.habitButton.labelClasses}>
+        {label}
+      </p>
     </div>
   )
 }
