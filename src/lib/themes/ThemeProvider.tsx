@@ -31,10 +31,26 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
 
   const availableThemes = Object.values(themes)
 
-  // Apply theme to document root for CSS custom properties if needed
+  // Apply theme to document root for CSS custom properties
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', themeId)
-  }, [themeId])
+    const root = document.documentElement
+
+    // Set data-theme attribute for potential specific overrides
+    root.setAttribute('data-theme', themeId)
+
+    // Apply colors as CSS variables
+    Object.entries(currentTheme.colors).forEach(([key, value]) => {
+      // Convert camelCase to kebab-case for CSS variables
+      const cssVarName = `--${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`
+      root.style.setProperty(cssVarName, value)
+    })
+
+    // Apply font family
+    if (currentTheme.brand.font) {
+      // This is a bit of a hack, but we can set a variable for the font family if we want
+      // or just rely on the class being applied to the body/components
+    }
+  }, [themeId, currentTheme])
 
   return (
     <ThemeContext.Provider value={{

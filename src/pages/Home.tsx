@@ -56,11 +56,11 @@ const Home = () => {
     }
   );
 
-  const { 
-    data: dailyProtein, 
-    isLoading: isLoadingProtein, 
-    isError: isErrorProtein, 
-    error: proteinError 
+  const {
+    data: dailyProtein,
+    isLoading: isLoadingProtein,
+    isError: isErrorProtein,
+    error: proteinError
   } = useQuery<
     DailyProteinIntake,
     Error
@@ -68,22 +68,22 @@ const Home = () => {
     {
       queryKey: ['dailyProteinIntake', userId, todayDate],
       queryFn: async () => {
-        if (!userId) { 
-            return { total_protein: 0 }; 
+        if (!userId) {
+          return { total_protein: 0 };
         }
         const intake = await getDailyProteinIntake(userId, todayDate);
         return intake;
       },
-      enabled: !!userId, 
-      staleTime: 1 * 60 * 1000, 
+      enabled: !!userId,
+      staleTime: 1 * 60 * 1000,
     }
   );
 
-  const { 
-    data: dailySunExposure, 
-    isLoading: isLoadingSunExposure, 
-    isError: isErrorSunExposure, 
-    error: sunExposureError 
+  const {
+    data: dailySunExposure,
+    isLoading: isLoadingSunExposure,
+    isError: isErrorSunExposure,
+    error: sunExposureError
   } = useQuery<
     DailySunExposureData,
     Error
@@ -91,24 +91,24 @@ const Home = () => {
     {
       queryKey: ['dailySunExposure', userId, todayDate],
       queryFn: async () => {
-        if (!userId) { 
-            return { total_hours: 0 }; 
+        if (!userId) {
+          return { total_hours: 0 };
         }
         // Assuming getDailySunExposure is already created and returns { total_hours: number }
         const exposure = await getDailySunExposure(userId, todayDate);
         return exposure;
       },
-      enabled: !!userId, 
-      staleTime: 1 * 60 * 1000, 
+      enabled: !!userId,
+      staleTime: 1 * 60 * 1000,
     }
   );
 
   // New query for weekly zone 2 cardio minutes
-  const { 
-    data: weeklyZone2Cardio, 
-    isLoading: isLoadingZone2Cardio, 
-    isError: isErrorZone2Cardio, 
-    error: zone2CardioError 
+  const {
+    data: weeklyZone2Cardio,
+    isLoading: isLoadingZone2Cardio,
+    isError: isErrorZone2Cardio,
+    error: zone2CardioError
   } = useQuery<
     WeeklyZone2CardioData,
     Error
@@ -116,8 +116,8 @@ const Home = () => {
     {
       queryKey: ['weeklyZone2Cardio', userId],
       queryFn: async () => {
-        if (!userId) { 
-            return { total_minutes: 0 }; 
+        if (!userId) {
+          return { total_minutes: 0 };
         }
         try {
           const result = await getWeeklyZone2CardioMinutes(userId);
@@ -128,8 +128,8 @@ const Home = () => {
           return { total_minutes: 85 }; // Mock data
         }
       },
-      enabled: !!userId, 
-      staleTime: 5 * 60 * 1000, 
+      enabled: !!userId,
+      staleTime: 5 * 60 * 1000,
     }
   );
 
@@ -138,7 +138,7 @@ const Home = () => {
     if (!isLoadingProtein && dailyProtein) {
       proteinTimer = setTimeout(() => {
         setStartProteinAnimation(true);
-      }, 50); 
+      }, 50);
     } else if (isLoadingProtein) {
       setStartProteinAnimation(false);
     }
@@ -152,7 +152,7 @@ const Home = () => {
     if (!isLoadingSunExposure && dailySunExposure) {
       sunTimer = setTimeout(() => {
         setStartSunAnimation(true);
-      }, 50); 
+      }, 50);
     } else if (isLoadingSunExposure) {
       setStartSunAnimation(false);
     }
@@ -166,7 +166,7 @@ const Home = () => {
     if (!isLoadingZone2Cardio && weeklyZone2Cardio) {
       cardioTimer = setTimeout(() => {
         setStartCardioAnimation(true);
-      }, 50); 
+      }, 50);
     } else if (isLoadingZone2Cardio) {
       setStartCardioAnimation(false);
     }
@@ -204,17 +204,17 @@ const Home = () => {
     const actualDisplayGoal = goalReady ? calculatedProteinGoal : 0;
 
     const displayCurrent = startProteinAnimation ? currentProteinIntake : 0;
-    const displayGoal = startProteinAnimation ? actualDisplayGoal : 0; 
+    const displayGoal = startProteinAnimation ? actualDisplayGoal : 0;
 
     const goalStatusMessage =
       (startProteinAnimation || !isLoadingProtein) && isLoadingProfile && userId && !userProfile ? "Loading goal..." :
-      (startProteinAnimation || !isLoadingProtein) && !isLoadingProfile && userId && (!userProfile || typeof userProfile.weight_kg !== 'number') ? "Set weight in profile for goal" :
-      null;
+        (startProteinAnimation || !isLoadingProtein) && !isLoadingProfile && userId && (!userProfile || typeof userProfile.weight_kg !== 'number') ? "Set weight in profile for goal" :
+          null;
 
     return (
       <div className="flex flex-col items-center">
         <CircularProgressDisplay
-          currentValue={displayCurrent} 
+          currentValue={displayCurrent}
           goalValue={displayGoal}
           label="Today's Protein"
           unit="g"
@@ -234,12 +234,12 @@ const Home = () => {
     if (isErrorSunExposure) {
       return <p className="text-sm text-destructive text-center">Error: {sunExposureError?.message || 'Could not load sun exposure'}</p>;
     }
-    
+
     const displayCurrentSun = startSunAnimation ? currentSunExposureHours : 0;
     const displayGoalSun = startSunAnimation ? sunExposureGoalHours : 0;
 
     return (
-      <SunMoonProgress 
+      <SunMoonProgress
         currentHours={displayCurrentSun}
         goalHours={displayGoalSun}
         size={140}
@@ -260,7 +260,7 @@ const Home = () => {
     return (
       <div className="flex flex-col items-center">
         <CircularProgressDisplay
-          currentValue={displayCurrentCardio} 
+          currentValue={displayCurrentCardio}
           goalValue={displayGoalCardio}
           label="Weekly Endurance"
           unit="min"
@@ -277,10 +277,10 @@ const Home = () => {
 
   const renderDisciplineTriad = () => {
     return (
-      <section className={`${currentTheme.components.disciplineCard.containerClasses} ${currentTheme.colors.background.card}`}>
-        <h2 className={`${currentTheme.components.disciplineCard.titleClasses} ${currentTheme.brand.font}`}>DISCIPLINE</h2>
+      <section className="mb-6 bg-card border border-border rounded-2xl p-8 shadow-xl">
+        <h2 className="text-center text-xl font-bold tracking-[0.2em] text-primary font-serif mb-2">DISCIPLINE</h2>
         <div className="text-center mb-6">
-          <div className={currentTheme.components.disciplineCard.dividerClasses}></div>
+          <div className="inline-block w-16 h-0.5 bg-primary opacity-80"></div>
         </div>
         <div className="relative mx-auto mt-4" style={{ width: 220, height: 190 }}>
           {/* Meditation */}
@@ -293,7 +293,7 @@ const Home = () => {
                 const h = habits.find(h => h.title.toLowerCase() === 'meditation');
                 if (!h) return; const next = !completions[h.id]; toggleCompletion(h.id, next);
               }}
-              icon={<FlowerLotus size={32} /> }
+              icon={<FlowerLotus size={32} />}
               activeClassName="bg-gradient-to-br from-indigo-600 to-purple-700 text-white border-indigo-500"
             />
           </div>
@@ -308,7 +308,7 @@ const Home = () => {
                 const h = habits.find(h => h.title.toLowerCase() === 'movement');
                 if (!h) return; const next = !completions[h.id]; toggleCompletion(h.id, next);
               }}
-              icon={<Sun size={32} /> }
+              icon={<Sun size={32} />}
               activeClassName="bg-gradient-to-br from-amber-500 to-orange-600 text-white border-amber-400"
             />
           </div>
@@ -323,7 +323,7 @@ const Home = () => {
                 const h = habits.find(h => h.title.toLowerCase() === 'writing');
                 if (!h) return; const next = !completions[h.id]; toggleCompletion(h.id, next);
               }}
-              icon={<Feather size={32} /> }
+              icon={<Feather size={32} />}
               activeClassName="bg-gradient-to-br from-blue-600 to-cyan-700 text-white border-blue-500"
             />
           </div>
@@ -338,16 +338,16 @@ const Home = () => {
   };
 
   return (
-    <div className={`min-h-screen ${currentTheme.colors.background.primary}`}>
+    <div className="min-h-screen bg-background pb-20">
       <div className="container mx-auto p-4">
-        <header className={currentTheme.components.header.containerClasses}>
-          <h1 className={`${currentTheme.components.header.titleClasses} ${currentTheme.brand.font}`}>
+        <header className="flex flex-col items-center justify-between mb-12 text-center pt-8">
+          <h1 className="text-6xl md:text-7xl font-bold mb-3 text-primary drop-shadow-lg font-serif tracking-wider">
             {currentTheme.brand.name}
           </h1>
-          <p className={`${currentTheme.components.header.taglineClasses} ${currentTheme.brand.font}`}>
+          <p className="text-muted-foreground mb-6 text-lg font-medium italic tracking-wide">
             {currentTheme.brand.tagline}
           </p>
-          <div className="w-32 h-0.5 bg-gradient-to-r from-transparent via-amber-500 to-transparent opacity-60"></div>
+          <div className="w-32 h-0.5 bg-primary opacity-60"></div>
         </header>
 
         <main className="mt-8">
