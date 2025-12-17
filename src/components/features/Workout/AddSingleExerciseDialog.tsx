@@ -67,7 +67,7 @@ interface FetchedEquipmentType {
 // Interface for the latest single log data passed as prop
 // (Can be defined here or imported if defined elsewhere)
 interface LatestSingleLogData extends Tables<'exercise_sets'> {
-    exercise_id: string;
+  exercise_id: string;
 }
 
 const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open, onOpenChange, defaultLogData }) => {
@@ -95,51 +95,51 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
 
   // Fetch User Profile (for potential bodyweight autofill - currently unused but fetched)
   const { data: profile } = useQuery<Profile | null>({
-      queryKey: ['profile', user?.id],
-      queryFn: async () => {
-          if (!user?.id) return null;
-          const { data, error } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', user.id)
-              .single();
-          if (error) throw error;
-          return data;
-      },
-      enabled: !!user?.id && open,
-      staleTime: 1000 * 60 * 5, // Refetch profile occasionally
+    queryKey: ['profile', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id && open,
+    staleTime: 1000 * 60 * 5, // Refetch profile occasionally
   });
 
   // Fetch Variations for selected exercise
   const { data: variations = [], isLoading: isLoadingVariations, refetch: refetchVariations } = useQuery<ExerciseVariation[]>({
-      queryKey: ['exerciseVariations', selectedExerciseId],
-      queryFn: async () => {
-          if (!selectedExerciseId) return []; 
-          const { data, error } = await supabase
-              .from('exercise_variations')
-              .select('*')
-              .eq('exercise_id', selectedExerciseId)
-              // Do not fetch 'Standard' if it's stored; it's handled conceptually
-              .not('variation_name', 'ilike', DEFAULT_VARIATION); 
-          if (error) throw error;
-          return data ?? []; 
-      },
-      enabled: !!selectedExerciseId && open,
+    queryKey: ['exerciseVariations', selectedExerciseId],
+    queryFn: async () => {
+      if (!selectedExerciseId) return [];
+      const { data, error } = await supabase
+        .from('exercise_variations')
+        .select('*')
+        .eq('exercise_id', selectedExerciseId)
+        // Do not fetch 'Standard' if it's stored; it's handled conceptually
+        .not('variation_name', 'ilike', DEFAULT_VARIATION);
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!selectedExerciseId && open,
   });
 
   // Fetch Equipment Types from DB
-  const { data: dbEquipmentTypes = [], isLoading: isLoadingDbEquipmentTypes, refetch: refetchDbEquipmentTypes } = useQuery<FetchedEquipmentType[], Error, FetchedEquipmentType[]> ({
+  const { data: dbEquipmentTypes = [], isLoading: isLoadingDbEquipmentTypes, refetch: refetchDbEquipmentTypes } = useQuery<FetchedEquipmentType[], Error, FetchedEquipmentType[]>({
     queryKey: ['dbEquipmentTypes'],
     queryFn: async (): Promise<FetchedEquipmentType[]> => {
-        const { data, error } = await supabase
-            .from('equipment_types') // Assuming this is your table name
-            .select('id, name');
-        if (error) {
-            console.error("Error fetching equipment types:", error);
-            toast({ title: "Error", description: "Could not load equipment types.", variant: "destructive" });
-            return [];
-        }
-        return data || [];
+      const { data, error } = await supabase
+        .from('equipment_types') // Assuming this is your table name
+        .select('id, name');
+      if (error) {
+        console.error("Error fetching equipment types:", error);
+        toast({ title: "Error", description: "Could not load equipment types.", variant: "destructive" });
+        return [];
+      }
+      return data || [];
     },
     staleTime: 1000 * 60 * 5, // Cache for 5 minutes
     enabled: open, // Fetch when dialog is open
@@ -147,33 +147,33 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
 
   // Fetch Last Set for selected exercise
   const { data: lastSet, isLoading: isLoadingLastSet } = useQuery<ExerciseSet | null>({
-      queryKey: ['lastSet', user?.id, selectedExerciseId],
-      queryFn: async () => {
-          if (!user?.id || !selectedExerciseId) return null;
-          const { data, error } = await supabase
-              .from('exercise_sets')
-              .select('*, workout_exercises!inner(workout_id, user_id:workouts!inner(user_id))') // Fetch through relations to ensure user match
-              .eq('workout_exercises.workouts.user_id', user.id)
-              .eq('workout_exercises.exercise_id', selectedExerciseId)
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .maybeSingle(); // Use maybeSingle to return null if no record found
-              
-          if (error) {
-            // It's okay if no last set is found, don't throw error
-            if (error.code === 'PGRST116') { // code for "relation doesn't exist" or similar when no match
-                 console.log("No previous set found for this exercise.");
-                 return null;
-            } 
-            console.error("Error fetching last set:", error);
-            // Optionally show a toast, but might be noisy
-            // toast({ title: "Error", description: "Could not fetch previous set data.", variant: "destructive" });
-            return null; // Return null on error
-          }
-          return data;
-      },
-      enabled: !!user?.id && !!selectedExerciseId && open, // Fetch only when user and exercise are selected
-      staleTime: 1000 * 60, // Cache for 1 minute
+    queryKey: ['lastSet', user?.id, selectedExerciseId],
+    queryFn: async () => {
+      if (!user?.id || !selectedExerciseId) return null;
+      const { data, error } = await supabase
+        .from('exercise_sets')
+        .select('*, workout_exercises!inner(workout_id, user_id:workouts!inner(user_id))') // Fetch through relations to ensure user match
+        .eq('workout_exercises.workouts.user_id', user.id)
+        .eq('workout_exercises.exercise_id', selectedExerciseId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(); // Use maybeSingle to return null if no record found
+
+      if (error) {
+        // It's okay if no last set is found, don't throw error
+        if (error.code === 'PGRST116') { // code for "relation doesn't exist" or similar when no match
+          console.log("No previous set found for this exercise.");
+          return null;
+        }
+        console.error("Error fetching last set:", error);
+        // Optionally show a toast, but might be noisy
+        // toast({ title: "Error", description: "Could not fetch previous set data.", variant: "destructive" });
+        return null; // Return null on error
+      }
+      return data;
+    },
+    enabled: !!user?.id && !!selectedExerciseId && open, // Fetch only when user and exercise are selected
+    staleTime: 1000 * 60, // Cache for 1 minute
   });
 
   // Memoization
@@ -184,41 +184,41 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
   // Effect to reset form state when dialog opens/closes or defaultLogData changes
   useEffect(() => {
     if (open) {
-        const initialExercise = defaultLogData?.exercise_id ? exercises.find(ex => ex.id === defaultLogData.exercise_id) : null;
-        const isStaticDefault = initialExercise?.is_static ?? false;
+      const initialExercise = defaultLogData?.exercise_id ? exercises.find(ex => ex.id === defaultLogData.exercise_id) : null;
+      const isStaticDefault = initialExercise?.is_static ?? false;
 
-        setSelectedExerciseId(defaultLogData?.exercise_id ?? '');
-        setWeight(defaultLogData?.weight?.toString() ?? '');
-        setSelectedEquipment(defaultLogData?.equipment_type ?? null);
-        
-        // Handle initial variation from defaultLogData
-        const initialVariation = defaultLogData?.variation;
-        if (initialVariation && initialVariation.toLowerCase() !== DEFAULT_VARIATION.toLowerCase()) {
-            setSelectedVariation(initialVariation);
-        } else {
-            setSelectedVariation(null); // Default to Standard (null)
-        }
+      setSelectedExerciseId(defaultLogData?.exercise_id ?? '');
+      setWeight(defaultLogData?.weight?.toString() ?? '');
+      setSelectedEquipment(defaultLogData?.equipment_type ?? null);
 
-        if (isStaticDefault) {
-            setTimeInSeconds(defaultLogData?.time_seconds?.toString() ?? '');
-            setReps(''); // Clear reps if static
-        } else {
-            setReps(defaultLogData?.reps?.toString() ?? '');
-            setTimeInSeconds(''); // Clear time if not static
-        }
-        // Reset variation adding state
-        setIsAddingVariation(false);
-        setNewVariationName('');
+      // Handle initial variation from defaultLogData
+      const initialVariation = defaultLogData?.variation;
+      if (initialVariation && initialVariation.toLowerCase() !== DEFAULT_VARIATION.toLowerCase()) {
+        setSelectedVariation(initialVariation);
+      } else {
+        setSelectedVariation(null); // Default to Standard (null)
+      }
+
+      if (isStaticDefault) {
+        setTimeInSeconds(defaultLogData?.time_seconds?.toString() ?? '');
+        setReps(''); // Clear reps if static
+      } else {
+        setReps(defaultLogData?.reps?.toString() ?? '');
+        setTimeInSeconds(''); // Clear time if not static
+      }
+      // Reset variation adding state
+      setIsAddingVariation(false);
+      setNewVariationName('');
     } else {
-        // When closing, clear everything
-        setSelectedExerciseId('');
-        setReps('');
-        setTimeInSeconds('');
-        setWeight('');
-        setSelectedEquipment(null);
-        setSelectedVariation(null);
-        queryClient.removeQueries({ queryKey: ['lastSet', user?.id, selectedExerciseId], exact: true });
-        queryClient.removeQueries({ queryKey: ['exerciseVariations', selectedExerciseId], exact: true });
+      // When closing, clear everything
+      setSelectedExerciseId('');
+      setReps('');
+      setTimeInSeconds('');
+      setWeight('');
+      setSelectedEquipment(null);
+      setSelectedVariation(null);
+      queryClient.removeQueries({ queryKey: ['lastSet', user?.id, selectedExerciseId], exact: true });
+      queryClient.removeQueries({ queryKey: ['exerciseVariations', selectedExerciseId], exact: true });
     }
   }, [open, defaultLogData, queryClient, user?.id, exercises]);
 
@@ -238,14 +238,14 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
       if (lastSet) { // lastSet is an object (successfully fetched last set data)
         setWeight(lastSet.weight?.toString() ?? '');
         // Directly use lastSet's equipment_type. If null, it means "no specific equipment" or that bodyweight was used.
-        setSelectedEquipment(lastSet.equipment_type); 
-        
+        setSelectedEquipment(lastSet.equipment_type);
+
         const lastVariation = lastSet.variation;
         if (lastVariation && lastVariation.toLowerCase() !== DEFAULT_VARIATION.toLowerCase()) {
-            setSelectedVariation(lastVariation); // Use lastSet's variation
+          setSelectedVariation(lastVariation); // Use lastSet's variation
         } else {
-            // If lastSet.variation is null or 'Standard' (case-insensitive), set to null (conceptual Standard)
-            setSelectedVariation(null);
+          // If lastSet.variation is null or 'Standard' (case-insensitive), set to null (conceptual Standard)
+          setSelectedVariation(null);
         }
 
         if (isStatic) {
@@ -255,13 +255,13 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
           setReps(lastSet.reps?.toString() ?? '');
           setTimeInSeconds(''); // Clear time if not static
         }
-      } else { 
+      } else {
         // This 'else' covers:
         // 1. lastSet is null (query ran, no prior set found for this user/exercise)
         // 2. lastSet is undefined (query is loading or hasn't run for the current selectedExercise)
         // In both these cases, default to the exercise's default equipment and 'Standard' variation.
-        setWeight(''); 
-        setSelectedEquipment(selectedExercise.default_equipment_type ?? 'Bodyweight'); 
+        setWeight('');
+        setSelectedEquipment(selectedExercise.default_equipment_type ?? 'Bodyweight');
         setSelectedVariation(null); // Default to Standard
 
         if (isStatic) {
@@ -273,13 +273,13 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
         }
       }
     } else { // No exercise selected (e.g. after clearing)
-        setWeight('');
-        setReps('');
-        setTimeInSeconds('');
-        setSelectedEquipment(null);
-        setSelectedVariation(null); 
+      setWeight('');
+      setReps('');
+      setTimeInSeconds('');
+      setSelectedEquipment(null);
+      setSelectedVariation(null);
     }
-  // Ensure all relevant dependencies are included for correct re-evaluation.
+    // Ensure all relevant dependencies are included for correct re-evaluation.
   }, [open, defaultLogData, selectedExerciseId, selectedExercise, lastSet]);
 
   // Mutation to add a new equipment type
@@ -307,7 +307,7 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
     },
     onError: (error: any) => {
       console.error("Error adding equipment type:", error);
-      toast({ title: "Equipment Error", description: error.message || "Could not save equipment type.", variant: "destructive"});
+      toast({ title: "Equipment Error", description: error.message || "Could not save equipment type.", variant: "destructive" });
     },
   });
 
@@ -315,7 +315,7 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
   const addVariationMutation = useMutation({
     mutationFn: async ({ exerciseId, variationName }: { exerciseId: string; variationName: string }) => {
       if (!exerciseId) throw new Error("Exercise ID is required to add a variation.");
-      
+
       // Prevent adding "Standard" or case-insensitive variants
       if (variationName.toLowerCase() === DEFAULT_VARIATION.toLowerCase()) {
         // toast({ title: "Default Variation", description: `"${DEFAULT_VARIATION}" is the default and is not saved as a separate variation.`, variant: "default" });
@@ -325,7 +325,7 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
       // Check if variation already exists for this exercise (case-insensitive)
       const existingVariation = variations.find(v => v.variation_name.toLowerCase() === variationName.toLowerCase());
       if (existingVariation) {
-        return existingVariation; 
+        return existingVariation;
       }
 
       const { data: newVariation, error } = await supabase
@@ -341,9 +341,9 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
       if (data) { // A new or existing variation was returned
         toast({ title: "Variation Saved", description: `"${data.variation_name}" is now available.` });
         setSelectedVariation(data.variation_name); // Select the new/existing variation
-        refetchVariations(); 
+        refetchVariations();
       } else { // Null was returned, meaning "Standard" was entered
-        toast({ title: "Default Selected", description: `Using "${DEFAULT_VARIATION}" variation.`});
+        toast({ title: "Default Selected", description: `Using "${DEFAULT_VARIATION}" variation.` });
         setSelectedVariation(null); // Explicitly set to null for Standard
       }
       setIsAddingVariation(false);
@@ -365,69 +365,69 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
 
       // --- Transaction Start (Simulated Client-Side) ---
       // NOTE: For true atomicity, use a Supabase Function (rpc).
-      
+
       // 1. Insert into workouts
       const workoutInsertData: any = { // Use any due to is_single_log potentially missing in generated types
-          user_id: userId,
-          duration_seconds: 0,
-          completed: true,
-          is_single_log: true, // Mark as single log
+        user_id: userId,
+        duration_seconds: 0,
+        completed: true,
+        is_single_log: true, // Mark as single log
       };
       const { data: newWorkout, error: workoutError } = await supabase
-          .from('workouts') // Assuming types might not have is_single_log yet
-          .insert(workoutInsertData)
-          .select()
-          .single();
+        .from('workouts') // Assuming types might not have is_single_log yet
+        .insert(workoutInsertData)
+        .select()
+        .single();
 
       if (workoutError || !newWorkout) {
-          console.error("Error creating workout record for single log:", workoutError);
-          throw new Error(`Failed to create workout record: ${workoutError?.message || 'Unknown error'}`);
+        console.error("Error creating workout record for single log:", workoutError);
+        throw new Error(`Failed to create workout record: ${workoutError?.message || 'Unknown error'}`);
       }
       const newWorkoutId = newWorkout.id;
 
       // 2. Insert into workout_exercises
       const workoutExerciseInsertData: TablesInsert<'workout_exercises'> = {
-          workout_id: newWorkoutId,
-          exercise_id: exercise_id,
-          order: 1, // Only one exercise in this log
+        workout_id: newWorkoutId,
+        exercise_id: exercise_id,
+        order: 1, // Only one exercise in this log
       };
       const { data: newWorkoutExercise, error: workoutExerciseError } = await supabase
-          .from('workout_exercises')
-          .insert(workoutExerciseInsertData)
-          .select()
-          .single();
-      
+        .from('workout_exercises')
+        .insert(workoutExerciseInsertData)
+        .select()
+        .single();
+
       if (workoutExerciseError || !newWorkoutExercise) {
-          console.error("Error creating workout_exercise record:", workoutExerciseError);
-          // Attempt to clean up the created workout record (optional, best-effort)
-          await supabase.from('workouts').delete().match({ id: newWorkoutId });
-          throw new Error(`Failed to link exercise to workout: ${workoutExerciseError?.message || 'Unknown error'}`);
+        console.error("Error creating workout_exercise record:", workoutExerciseError);
+        // Attempt to clean up the created workout record (optional, best-effort)
+        await supabase.from('workouts').delete().match({ id: newWorkoutId });
+        throw new Error(`Failed to link exercise to workout: ${workoutExerciseError?.message || 'Unknown error'}`);
       }
       const newWorkoutExerciseId = newWorkoutExercise.id;
 
       // 3. Insert into exercise_sets
       const setInsertData: TablesInsert<'exercise_sets'> = {
-          workout_exercise_id: newWorkoutExerciseId,
-          set_number: 1, // Only one set for a single log
-          weight: weight,
-          reps: reps, // Will be null if time_seconds is not, and vice-versa
-          time_seconds: time_seconds, // Will be null if reps is not
-          completed: true,
-          equipment_type: equipment_type,
-          variation: variation,
+        workout_exercise_id: newWorkoutExerciseId,
+        set_number: 1, // Only one set for a single log
+        weight: weight,
+        reps: reps, // Will be null if time_seconds is not, and vice-versa
+        time_seconds: time_seconds, // Will be null if reps is not
+        completed: true,
+        equipment_type: equipment_type,
+        variation: variation,
       };
       const { error: setError } = await supabase
-          .from('exercise_sets')
-          .insert(setInsertData);
+        .from('exercise_sets')
+        .insert(setInsertData);
 
       if (setError) {
-          console.error("Error creating exercise_set record:", setError);
-          // Attempt cleanup (optional, best-effort)
-          await supabase.from('workout_exercises').delete().match({ id: newWorkoutExerciseId });
-          await supabase.from('workouts').delete().match({ id: newWorkoutId });
-          throw new Error(`Failed to save exercise set details: ${setError.message || 'Unknown error'}`);
+        console.error("Error creating exercise_set record:", setError);
+        // Attempt cleanup (optional, best-effort)
+        await supabase.from('workout_exercises').delete().match({ id: newWorkoutExerciseId });
+        await supabase.from('workouts').delete().match({ id: newWorkoutId });
+        throw new Error(`Failed to save exercise set details: ${setError.message || 'Unknown error'}`);
       }
-      
+
       // --- Transaction End --- 
       return { workoutId: newWorkoutId }; // Return something on success if needed
     },
@@ -437,7 +437,7 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
         description: "Your exercise has been successfully logged.",
       });
       // Invalidate queries that might display workout history or exercise stats
-      queryClient.invalidateQueries({ queryKey: ['workouts'] }); 
+      queryClient.invalidateQueries({ queryKey: ['workouts'] });
       queryClient.invalidateQueries({ queryKey: ['lastSet', user?.id, selectedExerciseId] });
       queryClient.invalidateQueries({ queryKey: ['exerciseHistory', selectedExerciseId] }); // Example if you have such a query
       queryClient.invalidateQueries({ queryKey: ['analyticsData'] });
@@ -504,8 +504,8 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
       const currentValue = parseFloat(weight) || 0;
       let newValue = currentValue + adjustment;
       newValue = Math.max(0, newValue); // Prevent negative weight
-      
-      const decimalPlaces = Math.abs(adjustment % 1) > 0 ? 1 : 0; 
+
+      const decimalPlaces = Math.abs(adjustment % 1) > 0 ? 1 : 0;
       const finalDecimalPlaces = newValue % 1 === 0 ? 0 : decimalPlaces;
       setWeight(newValue.toFixed(finalDecimalPlaces));
 
@@ -538,23 +538,23 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
       toast({ title: "No Exercise", description: "Please select an exercise first.", variant: "destructive" });
       return;
     }
-    
+
     if (trimmedName.toLowerCase() === DEFAULT_VARIATION.toLowerCase()) {
-        // User typed "Standard" or "standard", etc.
-        // addVariationMutation will handle setting selectedVariation to null
-        addVariationMutation.mutate({ exerciseId: selectedExerciseId, variationName: DEFAULT_VARIATION }); 
-        return;
+      // User typed "Standard" or "standard", etc.
+      // addVariationMutation will handle setting selectedVariation to null
+      addVariationMutation.mutate({ exerciseId: selectedExerciseId, variationName: DEFAULT_VARIATION });
+      return;
     }
-    
+
     // Check if it's already in the fetched variations list (excluding DEFAULT_VARIATION which isn't fetched that way)
     if (variations.some(v => v.variation_name.toLowerCase() === trimmedName.toLowerCase())) {
-        toast({ title: "Variation Exists", description: `"${trimmedName}" already exists. Selecting it.`, variant: "default" });
-        setSelectedVariation(trimmedName); // Select existing
-        setIsAddingVariation(false);
-        setNewVariationName("");
-        return;
+      toast({ title: "Variation Exists", description: `"${trimmedName}" already exists. Selecting it.`, variant: "default" });
+      setSelectedVariation(trimmedName); // Select existing
+      setIsAddingVariation(false);
+      setNewVariationName("");
+      return;
     }
-    
+
     addVariationMutation.mutate({ exerciseId: selectedExerciseId, variationName: trimmedName });
   };
 
@@ -583,7 +583,7 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
             Quickly log an exercise result outside a full session.
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="py-4 grid gap-4">
           {/* Exercise Selector */}
           <div className="flex items-center justify-between gap-2">
@@ -594,8 +594,8 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
               ) : errorExercises ? (
                 <p className="text-red-500 text-sm">Error loading exercises.</p>
               ) : (
-                <select 
-                  id="exercise-select" 
+                <select
+                  id="exercise-select"
                   value={selectedExerciseId}
                   onChange={(e) => setSelectedExerciseId(e.target.value)}
                   className="block w-full min-w-[150px] p-2 h-9 border border-input bg-background rounded-md shadow-sm focus:outline-none focus:ring-ring focus:border-ring text-sm"
@@ -630,7 +630,7 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
                     className="h-full w-[120px] sm:w-[150px] text-xs"
                     disabled={addVariationMutation.isPending}
                     autoFocus
-                    onKeyDown={(e) => { if (e.key === 'Enter') handleSaveNewVariation(); if (e.key === 'Escape') handleCancelAddNewVariation();}}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleSaveNewVariation(); if (e.key === 'Escape') handleCancelAddNewVariation(); }}
                   />
                   <Button
                     size="icon"
@@ -671,24 +671,24 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
 
           {/* --- Weight & Reps/Time Inputs --- */}
           <div className="grid grid-cols-2 gap-4">
-            {/* Weight Input Group */} 
+            {/* Weight Input Group */}
             <div>
               <Label htmlFor="weight-input" className="block text-sm font-medium mb-1">Weight (kg/lbs)</Label>
               <div className="flex flex-col gap-2">
-                <Input 
-                  type="number" 
-                  id="weight-input" 
+                <Input
+                  type="number"
+                  id="weight-input"
                   value={weight}
                   onChange={(e) => setWeight(e.target.value)}
                   step="0.5"
                   min="0"
-                  inputMode="decimal" 
+                  inputMode="decimal"
                   className="block w-full p-2 border border-input bg-background rounded-md shadow-sm focus:outline-none focus:ring-ring focus:border-ring sm:text-sm text-center"
                   placeholder="0"
                   disabled={isPending}
                 />
                 {/* Buttons Container Below Input */}
-                <div className="flex items-center justify-center"> 
+                <div className="flex items-center justify-center">
                   <SwipeableIncrementer
                     onAdjust={(adj) => handleIncrementDecrement('weight', adj)}
                     smallStepPositive={0.5}
@@ -706,25 +706,25 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
                 </div>
               </div>
             </div>
-            
-            {/* Conditional Reps or Time Input Group */} 
+
+            {/* Conditional Reps or Time Input Group */}
             {selectedExercise?.is_static ? (
               <div>
                 <Label htmlFor="time-input" className="block text-sm font-medium mb-1">Time (seconds)</Label>
                 <div className="flex flex-col gap-2">
-                  <Input 
-                    type="number" 
-                    id="time-input" 
+                  <Input
+                    type="number"
+                    id="time-input"
                     value={timeInSeconds}
                     onChange={(e) => setTimeInSeconds(e.target.value)}
                     min="1"
-                    inputMode="numeric" 
-                    pattern="[0-9]*" 
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     className="block w-full p-2 border border-input bg-background rounded-md shadow-sm focus:outline-none focus:ring-ring focus:border-ring sm:text-sm text-center"
                     placeholder="Enter time"
                     disabled={isPending || !selectedExerciseId}
                   />
-                  <div className="flex items-center justify-center"> 
+                  <div className="flex items-center justify-center">
                     <SwipeableIncrementer
                       onAdjust={(adj) => handleIncrementDecrement('time', adj)}
                       smallStepPositive={1}
@@ -746,19 +746,19 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
               <div>
                 <Label htmlFor="reps-input" className="block text-sm font-medium mb-1">Reps</Label>
                 <div className="flex flex-col gap-2">
-                  <Input 
-                    type="number" 
-                    id="reps-input" 
+                  <Input
+                    type="number"
+                    id="reps-input"
                     value={reps}
                     onChange={(e) => setReps(e.target.value)}
                     min="1"
-                    inputMode="numeric" 
-                    pattern="[0-9]*" 
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     className="block w-full p-2 border border-input bg-background rounded-md shadow-sm focus:outline-none focus:ring-ring focus:border-ring sm:text-sm text-center"
                     placeholder="Enter reps"
                     disabled={isPending || !selectedExerciseId}
                   />
-                  <div className="flex items-center justify-center"> 
+                  <div className="flex items-center justify-center">
                     <SwipeableIncrementer
                       onAdjust={(adj) => handleIncrementDecrement('reps', adj)}
                       smallStepPositive={1}
@@ -785,12 +785,12 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
             Cancel
           </Button>
-          <Button 
-            onClick={handleSave} 
+          <Button
+            onClick={handleSave}
             disabled={isPending}
-            className="bg-fitnessBlue hover:bg-fitnessBlue/90"
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
-            {saveSingleLogMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} 
+            {saveSingleLogMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Save
           </Button>
         </DialogFooter>

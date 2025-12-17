@@ -19,8 +19,6 @@ export const HabitButton: React.FC<HabitButtonProps> = ({
   icon,
   activeClassName,
 }) => {
-  const { currentTheme } = useTheme()
-  
   return (
     <div className="flex flex-col items-center">
       <Toggle
@@ -28,19 +26,17 @@ export const HabitButton: React.FC<HabitButtonProps> = ({
         onPressedChange={onPressedChange}
         aria-label={`${label} habit`}
         disabled={disabled}
-        className={`${currentTheme.components.habitButton.defaultClasses} ${
-          pressed 
-            ? `${activeClassName} ${currentTheme.components.habitButton.activeClasses}` 
-            : `${currentTheme.colors.button.default} ${currentTheme.colors.accent.border} ${currentTheme.colors.button.hover}`
-        }`}
+        className={`h-16 w-16 rounded-full border-2 transition-all duration-300 ${pressed
+            ? `${activeClassName} shadow-lg shadow-primary/30 border-primary`
+            : `bg-secondary border-border hover:border-primary hover:shadow-md hover:shadow-primary/40`
+          }`}
       >
-        <span className={`${currentTheme.components.habitButton.iconClasses} ${
-          pressed ? 'text-white drop-shadow-sm' : currentTheme.colors.text.secondary
-        }`}>
+        <span className={`transition-colors duration-300 ${pressed ? 'text-white drop-shadow-sm' : 'text-muted-foreground'
+          }`}>
           {icon}
         </span>
       </Toggle>
-      <p className={currentTheme.components.habitButton.labelClasses}>
+      <p className="mt-3 text-center text-sm text-muted-foreground font-medium tracking-wide">
         {label}
       </p>
     </div>

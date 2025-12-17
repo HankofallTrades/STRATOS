@@ -101,8 +101,8 @@ const SessionFocusSelector: React.FC<SessionFocusSelectorProps> = ({
               className={cn(
                 "p-3 rounded-lg border text-left transition-all hover:shadow-sm",
                 currentSelection === option.focus
-                  ? "border-fitnessBlue bg-blue-50 dark:bg-blue-950"
-                  : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                  ? "border-primary bg-primary/10 shadow-sm"
+                  : "border-transparent opacity-70 hover:opacity-100 hover:bg-secondary/10"
               )}
             >
               <div className="flex items-center space-x-2">
@@ -128,11 +128,6 @@ const SessionFocusSelector: React.FC<SessionFocusSelectorProps> = ({
             </button>
           ))}
         </div>
-        {currentSelection && (
-          <div className="text-xs text-gray-600 dark:text-gray-400 text-center">
-            Selected: {focusOptions.find(opt => opt.focus === currentSelection)?.title}
-          </div>
-        )}
       </div>
     );
   }
@@ -152,8 +147,8 @@ const SessionFocusSelector: React.FC<SessionFocusSelectorProps> = ({
                 className={cn(
                   "p-4 rounded-lg border-2 text-left transition-all hover:shadow-md",
                   currentSelection === option.focus
-                    ? "border-fitnessBlue bg-blue-50 dark:bg-blue-950"
-                    : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                    ? "border-primary bg-primary/10 shadow-md"
+                    : "border-transparent opacity-70 hover:opacity-100 hover:bg-secondary/10"
                 )}
               >
                 <div className="flex items-start space-x-3">

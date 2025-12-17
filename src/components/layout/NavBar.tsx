@@ -13,26 +13,26 @@ import {
   SidebarRail,
   SidebarTrigger,
 } from '@/components/core/sidebar';
+import { useTheme } from '@/lib/themes';
 
-const BottomNav = () => {
+const NavBar = () => {
   const location = useLocation();
 
   const items = [
-    { to: '/analytics', label: 'Analytics', icon: BarChart2 },
-    { to: '/workout', label: 'Workout', icon: Dumbbell },
     { to: '/', label: 'Home', icon: Home },
+    { to: '/workout', label: 'Workout', icon: Dumbbell },
+    { to: '/analytics', label: 'Analytics', icon: BarChart2 },
     { to: '/coach', label: 'Coach', icon: MessageCircle },
     { to: '/settings', label: 'Settings', icon: Settings },
   ];
 
   return (
-    <Sidebar collapsible="icon" side="left">
+    <Sidebar collapsible="icon" side="left" className="border-r border-border bg-card">
       <SidebarRail />
-      <SidebarHeader className="flex items-center justify-between">
-        <div className="px-2 text-sm font-semibold">STRATOS</div>
+      <SidebarHeader className="flex items-center justify-end px-2 bg-card text-card-foreground">
         <SidebarTrigger />
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="bg-card text-card-foreground">
         <SidebarGroup>
           <SidebarMenu>
             {items.map(({ to, label, icon: Icon }) => {
@@ -51,9 +51,9 @@ const BottomNav = () => {
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter />
+      <SidebarFooter className="bg-card" />
     </Sidebar>
   );
 };
 
-export default BottomNav; 
+export default NavBar;

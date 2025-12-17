@@ -43,12 +43,12 @@ const EQUIPMENT_CHOICES = ["Barbell", "Dumbbell", "Kettlebell", "Cable", "Bodywe
 
 // Define props passed from WorkoutExerciseContainer
 interface WorkoutExerciseViewProps {
-  workoutExercise: { 
-    id: string; 
-    exerciseId: string; 
+  workoutExercise: {
+    id: string;
+    exerciseId: string;
     exercise: Exercise & { is_static?: boolean | null }; // Ensure is_static is available
-    sets: ExerciseSet[]; 
-    equipmentType?: string 
+    sets: ExerciseSet[];
+    equipmentType?: string
   };
   // Removed equipmentTypes prop
   // equipmentTypes: Readonly<EquipmentType[]>;
@@ -314,7 +314,7 @@ export const WorkoutExerciseView = ({
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 p-0" 
+                            className="h-8 w-8 p-0"
                             onClick={() => {
                               if (newEquipmentName.trim()) {
                                 onEquipmentChange(newEquipmentName.trim());
@@ -343,7 +343,7 @@ export const WorkoutExerciseView = ({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="w-full justify-start h-8 px-2 text-xs text-blue-600 dark:text-blue-400 mt-1"
+                          className="w-full justify-start h-8 px-2 text-xs text-primary mt-1"
                           onClick={() => {
                             setShowNewEquipmentInput(true);
                             setNewEquipmentName(""); // Clear any previous input
@@ -386,7 +386,7 @@ export const WorkoutExerciseView = ({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="w-full justify-start h-8 px-2 text-xs text-blue-600 dark:text-blue-400 mt-1"
+                          className="w-full justify-start h-8 px-2 text-xs text-primary mt-1"
                           onClick={() => {
                             onVariationChange('add_new');
                             setVariationOpen(false);
@@ -441,13 +441,13 @@ export const WorkoutExerciseView = ({
               {isCardioExercise(workoutExercise.exercise) && (
                 <CardioZoneIndicator sessionFocus={sessionFocus} />
               )}
-              
+
               <Table className="w-full">
                 <TableHeader>
                   <TableRow className="text-xs">
                     <TableHead className="w-[35px] text-center px-1 py-1">Set</TableHead>
                     <TableHead className="w-[70px] text-center px-1 py-1">Previous</TableHead>
-                    
+
                     {isCardioExercise(workoutExercise.exercise) ? (
                       // Cardio exercise headers
                       <>
@@ -465,7 +465,7 @@ export const WorkoutExerciseView = ({
                         )}
                       </>
                     )}
-                    
+
                     <TableHead className="w-[40px] p-0 text-center"><Check size={16} className="mx-auto" /></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -474,7 +474,7 @@ export const WorkoutExerciseView = ({
                     {workoutExercise.sets.map((set, index) => {
                       const setNumber = index + 1;
                       const previousPerformanceForSet = historicalSetPerformances?.[setNumber] ?? null;
-                      
+
                       return (
                         <SetComponent
                           key={set.id}
@@ -503,7 +503,7 @@ export const WorkoutExerciseView = ({
                         </Button>
                       </TableCell>
                       <TableCell className="p-1 align-middle"></TableCell>
-                      
+
                       {isCardioExercise(workoutExercise.exercise) ? (
                         // Cardio exercise add-set controls
                         <>
@@ -589,7 +589,7 @@ export const WorkoutExerciseView = ({
                           </TableCell>
                         </>
                       )}
-                      
+
                       <TableCell className="p-1 align-middle"></TableCell>
                     </motion.tr>
                   </AnimatePresence>
