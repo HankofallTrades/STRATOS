@@ -7,10 +7,11 @@ import React, {
 } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/integrations/supabase/client";
-import { OnboardingDialog } from "@/components/features/Onboarding/OnboardingDialog";
+import { OnboardingDialog } from "@/domains/account/view/OnboardingDialog";
+import { fetchUserProfile, type ProfileRow } from "@/domains/account/model/accountRepository";
 import type { Database } from '@/lib/integrations/supabase/types';
 
-type ProfileRow = Database['public']['Tables']['profiles']['Row'];
+
 
 type AuthContextType = {
   session: Session | null;
@@ -72,33 +73,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const checkProfile = async () => {
         console.log("Checking user profile for onboarding completion...");
         try {
-          const { data: profileData, error } = await supabase
-            .from('profiles')
-            .select('age, height, weight, focus, preferred_weight_unit, preferred_height_unit, preferred_distance_unit') // Select all required fields
-            .eq('id', user.id)
-            .single();
+          const profileData = await fetchUserProfile(user.id);
 
-          if (error && error.code !== 'PGRST116') { // PGRST116 = row not found
-            console.error("Error fetching profile for onboarding check:", error);
-            // Decide how to handle this - maybe retry later? For now, just log.
+          // Check if any required fields are missing (null or undefined)
+          const needsOnboarding =
+            !profileData || // No profile row exists
+            profileData.age === null ||
+            profileData.height === null ||
+            profileData.weight === null ||
+            profileData.focus === null ||
+            profileData.preferred_weight_unit === null ||
+            profileData.preferred_height_unit === null ||
+            profileData.preferred_distance_unit === null;
+
+          if (needsOnboarding) {
+            console.log("User needs onboarding.");
+            setShowOnboarding(true);
           } else {
-            // Check if any required fields are missing (null or undefined)
-            const needsOnboarding = 
-              !profileData || // No profile row exists
-              profileData.age === null ||
-              profileData.height === null ||
-              profileData.weight === null ||
-              profileData.focus === null ||
-              profileData.preferred_weight_unit === null ||
-              profileData.preferred_height_unit === null ||
-              profileData.preferred_distance_unit === null;
-
-            if (needsOnboarding) {
-              console.log("User needs onboarding.");
-              setShowOnboarding(true);
-            } else {
-              console.log("User has completed onboarding.");
-            }
+            console.log("User has completed onboarding.");
           }
         } catch (err) {
           console.error("Unexpected error during profile check:", err);
@@ -111,8 +103,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     // Reset profile check if user logs out
     if (!user) {
-       setProfileChecked(false);
-       setShowOnboarding(false); // Ensure dialog is closed on logout
+      setProfileChecked(false);
+      setShowOnboarding(false); // Ensure dialog is closed on logout
     }
 
   }, [user, loading, profileChecked]);
@@ -149,7 +141,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       {/* {!loading && children}  // Option 1: Render children only when not loading */}
       {children}             {/* Option 2: Render children always, handle loading state in components */}
 
-      {/* Render Onboarding Dialog conditionally */} 
+      {/* Render Onboarding Dialog conditionally */}
       <OnboardingDialog
         open={showOnboarding}
         onOpenChange={setShowOnboarding} // Allow closing via overlay click etc.
