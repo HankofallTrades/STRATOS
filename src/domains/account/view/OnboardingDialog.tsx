@@ -5,10 +5,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
-} from "@/components/core/Dialog"; // Assuming Dialog components are here
-import { OnboardingForm } from './OnboardingForm'; // Import the form
-import { Button } from '@/components/core/button'; // Assuming Button component is here
+} from "@/components/core/Dialog";
+import { OnboardingForm } from './OnboardingForm';
+import { Button } from '@/components/core/button';
 
 interface OnboardingDialogProps {
   open: boolean;
