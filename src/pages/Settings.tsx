@@ -43,8 +43,8 @@ const Settings: React.FC = () => {
   const [llmModelPref, setLlmModelPref] = useState<string>(() => {
     // Only load model pref if the provider is OpenRouter (or provider that needs a model)
     const savedProvider = localStorage.getItem(LLM_PROVIDER_PREF_KEY);
-    if (savedProvider === 'openrouter' || savedProvider === 'openai' /* Add other relevant providers */) {
-         return localStorage.getItem(LLM_MODEL_PREF_KEY) || defaultOpenRouterModel; // Fallback to default if no model saved
+    if (savedProvider === 'openrouter') {
+      return localStorage.getItem(LLM_MODEL_PREF_KEY) || defaultOpenRouterModel; // Fallback to default if no model saved
     }
     return ''; // No model needed for providers like 'local' or 'anthropic' initially? Adjust as needed.
   });
@@ -64,11 +64,11 @@ const Settings: React.FC = () => {
   // Save LLM model preference to localStorage whenever it changes
   useEffect(() => {
     // Only save model pref if a model is actually selected/relevant for the provider
-    if (llmModelPref && (llmProviderPref === 'openrouter' || llmProviderPref === 'openai' /* Add others */ )) {
-        localStorage.setItem(LLM_MODEL_PREF_KEY, llmModelPref);
+    if (llmModelPref && llmProviderPref === 'openrouter') {
+      localStorage.setItem(LLM_MODEL_PREF_KEY, llmModelPref);
     } else {
-         // Optionally remove the key if model is not applicable
-         localStorage.removeItem(LLM_MODEL_PREF_KEY);
+      // Optionally remove the key if model is not applicable
+      localStorage.removeItem(LLM_MODEL_PREF_KEY);
     }
   }, [llmModelPref, llmProviderPref]); // Depend on provider too
 
@@ -97,7 +97,7 @@ const Settings: React.FC = () => {
           const currentUnitPref = (localStorage.getItem(BODYWEIGHT_UNIT_PREF_KEY) as 'kg' | 'lb') || 'kg';
           const weightKg = data.weight;
           if (currentUnitPref === 'lb') {
-             setBodyweight(Number((weightKg * KG_TO_LB).toFixed(1)));
+            setBodyweight(Number((weightKg * KG_TO_LB).toFixed(1)));
           } else {
             setBodyweight(weightKg);
           }
@@ -117,7 +117,7 @@ const Settings: React.FC = () => {
   useEffect(() => {
     const currentBw = Number(bodyweight);
     if (isNaN(currentBw) || bodyweight === '') return;
-    
+
     const previousUnitPref = localStorage.getItem(BODYWEIGHT_UNIT_PREF_KEY) || 'kg';
 
   }, [unitPref]);
@@ -125,23 +125,23 @@ const Settings: React.FC = () => {
   const handleUnitChange = (newUnit: 'kg' | 'lb') => {
     const currentBw = Number(bodyweight);
     if (isNaN(currentBw) || bodyweight === '') {
-        setUnitPref(newUnit);
-        return;
+      setUnitPref(newUnit);
+      return;
     }
 
     let convertedBw: number;
     if (newUnit === 'lb' && unitPref === 'kg') {
-        convertedBw = currentBw * KG_TO_LB;
+      convertedBw = currentBw * KG_TO_LB;
     } else if (newUnit === 'kg' && unitPref === 'lb') {
-        convertedBw = currentBw / KG_TO_LB;
+      convertedBw = currentBw / KG_TO_LB;
     } else {
-        setUnitPref(newUnit);
-        return;
+      setUnitPref(newUnit);
+      return;
     }
 
     setBodyweight(Number(convertedBw.toFixed(1)));
     setUnitPref(newUnit);
- };
+  };
 
   const handleSignOut = async () => {
     setLoadingSignOut(true);
@@ -228,42 +228,42 @@ const Settings: React.FC = () => {
       </div>
 
       <form onSubmit={handleUpdateBodyweight} className="space-y-4 border p-4 rounded-md">
-         <h2 className="text-lg font-medium">Profile Information</h2>
-         <div className="space-y-2">
-            <Label>Preferred Unit</Label>
-            <RadioGroup
-              value={unitPref}
-              onValueChange={(value) => handleUnitChange(value as 'kg' | 'lb')}
-              className="flex space-x-4"
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="kg" id="r1" />
-                <Label htmlFor="r1">kg</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="lb" id="r2" />
-                <Label htmlFor="r2">lb</Label>
-              </div>
-            </RadioGroup>
-         </div>
-         <div className="space-y-2">
-            <Label htmlFor="bodyweight">Weight ({unitPref})</Label>
-            <Input
-              id="bodyweight"
-              type="number"
-              value={bodyweight}
-              onChange={(e) => setBodyweight(e.target.value)}
-              placeholder={`Enter your weight in ${unitPref}`}
-              disabled={loadingBodyweight}
-              step="0.1"
-            />
-            <p className="text-xs text-muted-foreground">
-                Used for calculating strength benchmarks.
-            </p>
-         </div>
-         <Button type="submit" disabled={loadingBodyweight}>
-             {loadingBodyweight ? "Saving..." : "Save Weight"}
-         </Button>
+        <h2 className="text-lg font-medium">Profile Information</h2>
+        <div className="space-y-2">
+          <Label>Preferred Unit</Label>
+          <RadioGroup
+            value={unitPref}
+            onValueChange={(value) => handleUnitChange(value as 'kg' | 'lb')}
+            className="flex space-x-4"
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="kg" id="r1" />
+              <Label htmlFor="r1">kg</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="lb" id="r2" />
+              <Label htmlFor="r2">lb</Label>
+            </div>
+          </RadioGroup>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="bodyweight">Weight ({unitPref})</Label>
+          <Input
+            id="bodyweight"
+            type="number"
+            value={bodyweight}
+            onChange={(e) => setBodyweight(e.target.value)}
+            placeholder={`Enter your weight in ${unitPref}`}
+            disabled={loadingBodyweight}
+            step="0.1"
+          />
+          <p className="text-xs text-muted-foreground">
+            Used for calculating strength benchmarks.
+          </p>
+        </div>
+        <Button type="submit" disabled={loadingBodyweight}>
+          {loadingBodyweight ? "Saving..." : "Save Weight"}
+        </Button>
       </form>
 
       <div className="border p-4 rounded-md space-y-4">
@@ -271,53 +271,48 @@ const Settings: React.FC = () => {
         <div className="space-y-2">
           <Label htmlFor="llm-provider">LLM Provider</Label>
           <Select
-             value={llmProviderPref}
-             onValueChange={(value) => {
-                setLlmProviderPref(value);
-                // Reset model when provider changes - adjust logic as needed
-                if (value === 'openrouter' || value === 'openai') {
-                    setLlmModelPref(localStorage.getItem(LLM_MODEL_PREF_KEY) || defaultOpenRouterModel); // Restore saved or default
-                } else {
-                    setLlmModelPref(''); // Clear model for providers that don't need it
-                }
-             }}
+            value={llmProviderPref}
+            onValueChange={(value) => {
+              setLlmProviderPref(value);
+              // Reset model when provider changes - adjust logic as needed
+              if (value === 'openrouter') {
+                setLlmModelPref(localStorage.getItem(LLM_MODEL_PREF_KEY) || defaultOpenRouterModel); // Restore saved or default
+              } else {
+                setLlmModelPref(''); // Clear model for providers that don't need it
+              }
+            }}
           >
             <SelectTrigger id="llm-provider">
               <SelectValue placeholder="Select LLM Provider" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="local">Local (LM Studio/Ollama)</SelectItem>
-              <SelectItem value="openai">OpenAI</SelectItem>
               <SelectItem value="openrouter">OpenRouter</SelectItem>
-              <SelectItem value="anthropic">Anthropic</SelectItem>
-              <SelectItem value="google">Google</SelectItem>
-              <SelectItem value="xai">XAI (Grok)</SelectItem>
-              <SelectItem value="custom">Add New...</SelectItem>
             </SelectContent>
           </Select>
           {/* Conditionally render Model selection based on Provider */}
-          {(llmProviderPref === 'openrouter' || llmProviderPref === 'openai') && ( // Show only for providers needing a model
-             <div className="space-y-2 pt-4"> {/* Add padding */}
-               <Label htmlFor="llm-model">Model ({llmProviderPref === 'openrouter' ? 'OpenRouter' : 'OpenAI'})</Label>
-               <Select value={llmModelPref} onValueChange={setLlmModelPref}>
-                  <SelectTrigger id="llm-model">
-                    <SelectValue placeholder="Select Model" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {/* Updated list for OpenRouter/DeepSeek based on user request */}
-                    {llmProviderPref === 'openrouter' && (
-                      <>
-                         <SelectItem value="deepseek/deepseek-chat-v3-0324:free">Deepseek V3</SelectItem>
-                         <SelectItem value="google/gemini-2.5-pro-exp-03-25">Gemini 2.5 Pro Exp.</SelectItem>
-                         <SelectItem value="deepseek/deepseek-r1:free">Deepseek R1</SelectItem>
-                         <SelectItem value="google/gemini-2.0-flash-exp:free">Gemini 2.0 Flash Exp.</SelectItem>
-                         {/* Add other specific OpenRouter models here if needed */}
-                      </>
-                    )}
-                     {/* Removed hardcoded OpenAI models as per user request */}
-                     {/* {llmProviderPref === 'openai' && ( ... )} */}
-                  </SelectContent>
-               </Select>
+          {llmProviderPref === 'openrouter' && ( // Show only for providers needing a model
+            <div className="space-y-2 pt-4"> {/* Add padding */}
+              <Label htmlFor="llm-model">Model (OpenRouter)</Label>
+              <Select value={llmModelPref} onValueChange={setLlmModelPref}>
+                <SelectTrigger id="llm-model">
+                  <SelectValue placeholder="Select Model" />
+                </SelectTrigger>
+                <SelectContent>
+                  {/* Updated list for OpenRouter/DeepSeek based on user request */}
+                  {llmProviderPref === 'openrouter' && (
+                    <>
+                      <SelectItem value="deepseek/deepseek-chat-v3-0324:free">Deepseek V3</SelectItem>
+                      <SelectItem value="google/gemini-2.5-pro-exp-03-25">Gemini 2.5 Pro Exp.</SelectItem>
+                      <SelectItem value="deepseek/deepseek-r1:free">Deepseek R1</SelectItem>
+                      <SelectItem value="google/gemini-2.0-flash-exp:free">Gemini 2.0 Flash Exp.</SelectItem>
+                      {/* Add other specific OpenRouter models here if needed */}
+                    </>
+                  )}
+                  {/* Removed hardcoded OpenAI models as per user request */}
+                  {/* {llmProviderPref === 'openai' && ( ... )} */}
+                </SelectContent>
+              </Select>
             </div>
           )}
           <p className="text-xs text-muted-foreground pt-2"> {/* Adjust padding */}
@@ -328,19 +323,19 @@ const Settings: React.FC = () => {
         </div>
         <div className="pt-2">
           <Button variant="secondary" onClick={triggerOnboarding}>
-             Re-Trigger Onboarding Flow
+            Re-Trigger Onboarding Flow
           </Button>
-           <p className="text-xs text-muted-foreground pt-1">
+          <p className="text-xs text-muted-foreground pt-1">
             Test the onboarding dialog even if already completed.
           </p>
         </div>
       </div>
 
       <div className="border p-4 rounded-md">
-          <h2 className="text-lg font-medium mb-4">Account</h2>
-          <Button onClick={handleSignOut} disabled={loadingSignOut} variant="destructive">
-            {loadingSignOut ? "Logging out..." : "Log Out"}
-          </Button>
+        <h2 className="text-lg font-medium mb-4">Account</h2>
+        <Button onClick={handleSignOut} disabled={loadingSignOut} variant="destructive">
+          {loadingSignOut ? "Logging out..." : "Log Out"}
+        </Button>
       </div>
     </div>
   );

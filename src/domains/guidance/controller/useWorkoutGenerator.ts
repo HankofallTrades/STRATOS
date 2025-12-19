@@ -1,17 +1,10 @@
-import React, { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { useQuery } from '@tanstack/react-query';
 import { differenceInDays, startOfDay } from 'date-fns';
-
-import { Button } from '@/components/core/button';
+import { useAppDispatch, useAppSelector } from '@/hooks/redux';
 import { startWorkout, addExerciseToWorkout } from '@/state/workout/workoutSlice';
 import { selectWorkoutHistory } from '@/state/history/historySlice';
-import { useAppDispatch, useAppSelector } from '@/hooks/redux';
-import { fetchExercisesFromDB, fetchExerciseMuscleGroupMappings } from '@/lib/integrations/supabase/exercises';
-import type { ExerciseMuscleGroupMapping } from '@/lib/integrations/supabase/exercises';
 import type { Exercise, ExerciseSet, WorkoutExercise, Workout } from '@/lib/types/workout';
-import { Skeleton } from '@/components/core/skeleton';
 
 // Archetype targets (using DB archetype names)
 const ARCHETYPE_TARGETS: Record<string, number> = {
@@ -25,13 +18,11 @@ const ARCHETYPE_TARGETS: Record<string, number> = {
     'twist': 7,
 };
 
-// Helper to get archetype name from exercise (using archetype_id and archetypeMap)
 const getArchetypeName = (exercise: Exercise, archetypeMap: Map<string, string>): string | undefined => {
     if (!exercise.archetype_id) return undefined;
     return archetypeMap.get(exercise.archetype_id)?.toLowerCase();
 };
 
-// Calculate weekly sets per archetype
 const calculateWeeklySetsPerArchetype = (
     workoutHistory: Workout[],
     exerciseMap: Map<string, Exercise>,
@@ -58,7 +49,6 @@ const calculateWeeklySetsPerArchetype = (
     return weeklySets;
 };
 
-// Select exercises for workout based on archetype deficits
 const selectExercisesForWorkout = (
     availableExercises: Exercise[],
     weeklySets: Record<string, number>,
@@ -66,7 +56,6 @@ const selectExercisesForWorkout = (
     numExercisesToSelect = 4,
     excludeExerciseIds: string[] = []
 ): Exercise[] => {
-    // Find archetypes below target
     const archetypeDeficits: { name: string; deficit: number }[] = [];
     Object.entries(ARCHETYPE_TARGETS).forEach(([archetype, target]) => {
         const sets = weeklySets[archetype] || 0;
@@ -95,7 +84,6 @@ const selectExercisesForWorkout = (
             coveredArchetypes.add(target.name);
         }
     }
-    // Fallback: fill with any remaining exercises
     if (selectedExercises.length < numExercisesToSelect) {
         const fallbackExercises = availableExercises.filter(ex =>
             !selectedExerciseIds.has(ex.id) && !excludeExerciseIds.includes(ex.id)
@@ -106,45 +94,15 @@ const selectExercisesForWorkout = (
     return selectedExercises;
 };
 
-export const WorkoutGenerator: React.FC = () => {
+export const useWorkoutGenerator = (
+    baseExercises: Exercise[] | undefined,
+    movementArchetypes: { id: string; name: string }[] | undefined
+) => {
     const dispatch = useAppDispatch();
-    const navigate = useNavigate();
     const workoutHistory = useAppSelector(selectWorkoutHistory);
-    const [generationStatusMessage, setGenerationStatusMessage] = useState<string | null>(null);
-
-    const { data: baseExercises, isLoading: isLoadingExercises, error: errorExercises } = useQuery<Exercise[], Error>({
-        queryKey: ['exercises'],
-        queryFn: fetchExercisesFromDB,
-        staleTime: Infinity,
-        refetchOnWindowFocus: false,
-    });
-
-    // Fetch movement archetypes for mapping id -> name
-    const { data: movementArchetypes, error: errorMovementArchetypes, isLoading: isLoadingMovementArchetypes } = useQuery<{ id: string; name: string }[], Error>({
-        queryKey: ['movementArchetypes'],
-        queryFn: async () => {
-            console.log("Attempting to fetch movement_archetypes...");
-            try {
-                const clientModule = await import('@/lib/integrations/supabase/client');
-                const { data, error } = await clientModule.supabase.from('movement_archetypes').select('id, name');
-                
-                if (error) {
-                    console.error("Error fetching movement_archetypes:", JSON.stringify(error)); 
-                    throw error; 
-                }
-                console.log("Successfully fetched movement_archetypes:", data);
-                return data || [];
-            } catch (catchError: any) {
-                console.error("Caught exception fetching movement_archetypes:", JSON.stringify(catchError));
-                throw catchError;
-            }
-        },
-        staleTime: Infinity,
-        enabled: !!baseExercises, 
-    });
 
     const archetypeMap = useMemo(() => {
-        if (!movementArchetypes) return new Map();
+        if (!movementArchetypes) return new Map<string, string>();
         return new Map(movementArchetypes.map(a => [a.id, a.name]));
     }, [movementArchetypes]);
 
@@ -157,42 +115,37 @@ export const WorkoutGenerator: React.FC = () => {
         return new Map(exercisesWithArchetypes.map(ex => [ex.id, ex]));
     }, [exercisesWithArchetypes]);
 
-    const handleGenerateWorkout = () => {
-        setGenerationStatusMessage(null);
+    const generateWorkout = () => {
+        if (exercisesWithArchetypes.length === 0) {
+            throw new Error("Exercise data with archetypes is not available.");
+        }
+
         let numExercisesToSelect = 5;
         let excludeExerciseIds: string[] = [];
+
         if (workoutHistory && workoutHistory.length > 0) {
             const latestWorkoutDate = workoutHistory.reduce((latest, workout) => {
                 const current = startOfDay(new Date(workout.date));
                 return current > latest ? current : latest;
             }, new Date(0));
+
             const latestWorkout = workoutHistory.find(workout =>
                 startOfDay(new Date(workout.date)).getTime() === latestWorkoutDate.getTime()
             );
+
             if (latestWorkoutDate.getTime() > 0) {
                 const today = startOfDay(new Date());
                 const daysSinceLastWorkout = differenceInDays(today, latestWorkoutDate);
                 if (daysSinceLastWorkout <= 1) {
                     numExercisesToSelect = 3;
-                    if (latestWorkout) {
-                        excludeExerciseIds = latestWorkout.exercises.map(ex => ex.exerciseId);
-                    }
+                    if (latestWorkout) excludeExerciseIds = latestWorkout.exercises.map(ex => ex.exerciseId);
                 } else if (daysSinceLastWorkout <= 3) {
                     numExercisesToSelect = 4;
-                    if (latestWorkout) {
-                        excludeExerciseIds = latestWorkout.exercises.map(ex => ex.exerciseId);
-                    }
-                } else {
-                    numExercisesToSelect = 5;
+                    if (latestWorkout) excludeExerciseIds = latestWorkout.exercises.map(ex => ex.exerciseId);
                 }
             }
         }
-        if (exercisesWithArchetypes.length === 0) {
-            const msg = "Exercise data with archetypes is not available. Cannot generate workout.";
-            console.error(msg);
-            setGenerationStatusMessage(msg);
-            return;
-        }
+
         const weeklySets = calculateWeeklySetsPerArchetype(workoutHistory, exerciseMap, archetypeMap);
         const exercisesToCreate = selectExercisesForWorkout(
             exercisesWithArchetypes,
@@ -201,13 +154,12 @@ export const WorkoutGenerator: React.FC = () => {
             numExercisesToSelect,
             excludeExerciseIds
         );
+
         if (exercisesToCreate.length === 0) {
-            const msg = "Failed to select any exercises based on archetype history. Please try again later or adjust your activities.";
-            console.error(msg);
-            setGenerationStatusMessage(msg);
-            return;
+            throw new Error("Failed to select any exercises based on history.");
         }
-        dispatch(startWorkout());
+
+        dispatch(startWorkout({ sessionFocus: undefined }));
         exercisesToCreate.forEach(exercise => {
             const defaultEquipment = exercise.default_equipment_type ?? undefined;
             const defaultVariation = 'Standard';
@@ -230,39 +182,12 @@ export const WorkoutGenerator: React.FC = () => {
             };
             dispatch(addExerciseToWorkout(workoutExercise));
         });
-        navigate('/workout');
+
+        return true;
     };
 
-    const isLoading = isLoadingExercises || isLoadingMovementArchetypes;
-    const error = errorExercises || errorMovementArchetypes;
-    
-    if (error) {
-        const errorMessage = errorExercises?.message || errorMovementArchetypes?.message || 'Error loading workout data';
-        return (
-            <Button variant="destructive" size="sm" disabled className="w-full">
-                {errorMessage}
-            </Button>
-        );
-    }
-    if (isLoading) {
-        return <Skeleton className="h-9 w-full" />;
-    }
-    return (
-        <>
-            <Button
-                onClick={handleGenerateWorkout}
-                disabled={isLoading}
-                variant="outline"
-                size="sm"
-                className="w-full"
-            >
-                Generate Strength Workout
-            </Button>
-            {generationStatusMessage && (
-                <p className="text-sm text-red-500 mt-2 text-center">
-                    {generationStatusMessage}
-                </p>
-            )}
-        </>
-    );
-}; 
+    return {
+        generateWorkout,
+        isReady: exercisesWithArchetypes.length > 0 && !!movementArchetypes,
+    };
+};

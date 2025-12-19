@@ -12,11 +12,11 @@ import { useNavigate } from 'react-router-dom'; // Import useNavigate
 import { useMemo, useState, useEffect, useCallback } from 'react'; // ADDED useState, useEffect
 import { useQuery } from '@tanstack/react-query';
 import { getUserProfile, UserProfileData } from '@/lib/integrations/supabase/user';
-import { getDailyProteinIntake, DailyProteinIntake, getWeeklyZone2CardioMinutes, WeeklyZone2CardioData } from '@/lib/integrations/supabase/nutrition';
+import { getDailyProteinIntake, DailyProteinIntake, getWeeklyZone2CardioMinutes, WeeklyZone2CardioData } from '@/domains/fitness/model/fitnessRepository';
 import CircularProgressDisplay from '@/components/core/charts/CircularProgressDisplay';
-import Volume from '@/components/features/Analytics/Volume'; // Import Volume component
+import Volume from '@/domains/fitness/view/analytics/Volume'; // Import Volume component
 import SunMoonProgress from '@/components/core/charts/SunMoonProgress'; // Import SunMoonProgress
-import { getDailySunExposure } from '@/lib/integrations/supabase/wellbeing'; // Import sun exposure fetcher
+import { getDailySunExposure } from '@/domains/fitness/model/fitnessRepository'; // Import sun exposure fetcher
 import { useTriad, useHabitCompletions, HabitButton } from '@/domains/habits';
 import { useTheme } from '@/lib/themes';
 

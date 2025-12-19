@@ -4,12 +4,12 @@ import { fetchExercisesFromDB } from '@/lib/integrations/supabase/exercises';
 import { Link } from "react-router-dom";
 import { Exercise } from "@/lib/types/workout";
 import { useAuth } from '@/state/auth/AuthProvider';
-import StrengthBenchmarks from '@/components/features/Benchmarks/StrengthBenchmarks';
-import CalisthenicBenchmarks from '@/components/features/Benchmarks/CalisthenicBenchmarks';
-import OneRepMax from '@/components/features/Analytics/OneRepMax';
-import RecentWorkouts from '@/components/features/Analytics/RecentWorkouts';
-import Volume from '@/components/features/Analytics/Volume';
-import PerformanceOverview from '@/components/features/Analytics/PerformanceOverview';
+import StrengthBenchmarks from '@/domains/fitness/view/benchmarks/StrengthBenchmarks';
+import CalisthenicBenchmarks from '@/domains/fitness/view/benchmarks/CalisthenicBenchmarks';
+import OneRepMax from '@/domains/fitness/view/analytics/OneRepMax';
+import RecentWorkouts from '@/domains/fitness/view/analytics/RecentWorkouts';
+import Volume from '@/domains/fitness/view/analytics/Volume';
+import PerformanceOverview from '@/domains/fitness/view/analytics/PerformanceOverview';
 import {
   Select,
   SelectContent,
@@ -18,12 +18,12 @@ import {
   SelectValue,
 } from "@/components/core/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/core/tabs";
-import { getUserWeight, getDailyProteinIntake, DailyProteinIntake, UserWeight, getWeeklyZone2CardioMinutes, WeeklyZone2CardioData } from "@/lib/integrations/supabase/nutrition";
+import { getUserWeight, getDailyProteinIntake, DailyProteinIntake, UserWeight, getWeeklyZone2CardioMinutes, WeeklyZone2CardioData } from "@/domains/fitness/model/fitnessRepository";
 import { ProgressBar } from "@/components/core/ProgressBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/core/card";
 import CircularProgressDisplay from '@/components/core/charts/CircularProgressDisplay';
 import SunMoonProgress from '@/components/core/charts/SunMoonProgress';
-import { getDailySunExposure } from '@/lib/integrations/supabase/wellbeing';
+import { getDailySunExposure } from '@/domains/fitness/model/fitnessRepository';
 
 // LocalStorage Key for persistence
 const ANALYTICS_VIEW_STORAGE_KEY = 'selectedAnalyticsView_v2';
@@ -39,27 +39,27 @@ const formatDate = (dateInput: Date | string): string => {
   const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
   // Ensure the date is valid before formatting
   if (isNaN(date.getTime())) {
-      return "Invalid Date";
+    return "Invalid Date";
   }
   return date.toLocaleDateString(undefined, { // Use locale-sensitive formatting
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
-  }); 
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
 };
 
 const Analytics = () => {
   // Get user object for ID
   const { user } = useAuth();
   const userId = user?.id;
-  
+
   // Fetch list of all exercises (needed for ExerciseProgressAnalysis)
-  const { data: exercises = [], isLoading: isLoadingExercises, error: errorExercises } = useQuery({
+  const { data: exercises = [] as Exercise[], isLoading: isLoadingExercises, error: errorExercises } = useQuery({
     queryKey: ['exercises'],
-    queryFn: fetchExercisesFromDB,
+    queryFn: async () => (await fetchExercisesFromDB()) as Exercise[],
     staleTime: Infinity,
   });
-  
+
   // State for selected benchmark type (now used within the Benchmarks tab)
   const [selectedBenchmarkType, setSelectedBenchmarkType] = useState<BenchmarkType>('Strength');
   // State for selected analysis type - Initialize from localStorage
@@ -178,7 +178,7 @@ const Analytics = () => {
                 showCenterText={true}
               />
             </div>
-            <SunMoonProgress 
+            <SunMoonProgress
               currentHours={currentSunHours}
               goalHours={sunExposureGoalHours}
               size={140}
@@ -212,15 +212,15 @@ const Analytics = () => {
               <TabsTrigger value="Benchmarks">Benchmarks</TabsTrigger>
             </TabsList>
             <TabsContent value="E1RM">
-              <OneRepMax 
-                  userId={user?.id}
-                  exercises={exercises}
-                  isLoadingExercises={isLoadingExercises}
-                  errorExercises={errorExercises}
+              <OneRepMax
+                userId={user?.id}
+                exercises={exercises}
+                isLoadingExercises={isLoadingExercises}
+                errorExercises={errorExercises}
               />
             </TabsContent>
             <TabsContent value="Volume">
-              <Volume 
+              <Volume
                 userId={user?.id}
               />
             </TabsContent>
@@ -242,7 +242,7 @@ const Analytics = () => {
 
         {/* Render the new RecentWorkouts component */}
         <div className="mt-8">
-            <RecentWorkouts />
+          <RecentWorkouts />
         </div>
       </main>
     </div>
