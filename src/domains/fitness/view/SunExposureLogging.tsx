@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
-import { addSunExposure } from '@/lib/integrations/supabase/wellbeing'; // Adjusted path
 import { Button } from '@/components/core/button';
 import { Input } from '@/components/core/input';
-import { toast } from 'sonner';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSunExposure } from '../controller/useSunExposure';
 
 interface SunExposureLoggingProps {
   isOpen: boolean;
@@ -14,55 +12,16 @@ interface SunExposureLoggingProps {
 const SunExposureLogging: React.FC<SunExposureLoggingProps> = ({ isOpen, onClose, userId }) => {
   const [hours, setHours] = useState<string>('');
   const [minutes, setMinutes] = useState<string>('');
-  const queryClient = useQueryClient();
+  const { logSun, isLogging } = useSunExposure(userId);
 
-  const today = new Date().toISOString().split('T')[0];
-
-  const mutation = useMutation({
-    mutationFn: async (exposureHours: number) => {
-      if (!userId) throw new Error('User not identified.');
-      // Placeholder for the actual Supabase call
-      await addSunExposure(userId, exposureHours, today);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dailySunExposure', userId, today] });
-      toast.success('Sun exposure logged successfully!');
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const success = await logSun(hours, minutes);
+    if (success) {
       setHours('');
       setMinutes('');
       onClose();
-    },
-    onError: (error: any) => {
-      console.error('Failed to log sun exposure:', error);
-      toast.error('Failed to log sun exposure. Please try again.');
-    },
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!userId) {
-      toast.error('User not identified. Please try again.');
-      return;
     }
-
-    const parsedHours = hours ? parseInt(hours, 10) : 0;
-    const parsedMinutes = minutes ? parseInt(minutes, 10) : 0;
-
-    if (isNaN(parsedHours) || parsedHours < 0) {
-      toast.error('Please enter a valid non-negative number for hours.');
-      return;
-    }
-    if (isNaN(parsedMinutes) || parsedMinutes < 0 || parsedMinutes > 59) {
-      toast.error('Please enter a valid number of minutes (0-59).');
-      return;
-    }
-    if (parsedHours === 0 && parsedMinutes === 0) {
-      toast.error('Please enter some sun exposure time.');
-      return;
-    }
-
-    const totalExposureHours = parsedHours + (parsedMinutes / 60);
-    
-    mutation.mutate(totalExposureHours);
   };
 
   if (!isOpen) {
@@ -87,7 +46,7 @@ const SunExposureLogging: React.FC<SunExposureLoggingProps> = ({ isOpen, onClose
                 onChange={(e) => setHours(e.target.value)}
                 placeholder="e.g., 1"
                 min="0"
-                disabled={mutation.isPending}
+                disabled={isLogging}
               />
             </div>
             <div>
@@ -103,16 +62,16 @@ const SunExposureLogging: React.FC<SunExposureLoggingProps> = ({ isOpen, onClose
                 placeholder="e.g., 30"
                 min="0"
                 max="59"
-                disabled={mutation.isPending}
+                disabled={isLogging}
               />
             </div>
           </div>
           <div className="flex justify-end space-x-2">
-            <Button type="button" variant="outline" onClick={onClose} disabled={mutation.isPending}>
+            <Button type="button" variant="outline" onClick={onClose} disabled={isLogging}>
               Cancel
             </Button>
-            <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? 'Logging...' : 'Log Sun Exposure'}
+            <Button type="submit" disabled={isLogging}>
+              {isLogging ? 'Logging...' : 'Log Sun Exposure'}
             </Button>
           </div>
         </form>

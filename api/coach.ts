@@ -1,30 +1,61 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import fs from 'fs';
+import path from 'path';
+
+// --- Manual Env Loader for Local Dev ---
+// Standard process.env doesn't always pick up VITE_ variables in vercel dev
+try {
+  const envPath = path.resolve(process.cwd(), '.env.local');
+  if (fs.existsSync(envPath)) {
+    const envContent = fs.readFileSync(envPath, 'utf8');
+    envContent.split('\n').forEach(line => {
+      const match = line.match(/^\s*([^#\s=]+)\s*=\s*(.*)$/);
+      if (match) {
+        const key = match[1];
+        let value = match[2].trim();
+        // Remove surrounding quotes if present
+        if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+          value = value.substring(1, value.length - 1);
+        }
+        // Remove trailing comments
+        const commentIdx = value.indexOf(' #');
+        if (commentIdx !== -1) {
+          value = value.substring(0, commentIdx).trim();
+        }
+        if (!process.env[key]) {
+          process.env[key] = value;
+          // console.log(`Loaded env ${key} from .env.local`);
+        }
+      }
+    });
+  }
+} catch (e) {
+  console.error('Failed to load .env.local manually:', e);
+}
+
 // Import specific functions and type, adding .js extension
 import {
   getLocalLlmResponse,
-  getOpenAiResponse,
   getOpenRouterResponse,
   type ChatMessage
 } from '../src/lib/llm/llmClient.js'; // Added .js extension
 
 // Define possible provider types
-type LlmProvider = 'openai' | 'openrouter' | 'local' | 'anthropic' | 'google' | 'xai' | 'custom';
+type LlmProvider = 'openrouter' | 'local';
 
 // Determine provider - REMOVED HARDCODED PROVIDER
 // const llmProvider: LlmProvider = 'openrouter';
 
 // --- Read ALL necessary environment variables server-side ---
 // Secrets
-const openaiApiKey = process.env.OPENAI_API_KEY;
-const openRouterApiKey = process.env.OPENROUTER_API_KEY;
+const openRouterApiKey = process.env.OPENROUTER_API_KEY || process.env.VITE_OPENROUTER_API_KEY;
 
 // Configs (Note: VITE_ prefix is part of the key name set in Vercel/env.local)
-const openRouterModel = process.env.OPENROUTER_MODEL; // Read env var, maybe use as fallback if needed?
-const localLlmUrl = process.env.VITE_LOCAL_LLM_URL;
-const openaiApiUrl = process.env.VITE_OPENAI_API_URL || 'https://api.openai.com/v1/chat/completions';
-const openRouterApiUrl = process.env.OPENROUTER_API_URL || 'https://openrouter.ai/api/v1/chat/completions';
-const appUrl = process.env.VITE_APP_URL || 'http://localhost:5173';
-const appName = process.env.VITE_APP_NAME || 'STRATOS';
+const openRouterModel = process.env.OPENROUTER_MODEL || process.env.VITE_OPENROUTER_MODEL;
+const localLlmUrl = process.env.LOCAL_LLM_URL || process.env.VITE_LOCAL_LLM_URL;
+const openRouterApiUrl = process.env.OPENROUTER_API_URL || process.env.VITE_OPENROUTER_API_URL || 'https://openrouter.ai/api/v1/chat/completions';
+const appUrl = process.env.VITE_APP_URL || process.env.APP_URL || 'http://localhost:5173';
+const appName = process.env.VITE_APP_NAME || process.env.APP_NAME || 'STRATOS';
 
 export default async function handler(
   req: VercelRequest,
@@ -54,22 +85,17 @@ export default async function handler(
     // Determine the provider to use - prioritize request body, fallback maybe later?
     requestedProvider = provider;
     if (!requestedProvider) {
-        // Maybe fallback to an environment variable or default? For now, treat as error.
-        console.warn('LLM Provider not specified in request body.');
-        // Fallback to a default if needed, e.g.:
-        // requestedProvider = 'openrouter';
-        // Or return an error:
-        return res.status(400).json({ error: 'LLM Provider not specified in request.' });
+      // Maybe fallback to an environment variable or default? For now, treat as error.
+      console.warn('LLM Provider not specified in request body.');
+      // Fallback to a default if needed, e.g.:
+      // requestedProvider = 'openrouter';
+      // Or return an error:
+      return res.status(400).json({ error: 'LLM Provider not specified in request.' });
     }
 
     // Validate the model is provided if needed by the provider
-    if ((requestedProvider === 'openrouter' || requestedProvider === 'openai') && !model) {
+    if (requestedProvider === 'openrouter' && !model) {
       console.warn(`Model parameter is required for provider '${requestedProvider}' but was not provided.`);
-      // Decide how to handle: fallback to env var? default? error?
-      // Example: Use env var as fallback specifically for openRouter if model is missing
-      // const effectiveModel = (requestedProvider === 'openrouter' && !model) ? openRouterModel : model;
-      // if (!effectiveModel) { ... return error ... }
-      // For now, return an error if model is missing for providers that need it:
       return res.status(400).json({ error: `Model is required for provider '${requestedProvider}' but was not provided.` });
     }
 
@@ -77,16 +103,6 @@ export default async function handler(
 
     // 2. Use the requested provider and model in the switch statement
     switch (requestedProvider) {
-      case 'openai':
-        if (!openaiApiKey) {
-          throw new Error('OPENAI_API_KEY environment variable is not set.');
-        }
-        // Pass apiKey, URL, and the requested model
-        llmResponse = await getOpenAiResponse(messages, openaiApiKey, openaiApiUrl, model); // Pass model
-        break;
-
-      // Handle 'deepseek' provider value which uses OpenRouter client - REMOVED
-      // case 'deepseek': // Treat deepseek as an alias for openrouter for now
       case 'openrouter': // Use 'openrouter' key directly
         if (!openRouterApiKey) {
           throw new Error('OPENROUTER_API_KEY environment variable is not set.');
@@ -105,14 +121,10 @@ export default async function handler(
 
       case 'local':
         if (!localLlmUrl) {
-          throw new Error('VITE_LOCAL_LLM_URL environment variable is not set.');
+          throw new Error('LOCAL_LLM_URL (or VITE_LOCAL_LLM_URL) environment variable is not set.');
         }
         llmResponse = await getLocalLlmResponse(messages, localLlmUrl);
         break;
-
-      // Add cases for anthropic, google, xai, custom if/when implemented
-      // case 'anthropic': ...
-      // case 'google': ...
 
       default:
         // Use requestedProvider in the error message

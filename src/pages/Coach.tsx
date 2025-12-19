@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { ChatMessage } from '@/lib/llm/llmClient';
 import { coachPrompts } from '@/lib/prompts/coachPrompts';
-import Chat from '@/components/features/Coach/Chat';
+import Chat from '@/domains/guidance/view/Chat';
 
 // Keys for localStorage (Import or define them here if not using a shared config/state manager)
 const LLM_PROVIDER_PREF_KEY = 'llmProviderPref';
@@ -51,9 +51,9 @@ const Coach: React.FC = () => {
         },
         // 2. Include provider and model in the request body
         body: JSON.stringify({
-            messages: messagesToSend,
-            provider: provider,
-            model: model // Send the model, even if it's an empty string for providers that don't need it
+          messages: messagesToSend,
+          provider: provider,
+          model: model // Send the model, even if it's an empty string for providers that don't need it
         }),
       });
 
@@ -89,7 +89,7 @@ const Coach: React.FC = () => {
     // Use fixed positioning to fill space above the bottom nav (assuming 4rem/16 height)
     // overflow-hidden on the container, internal scrolling handled by Chat
     <div className="fixed inset-x-0 top-0 bottom-16 overflow-hidden">
-      {/* Inner container for max-width, padding, and flex column structure */} 
+      {/* Inner container for max-width, padding, and flex column structure */}
       <div className="flex flex-col h-full max-w-screen-md mx-auto pt-4">
         <Chat
           messages={messages}
@@ -98,7 +98,7 @@ const Coach: React.FC = () => {
           onInputChange={handleInputChange}
           onSendMessage={handleSend}
           // Chat component needs to grow within the inner container
-          className="flex-grow min-h-0" 
+          className="flex-grow min-h-0"
         />
       </div>
     </div>

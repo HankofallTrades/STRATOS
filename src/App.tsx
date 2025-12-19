@@ -31,17 +31,11 @@ import {
 import React, { useState, useEffect } from 'react';
 import { useAppSelector, useAppDispatch } from "@/hooks/redux";
 import {
-  selectCurrentWorkout,
-  selectWorkoutStartTime,
-  endWorkout as endWorkoutAction,
-  clearWorkout,
   startWorkout as startWorkoutAction
 } from "@/state/workout/workoutSlice";
-import { addWorkoutToHistory } from "@/state/history/historySlice";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from '@/lib/integrations/supabase/client';
-import { Workout as WorkoutType, isStrengthSet, isCardioSet, timeToSeconds } from "@/lib/types/workout";
-import { TablesInsert, Tables } from '@/lib/integrations/supabase/types';
+import { Tables } from '@/lib/integrations/supabase/types';
 import {
   Dialog,
   DialogContent,
@@ -54,9 +48,10 @@ import {
 import AddSingleExerciseDialog from '@/components/features/Workout/AddSingleExerciseDialog';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/state/auth/AuthProvider';
-import ProteinLogging from "./components/features/Nutrition/ProteinLogging";
-import SunExposureLogging from "./components/features/Nutrition/SunExposureLogging";
+import ProteinLogging from "@/domains/fitness/view/ProteinLogging";
+import SunExposureLogging from "@/domains/fitness/view/SunExposureLogging";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/core/sidebar";
+import { useWorkoutPersistence } from '@/domains/fitness/controller/useWorkout';
 
 const queryClient = new QueryClient();
 
@@ -72,13 +67,13 @@ const MainAppLayout = () => {
   const dispatch = useAppDispatch();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const currentWorkout = useAppSelector(selectCurrentWorkout);
-  const workoutStartTime = useAppSelector(selectWorkoutStartTime);
   const [isDiscardConfirmOpen, setIsDiscardConfirmOpen] = useState(false);
   const [isAddExerciseDialogOpen, setIsAddExerciseDialogOpen] = useState(false);
   const [isProteinModalOpen, setIsProteinModalOpen] = useState(false);
   const [isSunExposureModalOpen, setIsSunExposureModalOpen] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  const { saveWorkout, discardWorkout, currentWorkout } = useWorkoutPersistence();
 
   // *** Query to fetch the latest single exercise log ***
   const { data: latestSingleLogData, isLoading: isLoadingLatestLog } = useQuery<LatestSingleLogData | null>({
@@ -158,203 +153,22 @@ const MainAppLayout = () => {
     setIsSunExposureModalOpen(true);
   };
 
-  const handleDiscardWorkout = () => {
-    dispatch(endWorkoutAction());
-    dispatch(clearWorkout());
-    navigate('/');
-    setIsDiscardConfirmOpen(false);
-  };
-
   const handleEndWorkout = async () => {
-    const workoutToEnd = currentWorkout;
-
-    if (!workoutToEnd) return;
-
-    const hasCompletedSets = workoutToEnd.exercises.some(ex => ex.sets.some(set => set.completed));
+    const hasCompletedSets = currentWorkout?.exercises.some(ex => ex.sets.some(set => set.completed));
 
     if (!hasCompletedSets) {
       setIsDiscardConfirmOpen(true);
       return;
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      console.error("Authentication error or user not found:", authError);
-      toast({
-        title: "Authentication Error",
-        description: "Could not verify user. Please log in again.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const endTime = Date.now();
-    const durationInSeconds = workoutStartTime
-      ? Math.max(0, Math.round((endTime - workoutStartTime) / 1000))
-      : 0;
-
-    // Determine workout type based on exercises
-    const hasStrengthSets = workoutToEnd.exercises.some(ex =>
-      ex.sets.some(set => set.completed && isStrengthSet(set))
-    );
-    const hasCardioSets = workoutToEnd.exercises.some(ex =>
-      ex.sets.some(set => set.completed && isCardioSet(set))
-    );
-
-    let workoutType: 'strength' | 'cardio' | 'mixed' = 'strength';
-    if (hasStrengthSets && hasCardioSets) {
-      workoutType = 'mixed';
-    } else if (hasCardioSets) {
-      workoutType = 'cardio';
-    }
-
-    const workoutDataForDb = {
-      user_id: user.id,
-      duration_seconds: durationInSeconds,
-      completed: true,
-      type: workoutType,
-      session_focus: workoutToEnd.session_focus || null,
-      notes: workoutToEnd.notes || null,
-    } as TablesInsert<'workouts'>;
-
-    try {
-      const { data: savedWorkout, error: workoutError } = await supabase
-        .from('workouts')
-        .insert(workoutDataForDb)
-        .select()
-        .single();
-
-      if (workoutError || !savedWorkout) {
-        throw workoutError || new Error("Failed to save workout record.");
-      }
-
-      const workoutId = savedWorkout.id;
-
-      const workoutExercisesDataForDb: TablesInsert<'workout_exercises'>[] = workoutToEnd.exercises
-        .filter(exercise => exercise.sets.some(set => set.completed))
-        .map((exercise, index) => ({
-          workout_id: workoutId,
-          exercise_id: exercise.exerciseId,
-          order: index + 1,
-        }));
-
-      if (workoutExercisesDataForDb.length === 0) {
-        console.warn("Workout save aborted: No exercises with completed sets found after filtering.");
-        toast({
-          title: "Save Issue",
-          description: "Could not find exercises with completed sets to save.",
-          variant: "destructive",
-        });
-        dispatch(clearWorkout());
-        navigate('/');
-        return;
-      }
-
-      const { data: savedWorkoutExercises, error: workoutExercisesError } = await supabase
-        .from('workout_exercises')
-        .insert(workoutExercisesDataForDb)
-        .select();
-
-      if (workoutExercisesError || !savedWorkoutExercises || savedWorkoutExercises.length !== workoutExercisesDataForDb.length) {
-        throw workoutExercisesError || new Error("Failed to save workout exercises records.");
-      }
-
-      const exerciseSetsDataForDb: TablesInsert<'exercise_sets'>[] = [];
-      workoutToEnd.exercises.forEach((exercise) => {
-        const savedWorkoutExercise = savedWorkoutExercises.find(
-          swe => swe.exercise_id === exercise.exerciseId && swe.workout_id === workoutId
-        );
-
-        if (!savedWorkoutExercise) {
-          console.warn(`Could not find saved workout exercise for exercise ID: ${exercise.exerciseId}`);
-          return;
-        }
-
-        exercise.sets.forEach((set, index) => {
-          if (set.completed) {
-            if (isStrengthSet(set)) {
-              // Handle strength sets
-              exerciseSetsDataForDb.push({
-                workout_exercise_id: savedWorkoutExercise.id,
-                set_number: index + 1,
-                weight: set.weight,
-                reps: set.reps,
-                time_seconds: set.time ? timeToSeconds(set.time) : null,
-                completed: true,
-                equipment_type: set.equipmentType || null,
-                variation: set.variation || null,
-              });
-            } else if (isCardioSet(set)) {
-              // Handle cardio sets
-              exerciseSetsDataForDb.push({
-                workout_exercise_id: savedWorkoutExercise.id,
-                set_number: index + 1,
-                weight: 0, // Default weight for cardio
-                reps: null, // No reps for cardio
-                time_seconds: timeToSeconds(set.time), // Convert ExerciseTime to seconds
-                completed: true,
-                // Cardio-specific fields
-                distance_km: set.distance_km,
-              } as TablesInsert<'exercise_sets'>);
-            }
-          }
-        });
-      });
-
-      if (exerciseSetsDataForDb.length > 0) {
-        const { error: setsError } = await supabase
-          .from('exercise_sets')
-          .insert(exerciseSetsDataForDb);
-
-        if (setsError) {
-          throw setsError;
-        }
-      } else {
-        console.warn("No completed sets found to insert, although workout/workout_exercises were created.");
-      }
-
-      const completedWorkoutForState: WorkoutType = {
-        ...workoutToEnd,
-        id: workoutId,
-        completed: true,
-        duration: durationInSeconds,
-        exercises: workoutToEnd.exercises
-          .map(woEx => {
-            const savedWoEx = savedWorkoutExercises.find(swe => swe.exercise_id === woEx.exerciseId && swe.workout_id === workoutId);
-            if (!savedWoEx) return null;
-
-            return {
-              ...woEx,
-              id: savedWoEx.id,
-              workoutId: workoutId,
-              sets: woEx.sets
-                .filter(set => set.completed)
-                .map(set => ({ ...set, workoutExerciseId: savedWoEx.id })),
-            };
-          })
-          .filter((woEx): woEx is Exclude<typeof woEx, null> => woEx !== null && woEx.sets.length > 0),
-      };
-
-      dispatch(addWorkoutToHistory(completedWorkoutForState));
-
-      toast({
-        title: "Workout Saved",
-        description: "Your workout has been successfully saved to your profile.",
-      });
-
-      dispatch(clearWorkout());
-      navigate('/');
-
-    } catch (error: any) {
-      console.error("Error saving workout:", error);
-      toast({
-        title: "Save Error",
-        description: `Failed to save workout: ${error.message || 'Unknown error'}. Please try again.`,
-        variant: "destructive",
-      });
-    }
+    await saveWorkout();
   };
+
+  const handleConfirmDiscard = () => {
+    discardWorkout();
+    setIsDiscardConfirmOpen(false);
+  };
+
 
   return (
     <SidebarProvider>
@@ -437,7 +251,7 @@ const MainAppLayout = () => {
             <DialogFooter className="flex flex-row justify-end gap-2">
               <Button variant="outline" onClick={() => setIsDiscardConfirmOpen(false)}>Cancel</Button>
               <DialogClose asChild>
-                <Button variant="destructive" onClick={handleDiscardWorkout}>Discard</Button>
+                <Button variant="destructive" onClick={handleConfirmDiscard}>Discard</Button>
               </DialogClose>
             </DialogFooter>
           </DialogContent>

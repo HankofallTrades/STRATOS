@@ -51,49 +51,6 @@ export async function getLocalLlmResponse(
   };
 }
 
-// --- OpenAI LLM ---
-export async function getOpenAiResponse(
-  messages: ChatMessage[],
-  apiKey: string,
-  openaiApiUrl: string, // Accept URL as argument
-  model?: string // Accept optional model name
-): Promise<ChatMessage> {
-  if (!apiKey) {
-    throw new Error('OpenAI API Key was not provided.');
-  }
-  if (!openaiApiUrl) {
-    throw new Error('OpenAI API URL was not provided.');
-  }
-
-  const payload = {
-    model: model || 'gpt-4o', // Use provided model or fallback to a default
-    messages: messages,
-  };
-
-  const response = await fetch(openaiApiUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    const errorBody = await response.text();
-    throw new Error(`OpenAI API request failed with status ${response.status}: ${errorBody}`);
-  }
-
-  const data = await response.json();
-  if (!data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content) {
-    throw new Error('Invalid response structure from OpenAI API');
-  }
-
-  return {
-    role: 'assistant',
-    content: data.choices[0].message.content.trim(),
-  };
-}
 
 // --- OpenRouter LLM ---
 export async function getOpenRouterResponse(
@@ -148,7 +105,7 @@ export async function getOpenRouterResponse(
     // Customize error message for rate limit (429)
     let errorMessage = `OpenRouter API Error: ${data.error.message || 'Unknown error'} (Code: ${data.error.code || 'N/A'})`;
     if (data.error.code === 429) {
-        errorMessage = `OpenRouter Rate Limit Exceeded (Code: 429). You may need to wait or check your plan details. Original message: ${data.error.message}`;
+      errorMessage = `OpenRouter Rate Limit Exceeded (Code: 429). You may need to wait or check your plan details. Original message: ${data.error.message}`;
     }
     throw new Error(errorMessage);
   }
