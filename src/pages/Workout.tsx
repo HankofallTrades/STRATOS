@@ -1,5 +1,5 @@
-import WorkoutComponent from "@/components/features/Workout/WorkoutComponent";
-import SessionFocusSelector from "@/components/features/Workout/SessionFocusSelector";
+import WorkoutComponent from "@/domains/fitness/view/WorkoutComponent";
+import SessionFocusSelector from "@/domains/fitness/view/SessionFocusSelector";
 import { useAppSelector, useAppDispatch } from "@/hooks/redux";
 import {
   selectCurrentWorkout,

@@ -2,7 +2,7 @@ import { Button } from "@/components/core/button";
 import { useAppSelector, useAppDispatch } from "@/hooks/redux"; // Import Redux hooks
 import { selectCurrentWorkout, selectWorkoutStartTime, startWorkout as startWorkoutAction } from "@/state/workout/workoutSlice"; // Import selectors and actions
 import { formatTime } from "@/lib/utils/timeUtils";
-import WorkoutComponent from "@/components/features/Workout/WorkoutComponent";
+import WorkoutComponent from "@/domains/fitness/view/WorkoutComponent";
 
 import { FlowerLotus } from "@phosphor-icons/react";
 import { Sun, Feather } from "lucide-react";
