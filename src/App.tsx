@@ -45,7 +45,7 @@ import {
   DialogTitle,
   DialogClose,
 } from "@/components/core/Dialog";
-import AddSingleExerciseDialog from '@/components/features/Workout/AddSingleExerciseDialog';
+import AddSingleExerciseDialog from '@/domains/fitness/view/AddSingleExerciseDialog';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/state/auth/AuthProvider';
 import ProteinLogging from "@/domains/fitness/view/ProteinLogging";
