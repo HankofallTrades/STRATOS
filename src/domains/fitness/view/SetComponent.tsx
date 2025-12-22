@@ -6,8 +6,7 @@ import {
   isCardioSet,
 } from "@/lib/types/workout";
 import { Input } from "@/components/core/input";
-import { Checkbox } from "@/components/core/checkbox";
-import { Timer, MapPin } from "lucide-react";
+import { Timer, MapPin, Check } from "lucide-react";
 import {
   TableCell,
 } from "@/components/core/table";
@@ -91,9 +90,10 @@ const SetComponent: React.FC<SetComponentProps> = ({
               className={cn(
                 "h-9 w-full text-xs",
                 "text-center",
+                "border-none shadow-none focus-visible:ring-0",
                 "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
               )}
-              placeholder="0"
+              placeholder={previousPerformance?.time_seconds ? String(previousPerformance.time_seconds) : "0"}
               aria-label="Duration in seconds"
               disabled={isCompleted}
             />
@@ -115,6 +115,7 @@ const SetComponent: React.FC<SetComponentProps> = ({
               className={cn(
                 "h-9 w-full text-xs",
                 "text-center",
+                "border-none shadow-none focus-visible:ring-0",
                 "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
               )}
               placeholder="0.0"
@@ -127,13 +128,17 @@ const SetComponent: React.FC<SetComponentProps> = ({
         {/* Completion checkbox */}
         <TableCell className="w-[40px] align-middle px-0 py-0">
           <div className="flex justify-center items-center h-full">
-            <Checkbox
+            <button
               id={`completed-${set.id}`}
-              checked={isCompleted}
-              onCheckedChange={handleCompletionChange}
-              className="w-5 h-5"
+              onClick={() => handleCompletionChange(!isCompleted)}
+              className={cn(
+                "p-1 rounded-full transition-colors",
+                isCompleted ? "text-green-500" : "text-gray-300"
+              )}
               aria-label="Mark set as completed"
-            />
+            >
+              <Check size={20} className={cn(isCompleted && "stroke-[3px]")} />
+            </button>
           </div>
         </TableCell>
       </motion.tr>
@@ -175,6 +180,7 @@ const SetComponent: React.FC<SetComponentProps> = ({
             className={cn(
               "h-9 w-full",
               "text-center",
+              "border-none shadow-none focus-visible:ring-0",
               "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
             )}
             placeholder={previousPerformance ? String(previousPerformance.weight) : '0'}
@@ -202,6 +208,7 @@ const SetComponent: React.FC<SetComponentProps> = ({
               className={cn(
                 "h-9 w-full",
                 "text-center",
+                "border-none shadow-none focus-visible:ring-0",
                 "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
               )}
               placeholder={previousPerformance ? String(previousPerformance.time_seconds ?? '0') : '0'}
@@ -229,6 +236,7 @@ const SetComponent: React.FC<SetComponentProps> = ({
               className={cn(
                 "h-9 w-full",
                 "text-center",
+                "border-none shadow-none focus-visible:ring-0",
                 "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
               )}
               placeholder={previousPerformance ? String(previousPerformance.reps ?? '0') : '0'}
@@ -246,13 +254,17 @@ const SetComponent: React.FC<SetComponentProps> = ({
       )}
       <TableCell className="w-[40px] align-middle px-0 py-0">
         <div className="flex justify-center items-center h-full">
-          <Checkbox
+          <button
             id={`completed-${set.id}`}
-            checked={isCompleted}
-            onCheckedChange={handleCompletionChange}
-            className="w-5 h-5"
+            onClick={() => handleCompletionChange(!isCompleted)}
+            className={cn(
+              "p-1 rounded-full transition-colors",
+              isCompleted ? "text-green-500" : "text-gray-300"
+            )}
             aria-label="Mark set as completed"
-          />
+          >
+            <Check size={20} className={cn(isCompleted && "stroke-[3px]")} />
+          </button>
         </div>
       </TableCell>
     </motion.tr>

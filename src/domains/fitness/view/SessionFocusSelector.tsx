@@ -113,12 +113,12 @@ const SessionFocusSelector: React.FC<SessionFocusSelectorProps> = ({
                   <h4 className="font-semibold text-xs truncate">{option.title}</h4>
                   <div className="mt-1">
                     {option.repRange && (
-                      <Badge variant="secondary" className="text-xs">
+                      <Badge variant="outline" className="text-xs">
                         {option.repRange}
                       </Badge>
                     )}
                     {option.heartRateZone && (
-                      <Badge variant="secondary" className="text-xs">
+                      <Badge variant="outline" className="text-xs">
                         {option.heartRateZone}
                       </Badge>
                     )}
@@ -162,12 +162,12 @@ const SessionFocusSelector: React.FC<SessionFocusSelectorProps> = ({
                     </p>
                     <div className="flex gap-2 mt-2">
                       {option.repRange && (
-                        <Badge variant="secondary" className="text-xs">
+                        <Badge variant="outline" className="text-xs">
                           {option.repRange}
                         </Badge>
                       )}
                       {option.heartRateZone && (
-                        <Badge variant="secondary" className="text-xs">
+                        <Badge variant="outline" className="text-xs">
                           {option.heartRateZone}
                         </Badge>
                       )}

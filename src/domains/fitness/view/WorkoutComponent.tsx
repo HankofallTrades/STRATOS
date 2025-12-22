@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAppSelector, useAppDispatch } from "@/hooks/redux";
-import { 
-  selectCurrentWorkout, 
+import {
+  selectCurrentWorkout,
 } from "@/state/workout/workoutSlice";
 import ExerciseSelector from "./ExerciseSelector";
 import WorkoutExerciseContainer from "./WorkoutExerciseContainer";
@@ -20,7 +20,7 @@ const WorkoutComponent = () => {
       <div className="flex-grow space-y-6 overflow-y-auto px-1">
         {currentWorkout.exercises.length > 0 ? (
           <AnimatePresence initial={false}>
-            {currentWorkout.exercises.map((exercise) => (
+            {currentWorkout.exercises.map((exercise, index) => (
               <motion.div
                 key={exercise.id}
                 layout="position"
@@ -31,26 +31,21 @@ const WorkoutComponent = () => {
               >
                 <WorkoutExerciseContainer
                   workoutExercise={exercise}
+                  isLast={index === currentWorkout.exercises.length - 1}
                 />
               </motion.div>
             ))}
           </AnimatePresence>
         ) : (
-          <Card className="bg-card shadow rounded-lg border">
-            <CardContent className="p-6 flex justify-center items-center">
-              <ExerciseSelector />
-            </CardContent>
-          </Card>
+          <div className="flex justify-center items-center h-full w-full max-w-sm mx-auto">
+            <div className="border border-border rounded-xl p-10 bg-card/30 backdrop-blur-sm shadow-sm w-full flex flex-col items-center">
+              <ExerciseSelector openOnMount={true} />
+            </div>
+          </div>
         )}
       </div>
 
-      {currentWorkout.exercises.length > 0 && (
-        <div className="mt-auto pt-4 flex justify-center items-center">
-          <div className="flex flex-col items-center">
-            <ExerciseSelector /> 
-          </div>
-        </div>
-      )}
+
     </div>
   );
 };

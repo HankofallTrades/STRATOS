@@ -1,4 +1,4 @@
-import React, { Fragment, useMemo, useState, useRef } from 'react';
+import React, { Fragment, useMemo, useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 // TanStack Query - Removed hooks, just keep types if needed
 // import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -17,12 +17,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/core/card
 import { Plus, Check, X, Trash2, Minus, Heart, Zap } from 'lucide-react'; // Added Check, X, Minus, Heart, Zap icons
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/core/Dialog'; // Added Dialog imports
 import SetComponent from './SetComponent'; // Assuming SetComponent exists in the same directory
+import ExerciseSelector from './ExerciseSelector'; // Added import for last card "+" button
 // Removed Supabase function imports
 // import { addExerciseVariationToDB, fetchExerciseVariationsFromDB } from '@/lib/integrations/supabase/exercises';
 import { Input } from '@/components/core/input'; // Import Input component
+import { cn } from '@/lib/utils/cn'; // Import cn utility
 // ADD ToggleGroup imports
 // import { ToggleGroup, ToggleGroupItem } from '@/components/core/Toggle/toggle-group';
 import SwipeableIncrementer from '@/components/core/Controls/SwipeableIncrementer'; // Added import
+import RestTimer from './RestTimer';
 // ADD Table component imports
 import {
   Table,
@@ -69,7 +72,8 @@ interface WorkoutExerciseViewProps {
   onNewVariationNameChange: (value: string) => void;
   onSaveNewVariation: () => void;
   onCancelAddVariation: () => void;
-  onUpdateLastSet: (field: 'weight' | 'reps' | 'time' | 'distance', change: number) => void; // Add new prop, added 'time' and 'distance'
+  onUpdateLastSet: (field: 'weight' | 'reps' | 'time' | 'distance', change: number) => void;
+  isLast?: boolean;
 }
 
 const DEFAULT_VARIATION = 'Standard'; // Define default variation
@@ -165,6 +169,7 @@ export const WorkoutExerciseView = ({
   onSaveNewVariation,
   onCancelAddVariation,
   onUpdateLastSet, // Destructure new prop
+  isLast = false,
 }: WorkoutExerciseViewProps) => {
   // Removed state: selectedVariation, isAddingVariation, newVariationName
   // Removed queryClient
@@ -178,8 +183,30 @@ export const WorkoutExerciseView = ({
   const [showNewEquipmentInput, setShowNewEquipmentInput] = useState(false);
   const [newEquipmentName, setNewEquipmentName] = useState("");
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false); // New state for delete dialog
+  const [restStartTime, setRestStartTime] = useState<number | null>(null);
+
+  const prevCompletedSetsRef = useRef<number>(0);
+  const prevTotalSetsRef = useRef<number>(0);
 
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Monitor sets to start/stop rest timer
+  useEffect(() => {
+    const completedSets = workoutExercise.sets.filter(s => s.completed).length;
+    const totalSets = workoutExercise.sets.length;
+
+    // Reset timer if a new set is added
+    if (totalSets > prevTotalSetsRef.current) {
+      setRestStartTime(null);
+    }
+    // Start/Restart timer if a set was just completed
+    else if (completedSets > prevCompletedSetsRef.current) {
+      setRestStartTime(Date.now());
+    }
+
+    prevCompletedSetsRef.current = completedSets;
+    prevTotalSetsRef.current = totalSets;
+  }, [workoutExercise.sets]);
 
   // REMOVED Motion value and transform
   // const cardX = useMotionValue(0);
@@ -237,10 +264,12 @@ export const WorkoutExerciseView = ({
 
   return (
     <Fragment>
-      {/* Static Relative Wrapper for Positioning and Clipping - No longer needs overflow-hidden if card doesn't move */}
-      <div className="relative rounded-lg">
-        {/* Card Area - Removed motion.div wrapper and its drag props */}
-        <Card className="w-full rounded-lg border-0 shadow-none bg-transparent p-0 md:border md:shadow md:bg-card md:rounded-lg">
+      {/* Static Relative Wrapper for Positioning and Clipping */}
+      <div className="relative">
+        <Card className={cn(
+          "w-full rounded-lg bg-card p-0 transition-all border border-border shadow-sm",
+          isLast && "border-b-0 rounded-b-none"
+        )}>
           <motion.div // Added motion.div here for long press on header
             onPointerDown={handlePointerDown}
             onPointerUp={clearLongPressTimer}
@@ -498,9 +527,17 @@ export const WorkoutExerciseView = ({
                       className="border-b-0"
                     >
                       <TableCell className="p-1 text-center align-middle">
-                        <Button variant="ghost" size="icon" onClick={onAddSet} className="h-7 w-7" aria-label="Add set">
-                          <Plus size={16} />
-                        </Button>
+                        <div className="flex items-center justify-center relative">
+                          <Button variant="ghost" size="icon" onClick={onAddSet} className="h-7 w-7" aria-label="Add set">
+                            <Plus size={16} />
+                          </Button>
+                          {restStartTime && (
+                            <RestTimer
+                              startTime={restStartTime}
+                              className="absolute left-full ml-2 whitespace-nowrap"
+                            />
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="p-1 align-middle"></TableCell>
 
@@ -599,6 +636,29 @@ export const WorkoutExerciseView = ({
           </CardContent>
         </Card>
         {/* REMOVED Stationary Delete Button Area */}
+        {/* Custom Curved Bottom Border for the last card */}
+        {isLast && (
+          <div className="relative -mt-[1px] h-10 w-full overflow-visible pointer-events-none">
+            <div className="absolute top-0 left-0 w-full h-full flex items-start">
+              <div className="h-[1px] flex-1 bg-border" />
+              <div className="w-[120px] h-[36px] relative flex-shrink-0 pointer-events-auto">
+                <svg width="120" height="36" viewBox="0 0 120 36" className="text-border overflow-visible fill-none">
+                  <path
+                    d="M 0 0 L 20 0 C 35 0 35 32 60 32 C 85 32 85 0 100 0 L 120 0"
+                    stroke="currentColor"
+                    strokeWidth="1"
+                    vectorEffect="non-scaling-stroke"
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <div className="absolute top-[0px] left-[44px] flex justify-center items-center w-[32px] h-[32px]">
+                  <ExerciseSelector iconOnly={true} />
+                </div>
+              </div>
+              <div className="w-4 h-[1px] bg-border" />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Delete Confirmation Dialog */}
