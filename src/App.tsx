@@ -194,7 +194,7 @@ const MainAppLayout = () => {
                 onClick={handleEndWorkout}
                 variant="default"
                 size="icon"
-                className="rounded-full h-14 w-14 bg-primary hover:bg-primary/90 shadow-lg text-primary-foreground"
+                className="rounded-full h-14 w-14 bg-[#15462C] hover:bg-[#15462C]/90 shadow-lg text-primary-foreground"
               >
                 <Save size={24} />
               </Button>

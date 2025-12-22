@@ -21,7 +21,7 @@ interface UseSetProps {
     set: ExerciseSet;
     userBodyweight?: number | null;
     isStatic: boolean;
-    previousPerformance: { weight: number; reps: number | null; time_seconds?: number | null } | null;
+    previousPerformance: { weight: number; reps: number | null; time_seconds?: number | null; distance_km?: number | null } | null;
 }
 
 export const useSet = ({
@@ -135,11 +135,19 @@ export const useSet = ({
         setIsCompleted(isNowCompleted);
 
         if (isStrengthSet(set)) {
-            const weightVal = parseFloat(localWeight) || 0;
-            const repsVal = parseInt(localReps) || 0;
-            const timeVal = parseInt(localTime) || 0;
-
             if (isNowCompleted) {
+                let weightVal = parseFloat(localWeight);
+                let repsVal = parseInt(localReps);
+                let timeVal = parseInt(localTime);
+
+                // Auto-fill logic
+                if (isNaN(weightVal) && previousPerformance) {
+                    weightVal = previousPerformance.weight;
+                    setLocalWeight(String(weightVal));
+                } else if (isNaN(weightVal)) {
+                    weightVal = 0;
+                }
+
                 let updatedSetData: any = {
                     workoutExerciseId,
                     setId: set.id,
@@ -149,6 +157,11 @@ export const useSet = ({
                 };
 
                 if (isStatic) {
+                    if (isNaN(timeVal) && previousPerformance?.time_seconds) {
+                        timeVal = previousPerformance.time_seconds;
+                        setLocalTime(String(timeVal));
+                    }
+
                     if (weightVal >= 0 && timeVal > 0) {
                         updatedSetData.reps = null;
                         updatedSetData.time = secondsToTime(timeVal);
@@ -157,6 +170,11 @@ export const useSet = ({
                         return;
                     }
                 } else {
+                    if (isNaN(repsVal) && previousPerformance?.reps) {
+                        repsVal = previousPerformance.reps;
+                        setLocalReps(String(repsVal));
+                    }
+
                     if (weightVal >= 0 && repsVal > 0) {
                         updatedSetData.reps = repsVal;
                         updatedSetData.time = null;
@@ -171,21 +189,34 @@ export const useSet = ({
                 dispatch(completeSetAction({ workoutExerciseId, setId: set.id, completed: false }));
             }
         } else if (isCardioSet(set)) {
-            const durationVal = parseInt(localDuration) || 0;
-            const distanceVal = parseFloat(localDistance) || 0;
+            let durationVal = parseInt(localDuration);
+            let distanceVal = parseFloat(localDistance);
 
-            if (isNowCompleted && durationVal > 0) {
-                dispatch(updateCardioSetAction({
-                    workoutExerciseId,
-                    setId: set.id,
-                    time: secondsToTime(durationVal),
-                    distance_km: distanceVal > 0 ? distanceVal : undefined,
-                }));
-                dispatch(completeSetAction({ workoutExerciseId, setId: set.id, completed: true }));
-            } else if (!isNowCompleted) {
-                dispatch(completeSetAction({ workoutExerciseId, setId: set.id, completed: false }));
+            if (isNowCompleted) {
+                // Auto-fill logic
+                if (isNaN(durationVal) && previousPerformance?.time_seconds) {
+                    durationVal = previousPerformance.time_seconds;
+                    setLocalDuration(String(durationVal));
+                }
+
+                if (isNaN(distanceVal) && previousPerformance && 'distance_km' in previousPerformance && previousPerformance.distance_km) {
+                    distanceVal = previousPerformance.distance_km;
+                    setLocalDistance(String(distanceVal));
+                }
+
+                if (durationVal > 0) {
+                    dispatch(updateCardioSetAction({
+                        workoutExerciseId,
+                        setId: set.id,
+                        time: secondsToTime(durationVal),
+                        distance_km: distanceVal > 0 ? distanceVal : undefined,
+                    }));
+                    dispatch(completeSetAction({ workoutExerciseId, setId: set.id, completed: true }));
+                } else {
+                    setIsCompleted(false);
+                }
             } else {
-                setIsCompleted(false);
+                dispatch(completeSetAction({ workoutExerciseId, setId: set.id, completed: false }));
             }
         }
     }, [dispatch, workoutExerciseId, set, isStatic, localWeight, localReps, localTime, localDuration, localDistance]);

@@ -23,8 +23,8 @@ const formatArchetypeName = (name: string): string => {
   return firstPart;
 };
 
-const ExerciseSelector = () => {
-  const [open, setOpen] = useState(false);
+const ExerciseSelector = ({ openOnMount = false, iconOnly = false }: { openOnMount?: boolean, iconOnly?: boolean }) => {
+  const [open, setOpen] = useState(openOnMount);
   const [isConfirmDeleteDialogOpen, setIsConfirmDeleteDialogOpen] = useState(false);
   const [exerciseToDelete, setExerciseToDelete] = useState<Exercise | null>(null);
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -95,13 +95,23 @@ const ExerciseSelector = () => {
     <div className="flex justify-end">
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <Button
-            variant="default"
-            className="bg-primary hover:bg-primary/90 text-primary-foreground"
-          >
-            <Plus size={16} className="mr-2" />
-            Add Exercise
-          </Button>
+          {iconOnly ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-primary/70 hover:text-primary transition-colors h-8 w-8 p-0 hover:bg-transparent"
+            >
+              <Plus size={24} strokeWidth={2.5} />
+            </Button>
+          ) : (
+            <Button
+              variant="default"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
+              <Plus size={16} className="mr-2" />
+              Add Exercise
+            </Button>
+          )}
         </DialogTrigger>
         <DialogContent
           className="sm:max-w-md dark:bg-gray-800 dark:border-gray-700"

@@ -43,7 +43,7 @@ export const fantasyTheme: AppTheme = {
     destructive: '0 60% 30%',
     destructiveForeground: '0 0% 98%',
 
-    border: '215 25% 8%', // Matches background to remove outlines (Was '140 30% 20%')
+    border: '215 20% 20%', // Subtle border, slightly lighter than background (Was '215 25% 8%')
     input: '140 30% 20%',
     ring: '140 50% 45%',
 

@@ -124,11 +124,11 @@ const Workout = () => {
         <div className="flex items-center gap-2">
           {focusInfo && (
             <div className="flex items-center gap-2">
-              <div className={cn("p-1.5 rounded-full text-primary-foreground", focusInfo.color)}>
+              <div className={cn("p-1.5 rounded-full", focusInfo.color.replace('bg-', 'text-'))}>
                 {focusInfo.icon}
               </div>
               <Badge
-                variant="secondary"
+                variant="outline"
                 className="text-xs"
               >
                 {focusInfo.title}
