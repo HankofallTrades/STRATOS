@@ -21,6 +21,7 @@ interface SetComponentProps extends MotionProps {
   previousPerformance: { weight: number; reps: number | null; time_seconds?: number | null } | null;
   userBodyweight?: number | null;
   isStatic: boolean;
+  exerciseName?: string;
 }
 
 const SetComponent: React.FC<SetComponentProps> = ({
@@ -30,6 +31,7 @@ const SetComponent: React.FC<SetComponentProps> = ({
   previousPerformance,
   userBodyweight,
   isStatic,
+  exerciseName,
   ...motionProps
 }) => {
   const {
@@ -191,8 +193,10 @@ const SetComponent: React.FC<SetComponentProps> = ({
         <PerformanceIndicator
           metric="weight"
           previousValue={previousRepsValue}
+          previousWeightKg={previousPerformance?.weight}
           isStatic={isStatic}
           visible={showWeightIndicator}
+          exerciseName={exerciseName}
         />
       </TableCell>
       {isStatic ? (
@@ -221,6 +225,7 @@ const SetComponent: React.FC<SetComponentProps> = ({
             previousValue={previousTimeValue}
             isStatic={isStatic}
             visible={showTimeIndicator}
+            exerciseName={exerciseName}
           />
         </TableCell>
       ) : (
@@ -249,6 +254,7 @@ const SetComponent: React.FC<SetComponentProps> = ({
             previousValue={previousRepsValue}
             isStatic={isStatic}
             visible={showRepsIndicator}
+            exerciseName={exerciseName}
           />
         </TableCell>
       )}
