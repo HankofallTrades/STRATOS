@@ -513,6 +513,7 @@ export const WorkoutExerciseView = ({
                           previousPerformance={previousPerformanceForSet}
                           userBodyweight={userBodyweight}
                           isStatic={isExerciseStatic}
+                          exerciseName={workoutExercise.exercise.name}
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: 'auto' }}
                           exit={{ opacity: 0, height: 0 }}
