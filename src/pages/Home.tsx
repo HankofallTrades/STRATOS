@@ -1,362 +1,584 @@
-import { Button } from "@/components/core/button";
-import { useAppSelector, useAppDispatch } from "@/hooks/redux"; // Import Redux hooks
-import { selectCurrentWorkout, selectWorkoutStartTime, startWorkout as startWorkoutAction } from "@/state/workout/workoutSlice"; // Import selectors and actions
-import { formatTime } from "@/lib/utils/timeUtils";
-import WorkoutComponent from "@/domains/fitness/view/WorkoutComponent";
-
-import { FlowerLotus } from "@phosphor-icons/react";
-import { Sun, Feather } from "lucide-react";
-import { useAuth } from '@/state/auth/AuthProvider'; // Assuming this path is correct
-import { useElapsedTime } from "@/hooks/useElapsedTime"; // Import the new hook
-import { useNavigate } from 'react-router-dom'; // Import useNavigate
-import { useMemo, useState, useEffect, useCallback } from 'react'; // ADDED useState, useEffect
+import { useEffect, useMemo, useRef } from "react";
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { getUserProfile, UserProfileData } from '@/lib/integrations/supabase/user';
-import { getDailyProteinIntake, DailyProteinIntake, getWeeklyZone2CardioMinutes, WeeklyZone2CardioData } from '@/domains/fitness/model/fitnessRepository';
-import CircularProgressDisplay from '@/components/core/charts/CircularProgressDisplay';
-import Volume from '@/domains/fitness/view/analytics/Volume'; // Import Volume component
-import SunMoonProgress from '@/components/core/charts/SunMoonProgress'; // Import SunMoonProgress
-import { getDailySunExposure } from '@/domains/fitness/model/fitnessRepository'; // Import sun exposure fetcher
-import { useTriad, useHabitCompletions, HabitButton } from '@/domains/habits';
-import { useTheme } from '@/lib/themes';
+import { Flame, Trophy } from "lucide-react";
 
-// Interface for daily sun exposure data
-interface DailySunExposureData {
-  total_hours: number;
-}
+import { Button } from "@/components/core/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/core/card";
+import { useAuth } from '@/state/auth/AuthProvider';
+import { useAppSelector } from "@/hooks/redux";
+import { selectCurrentWorkout } from "@/state/workout/workoutSlice";
+import { usePeriodization } from "@/domains/periodization";
+import { fetchRecentWorkoutsSummary } from '@/domains/analytics/model/analyticsRepository';
+import { fetchUserProfile } from '@/domains/account/model/accountRepository';
+import { useTriad, useHabitCompletions } from '@/domains/habits';
+import { supabase } from '@/lib/integrations/supabase/client';
+import type { SessionFocus } from '@/lib/types/workout';
+import { calculateOneRepMax } from '@/lib/utils/workoutUtils';
+
+const formatLocalIsoDate = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const daysAgoLabel = (isoDateTime: string): string => {
+  const input = new Date(isoDateTime);
+  const now = new Date();
+
+  const startOfNow = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfInput = new Date(input.getFullYear(), input.getMonth(), input.getDate());
+  const diffDays = Math.round((startOfNow.getTime() - startOfInput.getTime()) / (24 * 60 * 60 * 1000));
+
+  if (diffDays <= 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  return `${diffDays} days ago`;
+};
+
+const greetingFromHour = (hour: number): string => {
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+  return 'Good evening';
+};
+
+const formatSessionFocusLabel = (focus: SessionFocus): string => {
+  const labels: Record<SessionFocus, string> = {
+    hypertrophy: 'Hypertrophy',
+    strength: 'Strength',
+    zone2: 'Zone 2',
+    zone5: 'Zone 5',
+    speed: 'Speed',
+    recovery: 'Recovery',
+    mixed: 'Mixed',
+  };
+  return labels[focus];
+};
+
+const estimateSessionMinutes = (exerciseCount: number, protocol?: 'occams' | 'custom'): number => {
+  if (exerciseCount <= 0) return 30;
+  if (protocol === 'occams') {
+    return Math.max(20, exerciseCount * 8 + 8);
+  }
+  return Math.max(30, exerciseCount * 8 + 15);
+};
+
+const inferMuscleTagsFromExercises = (exerciseNames: string[]): string[] => {
+  const tags = new Set<string>();
+
+  for (const name of exerciseNames) {
+    const normalized = name.toLowerCase();
+    if (normalized.includes('pull') || normalized.includes('row')) tags.add('Back');
+    if (normalized.includes('bicep') || normalized.includes('curl')) tags.add('Biceps');
+    if (normalized.includes('rear delt')) tags.add('Rear Delts');
+    if (normalized.includes('chest') || normalized.includes('bench')) tags.add('Chest');
+    if (normalized.includes('shoulder') || normalized.includes('overhead')) tags.add('Shoulders');
+    if (normalized.includes('tricep') || normalized.includes('pushdown')) tags.add('Triceps');
+    if (normalized.includes('leg') || normalized.includes('squat')) tags.add('Legs');
+  }
+
+  return Array.from(tags).slice(0, 3);
+};
+
+const inferSessionLabel = (exerciseNames: string[]): string => {
+  const names = exerciseNames.map(name => name.toLowerCase());
+  const isPull = names.some(name => name.includes('pull') || name.includes('row'));
+  const isPush = names.some(name => name.includes('press') || name.includes('chest'));
+  const isLower = names.some(name => name.includes('leg') || name.includes('squat'));
+
+  if (isLower) return 'Lower Body';
+  if (isPull && !isPush) return 'Upper Body Pull';
+  if (isPush && !isPull) return 'Upper Body Push';
+  if (isPull && isPush) return 'Upper Body Mixed';
+  return 'Strength Session';
+};
+
+const formatLiftWeight = (valueKg: number, preferredUnit: string | null | undefined): string => {
+  if ((preferredUnit ?? '').toLowerCase().includes('lb')) {
+    const pounds = Math.round(valueKg * 2.20462);
+    return `${pounds} lbs`;
+  }
+
+  const rounded = Number(valueKg.toFixed(1));
+  return `${Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(1)} kg`;
+};
+
+const formatSessionDuration = (durationSeconds: number | null | undefined): string => {
+  const seconds = durationSeconds ?? 0;
+  if (seconds <= 0) return '< 5 min';
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 5) return '< 5 min';
+  return `${minutes} min`;
+};
+
+const formatReps = (value: number): string => {
+  const normalized = Number(value.toFixed(1));
+  return Number.isInteger(normalized) ? normalized.toFixed(0) : normalized.toFixed(1);
+};
+
+const E1RM_IMPROVEMENT_EPSILON = 0.001;
+
+const firstOrSelf = <T,>(value: T | T[] | null | undefined): T | null => {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value ?? null;
+};
+
+const calculateStreak = (
+  completionDates: string[],
+  todayIso: string,
+  includeToday: boolean
+): number => {
+  const dateSet = new Set(completionDates);
+  const hasToday = includeToday || dateSet.has(todayIso);
+
+  const getPrevDay = (iso: string): string => {
+    const date = new Date(`${iso}T12:00:00`);
+    date.setDate(date.getDate() - 1);
+    return formatLocalIsoDate(date);
+  };
+
+  let cursor = hasToday ? todayIso : getPrevDay(todayIso);
+  let streak = 0;
+
+  while (true) {
+    if (cursor === todayIso && hasToday) {
+      streak += 1;
+      cursor = getPrevDay(cursor);
+      continue;
+    }
+
+    if (!dateSet.has(cursor)) {
+      break;
+    }
+
+    streak += 1;
+    cursor = getPrevDay(cursor);
+  }
+
+  return streak;
+};
 
 const Home = () => {
   const navigate = useNavigate();
-  const dispatch = useAppDispatch();
-  const currentWorkout = useAppSelector(selectCurrentWorkout);
   const { user } = useAuth();
-  const { currentTheme } = useTheme();
+  const currentWorkout = useAppSelector(selectCurrentWorkout);
   const userId = user?.id;
-  const todayDate = useMemo(() => new Date().toISOString().split('T')[0], []);
-  const { habits, isLoading: isLoadingHabits } = useTriad(userId)
-  const { completions, isLoading: isLoadingCompletions, toggleCompletion, isToggling, pendingIds } = useHabitCompletions(userId, todayDate)
+  const now = new Date();
+  const todayIso = useMemo(() => formatLocalIsoDate(new Date()), []);
 
-  const [startProteinAnimation, setStartProteinAnimation] = useState(false);
-  const [startSunAnimation, setStartSunAnimation] = useState(false);
-  const [startCardioAnimation, setStartCardioAnimation] = useState(false);
+  const { activeProgram } = usePeriodization(userId);
+  const { habits } = useTriad(userId);
+  const { completions, toggleCompletion, pendingIds, isLoading: isLoadingCompletions } = useHabitCompletions(userId, todayIso);
 
-  const { data: userProfile, isLoading: isLoadingProfile } = useQuery<
-    UserProfileData | null,
-    Error
-  >(
-    {
-      queryKey: ['userProfile', userId],
-      queryFn: async () => {
-        if (!userId) return null;
-        const profile = await getUserProfile(userId);
-        return profile;
-      },
-      enabled: !!userId,
-      staleTime: 5 * 60 * 1000,
-    }
+  const movementHabit = useMemo(
+    () => habits.find(habit => habit.title.toLowerCase() === 'movement') ?? null,
+    [habits]
   );
 
-  const {
-    data: dailyProtein,
-    isLoading: isLoadingProtein,
-    isError: isErrorProtein,
-    error: proteinError
-  } = useQuery<
-    DailyProteinIntake,
-    Error
-  >(
-    {
-      queryKey: ['dailyProteinIntake', userId, todayDate],
-      queryFn: async () => {
-        if (!userId) {
-          return { total_protein: 0 };
-        }
-        const intake = await getDailyProteinIntake(userId, todayDate);
-        return intake;
-      },
-      enabled: !!userId,
-      staleTime: 1 * 60 * 1000,
-    }
+  const meditationHabit = useMemo(
+    () => habits.find(habit => habit.title.toLowerCase() === 'meditation') ?? null,
+    [habits]
   );
 
-  const {
-    data: dailySunExposure,
-    isLoading: isLoadingSunExposure,
-    isError: isErrorSunExposure,
-    error: sunExposureError
-  } = useQuery<
-    DailySunExposureData,
-    Error
-  >(
-    {
-      queryKey: ['dailySunExposure', userId, todayDate],
-      queryFn: async () => {
-        if (!userId) {
-          return { total_hours: 0 };
-        }
-        // Assuming getDailySunExposure is already created and returns { total_hours: number }
-        const exposure = await getDailySunExposure(userId, todayDate);
-        return exposure;
-      },
-      enabled: !!userId,
-      staleTime: 1 * 60 * 1000,
-    }
+  const writingHabit = useMemo(
+    () => habits.find(habit => habit.title.toLowerCase() === 'writing') ?? null,
+    [habits]
   );
 
-  // New query for weekly zone 2 cardio minutes
-  const {
-    data: weeklyZone2Cardio,
-    isLoading: isLoadingZone2Cardio,
-    isError: isErrorZone2Cardio,
-    error: zone2CardioError
-  } = useQuery<
-    WeeklyZone2CardioData,
-    Error
-  >(
-    {
-      queryKey: ['weeklyZone2Cardio', userId],
-      queryFn: async () => {
-        if (!userId) {
-          return { total_minutes: 0 };
-        }
-        try {
-          const result = await getWeeklyZone2CardioMinutes(userId);
-          return result;
-        } catch (error) {
-          // If the function doesn't exist yet, return mock data
-          console.warn('Zone 2 cardio function not implemented yet, using mock data');
-          return { total_minutes: 85 }; // Mock data
-        }
-      },
-      enabled: !!userId,
-      staleTime: 5 * 60 * 1000,
-    }
+  const { data: profile } = useQuery({
+    queryKey: ['homeProfile', userId],
+    queryFn: async () => {
+      if (!userId) return null;
+      return fetchUserProfile(userId);
+    },
+    enabled: !!userId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: recentWorkouts = [] } = useQuery({
+    queryKey: ['homeRecentWorkouts', userId],
+    queryFn: async () => {
+      if (!userId) return [];
+      return fetchRecentWorkoutsSummary(userId, 5);
+    },
+    enabled: !!userId,
+    staleTime: 60 * 1000,
+  });
+
+  const lastSession = recentWorkouts[0] ?? null;
+  const workoutLoggedToday = Boolean(
+    lastSession && formatLocalIsoDate(new Date(lastSession.workout_created_at)) === todayIso
   );
+  const workoutStartedToday = !!currentWorkout && currentWorkout.date.slice(0, 10) === todayIso;
+  const workoutMovementDone = workoutStartedToday || workoutLoggedToday;
+
+  const { data: movementStreak = 0 } = useQuery({
+    queryKey: ['movementStreak', userId, movementHabit?.id, todayIso, currentWorkout?.id, lastSession?.workout_created_at],
+    queryFn: async () => {
+      if (!userId || !movementHabit?.id) return 0;
+
+      const { data, error } = await supabase
+        .from('habit_completions')
+        .select('date')
+        .eq('user_id', userId)
+        .eq('habit_id', movementHabit.id)
+        .order('date', { ascending: false })
+        .limit(365);
+
+      if (error) throw error;
+
+      const completionDates = (data ?? []).map(row => row.date as string);
+      return calculateStreak(completionDates, todayIso, workoutMovementDone);
+    },
+    enabled: !!userId && !!movementHabit?.id,
+    staleTime: 60 * 1000,
+  });
+
+  const { data: recentPr } = useQuery({
+    queryKey: ['homeRecentPr', 'v2', userId, profile?.preferred_weight_unit],
+    queryFn: async () => {
+      if (!userId) return null;
+
+      type WeightedSetRow = {
+        weight: number | null;
+        reps: number | null;
+        workout_exercises: {
+          workout_id: string;
+          exercise_id: string;
+          exercises: { name: string } | { name: string }[] | null;
+          workouts: { created_at: string } | { created_at: string }[] | null;
+        } | {
+          workout_id: string;
+          exercise_id: string;
+          exercises: { name: string } | { name: string }[] | null;
+          workouts: { created_at: string } | { created_at: string }[] | null;
+        }[] | null;
+      };
+
+      const setRows: WeightedSetRow[] = [];
+      const pageSize = 1000;
+      let pageStart = 0;
+
+      while (true) {
+        const { data, error } = await supabase
+          .from('exercise_sets')
+          .select(`
+            weight,
+            reps,
+            workout_exercises!inner(
+              workout_id,
+              exercise_id,
+              exercises!inner(name),
+              workouts!inner(created_at, user_id)
+            )
+          `)
+          .eq('completed', true)
+          .gt('weight', 0)
+          .gt('reps', 0)
+          .eq('workout_exercises.workouts.user_id', userId)
+          .range(pageStart, pageStart + pageSize - 1);
+
+        if (error) throw error;
+
+        const page = (data ?? []) as WeightedSetRow[];
+        setRows.push(...page);
+
+        if (page.length < pageSize) break;
+        pageStart += pageSize;
+      }
+
+      if (setRows.length === 0) return null;
+
+      const bestPerWorkoutExercise = new Map<string, {
+        exerciseId: string;
+        exerciseName: string;
+        workoutCreatedAt: string;
+        maxE1RM: number;
+        topSetWeightKg: number;
+        topSetReps: number;
+      }>();
+
+      for (const row of setRows) {
+        const weight = typeof row.weight === 'number' ? row.weight : Number(row.weight);
+        const reps = typeof row.reps === 'number' ? row.reps : Number(row.reps);
+        if (!Number.isFinite(weight) || !Number.isFinite(reps) || weight <= 0 || reps <= 0) continue;
+
+        const workoutExercise = firstOrSelf(row.workout_exercises);
+        if (!workoutExercise) continue;
+
+        const workout = firstOrSelf(workoutExercise.workouts);
+        const exercise = firstOrSelf(workoutExercise.exercises);
+        if (!workout?.created_at || !workoutExercise.exercise_id || !workoutExercise.workout_id) continue;
+
+        const e1rm = calculateOneRepMax(weight, reps);
+        if (!Number.isFinite(e1rm) || e1rm <= 0) continue;
+
+        const key = `${workoutExercise.exercise_id}:${workoutExercise.workout_id}`;
+        const existing = bestPerWorkoutExercise.get(key);
+
+        if (!existing || e1rm > existing.maxE1RM) {
+          bestPerWorkoutExercise.set(key, {
+            exerciseId: workoutExercise.exercise_id,
+            exerciseName: exercise?.name?.trim() || 'Exercise',
+            workoutCreatedAt: workout.created_at,
+            maxE1RM: e1rm,
+            topSetWeightKg: weight,
+            topSetReps: reps,
+          });
+        }
+      }
+
+      const orderedPerformances = Array.from(bestPerWorkoutExercise.values())
+        .sort((a, b) => new Date(a.workoutCreatedAt).getTime() - new Date(b.workoutCreatedAt).getTime());
+
+      const runningMaxByExercise = new Map<string, number>();
+      let latestPrEvent: {
+        exerciseName: string;
+        workoutCreatedAt: string;
+        maxE1RM: number;
+        deltaE1RM: number;
+        topSetWeightKg: number;
+        topSetReps: number;
+      } | null = null;
+
+      for (const performance of orderedPerformances) {
+        const previousMax = runningMaxByExercise.get(performance.exerciseId);
+
+        if (
+          previousMax !== undefined
+          && performance.maxE1RM > previousMax + E1RM_IMPROVEMENT_EPSILON
+        ) {
+          latestPrEvent = {
+            exerciseName: performance.exerciseName,
+            workoutCreatedAt: performance.workoutCreatedAt,
+            maxE1RM: performance.maxE1RM,
+            deltaE1RM: performance.maxE1RM - previousMax,
+            topSetWeightKg: performance.topSetWeightKg,
+            topSetReps: performance.topSetReps,
+          };
+        }
+
+        if (previousMax === undefined || performance.maxE1RM > previousMax) {
+          runningMaxByExercise.set(performance.exerciseId, performance.maxE1RM);
+        }
+      }
+
+      if (!latestPrEvent) return null;
+
+      return {
+        exerciseName: latestPrEvent.exerciseName,
+        topSetWeightLabel: formatLiftWeight(latestPrEvent.topSetWeightKg, profile?.preferred_weight_unit),
+        topSetReps: latestPrEvent.topSetReps,
+        topSetRepsLabel: formatReps(latestPrEvent.topSetReps),
+        currentE1RMLabel: formatLiftWeight(latestPrEvent.maxE1RM, profile?.preferred_weight_unit),
+        deltaE1RMLabel: formatLiftWeight(latestPrEvent.deltaE1RM, profile?.preferred_weight_unit),
+        whenLabel: daysAgoLabel(latestPrEvent.workoutCreatedAt),
+      };
+    },
+    enabled: !!userId,
+    staleTime: 60 * 1000,
+  });
+
+  const nextSession = useMemo(() => {
+    if (!activeProgram) return null;
+    return activeProgram.sessions.find(session => session.id === activeProgram.next_session_id)
+      ?? activeProgram.sessions[0]
+      ?? null;
+  }, [activeProgram]);
+
+  const todayWorkoutTitle = useMemo(() => {
+    if (!activeProgram) return 'Today\'s Session';
+    if (nextSession?.name) return nextSession.name;
+    return `${formatSessionFocusLabel(activeProgram.mesocycle.goal_focus)} Session`;
+  }, [activeProgram, nextSession]);
+
+  const todayWorkoutExerciseNames = useMemo(
+    () => (nextSession?.exercises ?? []).map(item => item.exercise?.name).filter((value): value is string => !!value),
+    [nextSession]
+  );
+
+  const todayWorkoutMuscleTags = useMemo(() => {
+    const inferred = inferMuscleTagsFromExercises(todayWorkoutExerciseNames);
+    if (inferred.length > 0) return inferred;
+
+    if (!activeProgram) return ['General'];
+    return [formatSessionFocusLabel(activeProgram.mesocycle.goal_focus)];
+  }, [todayWorkoutExerciseNames, activeProgram]);
+
+  const todayExerciseCount = nextSession?.exercises.length ?? 0;
+  const todayEstimatedMinutes = estimateSessionMinutes(todayExerciseCount, activeProgram?.mesocycle.protocol);
+
+  const displayName = useMemo(() => {
+    const username = profile?.username?.trim();
+    if (username) return username;
+
+    const metadataName = (user?.user_metadata?.first_name as string | undefined)
+      ?? (user?.user_metadata?.full_name as string | undefined)
+      ?? null;
+
+    if (metadataName) {
+      const first = metadataName.trim().split(/\s+/)[0];
+      if (first) return first;
+    }
+
+    const emailPrefix = user?.email?.split('@')[0];
+    return emailPrefix || 'Athlete';
+  }, [profile?.username, user?.user_metadata, user?.email]);
+
+  const movementCompletionRecorded = movementHabit ? Boolean(completions[movementHabit.id]) : false;
+  const movementDone = movementCompletionRecorded || workoutMovementDone;
+  const meditationDone = meditationHabit ? Boolean(completions[meditationHabit.id]) : false;
+  const writingDone = writingHabit ? Boolean(completions[writingHabit.id]) : false;
+
+  const movementAutoSyncKeyRef = useRef<string>('');
 
   useEffect(() => {
-    let proteinTimer: NodeJS.Timeout;
-    if (!isLoadingProtein && dailyProtein) {
-      proteinTimer = setTimeout(() => {
-        setStartProteinAnimation(true);
-      }, 50);
-    } else if (isLoadingProtein) {
-      setStartProteinAnimation(false);
-    }
-    return () => {
-      clearTimeout(proteinTimer);
-    };
-  }, [isLoadingProtein, dailyProtein]);
+    if (!movementHabit?.id || !userId) return;
+    if (!workoutLoggedToday) return;
+    if (movementCompletionRecorded) return;
 
-  useEffect(() => {
-    let sunTimer: NodeJS.Timeout;
-    if (!isLoadingSunExposure && dailySunExposure) {
-      sunTimer = setTimeout(() => {
-        setStartSunAnimation(true);
-      }, 50);
-    } else if (isLoadingSunExposure) {
-      setStartSunAnimation(false);
-    }
-    return () => {
-      clearTimeout(sunTimer);
-    };
-  }, [isLoadingSunExposure, dailySunExposure]);
+    const syncKey = `${userId}:${movementHabit.id}:${todayIso}`;
+    if (movementAutoSyncKeyRef.current === syncKey) return;
 
-  useEffect(() => {
-    let cardioTimer: NodeJS.Timeout;
-    if (!isLoadingZone2Cardio && weeklyZone2Cardio) {
-      cardioTimer = setTimeout(() => {
-        setStartCardioAnimation(true);
-      }, 50);
-    } else if (isLoadingZone2Cardio) {
-      setStartCardioAnimation(false);
-    }
-    return () => {
-      clearTimeout(cardioTimer);
-    };
-  }, [isLoadingZone2Cardio, weeklyZone2Cardio]);
+    movementAutoSyncKeyRef.current = syncKey;
+    toggleCompletion(movementHabit.id, true);
+  }, [movementCompletionRecorded, movementHabit?.id, toggleCompletion, todayIso, userId, workoutLoggedToday]);
 
-  const currentProteinIntake = dailyProtein?.total_protein ?? 0;
-  const currentSunExposureHours = dailySunExposure?.total_hours ?? 0;
-  const currentZone2CardioMinutes = weeklyZone2Cardio?.total_minutes ?? 0;
-  const sunExposureGoalHours = 2; // Hardcoded goal for now
-  const zone2CardioGoalMinutes = 150; // Default goal of 150 minutes per week
-
-  const proteinGoalKgFactor = useMemo(() => {
-    if (!userProfile || !userProfile.focus) return 1.5;
-    const focus = userProfile.focus.toLowerCase();
-    if (focus === 'strength' || focus === 'hypertrophy' || focus === 'strength/hypertrophy') {
-      return 2.0;
-    }
-    return 1.5;
-  }, [userProfile]);
-
-  const calculatedProteinGoal = useMemo(() => {
-    if (!userProfile || typeof userProfile.weight_kg !== 'number') return 0;
-    return Math.round(userProfile.weight_kg * proteinGoalKgFactor);
-  }, [userProfile, proteinGoalKgFactor]);
-
-  const renderProteinProgress = () => {
-    if (isErrorProtein) {
-      return <p className="text-sm text-destructive text-center">Error: {proteinError?.message || 'Could not load protein intake'}</p>;
-    }
-
-    const goalReady = !isLoadingProfile && userProfile && typeof userProfile.weight_kg === 'number';
-    const actualDisplayGoal = goalReady ? calculatedProteinGoal : 0;
-
-    const displayCurrent = startProteinAnimation ? currentProteinIntake : 0;
-    const displayGoal = startProteinAnimation ? actualDisplayGoal : 0;
-
-    const goalStatusMessage =
-      (startProteinAnimation || !isLoadingProtein) && isLoadingProfile && userId && !userProfile ? "Loading goal..." :
-        (startProteinAnimation || !isLoadingProtein) && !isLoadingProfile && userId && (!userProfile || typeof userProfile.weight_kg !== 'number') ? "Set weight in profile for goal" :
-          null;
-
-    return (
-      <div className="flex flex-col items-center">
-        <CircularProgressDisplay
-          currentValue={displayCurrent}
-          goalValue={displayGoal}
-          label="Today's Protein"
-          unit="g"
-          size={140}
-          barSize={12}
-          showTooltip={startProteinAnimation && goalReady}
-          showCenterText={startProteinAnimation}
-        />
-        {goalStatusMessage && (
-          <p className="text-xs text-center text-muted-foreground mt-2">{goalStatusMessage}</p>
-        )}
-      </div>
-    );
-  };
-
-  const renderSunExposureProgress = () => {
-    if (isErrorSunExposure) {
-      return <p className="text-sm text-destructive text-center">Error: {sunExposureError?.message || 'Could not load sun exposure'}</p>;
-    }
-
-    const displayCurrentSun = startSunAnimation ? currentSunExposureHours : 0;
-    const displayGoalSun = startSunAnimation ? sunExposureGoalHours : 0;
-
-    return (
-      <SunMoonProgress
-        currentHours={displayCurrentSun}
-        goalHours={displayGoalSun}
-        size={140}
-        barSize={10}
-        label="Daily Sun Exposure"
-      />
-    );
-  };
-
-  const renderZone2CardioProgress = () => {
-    if (isErrorZone2Cardio) {
-      return <p className="text-sm text-destructive text-center">Error: {zone2CardioError?.message || 'Could not load cardio data'}</p>;
-    }
-
-    const displayCurrentCardio = startCardioAnimation ? currentZone2CardioMinutes : 0;
-    const displayGoalCardio = startCardioAnimation ? zone2CardioGoalMinutes : 0;
-
-    return (
-      <div className="flex flex-col items-center">
-        <CircularProgressDisplay
-          currentValue={displayCurrentCardio}
-          goalValue={displayGoalCardio}
-          label="Weekly Endurance"
-          unit="min"
-          size={140}
-          barSize={12}
-          defaultColor="#16A34A"
-          highlightColor="#059669"
-          showTooltip={startCardioAnimation}
-          showCenterText={startCardioAnimation}
-        />
-      </div>
-    );
-  };
-
-  const renderDisciplineTriad = () => {
-    return (
-      <section className="mb-6 bg-card border border-border rounded-2xl p-8 shadow-xl">
-        <h2 className="text-center text-xl font-bold tracking-[0.2em] text-primary font-serif mb-2">DISCIPLINE</h2>
-        <div className="text-center mb-6">
-          <div className="inline-block w-16 h-0.5 bg-primary opacity-80"></div>
-        </div>
-        <div className="relative mx-auto mt-4" style={{ width: 220, height: 190 }}>
-          {/* Meditation */}
-          <div className="absolute left-1/2 -translate-x-1/2" style={{ top: 0 }}>
-            <HabitButton
-              label="Meditation"
-              pressed={!!(habits.find(h => h.title.toLowerCase() === 'meditation') && completions[habits.find(h => h.title.toLowerCase() === 'meditation')!.id])}
-              disabled={isLoadingHabits || !!(habits.find(h => h.title.toLowerCase() === 'meditation') && pendingIds[habits.find(h => h.title.toLowerCase() === 'meditation')!.id])}
-              onPressedChange={() => {
-                const h = habits.find(h => h.title.toLowerCase() === 'meditation');
-                if (!h) return; const next = !completions[h.id]; toggleCompletion(h.id, next);
-              }}
-              icon={<FlowerLotus size={32} />}
-              activeClassName="bg-gradient-to-br from-indigo-600 to-purple-700 text-white border-indigo-500"
-            />
-          </div>
-
-          {/* Movement */}
-          <div className="absolute" style={{ left: 10, bottom: 0 }}>
-            <HabitButton
-              label="Movement"
-              pressed={!!(habits.find(h => h.title.toLowerCase() === 'movement') && completions[habits.find(h => h.title.toLowerCase() === 'movement')!.id])}
-              disabled={isLoadingHabits || !!(habits.find(h => h.title.toLowerCase() === 'movement') && pendingIds[habits.find(h => h.title.toLowerCase() === 'movement')!.id])}
-              onPressedChange={() => {
-                const h = habits.find(h => h.title.toLowerCase() === 'movement');
-                if (!h) return; const next = !completions[h.id]; toggleCompletion(h.id, next);
-              }}
-              icon={<Sun size={32} />}
-              activeClassName="bg-gradient-to-br from-amber-500 to-orange-600 text-white border-amber-400"
-            />
-          </div>
-
-          {/* Writing */}
-          <div className="absolute" style={{ right: 10, bottom: 0 }}>
-            <HabitButton
-              label="Writing"
-              pressed={!!(habits.find(h => h.title.toLowerCase() === 'writing') && completions[habits.find(h => h.title.toLowerCase() === 'writing')!.id])}
-              disabled={isLoadingHabits || !!(habits.find(h => h.title.toLowerCase() === 'writing') && pendingIds[habits.find(h => h.title.toLowerCase() === 'writing')!.id])}
-              onPressedChange={() => {
-                const h = habits.find(h => h.title.toLowerCase() === 'writing');
-                if (!h) return; const next = !completions[h.id]; toggleCompletion(h.id, next);
-              }}
-              icon={<Feather size={32} />}
-              activeClassName="bg-gradient-to-br from-blue-600 to-cyan-700 text-white border-blue-500"
-            />
-          </div>
-        </div>
-      </section>
-    );
-  }
-
-  const handleStartWorkout = () => {
-    dispatch(startWorkoutAction({}));
-    navigate('/workout');
+  const handleToggleHabit = (habitId: string | undefined, completed: boolean) => {
+    if (!habitId || !userId) return;
+    toggleCompletion(habitId, !completed);
   };
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <div className="container mx-auto p-4">
-        <header className="flex flex-col items-center justify-between mb-12 text-center pt-8">
-          <h1 className="text-6xl md:text-7xl font-bold mb-3 text-primary drop-shadow-lg font-serif tracking-wider">
-            {currentTheme.brand.name}
-          </h1>
-          <p className="text-muted-foreground mb-6 text-lg font-medium italic tracking-wide">
-            {currentTheme.brand.tagline}
-          </p>
-          <div className="w-32 h-0.5 bg-primary opacity-60"></div>
+      <div className="max-w-6xl mx-auto px-4 py-6 md:py-8">
+        <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-6">
+          <div>
+            <p className="text-sm text-muted-foreground">{greetingFromHour(now.getHours())}, {displayName}</p>
+            <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">Time to train.</h1>
+          </div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 self-start md:self-auto">
+            <Flame className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium">
+              {movementStreak > 0 ? `${movementStreak}-day streak` : 'Start your streak today'}
+            </span>
+          </div>
         </header>
 
-        <main className="mt-8">
-          {renderDisciplineTriad()}
-          {/* Widgets moved to Analytics page */}
+        <main className="space-y-5">
+          <Card className="relative overflow-hidden border-primary/50 bg-gradient-to-br from-primary/10 via-card to-card">
+            <div className="absolute inset-y-0 left-0 w-1 bg-primary" />
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm tracking-wide text-muted-foreground uppercase">Today&apos;s Workout</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <h2 className="text-2xl font-semibold">{todayWorkoutTitle}</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {todayWorkoutMuscleTags.join(' · ')}
+                  {'  ·  '}
+                  ~{todayEstimatedMinutes} min
+                  {'  ·  '}
+                  {todayExerciseCount || 1} {todayExerciseCount === 1 ? 'exercise' : 'exercises'}
+                </p>
+              </div>
+
+              <Button onClick={() => navigate('/workout')} size="lg" className="w-full h-12 text-base font-semibold">
+                Begin Session
+              </Button>
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm tracking-wide text-muted-foreground uppercase">Last Session</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {lastSession ? (
+                  <>
+                    <p className="text-lg font-semibold">
+                      {inferSessionLabel(lastSession.exercise_names)}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {daysAgoLabel(lastSession.workout_created_at)}
+                      {'  ·  '}
+                      {formatSessionDuration(lastSession.duration_seconds)}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No completed sessions yet.</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm tracking-wide text-muted-foreground uppercase">Recent PR</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {recentPr ? (
+                  <>
+                    <p className="text-lg font-semibold">{recentPr.exerciseName}</p>
+                    {recentPr.topSetWeightLabel && recentPr.topSetRepsLabel ? (
+                      <p className="text-sm font-medium">
+                        {recentPr.topSetWeightLabel} x {recentPr.topSetRepsLabel} reps
+                      </p>
+                    ) : null}
+                    <p className="text-sm text-muted-foreground inline-flex items-center gap-1">
+                      <span>{recentPr.whenLabel}</span>
+                      <span>·</span>
+                      <Trophy className="h-3.5 w-3.5 text-primary" />
+                      <span>+{recentPr.deltaE1RMLabel} vs previous best</span>
+                      <span>·</span>
+                      <span>e1RM {recentPr.currentE1RMLabel}</span>
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No e1RM PR increase recorded yet.</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardContent className="py-4">
+              <div className="flex flex-wrap items-center gap-4 text-sm">
+                <span className="text-muted-foreground font-medium uppercase tracking-wide">Today</span>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2"
+                  disabled={isLoadingCompletions || !movementHabit || !!(movementHabit && pendingIds[movementHabit.id])}
+                  onClick={() => handleToggleHabit(movementHabit?.id, movementDone)}
+                >
+                  <span className={movementDone ? 'text-primary' : 'text-muted-foreground'}>{movementDone ? '◉' : '○'}</span>
+                  <span className={movementDone ? 'font-medium' : ''}>Movement</span>
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2"
+                  disabled={isLoadingCompletions || !meditationHabit || !!(meditationHabit && pendingIds[meditationHabit.id])}
+                  onClick={() => handleToggleHabit(meditationHabit?.id, meditationDone)}
+                >
+                  <span className={meditationDone ? 'text-primary' : 'text-muted-foreground'}>{meditationDone ? '◉' : '○'}</span>
+                  <span className={meditationDone ? 'font-medium' : ''}>Meditation</span>
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2"
+                  disabled={isLoadingCompletions || !writingHabit || !!(writingHabit && pendingIds[writingHabit.id])}
+                  onClick={() => handleToggleHabit(writingHabit?.id, writingDone)}
+                >
+                  <span className={writingDone ? 'text-primary' : 'text-muted-foreground'}>{writingDone ? '◉' : '○'}</span>
+                  <span className={writingDone ? 'font-medium' : ''}>Writing</span>
+                </button>
+              </div>
+            </CardContent>
+          </Card>
         </main>
       </div>
     </div>
   );
 };
 
-export default Home; 
+export default Home;
