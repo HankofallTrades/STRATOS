@@ -1,75 +1,67 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { SessionFocus } from '@/lib/types/workout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/core/card';
-import { Button } from '@/components/core/button';
-import { Badge } from '@/components/core/badge';
-import { Heart, Zap, Dumbbell, Flame } from 'lucide-react';
+import { Heart, Zap, Dumbbell, Flame, Check } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 interface SessionFocusSelectorProps {
   onSelectFocus: (focus: SessionFocus) => void;
   selectedFocus?: SessionFocus | null;
   compact?: boolean;
+  label?: string;
+  helperText?: string;
 }
 
 interface FocusOption {
   focus: SessionFocus;
   title: string;
   description: string;
+  detail: string;
   icon: React.ReactNode;
-  color: string;
-  repRange?: string;
-  heartRateZone?: string;
 }
 
 const focusOptions: FocusOption[] = [
   {
     focus: 'strength',
     title: 'Strength',
-    description: 'Heavy lifting, low reps, high weight',
-    icon: <Dumbbell className="h-5 w-5" />,
-    color: 'bg-red-500',
-    repRange: '1-5 reps',
+    description: 'Heavy lifting, low reps, high load',
+    detail: '1-5 reps',
+    icon: <Dumbbell className="h-4 w-4" />,
   },
   {
     focus: 'hypertrophy',
     title: 'Hypertrophy',
-    description: 'Muscle building, moderate volume',
-    icon: <Flame className="h-5 w-5" />,
-    color: 'bg-orange-500',
-    repRange: '6-12 reps',
+    description: 'Muscle building with moderate volume',
+    detail: '6-12 reps',
+    icon: <Flame className="h-4 w-4" />,
   },
   {
     focus: 'zone2',
     title: 'Endurance',
-    description: 'Aerobic base building, steady state',
-    icon: <Heart className="h-5 w-5" />,
-    color: 'bg-green-500',
-    heartRateZone: 'Zone 2 (60-70%)',
+    description: 'Steady aerobic base work',
+    detail: 'Zone 2 (60-70%)',
+    icon: <Heart className="h-4 w-4" />,
   },
   {
     focus: 'zone5',
     title: 'Max HR',
-    description: 'High intensity, VO2 max work',
-    icon: <Zap className="h-5 w-5" />,
-    color: 'bg-purple-500',
-    heartRateZone: 'Zone 5 (90-100%)',
+    description: 'High-intensity VO2 max effort',
+    detail: 'Zone 5 (90-100%)',
+    icon: <Zap className="h-4 w-4" />,
   },
   {
     focus: 'speed',
     title: 'Speed & Power',
-    description: 'Explosive movements, power development',
-    icon: <Zap className="h-5 w-5" />,
-    color: 'bg-yellow-500',
-    repRange: '1-3 reps',
+    description: 'Explosive movement emphasis',
+    detail: '1-3 reps',
+    icon: <Zap className="h-4 w-4" />,
   },
   {
     focus: 'recovery',
     title: 'Recovery',
-    description: 'Active recovery, mobility, light movement',
-    icon: <Heart className="h-5 w-5" />,
-    color: 'bg-blue-500',
-    heartRateZone: 'Zone 1 (50-60%)',
+    description: 'Light movement and restoration',
+    detail: 'Zone 1 (50-60%)',
+    icon: <Heart className="h-4 w-4" />,
   },
 ];
 
@@ -77,56 +69,51 @@ const SessionFocusSelector: React.FC<SessionFocusSelectorProps> = ({
   onSelectFocus,
   selectedFocus = null,
   compact = false,
+  label,
+  helperText,
 }) => {
-  const [localSelectedFocus, setLocalSelectedFocus] = useState<SessionFocus | null>(selectedFocus);
-
-  const handleFocusSelect = (option: FocusOption) => {
-    setLocalSelectedFocus(option.focus);
-    onSelectFocus(option.focus);
-  };
-
-  const currentSelection = localSelectedFocus || selectedFocus;
+  const currentSelection = selectedFocus;
 
   if (compact) {
     return (
-      <div className="space-y-3">
-        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          Choose Training Focus (Optional)
-        </h3>
+      <div className="space-y-2">
+        <div className="space-y-1">
+          <h3 className="text-sm font-medium text-foreground">{label ?? 'Choose Training Focus'}</h3>
+          {helperText ? <p className="text-xs text-muted-foreground">{helperText}</p> : null}
+        </div>
+
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-          {focusOptions.map((option) => (
-            <button
-              key={option.focus}
-              onClick={() => handleFocusSelect(option)}
-              className={cn(
-                "p-3 rounded-lg border text-left transition-all hover:shadow-sm",
-                currentSelection === option.focus
-                  ? "border-primary bg-primary/10 shadow-sm"
-                  : "border-transparent opacity-70 hover:opacity-100 hover:bg-secondary/10"
-              )}
-            >
-              <div className="flex items-center space-x-2">
-                <div className={cn("p-1.5 rounded-full text-white", option.color)}>
-                  {option.icon}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-semibold text-xs truncate">{option.title}</h4>
-                  <div className="mt-1">
-                    {option.repRange && (
-                      <Badge variant="outline" className="text-xs">
-                        {option.repRange}
-                      </Badge>
-                    )}
-                    {option.heartRateZone && (
-                      <Badge variant="outline" className="text-xs">
-                        {option.heartRateZone}
-                      </Badge>
-                    )}
+          {focusOptions.map(option => {
+            const isSelected = currentSelection === option.focus;
+            return (
+              <button
+                key={option.focus}
+                type="button"
+                onClick={() => onSelectFocus(option.focus)}
+                aria-pressed={isSelected}
+                className={cn(
+                  'p-3 rounded-lg border text-left transition-all duration-150 flex items-start justify-between gap-2',
+                  isSelected
+                    ? 'border-primary bg-primary/10 shadow-sm ring-1 ring-primary/30'
+                    : 'border-border bg-background hover:border-primary/40 hover:bg-muted/30'
+                )}
+              >
+                <div className="flex items-start gap-2 min-w-0">
+                  <div className={cn(
+                    'mt-0.5 p-1.5 rounded-full',
+                    isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                  )}>
+                    {option.icon}
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="font-semibold text-xs truncate">{option.title}</h4>
+                    <p className="text-[11px] text-muted-foreground truncate">{option.detail}</p>
                   </div>
                 </div>
-              </div>
-            </button>
-          ))}
+                <Check className={cn('h-4 w-4 mt-0.5 transition-opacity', isSelected ? 'opacity-100 text-primary' : 'opacity-0')} />
+              </button>
+            );
+          })}
         </div>
       </div>
     );
@@ -136,46 +123,45 @@ const SessionFocusSelector: React.FC<SessionFocusSelectorProps> = ({
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-center">Choose Your Training Focus</CardTitle>
+          <CardTitle className="text-center">{label ?? 'Choose Your Training Focus'}</CardTitle>
+          {helperText ? <p className="text-sm text-muted-foreground text-center">{helperText}</p> : null}
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {focusOptions.map((option) => (
-              <button
-                key={option.focus}
-                onClick={() => handleFocusSelect(option)}
-                className={cn(
-                  "p-4 rounded-lg border-2 text-left transition-all hover:shadow-md",
-                  currentSelection === option.focus
-                    ? "border-primary bg-primary/10 shadow-md"
-                    : "border-transparent opacity-70 hover:opacity-100 hover:bg-secondary/10"
-                )}
-              >
-                <div className="flex items-start space-x-3">
-                  <div className={cn("p-2 rounded-full text-white", option.color)}>
-                    {option.icon}
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-sm">{option.title}</h3>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                      {option.description}
-                    </p>
-                    <div className="flex gap-2 mt-2">
-                      {option.repRange && (
-                        <Badge variant="outline" className="text-xs">
-                          {option.repRange}
-                        </Badge>
-                      )}
-                      {option.heartRateZone && (
-                        <Badge variant="outline" className="text-xs">
-                          {option.heartRateZone}
-                        </Badge>
-                      )}
+            {focusOptions.map(option => {
+              const isSelected = currentSelection === option.focus;
+              return (
+                <button
+                  key={option.focus}
+                  type="button"
+                  onClick={() => onSelectFocus(option.focus)}
+                  aria-pressed={isSelected}
+                  className={cn(
+                    'p-4 rounded-lg border text-left transition-all duration-150',
+                    isSelected
+                      ? 'border-primary bg-primary/10 shadow-sm ring-1 ring-primary/25'
+                      : 'border-border bg-background hover:border-primary/40 hover:bg-muted/30'
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={cn(
+                      'p-2 rounded-full',
+                      isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                    )}>
+                      {option.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="font-semibold text-sm">{option.title}</h3>
+                        <Check className={cn('h-4 w-4 transition-opacity', isSelected ? 'opacity-100 text-primary' : 'opacity-0')} />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">{option.description}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{option.detail}</p>
                     </div>
                   </div>
-                </div>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
         </CardContent>
       </Card>
@@ -183,4 +169,4 @@ const SessionFocusSelector: React.FC<SessionFocusSelectorProps> = ({
   );
 };
 
-export default SessionFocusSelector; 
+export default SessionFocusSelector;

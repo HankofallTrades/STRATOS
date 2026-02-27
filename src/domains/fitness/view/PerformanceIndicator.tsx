@@ -1,15 +1,16 @@
 import React from 'react';
 import { useAppSelector } from "@/hooks/redux";
-import { selectSessionFocus } from "@/state/workout/workoutSlice";
+import { selectMesocycleProtocol, selectSessionFocus } from "@/state/workout/workoutSlice";
 import { cn } from "@/lib/utils/cn";
 import { getPerformanceIndicatorDecision } from "@/lib/utils/performanceIndicatorUtils";
 
 interface PerformanceIndicatorProps {
   metric: 'weight' | 'reps' | 'time';
   previousValue?: number;
+  previousWeightKg?: number;
   isStatic: boolean;
   visible: boolean;
-  exerciseId?: string; // For future focus-specific performance lookup
+  exerciseName?: string;
   recentFocusPerformance?: {
     reps?: number;
     time_seconds?: number;
@@ -20,12 +21,14 @@ interface PerformanceIndicatorProps {
 const PerformanceIndicator: React.FC<PerformanceIndicatorProps> = ({
   metric,
   previousValue,
+  previousWeightKg,
   isStatic,
   visible,
-  exerciseId,
+  exerciseName,
   recentFocusPerformance
 }) => {
   const sessionFocus = useAppSelector(selectSessionFocus);
+  const mesocycleProtocol = useAppSelector(selectMesocycleProtocol);
   
   // Early return if not visible or no previous value
   if (!visible || previousValue === undefined) {
@@ -34,10 +37,13 @@ const PerformanceIndicator: React.FC<PerformanceIndicatorProps> = ({
 
   const decision = getPerformanceIndicatorDecision(
     sessionFocus,
+    mesocycleProtocol,
     metric,
     isStatic,
     previousValue,
-    recentFocusPerformance
+    recentFocusPerformance,
+    exerciseName,
+    previousWeightKg
   );
 
   if (!decision.IconComponent) {
@@ -51,6 +57,7 @@ const PerformanceIndicator: React.FC<PerformanceIndicatorProps> = ({
         "absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none",
         decision.colorClass
       )}
+      title={decision.description}
       aria-hidden="true"
     />
   );
