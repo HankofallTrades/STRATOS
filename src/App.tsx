@@ -169,6 +169,7 @@ const MainAppLayout = () => {
     setIsDiscardConfirmOpen(false);
   };
 
+  const shouldShowGlobalFab = location.pathname !== '/coach' && location.pathname !== '/';
 
   return (
     <SidebarProvider>
@@ -187,7 +188,7 @@ const MainAppLayout = () => {
           <Route path="*" element={<NotFound />} />
         </Routes>
 
-        {location.pathname !== '/coach' && (
+        {shouldShowGlobalFab && (
           <div className="fixed bottom-20 right-6 z-20">
             {location.pathname === '/workout' ? (
               <Button

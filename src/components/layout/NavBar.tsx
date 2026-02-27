@@ -17,6 +17,7 @@ import { useTheme } from '@/lib/themes';
 
 const NavBar = () => {
   const location = useLocation();
+  const { currentTheme } = useTheme();
 
   const items = [
     { to: '/', label: 'Home', icon: Home },
@@ -29,7 +30,8 @@ const NavBar = () => {
   return (
     <Sidebar collapsible="icon" side="left" className="border-r border-border bg-card">
       <SidebarRail />
-      <SidebarHeader className="flex items-center justify-end px-2 bg-card text-card-foreground">
+      <SidebarHeader className="flex items-center justify-between px-2 bg-card text-card-foreground">
+        <span className="text-sm font-semibold tracking-wide truncate px-1">{currentTheme.brand.name}</span>
         <SidebarTrigger />
       </SidebarHeader>
       <SidebarContent className="bg-card text-card-foreground">
