@@ -9,12 +9,13 @@ import {
 } from "@/state/workout/workoutSlice";
 import { useElapsedTime } from "@/hooks/useElapsedTime";
 import { formatTime } from "@/lib/utils/timeUtils";
-import { Clock, Heart, Zap, Dumbbell, Flame } from "lucide-react";
+import { Clock, Heart, Zap, Dumbbell, Flame, ChevronDown } from "lucide-react";
 import { Button } from "@/components/core/button";
 import { Badge } from "@/components/core/badge";
 import { Input } from "@/components/core/input";
 import { Label } from "@/components/core/label";
 import { Textarea } from "@/components/core/textarea";
+import { Progress } from "@/components/core/progress";
 import { Barbell } from "@phosphor-icons/react";
 import { CardioSet, SessionFocus, StrengthSet, WorkoutExercise, isCardioExercise, secondsToTime } from "@/lib/types/workout";
 import { useState } from "react";
@@ -46,14 +47,6 @@ const formatSessionFocusLabel = (focus: SessionFocus) => {
     mixed: 'Mixed',
   };
   return labels[focus];
-};
-
-const parseRepTarget = (value?: string | null): number | null => {
-  if (!value) return null;
-  const match = value.match(/\d+/);
-  if (!match) return null;
-  const parsed = Number(match[0]);
-  return Number.isFinite(parsed) ? parsed : null;
 };
 
 const getOccamsExercisePrescription = (
@@ -90,6 +83,7 @@ const Workout = () => {
   const sessionFocus = useAppSelector(selectSessionFocus);
   const displayTime = useElapsedTime(workoutStartTime);
   const [selectedFocus, setSelectedFocus] = useState<SessionFocus | null>(null);
+  const [customSessionFocus, setCustomSessionFocus] = useState<SessionFocus | null>(null);
   const { user } = useAuth();
   const {
     activeProgram,
@@ -105,6 +99,14 @@ const Workout = () => {
   const [mesocycleGoalFocus, setMesocycleGoalFocus] = useState<SessionFocus>('hypertrophy');
   const [mesocycleProtocol, setMesocycleProtocol] = useState<MesocycleProtocol>('occams');
   const [mesocycleNotes, setMesocycleNotes] = useState('');
+  const [showQuickStart, setShowQuickStart] = useState(false);
+
+  const nextOccamSession = activeProgram?.sessions.find(session => session.id === activeProgram.next_session_id)
+    ?? activeProgram?.sessions[0]
+    ?? null;
+  const periodProgressValue = activeProgram
+    ? Math.round((activeProgram.current_week / activeProgram.mesocycle.duration_weeks) * 100)
+    : 0;
 
   const buildExercisesFromSessionTemplate = (sessionTemplate: MesocycleSessionTemplate): WorkoutExercise[] => {
     return sessionTemplate.exercises
@@ -132,12 +134,11 @@ const Workout = () => {
           };
         }
 
-        const repTarget = parseRepTarget(row.target_reps ?? sessionTemplate.rep_range) ?? 8;
         const strengthSets: StrengthSet[] = Array.from({ length: setCount }, () => ({
           id: uuidv4(),
           exerciseId: exercise.id,
           weight: 0,
-          reps: exercise.is_static ? null : repTarget,
+          reps: exercise.is_static ? null : 0,
           time: exercise.is_static ? secondsToTime(30) : null,
           completed: false,
           variation: targetVariation,
@@ -203,31 +204,32 @@ const Workout = () => {
       mesocycleId: activeProgram.mesocycle.id,
       mesocycleSessionId: sessionTemplate.id,
       mesocycleWeek: activeProgram.current_week,
+      mesocycleProtocol: activeProgram.mesocycle.protocol,
       initialExercises: buildExercisesFromSessionTemplate(sessionTemplate),
     }));
   };
 
   const handleStartNextProtocolSession = () => {
-    if (!activeProgram || activeProgram.sessions.length === 0) return;
-    const nextSession = activeProgram.sessions.find(session => session.id === activeProgram.next_session_id)
-      ?? activeProgram.sessions[0];
-    handleStartProtocolSession(nextSession);
+    if (!nextOccamSession) return;
+    handleStartProtocolSession(nextOccamSession);
   };
 
   const handleStartCustomMesocycleSession = async () => {
     if (!activeProgram) return;
+    const resolvedSessionFocus = customSessionFocus ?? activeProgram.mesocycle.goal_focus;
 
     try {
       const createdSession = await createCustomSession({
         mesocycleId: activeProgram.mesocycle.id,
-        sessionFocus: activeProgram.mesocycle.goal_focus,
+        sessionFocus: resolvedSessionFocus,
       });
 
       dispatch(startWorkoutAction({
-        sessionFocus: activeProgram.mesocycle.goal_focus,
+        sessionFocus: resolvedSessionFocus,
         mesocycleId: activeProgram.mesocycle.id,
         mesocycleSessionId: createdSession.id,
         mesocycleWeek: activeProgram.current_week,
+        mesocycleProtocol: activeProgram.mesocycle.protocol,
       }));
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to create custom session.';
@@ -290,168 +292,201 @@ const Workout = () => {
   if (!currentWorkout) {
     return (
       <div className="container mx-auto p-4 flex flex-col items-center justify-center h-full">
-        <div className="w-full max-w-2xl space-y-4">
-          {isLoadingMesocycle ? (
-            <div className="py-5 px-6 bg-card border border-border rounded-lg shadow-sm">
-              <p className="text-sm text-muted-foreground">Loading mesocycle...</p>
+        <div className="w-full max-w-2xl">
+          <div className="flex flex-col py-8 px-6 bg-card border border-border rounded-lg shadow-sm w-full space-y-6">
+            <div className="flex flex-col items-center text-center">
+              <Barbell size={64} className="text-primary mb-4" />
+              <h2 className="text-2xl font-semibold mb-2 text-card-foreground">Ready to start your session?</h2>
+              <p className="text-muted-foreground">
+                Manage your current period and launch today&apos;s workout from one place.
+              </p>
             </div>
-          ) : activeProgram ? (
-            <div className="py-6 px-6 bg-card border border-border rounded-lg shadow-sm space-y-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="text-xl font-semibold text-card-foreground">{activeProgram.mesocycle.name}</h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Week {activeProgram.current_week} of {activeProgram.mesocycle.duration_weeks}
-                    {' '}| {activeProgram.mesocycle.protocol === 'occams' ? "Occam's Protocol" : 'Custom Protocol'}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Focus: {formatSessionFocusLabel(activeProgram.mesocycle.goal_focus)}
-                  </p>
-                </div>
+
+            {isLoadingMesocycle ? (
+              <div className="py-5 px-6 border border-border/70 rounded-lg bg-background/40">
+                <p className="text-sm text-muted-foreground">Loading mesocycle...</p>
               </div>
-
-              {activeProgram.mesocycle.protocol === 'occams' && activeProgram.sessions.length > 0 ? (
-                <div className="space-y-3">
-                  <p className="text-sm text-muted-foreground">
-                    Next scheduled: <span className="text-foreground font-medium">{activeProgram.next_session_name ?? 'Occam A'}</span>
-                    {' '}| Structure: 1 hard set to failure, 5s up / 5s down, 2-4+ rest days.
-                  </p>
-                  {activeProgram.last_completed_session_id && (
-                    <p className="text-xs text-muted-foreground">
-                      Last completed:{' '}
-                      {activeProgram.sessions.find(session => session.id === activeProgram.last_completed_session_id)?.name ?? 'Unknown'}
-                    </p>
-                  )}
-
-                  <Button onClick={handleStartNextProtocolSession} className="w-full">
-                    Start Next ({activeProgram.next_session_name ?? 'Occam A'})
-                  </Button>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {activeProgram.sessions.map(sessionTemplate => (
-                      <Button
-                        key={sessionTemplate.id}
-                        onClick={() => handleStartProtocolSession(sessionTemplate)}
-                        variant="outline"
-                        className="justify-start"
-                      >
-                        Start {sessionTemplate.name}
-                      </Button>
-                    ))}
+            ) : activeProgram ? (
+              <div className="space-y-4">
+                <div className="py-4 px-5 border border-primary/25 rounded-lg bg-primary/5 space-y-3">
+                  <div className="flex items-start gap-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-card-foreground">{activeProgram.mesocycle.name}</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Focus: {formatSessionFocusLabel(activeProgram.mesocycle.goal_focus)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Block Progress</span>
+                      <span>Week {activeProgram.current_week} / {activeProgram.mesocycle.duration_weeks}</span>
+                    </div>
+                    <Progress value={periodProgressValue} className="h-2 bg-primary/15" />
                   </div>
                 </div>
-              ) : (
-                <Button
-                  onClick={handleStartCustomMesocycleSession}
-                  disabled={isCreatingCustomSession}
-                  className="w-full"
-                >
-                  {isCreatingCustomSession ? 'Starting...' : 'Start Custom Session'}
-                </Button>
-              )}
-            </div>
-          ) : (
-            <div className="py-6 px-6 bg-card border border-border rounded-lg shadow-sm space-y-4">
-              <div>
-                <h3 className="text-xl font-semibold text-card-foreground">Create a Mesocycle</h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Build a focused 4-12 week block with either Occam&apos;s or a custom protocol.
-                </p>
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="mesocycle-name">Block Name</Label>
-                <Input
-                  id="mesocycle-name"
-                  value={mesocycleName}
-                  onChange={(event) => setMesocycleName(event.target.value)}
-                  placeholder="e.g. 6-Week Hypertrophy"
-                />
-              </div>
+                {activeProgram.mesocycle.protocol === 'occams' && activeProgram.sessions.length > 0 ? (
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      Next workout: <span className="text-foreground font-semibold">{nextOccamSession?.name ?? 'Occam A'}</span>
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      1 hard set to failure, 5s up / 5s down, then recover 2-4+ days.
+                    </p>
+                    {activeProgram.last_completed_session_id && (
+                      <p className="text-xs text-muted-foreground">
+                        Last completed:{' '}
+                        {activeProgram.sessions.find(session => session.id === activeProgram.last_completed_session_id)?.name ?? 'Unknown'}
+                      </p>
+                    )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Button onClick={handleStartNextProtocolSession} className="w-full">
+                      Start Next ({nextOccamSession?.name ?? 'Occam A'})
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      Choose a focus if you want to override the block focus for this custom session.
+                    </p>
+                    <div className="relative z-0">
+                      <SessionFocusSelector
+                        onSelectFocus={setCustomSessionFocus}
+                        selectedFocus={customSessionFocus ?? activeProgram.mesocycle.goal_focus}
+                        compact={true}
+                        label="Session Focus"
+                        helperText="This sets today&apos;s custom session focus. Leave it as-is to use your block default."
+                      />
+                    </div>
+                    <Button
+                      onClick={handleStartCustomMesocycleSession}
+                      disabled={isCreatingCustomSession}
+                      className="w-full"
+                    >
+                      {isCreatingCustomSession ? 'Starting...' : 'Start Custom Session'}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-xl font-semibold text-card-foreground">Create a Mesocycle</h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Build a focused 4-12 week block with either Occam&apos;s or a custom protocol.
+                  </p>
+                </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="mesocycle-duration">Duration (weeks)</Label>
+                  <Label htmlFor="mesocycle-name">Block Name</Label>
                   <Input
-                    id="mesocycle-duration"
-                    type="number"
-                    min={4}
-                    max={12}
-                    value={mesocycleDurationWeeks}
-                    onChange={(event) => setMesocycleDurationWeeks(Number(event.target.value))}
+                    id="mesocycle-name"
+                    value={mesocycleName}
+                    onChange={(event) => setMesocycleName(event.target.value)}
+                    placeholder="e.g. 6-Week Hypertrophy"
                   />
                 </div>
 
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="mesocycle-duration">Duration (weeks)</Label>
+                    <Input
+                      id="mesocycle-duration"
+                      type="number"
+                      min={4}
+                      max={12}
+                      value={mesocycleDurationWeeks}
+                      onChange={(event) => setMesocycleDurationWeeks(Number(event.target.value))}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="mesocycle-protocol">Protocol</Label>
+                    <select
+                      id="mesocycle-protocol"
+                      className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                      value={mesocycleProtocol}
+                      onChange={(event) => setMesocycleProtocol(event.target.value as MesocycleProtocol)}
+                    >
+                      <option value="occams">Occam&apos;s Protocol</option>
+                      <option value="custom">Custom</option>
+                    </select>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="mesocycle-protocol">Protocol</Label>
+                  <Label htmlFor="mesocycle-focus">Primary Focus</Label>
                   <select
-                    id="mesocycle-protocol"
+                    id="mesocycle-focus"
                     className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
-                    value={mesocycleProtocol}
-                    onChange={(event) => setMesocycleProtocol(event.target.value as MesocycleProtocol)}
+                    value={mesocycleGoalFocus}
+                    onChange={(event) => setMesocycleGoalFocus(event.target.value as SessionFocus)}
                   >
-                    <option value="occams">Occam&apos;s Protocol</option>
-                    <option value="custom">Custom</option>
+                    {sessionFocusOptions.map(option => (
+                      <option key={option} value={option}>
+                        {formatSessionFocusLabel(option)}
+                      </option>
+                    ))}
                   </select>
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="mesocycle-focus">Primary Focus</Label>
-                <select
-                  id="mesocycle-focus"
-                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
-                  value={mesocycleGoalFocus}
-                  onChange={(event) => setMesocycleGoalFocus(event.target.value as SessionFocus)}
+                <div className="space-y-2">
+                  <Label htmlFor="mesocycle-notes">Notes (optional)</Label>
+                  <Textarea
+                    id="mesocycle-notes"
+                    value={mesocycleNotes}
+                    onChange={(event) => setMesocycleNotes(event.target.value)}
+                    placeholder="Constraints, priorities, weekly targets..."
+                    rows={3}
+                  />
+                </div>
+
+                <Button onClick={handleCreateMesocycle} disabled={isCreatingMesocycle} className="w-full">
+                  {isCreatingMesocycle ? 'Creating...' : 'Create Mesocycle'}
+                </Button>
+              </div>
+            )}
+
+            <div className="border-t border-border pt-5 space-y-4">
+              <div className="space-y-1">
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowQuickStart(previous => !previous)}
+                  className="w-full justify-between text-muted-foreground hover:text-foreground"
                 >
-                  {sessionFocusOptions.map(option => (
-                    <option key={option} value={option}>
-                      {formatSessionFocusLabel(option)}
-                    </option>
-                  ))}
-                </select>
+                  <span>Start a Different Session</span>
+                  <ChevronDown className={cn("h-4 w-4 transition-transform", showQuickStart && "rotate-180")} />
+                </Button>
+                <p className="text-xs text-muted-foreground px-1">
+                  One-off workout outside your current block.
+                </p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="mesocycle-notes">Notes (optional)</Label>
-                <Textarea
-                  id="mesocycle-notes"
-                  value={mesocycleNotes}
-                  onChange={(event) => setMesocycleNotes(event.target.value)}
-                  placeholder="Constraints, priorities, weekly targets..."
-                  rows={3}
-                />
-              </div>
+              {showQuickStart && (
+                <div className="space-y-4 pt-2">
+                  <div className="relative z-0">
+                    <SessionFocusSelector
+                      onSelectFocus={handleFocusSelect}
+                      selectedFocus={selectedFocus}
+                      compact={true}
+                      label="Training Focus"
+                      helperText="Pick one to tag this session. If you skip it, the workout starts without a focus tag."
+                    />
+                  </div>
 
-              <Button onClick={handleCreateMesocycle} disabled={isCreatingMesocycle} className="w-full">
-                {isCreatingMesocycle ? 'Creating...' : 'Create Mesocycle'}
-              </Button>
+                  <Button
+                    onClick={handleStartWorkout}
+                    size="lg"
+                    variant="outline"
+                    className="font-semibold w-full"
+                  >
+                    Start Different Session
+                  </Button>
+                </div>
+              )}
             </div>
-          )}
-
-          <div className="flex flex-col items-center justify-center py-8 px-6 bg-card border border-border rounded-lg shadow-sm w-full">
-          <Barbell size={64} className="text-primary mb-6" />
-          <h2 className="text-2xl font-semibold mb-4 text-card-foreground text-center">Ready to start your session?</h2>
-          <p className="text-muted-foreground mb-8 text-center">
-            Track your exercises, sets, and reps to monitor your progress over time.
-          </p>
-
-          <div className="w-full mb-6 relative z-0">
-            <SessionFocusSelector
-              onSelectFocus={handleFocusSelect}
-              selectedFocus={selectedFocus}
-              compact={true}
-            />
           </div>
-
-          <Button
-            onClick={handleStartWorkout}
-            size="lg"
-            className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-8 w-full max-w-sm"
-          >
-            Start Session
-          </Button>
-        </div>
         </div>
       </div>
     );

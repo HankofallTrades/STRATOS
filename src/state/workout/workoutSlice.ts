@@ -15,6 +15,7 @@ interface StartWorkoutPayload {
   mesocycleId?: string;
   mesocycleSessionId?: string;
   mesocycleWeek?: number;
+  mesocycleProtocol?: 'occams' | 'custom';
 }
 
 const initialState: WorkoutState = {
@@ -43,6 +44,7 @@ const workoutSlice = createSlice({
         mesocycle_id: action?.payload?.mesocycleId,
         mesocycle_session_id: action?.payload?.mesocycleSessionId,
         mesocycle_week: action?.payload?.mesocycleWeek,
+        mesocycle_protocol: action?.payload?.mesocycleProtocol,
       };
       state.workoutStartTime = startTime; // Store start time
     },
@@ -295,6 +297,7 @@ export const selectWorkoutStartTime = (state: RootState) => state.workout.workou
 export const selectIsWorkoutActive = (state: RootState) => state.workout.currentWorkout !== null && !state.workout.currentWorkout.completed && state.workout.workoutStartTime !== null;
 export const selectWorkoutType = (state: RootState) => state.workout.currentWorkout?.workout_type;
 export const selectSessionFocus = (state: RootState) => state.workout.currentWorkout?.session_focus;
+export const selectMesocycleProtocol = (state: RootState) => state.workout.currentWorkout?.mesocycle_protocol;
 
 export const selectWorkoutNotes = (state: RootState) => state.workout.currentWorkout?.notes;
 

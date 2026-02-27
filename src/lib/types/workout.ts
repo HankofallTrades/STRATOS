@@ -182,6 +182,7 @@ export interface Workout {
   mesocycle_id?: string;
   mesocycle_session_id?: string;
   mesocycle_week?: number;
+  mesocycle_protocol?: 'occams' | 'custom';
 }
 
 export interface WorkoutHistory {
