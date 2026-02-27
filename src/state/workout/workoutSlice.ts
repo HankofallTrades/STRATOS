@@ -9,6 +9,14 @@ interface WorkoutState {
   workoutStartTime: number | null; // Store start time as timestamp (ms)
 }
 
+interface StartWorkoutPayload {
+  sessionFocus?: SessionFocus;
+  initialExercises?: WorkoutExercise[];
+  mesocycleId?: string;
+  mesocycleSessionId?: string;
+  mesocycleWeek?: number;
+}
+
 const initialState: WorkoutState = {
   currentWorkout: null,
   workoutStartTime: null, // Initialize as null
@@ -18,16 +26,23 @@ const workoutSlice = createSlice({
   name: 'workout',
   initialState,
   reducers: {
-    startWorkout(state, action?: PayloadAction<{ sessionFocus?: SessionFocus }>) {
+    startWorkout(state, action?: PayloadAction<StartWorkoutPayload>) {
       const startTime = Date.now(); // Get current timestamp
+      const initialExercises = (action?.payload?.initialExercises ?? []).map(exercise => ({
+        ...exercise,
+        sets: exercise.sets.map(set => ({ ...set })),
+      }));
       state.currentWorkout = {
         id: uuidv4(),
         date: new Date(startTime).toISOString(), // Use start time for date
         duration: 0, // Duration calculated on end
-        exercises: [],
+        exercises: initialExercises,
         completed: false,
         workout_type: undefined, // Will be determined based on exercises added
         session_focus: action?.payload?.sessionFocus,
+        mesocycle_id: action?.payload?.mesocycleId,
+        mesocycle_session_id: action?.payload?.mesocycleSessionId,
+        mesocycle_week: action?.payload?.mesocycleWeek,
       };
       state.workoutStartTime = startTime; // Store start time
     },

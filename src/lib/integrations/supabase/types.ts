@@ -47,6 +47,66 @@ export type Database = {
           },
         ]
       }
+      character_sheet: {
+        Row: {
+          character_name: string | null
+          charisma: number
+          constitution: number
+          created_at: string
+          creativity_level: number
+          dexterity: number
+          experience_points: number
+          fitness_level: number
+          id: string
+          intelligence: number
+          level: number
+          mindfulness_level: number
+          productivity_level: number
+          strength: number
+          updated_at: string
+          user_id: string
+          wisdom: number
+        }
+        Insert: {
+          character_name?: string | null
+          charisma?: number
+          constitution?: number
+          created_at?: string
+          creativity_level?: number
+          dexterity?: number
+          experience_points?: number
+          fitness_level?: number
+          id?: string
+          intelligence?: number
+          level?: number
+          mindfulness_level?: number
+          productivity_level?: number
+          strength?: number
+          updated_at?: string
+          user_id: string
+          wisdom?: number
+        }
+        Update: {
+          character_name?: string | null
+          charisma?: number
+          constitution?: number
+          created_at?: string
+          creativity_level?: number
+          dexterity?: number
+          experience_points?: number
+          fitness_level?: number
+          id?: string
+          intelligence?: number
+          level?: number
+          mindfulness_level?: number
+          productivity_level?: number
+          strength?: number
+          updated_at?: string
+          user_id?: string
+          wisdom?: number
+        }
+        Relationships: []
+      }
       equipment_types: {
         Row: {
           created_at: string | null
@@ -382,6 +442,151 @@ export type Database = {
           },
         ]
       }
+      mesocycle_session_exercises: {
+        Row: {
+          created_at: string
+          exercise_id: string
+          exercise_order: number
+          id: string
+          load_increment_kg: number | null
+          mesocycle_session_id: string
+          notes: string | null
+          target_reps: string | null
+          target_sets: number | null
+        }
+        Insert: {
+          created_at?: string
+          exercise_id: string
+          exercise_order: number
+          id?: string
+          load_increment_kg?: number | null
+          mesocycle_session_id: string
+          notes?: string | null
+          target_reps?: string | null
+          target_sets?: number | null
+        }
+        Update: {
+          created_at?: string
+          exercise_id?: string
+          exercise_order?: number
+          id?: string
+          load_increment_kg?: number | null
+          mesocycle_session_id?: string
+          notes?: string | null
+          target_reps?: string | null
+          target_sets?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mesocycle_session_exercises_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mesocycle_session_exercises_mesocycle_session_id_fkey"
+            columns: ["mesocycle_session_id"]
+            isOneToOne: false
+            referencedRelation: "mesocycle_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mesocycle_sessions: {
+        Row: {
+          created_at: string
+          id: string
+          mesocycle_id: string
+          name: string
+          progression_rule: string | null
+          rep_range: string | null
+          session_focus: string | null
+          session_order: number
+          sets_per_exercise: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mesocycle_id: string
+          name: string
+          progression_rule?: string | null
+          rep_range?: string | null
+          session_focus?: string | null
+          session_order: number
+          sets_per_exercise?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mesocycle_id?: string
+          name?: string
+          progression_rule?: string | null
+          rep_range?: string | null
+          session_focus?: string | null
+          session_order?: number
+          sets_per_exercise?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mesocycle_sessions_mesocycle_id_fkey"
+            columns: ["mesocycle_id"]
+            isOneToOne: false
+            referencedRelation: "mesocycles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mesocycles: {
+        Row: {
+          created_at: string
+          duration_weeks: number
+          goal_focus: string
+          id: string
+          name: string
+          notes: string | null
+          protocol: string
+          start_date: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration_weeks: number
+          goal_focus: string
+          id?: string
+          name: string
+          notes?: string | null
+          protocol: string
+          start_date: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          duration_weeks?: number
+          goal_focus?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          protocol?: string
+          start_date?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mesocycles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       movement_archetypes: {
         Row: {
           created_at: string | null
@@ -486,6 +691,51 @@ export type Database = {
           created_at?: string | null
           date?: string
           id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      quests: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          description: string
+          id: string
+          image_url: string | null
+          location: string | null
+          original_title: string
+          reward: string
+          status: string
+          subtasks: Json
+          title: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          description: string
+          id?: string
+          image_url?: string | null
+          location?: string | null
+          original_title: string
+          reward: string
+          status?: string
+          subtasks?: Json
+          title: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          image_url?: string | null
+          location?: string | null
+          original_title?: string
+          reward?: string
+          status?: string
+          subtasks?: Json
+          title?: string
           user_id?: string
         }
         Relationships: []
@@ -639,6 +889,9 @@ export type Database = {
           duration_seconds: number | null
           id: string
           is_single_log: boolean
+          mesocycle_id: string | null
+          mesocycle_session_id: string | null
+          mesocycle_week: number | null
           notes: string | null
           session_focus: string | null
           type: string | null
@@ -650,6 +903,9 @@ export type Database = {
           duration_seconds?: number | null
           id?: string
           is_single_log?: boolean
+          mesocycle_id?: string | null
+          mesocycle_session_id?: string | null
+          mesocycle_week?: number | null
           notes?: string | null
           session_focus?: string | null
           type?: string | null
@@ -661,12 +917,30 @@ export type Database = {
           duration_seconds?: number | null
           id?: string
           is_single_log?: boolean
+          mesocycle_id?: string | null
+          mesocycle_session_id?: string | null
+          mesocycle_week?: number | null
           notes?: string | null
           session_focus?: string | null
           type?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "workouts_mesocycle_id_fkey"
+            columns: ["mesocycle_id"]
+            isOneToOne: false
+            referencedRelation: "mesocycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workouts_mesocycle_session_id_fkey"
+            columns: ["mesocycle_session_id"]
+            isOneToOne: false
+            referencedRelation: "mesocycle_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -762,10 +1036,7 @@ export type Database = {
           workout_date: string
         }[]
       }
-      get_exercise_muscle_group_map: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
+      get_exercise_muscle_group_map: { Args: never; Returns: Json }
       get_latest_max_e1rm_for_exercises: {
         Args: { p_exercise_ids: string[]; p_user_id: string }
         Returns: {
