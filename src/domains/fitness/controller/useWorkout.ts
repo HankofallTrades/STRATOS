@@ -11,10 +11,12 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from '@/lib/integrations/supabase/client';
 import { isStrengthSet, isCardioSet, Workout as WorkoutType } from "@/lib/types/workout";
 import { saveWorkoutToDb } from '../model/fitnessRepository';
+import { useQueryClient } from '@tanstack/react-query';
 
 export const useWorkoutPersistence = () => {
     const navigate = useNavigate();
     const dispatch = useAppDispatch();
+    const queryClient = useQueryClient();
     const currentWorkout = useAppSelector(selectCurrentWorkout);
     const workoutStartTime = useAppSelector(selectWorkoutStartTime);
 
@@ -70,34 +72,57 @@ export const useWorkoutPersistence = () => {
                 workoutType
             );
 
-            // 4. Update Redux History
+            // 4. Update Redux History (Merging identical exercises to match DB structure)
+            type CompletedSetWithWorkoutExerciseId =
+                WorkoutType['exercises'][number]['sets'][number] & { workoutExerciseId: string };
+            type MergedHistoryExercise =
+                Omit<WorkoutType['exercises'][number], 'id' | 'workoutId' | 'sets'> & {
+                    id: string;
+                    workoutId: string;
+                    sets: CompletedSetWithWorkoutExerciseId[];
+                };
+
+            const exerciseHistoryMap: Record<string, MergedHistoryExercise> = {};
+            const orderedExerciseIds: string[] = [];
+
+            currentWorkout.exercises.forEach(woEx => {
+                const completedSets = woEx.sets.filter(s => s.completed);
+                if (completedSets.length === 0) return;
+
+                const savedWoEx = savedWorkoutExercises.find(swe =>
+                    swe.exercise_id === woEx.exerciseId && swe.workout_id === workoutId
+                );
+                if (!savedWoEx) return;
+
+                if (!exerciseHistoryMap[woEx.exerciseId]) {
+                    orderedExerciseIds.push(woEx.exerciseId);
+                    exerciseHistoryMap[woEx.exerciseId] = {
+                        ...woEx,
+                        id: savedWoEx.id,
+                        workoutId: workoutId,
+                        sets: [],
+                    };
+                }
+
+                // Add sets to the single exercise entry
+                exerciseHistoryMap[woEx.exerciseId].sets.push(
+                    ...completedSets.map(set => ({ ...set, workoutExerciseId: savedWoEx.id }))
+                );
+            });
+
             const completedWorkoutForState: WorkoutType = {
                 ...currentWorkout,
                 id: workoutId,
                 completed: true,
                 duration: durationInSeconds,
-                exercises: currentWorkout.exercises
-                    .map(woEx => {
-                        const savedWoEx = savedWorkoutExercises.find(swe =>
-                            swe.exercise_id === woEx.exerciseId && swe.workout_id === workoutId
-                        );
-                        if (!savedWoEx) return null;
-
-                        return {
-                            ...woEx,
-                            id: savedWoEx.id,
-                            workoutId: workoutId,
-                            sets: woEx.sets
-                                .filter(set => set.completed)
-                                .map(set => ({ ...set, workoutExerciseId: savedWoEx.id })),
-                        };
-                    })
-                    .filter((woEx): woEx is Exclude<typeof woEx, null> => woEx !== null && woEx.sets.length > 0),
+                exercises: orderedExerciseIds.map(id => exerciseHistoryMap[id]),
             };
 
             dispatch(addWorkoutToHistory(completedWorkoutForState));
             dispatch(clearWorkout());
             dispatch(endWorkoutAction());
+
+            queryClient.invalidateQueries({ queryKey: ['activeMesocycleProgram', user.id] });
 
             toast({
                 title: "Workout Saved",

@@ -179,6 +179,9 @@ export interface Workout {
   workout_type?: 'strength' | 'cardio' | 'mixed'; // Auto-determined based on exercises
   session_focus?: SessionFocus; // User-selected training focus
   notes?: string; // Workout notes
+  mesocycle_id?: string;
+  mesocycle_session_id?: string;
+  mesocycle_week?: number;
 }
 
 export interface WorkoutHistory {

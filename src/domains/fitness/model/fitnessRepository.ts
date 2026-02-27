@@ -317,20 +317,49 @@ export const saveWorkoutToDb = async (
     workoutType: 'strength' | 'cardio' | 'mixed'
 ) => {
     // 1. Insert Workout
-    const workoutDataForDb = {
+    const workoutDataForDb: TablesInsert<'workouts'> & Record<string, unknown> = {
         user_id: userId,
         duration_seconds: durationInSeconds,
         completed: true,
         type: workoutType,
         session_focus: workoutToEnd.session_focus || null,
         notes: workoutToEnd.notes || null,
-    } as TablesInsert<'workouts'>;
+    };
 
-    const { data: savedWorkout, error: workoutError } = await supabase
+    const optionalPeriodizationFields: Record<string, unknown> = {};
+    if (workoutToEnd.mesocycle_id) {
+        optionalPeriodizationFields.mesocycle_id = workoutToEnd.mesocycle_id;
+    }
+    if (workoutToEnd.mesocycle_session_id) {
+        optionalPeriodizationFields.mesocycle_session_id = workoutToEnd.mesocycle_session_id;
+    }
+    if (typeof workoutToEnd.mesocycle_week === 'number') {
+        optionalPeriodizationFields.mesocycle_week = workoutToEnd.mesocycle_week;
+    }
+
+    const attemptInsertWorkout = async (payload: Record<string, unknown>) => supabase
         .from('workouts')
-        .insert(workoutDataForDb)
+        .insert(payload as unknown as TablesInsert<'workouts'>)
         .select()
         .single();
+
+    let { data: savedWorkout, error: workoutError } = await attemptInsertWorkout({
+        ...workoutDataForDb,
+        ...optionalPeriodizationFields,
+    });
+
+    if (workoutError && Object.keys(optionalPeriodizationFields).length > 0) {
+        const errorMessage = `${workoutError.message || ''} ${workoutError.details || ''}`.toLowerCase();
+        const isMissingPeriodizationColumn =
+            errorMessage.includes('mesocycle_id') ||
+            errorMessage.includes('mesocycle_session_id') ||
+            errorMessage.includes('mesocycle_week') ||
+            workoutError.code === 'PGRST204';
+
+        if (isMissingPeriodizationColumn) {
+            ({ data: savedWorkout, error: workoutError } = await attemptInsertWorkout(workoutDataForDb));
+        }
+    }
 
     if (workoutError || !savedWorkout) {
         throw workoutError || new Error("Failed to save workout record.");
@@ -338,18 +367,30 @@ export const saveWorkoutToDb = async (
 
     const workoutId = savedWorkout.id;
 
-    // 2. Insert Workout Exercises
-    const workoutExercisesDataForDb: TablesInsert<'workout_exercises'>[] = workoutToEnd.exercises
-        .filter(exercise => exercise.sets.some(set => set.completed))
-        .map((exercise, index) => ({
-            workout_id: workoutId,
-            exercise_id: exercise.exerciseId,
-            order: index + 1,
-        }));
+    // 2. Insert Workout Exercises (Grouped by Exercise ID to handle duplicates)
+    // We group by exerciseId to satisfy DB unique constraints and merge sets into a single logical entry.
+    const exerciseOrder: string[] = [];
+    const exerciseGroups: Record<string, typeof workoutToEnd.exercises> = {};
 
-    if (workoutExercisesDataForDb.length === 0) {
+    workoutToEnd.exercises.forEach(exercise => {
+        if (!exercise.sets.some(set => set.completed)) return;
+
+        if (!exerciseGroups[exercise.exerciseId]) {
+            exerciseOrder.push(exercise.exerciseId);
+            exerciseGroups[exercise.exerciseId] = [];
+        }
+        exerciseGroups[exercise.exerciseId].push(exercise);
+    });
+
+    if (exerciseOrder.length === 0) {
         return { workoutId, savedWorkoutExercises: [] };
     }
+
+    const workoutExercisesDataForDb: TablesInsert<'workout_exercises'>[] = exerciseOrder.map((exId, index) => ({
+        workout_id: workoutId,
+        exercise_id: exId,
+        order: index + 1,
+    }));
 
     const { data: savedWorkoutExercises, error: workoutExercisesError } = await supabase
         .from('workout_exercises')
@@ -360,40 +401,43 @@ export const saveWorkoutToDb = async (
         throw workoutExercisesError || new Error("Failed to save workout exercises records.");
     }
 
-    // 3. Insert Exercise Sets
+    // 3. Insert Exercise Sets (Aggregated across all instances of the same exercise)
     const exerciseSetsDataForDb: TablesInsert<'exercise_sets'>[] = [];
-    workoutToEnd.exercises.forEach((exercise) => {
-        const savedWorkoutExercise = savedWorkoutExercises.find(
-            swe => swe.exercise_id === exercise.exerciseId && swe.workout_id === workoutId
-        );
 
-        if (!savedWorkoutExercise) return;
+    savedWorkoutExercises.forEach((savedWorkoutExercise) => {
+        const originalExercises = exerciseGroups[savedWorkoutExercise.exercise_id];
+        if (!originalExercises) return;
 
-        exercise.sets.forEach((set, index) => {
-            if (!set.completed) return;
+        let globalSetIndex = 0;
+        originalExercises.forEach((exercise) => {
+            exercise.sets.forEach((set) => {
+                if (!set.completed) return;
 
-            if (isStrengthSet(set)) {
-                exerciseSetsDataForDb.push({
-                    workout_exercise_id: savedWorkoutExercise.id,
-                    set_number: index + 1,
-                    weight: set.weight,
-                    reps: set.reps,
-                    time_seconds: set.time ? timeToSeconds(set.time) : null,
-                    completed: true,
-                    equipment_type: set.equipmentType || null,
-                    variation: set.variation || null,
-                });
-            } else if (isCardioSet(set)) {
-                exerciseSetsDataForDb.push({
-                    workout_exercise_id: savedWorkoutExercise.id,
-                    set_number: index + 1,
-                    weight: 0,
-                    reps: null,
-                    time_seconds: timeToSeconds(set.time),
-                    completed: true,
-                    distance_km: set.distance_km,
-                } as TablesInsert<'exercise_sets'>);
-            }
+                globalSetIndex++;
+
+                if (isStrengthSet(set)) {
+                    exerciseSetsDataForDb.push({
+                        workout_exercise_id: savedWorkoutExercise.id,
+                        set_number: globalSetIndex,
+                        weight: set.weight,
+                        reps: set.reps,
+                        time_seconds: set.time ? timeToSeconds(set.time) : null,
+                        completed: true,
+                        equipment_type: set.equipmentType || null,
+                        variation: set.variation || null,
+                    });
+                } else if (isCardioSet(set)) {
+                    exerciseSetsDataForDb.push({
+                        workout_exercise_id: savedWorkoutExercise.id,
+                        set_number: globalSetIndex,
+                        weight: 0,
+                        reps: null,
+                        time_seconds: timeToSeconds(set.time),
+                        completed: true,
+                        distance_km: set.distance_km,
+                    } as TablesInsert<'exercise_sets'>);
+                }
+            });
         });
     });
 
