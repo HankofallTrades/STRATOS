@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { Home, BarChart2, Settings, Dumbbell, MessageCircle } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -12,11 +13,18 @@ import {
 } from '@/components/core/sidebar';
 import { useTheme } from '@/lib/themes';
 import { cn } from '@/lib/utils/cn';
-import { isNavigationItemActive, navigationItems } from '@/components/layout/navigationItems';
 
 const NavBar = () => {
   const location = useLocation();
   const { currentTheme } = useTheme();
+
+  const items = [
+    { to: '/', label: 'Home', icon: Home },
+    { to: '/workout', label: 'Workout', icon: Dumbbell },
+    { to: '/analytics', label: 'Analytics', icon: BarChart2 },
+    { to: '/coach', label: 'Coach', icon: MessageCircle },
+    { to: '/settings', label: 'Settings', icon: Settings },
+  ];
 
   return (
     <Sidebar collapsible="icon" side="left" className="app-nav-shell">
@@ -29,8 +37,8 @@ const NavBar = () => {
       <SidebarContent className="px-2 pt-3 text-card-foreground">
         <SidebarGroup>
           <SidebarMenu>
-            {navigationItems.map(({ to, label, icon: Icon }) => {
-              const isActive = isNavigationItemActive(location.pathname, to);
+            {items.map(({ to, label, icon: Icon }) => {
+              const isActive = location.pathname === to;
               return (
                 <SidebarMenuItem key={to}>
                   <SidebarMenuButton
