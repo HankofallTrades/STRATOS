@@ -9,6 +9,7 @@ import { store, persistor } from './state/store';
 import { ThemeProvider as NextThemeProvider } from "next-themes";
 import { ThemeProvider } from "@/lib/themes";
 import NavBar from "@/components/layout/NavBar";
+import BottomNav from "@/components/layout/BottomNav";
 import ProtectedRoute from "@/components/layout/ProtectedRoute";
 import Home from "./pages/Home";
 import Workout from "./pages/Workout";
@@ -40,7 +41,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/state/auth/AuthProvider';
 import ProteinLogging from "@/domains/fitness/view/ProteinLogging";
 import SunExposureLogging from "@/domains/fitness/view/SunExposureLogging";
-import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/core/sidebar";
+import { SidebarProvider, SidebarInset } from "@/components/core/sidebar";
 
 const queryClient = new QueryClient();
 
@@ -143,12 +144,10 @@ const MainAppLayout = () => {
 
   return (
     <SidebarProvider defaultOpen={false}>
-      <NavBar />
+      <div className="hidden md:block">
+        <NavBar />
+      </div>
       <SidebarInset className="app-shell">
-        <div className="fixed top-3 left-3 z-50 md:hidden">
-          <SidebarTrigger />
-        </div>
-
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/workout" element={<Workout />} />
@@ -205,6 +204,7 @@ const MainAppLayout = () => {
           defaultLogData={latestSingleLogData}
         />
       </SidebarInset>
+      <BottomNav />
     </SidebarProvider>
   );
 };
