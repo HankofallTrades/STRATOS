@@ -24,15 +24,13 @@ import { WorkoutExerciseView } from './WorkoutExerciseView';
 
 interface WorkoutExerciseContainerProps {
   workoutExercise: WorkoutExercise;
-  isLast?: boolean;
 }
 
-export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> = ({ workoutExercise, isLast = false }) => {
+export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> = ({ workoutExercise }) => {
   const DEFAULT_VARIATION = 'Standard';
   const {
     variations,
     historicalSetPerformances,
-    overallLastPerformance,
     userWeight,
     isAddingVariation,
     newVariationName,
@@ -55,7 +53,6 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
   return (
     <WorkoutExerciseView
       workoutExercise={workoutExercise}
-      overallLastPerformance={overallLastPerformance}
       historicalSetPerformances={historicalSetPerformances}
       userBodyweight={userWeight}
       onAddSet={addSet}
@@ -72,7 +69,6 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
       onSaveNewVariation={handleSaveNewVariation}
       onCancelAddVariation={handleCancelAddVariation}
       onUpdateLastSet={updateLastSetField}
-      isLast={isLast}
     />
   );
 };

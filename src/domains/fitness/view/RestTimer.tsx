@@ -29,7 +29,7 @@ export const RestTimer: React.FC<RestTimerProps> = ({ startTime, className }) =>
     };
 
     return (
-        <div className={cn("flex items-center gap-1.5 text-xs font-medium text-primary animate-in fade-in slide-in-from-left-2 duration-300", className)}>
+        <div className={cn("verdigris-text flex items-center gap-1.5 text-xs font-medium animate-in fade-in slide-in-from-left-2 duration-300", className)}>
             <Timer size={13} className="animate-pulse" />
             <span>{formatTime(elapsed)}</span>
         </div>

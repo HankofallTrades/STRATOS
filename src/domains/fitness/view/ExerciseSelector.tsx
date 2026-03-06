@@ -8,8 +8,29 @@ import { Exercise } from "@/lib/types/workout";
 import { Switch } from "@/components/core/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/core/select";
 import { useExerciseSelector } from '../controller/useExerciseSelector';
+import {
+  workoutDialogClassName,
+  workoutMenuInputClassName,
+  workoutMenuOptionClassName,
+  workoutMenuPrimaryButtonClassName,
+  workoutMenuSectionClassName,
+  workoutMenuSecondaryButtonClassName,
+  workoutMenuSelectContentClassName,
+  workoutMenuSelectItemClassName,
+  workoutMenuSelectTriggerClassName,
+} from './workoutSelectionStyles';
 
 const LONG_PRESS_DURATION = 500;
+
+interface ExerciseSelectorProps {
+  openOnMount?: boolean;
+  iconOnly?: boolean;
+  trigger?: React.ReactNode;
+  mode?: 'add' | 'replace';
+  targetWorkoutExerciseId?: string;
+  setCount?: number;
+  disabledExerciseId?: string;
+}
 
 // Helper function to format archetype names
 const formatArchetypeName = (name: string): string => {
@@ -23,7 +44,15 @@ const formatArchetypeName = (name: string): string => {
   return firstPart;
 };
 
-const ExerciseSelector = ({ openOnMount = false, iconOnly = false }: { openOnMount?: boolean, iconOnly?: boolean }) => {
+const ExerciseSelector = ({
+  openOnMount = false,
+  iconOnly = false,
+  trigger,
+  mode = 'add',
+  targetWorkoutExerciseId,
+  setCount,
+  disabledExerciseId,
+}: ExerciseSelectorProps) => {
   const [open, setOpen] = useState(openOnMount);
   const [isConfirmDeleteDialogOpen, setIsConfirmDeleteDialogOpen] = useState(false);
   const [exerciseToDelete, setExerciseToDelete] = useState<Exercise | null>(null);
@@ -48,7 +77,11 @@ const ExerciseSelector = ({ openOnMount = false, iconOnly = false }: { openOnMou
     selectExercise,
     removeExercise,
     handleCreate
-  } = useExerciseSelector(open);
+  } = useExerciseSelector(open, {
+    mode,
+    workoutExerciseId: targetWorkoutExerciseId,
+    setCount,
+  });
 
   const handlePointerDown = (exercise: Exercise) => {
     if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
@@ -92,21 +125,23 @@ const ExerciseSelector = ({ openOnMount = false, iconOnly = false }: { openOnMou
   }, [open, setSearchQuery, setIsAddingNew, setNewExerciseName, setIsStaticNewExercise, setSelectedArchetypeId]);
 
   return (
-    <div className="flex justify-end">
+    <div className={trigger ? "" : "flex justify-end"}>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          {iconOnly ? (
+          {trigger ? (
+            trigger
+          ) : iconOnly ? (
             <Button
               variant="ghost"
               size="icon"
-              className="text-primary/70 hover:text-primary transition-colors h-8 w-8 p-0 hover:bg-transparent"
+              className="verdigris-text h-8 w-8 rounded-[10px] border-0 bg-transparent p-0 shadow-none transition-colors hover:bg-transparent hover:text-foreground"
             >
               <Plus size={24} strokeWidth={2.5} />
             </Button>
           ) : (
             <Button
-              variant="default"
-              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+              variant="ghost"
+              className="h-10 rounded-[10px] border-0 bg-transparent px-0 text-foreground/72 shadow-none hover:bg-transparent hover:text-foreground"
             >
               <Plus size={16} className="mr-2" />
               Add Exercise
@@ -114,34 +149,36 @@ const ExerciseSelector = ({ openOnMount = false, iconOnly = false }: { openOnMou
           )}
         </DialogTrigger>
         <DialogContent
-          className="sm:max-w-md dark:bg-gray-800 dark:border-gray-700"
+          className={workoutDialogClassName}
           onOpenAutoFocus={(e) => e.preventDefault()}
           onInteractOutside={(e) => {
             if (isConfirmDeleteDialogOpen) e.preventDefault();
           }}
         >
           <DialogHeader>
-            <DialogTitle className="dark:text-white">Select Exercise</DialogTitle>
+            <DialogTitle className="text-xl text-foreground">
+              {mode === 'replace' ? 'Change Exercise' : 'Select Exercise'}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-4">
             <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500 dark:text-gray-400" />
+              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/75" />
               <Input
                 placeholder="Search exercises..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
+                className={`${workoutMenuInputClassName} pl-11`}
               />
             </div>
 
-            <div className="max-h-60 overflow-y-auto space-y-2">
+            <div className="stone-surface max-h-72 space-y-1 overflow-y-auto rounded-[18px] p-2">
               {isLoading ? (
-                <p className="text-center text-gray-500 dark:text-gray-400 py-2">Loading exercises...</p>
+                <p className="py-4 text-center text-sm text-muted-foreground">Loading exercises...</p>
               ) : exercises.length > 0 ? (
                 exercises.map((exercise) => (
                   <Button
                     key={exercise.id}
-                    variant="outline"
+                    variant="ghost"
                     onClick={() => handleSelect(exercise)}
                     onPointerDown={() => handlePointerDown(exercise)}
                     onPointerUp={clearLongPressTimer}
@@ -154,45 +191,48 @@ const ExerciseSelector = ({ openOnMount = false, iconOnly = false }: { openOnMou
                       setExerciseToDelete(exercise);
                       setIsConfirmDeleteDialogOpen(true);
                     }}
-                    className="w-full justify-start h-auto py-3 px-4 font-normal hover:bg-gray-50 dark:border-gray-700 dark:text-white dark:hover:bg-gray-700 select-none"
+                    disabled={exercise.id === disabledExerciseId}
+                    className={`${workoutMenuOptionClassName} h-11 select-none justify-start px-4 text-sm ${
+                      exercise.id === disabledExerciseId ? "bg-white/[0.03]" : ""
+                    }`}
                     style={{ WebkitTouchCallout: 'none' }}
                   >
                     {exercise.name}
                   </Button>
                 ))
               ) : (
-                <p className="text-center text-gray-500 dark:text-gray-400 py-2">No matching exercises found</p>
+                <p className="py-4 text-center text-sm text-muted-foreground">No matching exercises found</p>
               )}
             </div>
 
             {isAddingNew ? (
-              <div className="p-4 border rounded-lg space-y-3 dark:border-gray-700 dark:bg-gray-800">
+              <div className={`${workoutMenuSectionClassName} space-y-3`}>
                 <div className="space-y-1">
-                  <Label htmlFor="new-exercise" className="dark:text-white">New Exercise Name</Label>
+                  <Label htmlFor="new-exercise" className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">New Exercise Name</Label>
                   <Input
                     id="new-exercise"
                     value={newExerciseName}
                     onChange={(e) => setNewExerciseName(e.target.value)}
                     placeholder="Enter exercise name"
-                    className="w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    className={workoutMenuInputClassName}
                     disabled={isPending}
                   />
                 </div>
 
                 <div className="flex items-end space-x-4 pt-2">
                   <div className="flex-grow space-y-1">
-                    <Label htmlFor="movement-type-select" className="dark:text-white">Type</Label>
+                    <Label htmlFor="movement-type-select" className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Type</Label>
                     <Select
                       value={selectedArchetypeId ?? undefined}
                       onValueChange={setSelectedArchetypeId}
                       disabled={isLoadingArchetypes || isPending}
                     >
-                      <SelectTrigger id="movement-type-select" className="w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                      <SelectTrigger id="movement-type-select" className={workoutMenuSelectTriggerClassName}>
                         <SelectValue placeholder={isLoadingArchetypes ? "Loading types..." : "Select type..."} />
                       </SelectTrigger>
-                      <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
+                      <SelectContent className={workoutMenuSelectContentClassName}>
                         {archetypes.map(archetype => (
-                          <SelectItem key={archetype.id} value={archetype.id} className="dark:text-white dark:hover:bg-gray-700">
+                          <SelectItem key={archetype.id} value={archetype.id} className={workoutMenuSelectItemClassName}>
                             {formatArchetypeName(archetype.name)}
                           </SelectItem>
                         ))}
@@ -201,7 +241,7 @@ const ExerciseSelector = ({ openOnMount = false, iconOnly = false }: { openOnMou
                   </div>
 
                   <div className="flex-shrink-0 space-y-1 pb-1">
-                    <Label htmlFor="timed-toggle" className="block text-center dark:text-white">
+                    <Label htmlFor="timed-toggle" className="block text-center text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
                       Timed
                     </Label>
                     <div className="flex justify-center">
@@ -217,16 +257,16 @@ const ExerciseSelector = ({ openOnMount = false, iconOnly = false }: { openOnMou
 
                 <div className="flex space-x-2 pt-3">
                   <Button
-                    variant="outline"
-                    className="flex-1 dark:border-gray-700 dark:text-white dark:hover:bg-gray-700"
+                    variant="ghost"
+                    className={`${workoutMenuSecondaryButtonClassName} flex-1`}
                     onClick={() => setIsAddingNew(false)}
                     disabled={isPending}
                   >
                     Cancel
                   </Button>
                   <Button
-                    variant="default"
-                    className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
+                    variant="ghost"
+                    className={`${workoutMenuPrimaryButtonClassName} flex-1`}
                     onClick={handleCreate}
                     disabled={!newExerciseName.trim() || !selectedArchetypeId || isPending}
                   >
@@ -236,8 +276,8 @@ const ExerciseSelector = ({ openOnMount = false, iconOnly = false }: { openOnMou
               </div>
             ) : (
               <Button
-                variant="outline"
-                className="w-full dark:border-gray-700 dark:text-white dark:hover:bg-gray-700"
+                variant="ghost"
+                className={`${workoutMenuSecondaryButtonClassName} w-full`}
                 onClick={() => setIsAddingNew(true)}
                 disabled={isPending}
               >
@@ -250,27 +290,28 @@ const ExerciseSelector = ({ openOnMount = false, iconOnly = false }: { openOnMou
       </Dialog>
 
       <Dialog open={isConfirmDeleteDialogOpen} onOpenChange={setIsConfirmDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-xs dark:bg-gray-800 dark:border-gray-700">
+        <DialogContent className={`${workoutDialogClassName} sm:max-w-xs`}>
           <DialogHeader>
-            <DialogTitle className="dark:text-white">Remove Exercise</DialogTitle>
-            <DialogDescription className="dark:text-gray-300 pt-2">
+            <DialogTitle className="text-xl text-foreground">Remove Exercise</DialogTitle>
+            <DialogDescription className="pt-2 text-sm text-muted-foreground">
               Remove "{exerciseToDelete?.name}"?
               {exerciseToDelete?.created_by_user_id ? " This will permanently delete your custom exercise." : " This will hide it from your list."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="pt-4">
             <Button
-              variant="outline"
+              variant="ghost"
               onClick={() => setIsConfirmDeleteDialogOpen(false)}
               disabled={isPending}
-              className="dark:border-gray-600 dark:text-white dark:hover:bg-gray-700"
+              className={workoutMenuSecondaryButtonClassName}
             >
               Cancel
             </Button>
             <Button
-              variant="destructive"
+              variant="ghost"
               onClick={handleConfirmRemove}
               disabled={isPending}
+              className="h-11 rounded-[16px] bg-rose-500/16 text-rose-200 hover:bg-rose-500/24 hover:text-rose-100"
             >
               {isPending ? 'Removing...' : <><Trash2 size={16} className="mr-2" /> Remove</>}
             </Button>

@@ -13,11 +13,10 @@ import { Exercise, ExerciseSet, isCardioExercise } from '@/lib/types/workout';
 import { Button } from '@/components/core/button';
 // REMOVED Select imports
 // import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/core/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/core/card'; // Re-added CardTitle
-import { Plus, Check, X, Trash2, Minus, Heart, Zap } from 'lucide-react'; // Added Check, X, Minus, Heart, Zap icons
+import { Plus, Check, X, Heart, Zap, ChevronDown } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/core/Dialog'; // Added Dialog imports
 import SetComponent from './SetComponent'; // Assuming SetComponent exists in the same directory
-import ExerciseSelector from './ExerciseSelector'; // Added import for last card "+" button
+import ExerciseSelector from './ExerciseSelector';
 // Removed Supabase function imports
 // import { addExerciseVariationToDB, fetchExerciseVariationsFromDB } from '@/lib/integrations/supabase/exercises';
 import { Input } from '@/components/core/input'; // Import Input component
@@ -37,6 +36,11 @@ import {
 } from "@/components/core/table";
 // ADD Popover imports
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/core/popover"
+import {
+  workoutMenuInputClassName,
+  workoutMenuOptionClassName,
+  workoutPopoverClassName,
+} from './workoutSelectionStyles';
 
 // Removed translation map
 // const equipmentTypeDisplayNames: Record<EquipmentType, string> = { ... };
@@ -53,9 +57,6 @@ interface WorkoutExerciseViewProps {
     sets: ExerciseSet[];
     equipmentType?: string
   };
-  // Removed equipmentTypes prop
-  // equipmentTypes: Readonly<EquipmentType[]>;
-  overallLastPerformance: { weight: number; reps: number | null; time_seconds?: number | null } | null; // Updated for time
   historicalSetPerformances: Record<number, { weight: number; reps: number | null; time_seconds?: number | null } | null>; // Updated for time
   userBodyweight?: number | null; // Add user bodyweight prop
   onAddSet: () => void;
@@ -73,24 +74,11 @@ interface WorkoutExerciseViewProps {
   onSaveNewVariation: () => void;
   onCancelAddVariation: () => void;
   onUpdateLastSet: (field: 'weight' | 'reps' | 'time' | 'distance', change: number) => void;
-  isLast?: boolean;
 }
 
 const DEFAULT_VARIATION = 'Standard'; // Define default variation
-// Swipe constants REMOVED
-// const SWIPE_THRESHOLD = -60; 
-// const REVEAL_WIDTH = 75; 
 
 const LONG_PRESS_DURATION = 700; // milliseconds
-
-// Helper function for formatting previous performance
-const formatPrevious = (perf: { weight: number; reps: number | null; time_seconds?: number | null } | null, isStatic: boolean): string => {
-  if (!perf) return '-';
-  if (isStatic) {
-    return perf.time_seconds ? `${perf.weight}kg x ${perf.time_seconds}s` : (perf.weight ? `${perf.weight}kg` : '-');
-  }
-  return perf.reps ? `${perf.weight}kg x ${perf.reps}` : (perf.weight ? `${perf.weight}kg` : '-');
-};
 
 // Helper component for cardio zone indicators
 const CardioZoneIndicator: React.FC<{ sessionFocus?: string | null }> = ({ sessionFocus }) => {
@@ -100,27 +88,27 @@ const CardioZoneIndicator: React.FC<{ sessionFocus?: string | null }> = ({ sessi
         return {
           title: 'Zone 2 Cardio',
           description: 'Aerobic base building (60-70% HR)',
-          color: 'bg-green-500',
-          textColor: 'text-green-700 dark:text-green-300',
-          bgColor: 'bg-green-50 dark:bg-green-950/20',
+          color: 'verdigris-emblem',
+          textColor: 'verdigris-text',
+          bgColor: 'stone-surface',
           icon: <Heart className="h-4 w-4" />
         };
       case 'zone5':
         return {
           title: 'Zone 5 Cardio',
           description: 'High intensity (90-100% HR)',
-          color: 'bg-purple-500',
-          textColor: 'text-purple-700 dark:text-purple-300',
-          bgColor: 'bg-purple-50 dark:bg-purple-950/20',
+          color: 'warm-metal-emblem',
+          textColor: 'warm-metal-text',
+          bgColor: 'stone-surface',
           icon: <Zap className="h-4 w-4" />
         };
       default:
         return {
           title: 'Cardio Exercise',
           description: 'Track duration and distance',
-          color: 'bg-blue-500',
-          textColor: 'text-blue-700 dark:text-blue-300',
-          bgColor: 'bg-blue-50 dark:bg-blue-950/20',
+          color: 'verdigris-emblem',
+          textColor: 'verdigris-text',
+          bgColor: 'stone-surface',
           icon: <Heart className="h-4 w-4" />
         };
     }
@@ -129,16 +117,14 @@ const CardioZoneIndicator: React.FC<{ sessionFocus?: string | null }> = ({ sessi
   const zoneInfo = getZoneInfo(sessionFocus);
 
   return (
-    <div className={`mb-3 p-2 rounded-lg ${zoneInfo.bgColor}`}>
+    <div className={cn("mb-3 rounded-[20px] p-2.5", zoneInfo.bgColor)}>
       <div className="flex items-center gap-2">
-        <div className={`p-1.5 rounded-full text-white ${zoneInfo.color}`}>
-          {zoneInfo.icon}
-        </div>
+        <div className={cn("shrink-0", zoneInfo.textColor)}>{zoneInfo.icon}</div>
         <div>
-          <div className={`text-sm font-medium ${zoneInfo.textColor}`}>
+          <div className={cn("text-sm font-medium", zoneInfo.textColor)}>
             {zoneInfo.title}
           </div>
-          <div className="text-xs text-gray-600 dark:text-gray-400">
+          <div className="text-xs text-muted-foreground">
             {zoneInfo.description}
           </div>
         </div>
@@ -150,8 +136,6 @@ const CardioZoneIndicator: React.FC<{ sessionFocus?: string | null }> = ({ sessi
 export const WorkoutExerciseView = ({
   // Destructure all props
   workoutExercise,
-  // removed equipmentTypes prop
-  overallLastPerformance,
   historicalSetPerformances,
   userBodyweight, // Destructure userBodyweight
   onAddSet,
@@ -169,11 +153,9 @@ export const WorkoutExerciseView = ({
   onSaveNewVariation,
   onCancelAddVariation,
   onUpdateLastSet, // Destructure new prop
-  isLast = false,
 }: WorkoutExerciseViewProps) => {
   // Removed state: selectedVariation, isAddingVariation, newVariationName
   // Removed queryClient
-  const exerciseId = workoutExercise.exerciseId;
   // REMOVED revealedItemId, cardX, deleteOpacity
   // const [revealedItemId, setRevealedItemId] = useState<string | null>(null); 
 
@@ -242,9 +224,14 @@ export const WorkoutExerciseView = ({
     setShowDeleteConfirmDialog(false);
   };
 
-  const overallLastPerformanceFormatted = useMemo(() => {
-    return formatPrevious(overallLastPerformance, isExerciseStatic);
-  }, [overallLastPerformance, isExerciseStatic]);
+  const completedSetCount = useMemo(
+    () => workoutExercise.sets.filter((set) => set.completed).length,
+    [workoutExercise.sets]
+  );
+  const firstIncompleteSetIndex = useMemo(
+    () => workoutExercise.sets.findIndex((set) => !set.completed),
+    [workoutExercise.sets]
+  );
 
   // --- Memos ---
   // Removed sortedEquipmentTypes useMemo hook
@@ -254,413 +241,403 @@ export const WorkoutExerciseView = ({
   // Removed variationsError check (handled in container)
 
   // Determine placeholder for variation select using props
-  const variationSelectPlaceholder = isLoadingVariations ? "Loading..." : (selectedVariation || DEFAULT_VARIATION);
   const isSavingVariation = addVariationMutationStatus === 'pending'; // Check mutation status
-
-  const [expanded, setExpanded] = useState(false);
 
   // Redux selector
   const sessionFocus = useAppSelector(selectSessionFocus);
+  const canReplaceExercise = completedSetCount === 0;
+  const chipButtonClassName =
+    "h-8 rounded-[10px] border-0 bg-white/[0.03] px-2.5 text-[13px] font-medium text-foreground/76 shadow-none hover:bg-white/[0.05] hover:text-foreground";
 
   return (
     <Fragment>
-      {/* Static Relative Wrapper for Positioning and Clipping */}
-      <div className="relative">
-        <Card className={cn(
-          "w-full rounded-lg bg-card p-0 transition-all border border-border shadow-sm",
-          isLast && "border-b-0 rounded-b-none"
-        )}>
-          <motion.div // Added motion.div here for long press on header
-            onPointerDown={handlePointerDown}
-            onPointerUp={clearLongPressTimer}
-            onPointerLeave={clearLongPressTimer} // Clear timer if pointer leaves the element
-            // Optionally, add visual feedback for press:
-            // whileTap={{ scale: 0.98, backgroundColor: "rgba(0,0,0,0.05)" }} 
-            // style={{ touchAction: 'pan-y' }} // Allow vertical scroll if header is part of a scrollable list
-            className="cursor-pointer" // Indicate interactivity
-          >
-            <CardHeader className="flex flex-row justify-between items-center gap-2 p-0 md:p-2 md:sm:p-4">
-              {/* Title Area */}
-              <div className="flex-grow min-w-0">
-                <CardTitle className="text-lg sm:text-xl font-semibold text-left truncate">
+      <section className="pb-6">
+        <motion.div
+          onPointerDown={handlePointerDown}
+          onPointerUp={clearLongPressTimer}
+          onPointerLeave={clearLongPressTimer}
+          className="cursor-pointer"
+        >
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              {canReplaceExercise ? (
+                <ExerciseSelector
+                  trigger={
+                    <button
+                      type="button"
+                      className="group flex min-w-0 items-center gap-2 text-left"
+                      onPointerDown={(event) => event.stopPropagation()}
+                      onPointerUp={(event) => event.stopPropagation()}
+                      onPointerLeave={(event) => event.stopPropagation()}
+                    >
+                      <span className="truncate text-[clamp(1.8rem,5vw,2.4rem)] font-semibold leading-none tracking-tight text-foreground">
+                        {workoutExercise.exercise.name}
+                      </span>
+                      <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground/80" />
+                    </button>
+                  }
+                  mode="replace"
+                  targetWorkoutExerciseId={workoutExercise.id}
+                  setCount={Math.max(workoutExercise.sets.length, 1)}
+                  disabledExerciseId={workoutExercise.exerciseId}
+                />
+              ) : (
+                <h2 className="truncate text-[clamp(1.8rem,5vw,2.4rem)] font-semibold leading-none tracking-tight text-foreground">
                   {workoutExercise.exercise.name}
-                </CardTitle>
-              </div>
-
-              {/* Interactive Popovers Container */}
-              <div className="flex items-center gap-2 flex-shrink-0">
-                {/* Equipment Popover */}
-                <Popover open={equipmentOpen} onOpenChange={setEquipmentOpen}>
-                  <PopoverTrigger asChild onPointerDownCapture={(e) => e.stopPropagation()}>
-                    <Button variant="outline" size="sm" className="rounded-full h-7 px-2.5 text-xs w-auto border-border">
-                      {/* Display the string directly, provide fallback */}
-                      {workoutExercise.equipmentType || "Select Equip."}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-1">
-                    <div className="flex flex-col gap-1">
-                      {/* Iterate over the string choices */}
-                      {EQUIPMENT_CHOICES.map((choice) => (
-                        <Button
-                          key={choice}
-                          variant="ghost"
-                          size="sm"
-                          className="w-full justify-start h-8 px-2 text-xs"
-                          onClick={() => {
-                            // Pass the string choice directly
-                            onEquipmentChange(choice);
-                            setEquipmentOpen(false);
-                          }}
-                          // Compare with the string choice
-                          disabled={workoutExercise.equipmentType === choice}
-                        >
-                          {/* Display the string choice */}
-                          {choice}
-                        </Button>
-                      ))}
-                      {/* Add New Equipment Button / Input */}
-                      {showNewEquipmentInput ? (
-                        <div className="flex items-center gap-1 mt-1">
-                          <Input
-                            type="text"
-                            placeholder="New Equipment"
-                            value={newEquipmentName}
-                            onChange={(e) => setNewEquipmentName(e.target.value)}
-                            className="h-8 px-2 text-xs flex-grow"
-                            autoFocus
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' && newEquipmentName.trim()) {
-                                onEquipmentChange(newEquipmentName.trim());
-                                setNewEquipmentName("");
-                                setShowNewEquipmentInput(false);
-                                setEquipmentOpen(false);
-                              } else if (e.key === 'Escape') {
-                                setNewEquipmentName("");
-                                setShowNewEquipmentInput(false);
-                              }
-                            }}
-                          />
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 p-0"
-                            onClick={() => {
-                              if (newEquipmentName.trim()) {
-                                onEquipmentChange(newEquipmentName.trim());
-                                setNewEquipmentName("");
-                                setShowNewEquipmentInput(false);
-                                setEquipmentOpen(false);
-                              }
-                            }}
-                            disabled={!newEquipmentName.trim()}
-                          >
-                            <Check size={16} />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 p-0"
-                            onClick={() => {
-                              setNewEquipmentName("");
-                              setShowNewEquipmentInput(false);
-                            }}
-                          >
-                            <X size={16} />
-                          </Button>
-                        </div>
-                      ) : (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="w-full justify-start h-8 px-2 text-xs text-primary mt-1"
-                          onClick={() => {
-                            setShowNewEquipmentInput(true);
-                            setNewEquipmentName(""); // Clear any previous input
-                            // Do not call onEquipmentChange('add_new');
-                            // Do not close popover here, allow input first
-                          }}
-                        >
-                          <Plus size={14} className="mr-1" /> Add New
-                        </Button>
-                      )}
-                    </div>
-                  </PopoverContent>
-                </Popover>
-
-                {/* Variation Popover / Input */}
-                {!isAddingVariation ? (
-                  <Popover open={variationOpen} onOpenChange={setVariationOpen}>
-                    <PopoverTrigger asChild onPointerDownCapture={(e) => e.stopPropagation()}>
-                      <Button variant="outline" size="sm" className="rounded-full h-7 px-2.5 text-xs w-auto border-border" disabled={isLoadingVariations || isSavingVariation}>
-                        {isLoadingVariations ? "Loading..." : (selectedVariation ?? DEFAULT_VARIATION)}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-1">
-                      <div className="flex flex-col gap-1">
-                        {variations?.map((variation) => (
-                          <Button
-                            key={variation}
-                            variant="ghost"
-                            size="sm"
-                            className="w-full justify-start h-8 px-2 text-xs"
-                            onClick={() => {
-                              onVariationChange(variation);
-                              setVariationOpen(false);
-                            }}
-                            disabled={selectedVariation === variation || (selectedVariation === undefined && variation === DEFAULT_VARIATION)}
-                          >
-                            {variation}
-                          </Button>
-                        ))}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="w-full justify-start h-8 px-2 text-xs text-primary mt-1"
-                          onClick={() => {
-                            onVariationChange('add_new');
-                            setVariationOpen(false);
-                          }}
-                        >
-                          <Plus size={14} className="mr-1" /> Add New
-                        </Button>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                ) : (
-                  /* Add Variation Input Section */
-                  <div className="flex items-center gap-1 flex-shrink-0 h-8">
-                    <Input
-                      type="text"
-                      placeholder="New Variation"
-                      value={newVariationName}
-                      onChange={(e) => onNewVariationNameChange(e.target.value)}
-                      className="h-full w-[120px] sm:w-[150px] text-xs"
-                      disabled={isSavingVariation}
-                      autoFocus
-                    />
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-full w-8 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/50 flex-shrink-0"
-                      onClick={onSaveNewVariation}
-                      disabled={!newVariationName.trim() || newVariationName.trim().toLowerCase() === DEFAULT_VARIATION.toLowerCase() || isSavingVariation}
-                      aria-label="Save new variation"
-                    >
-                      {isSavingVariation ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div> : <Check size={16} />}
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-full w-8 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50 flex-shrink-0"
-                      onClick={onCancelAddVariation}
-                      disabled={isSavingVariation}
-                      aria-label="Cancel adding variation"
-                    >
-                      <X size={16} />
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </CardHeader>
-          </motion.div>
-
-          <CardContent className="p-0 pt-0 md:pt-0 md:pb-2 md:px-2 md:sm:px-4">
-            <div className="">
-              {/* Enhanced zone indicator for cardio exercises */}
-              {isCardioExercise(workoutExercise.exercise) && (
-                <CardioZoneIndicator sessionFocus={sessionFocus} />
+                </h2>
               )}
-
-              <Table className="w-full">
-                <TableHeader>
-                  <TableRow className="text-xs">
-                    <TableHead className="w-[35px] text-center px-1 py-1">Set</TableHead>
-                    <TableHead className="w-[70px] text-center px-1 py-1">Previous</TableHead>
-
-                    {isCardioExercise(workoutExercise.exercise) ? (
-                      // Cardio exercise headers
-                      <>
-                        <TableHead className="w-[75px] text-center px-1 py-1">Duration</TableHead>
-                        <TableHead className="w-[75px] text-center px-1 py-1">Distance</TableHead>
-                      </>
-                    ) : (
-                      // Strength exercise headers
-                      <>
-                        <TableHead className="w-[75px] text-center px-1 py-1">Weight</TableHead>
-                        {isExerciseStatic ? (
-                          <TableHead className="w-[60px] text-center px-1 py-1">Time</TableHead>
-                        ) : (
-                          <TableHead className="w-[60px] text-center px-1 py-1">Reps</TableHead>
-                        )}
-                      </>
-                    )}
-
-                    <TableHead className="w-[40px] p-0 text-center"><Check size={16} className="mx-auto" /></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <AnimatePresence initial={false}>
-                    {workoutExercise.sets.map((set, index) => {
-                      const setNumber = index + 1;
-                      const previousPerformanceForSet = historicalSetPerformances?.[setNumber] ?? null;
-
-                      return (
-                        <SetComponent
-                          key={set.id}
-                          workoutExerciseId={workoutExercise.id}
-                          set={set}
-                          setIndex={index}
-                          previousPerformance={previousPerformanceForSet}
-                          userBodyweight={userBodyweight}
-                          isStatic={isExerciseStatic}
-                          exerciseName={workoutExercise.exercise.name}
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ type: 'tween', duration: 0.5 }}
-                          layout
-                        />
-                      );
-                    })}
-                    <motion.tr
-                      key="add-set-row"
-                      layout={false}
-                      className="border-b-0"
-                    >
-                      <TableCell className="p-1 text-center align-middle">
-                        <div className="flex items-center justify-center relative">
-                          <Button variant="ghost" size="icon" onClick={onAddSet} className="h-7 w-7" aria-label="Add set">
-                            <Plus size={16} />
-                          </Button>
-                          {restStartTime && (
-                            <RestTimer
-                              startTime={restStartTime}
-                              className="absolute left-full ml-2 whitespace-nowrap"
-                            />
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="p-1 align-middle"></TableCell>
-
-                      {isCardioExercise(workoutExercise.exercise) ? (
-                        // Cardio exercise add-set controls
-                        <>
-                          <TableCell className="p-1 align-middle">
-                            <div className="flex items-center justify-center">
-                              <SwipeableIncrementer
-                                onAdjust={(adjustment) => onUpdateLastSet('time', adjustment * 30)} // 30 second increments
-                                smallStepPositive={1}
-                                smallStepNegative={-1}
-                                swipeUpStep={2}
-                                swipeDownStep={-2}
-                                swipeRightStep={4}
-                                swipeLeftStep={-4}
-                                disabled={workoutExercise.sets.length === 0}
-                                label="Adjust duration of last set"
-                                buttonSize="sm"
-                                iconSize={14}
-                                buttonClassName="hover:bg-transparent h-6 w-6"
-                                wrapperClassName="gap-1"
-                              />
-                            </div>
-                          </TableCell>
-                          <TableCell className="p-1 align-middle">
-                            <div className="flex items-center justify-center">
-                              <SwipeableIncrementer
-                                onAdjust={(adjustment) => onUpdateLastSet('distance', adjustment * 0.1)} // 0.1 km increments
-                                smallStepPositive={1}
-                                smallStepNegative={-1}
-                                swipeUpStep={5}
-                                swipeDownStep={-5}
-                                swipeRightStep={10}
-                                swipeLeftStep={-10}
-                                disabled={workoutExercise.sets.length === 0}
-                                label="Adjust distance of last set"
-                                buttonSize="sm"
-                                iconSize={14}
-                                buttonClassName="hover:bg-transparent h-6 w-6"
-                                wrapperClassName="gap-1"
-                              />
-                            </div>
-                          </TableCell>
-                        </>
-                      ) : (
-                        // Strength exercise add-set controls
-                        <>
-                          <TableCell className="p-1 align-middle">
-                            <div className="flex items-center justify-center">
-                              <SwipeableIncrementer
-                                onAdjust={(adjustment) => onUpdateLastSet('weight', adjustment)}
-                                smallStepPositive={1}
-                                smallStepNegative={-1}
-                                swipeUpStep={5}
-                                swipeDownStep={-5}
-                                swipeRightStep={2.5}
-                                swipeLeftStep={-2.5}
-                                disabled={workoutExercise.sets.length === 0}
-                                label="Adjust weight of last set"
-                                buttonSize="sm"
-                                iconSize={14}
-                                buttonClassName="hover:bg-transparent h-6 w-6"
-                                wrapperClassName="gap-1"
-                              />
-                            </div>
-                          </TableCell>
-                          <TableCell className="p-1 align-middle">
-                            <div className="flex items-center justify-center">
-                              <SwipeableIncrementer
-                                onAdjust={(adjustment) => onUpdateLastSet(isExerciseStatic ? 'time' : 'reps', adjustment)}
-                                smallStepPositive={1}
-                                smallStepNegative={-1}
-                                swipeUpStep={isExerciseStatic ? 5 : 10}
-                                swipeDownStep={isExerciseStatic ? -5 : -10}
-                                swipeRightStep={isExerciseStatic ? 2 : 5}
-                                swipeLeftStep={isExerciseStatic ? -2 : -5}
-                                disabled={workoutExercise.sets.length === 0}
-                                label={isExerciseStatic ? "Adjust time of last set" : "Adjust reps of last set"}
-                                buttonSize="sm"
-                                iconSize={14}
-                                buttonClassName="hover:bg-transparent h-6 w-6"
-                                wrapperClassName="gap-1"
-                              />
-                            </div>
-                          </TableCell>
-                        </>
-                      )}
-
-                      <TableCell className="p-1 align-middle"></TableCell>
-                    </motion.tr>
-                  </AnimatePresence>
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-        {/* REMOVED Stationary Delete Button Area */}
-        {/* Custom Curved Bottom Border for the last card */}
-        {isLast && (
-          <div className="relative -mt-[1px] h-10 w-full overflow-visible pointer-events-none">
-            <div className="absolute top-0 left-0 w-full h-full flex items-start">
-              <div className="h-[1px] flex-1 bg-border" />
-              <div className="w-[120px] h-[36px] relative flex-shrink-0 pointer-events-auto">
-                <svg width="120" height="36" viewBox="0 0 120 36" className="text-border overflow-visible fill-none">
-                  <path
-                    d="M 0 0 L 20 0 C 35 0 35 32 60 32 C 85 32 85 0 100 0 L 120 0"
-                    stroke="currentColor"
-                    strokeWidth="1"
-                    vectorEffect="non-scaling-stroke"
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div className="absolute top-[0px] left-[44px] flex justify-center items-center w-[32px] h-[32px]">
-                  <ExerciseSelector iconOnly={true} />
-                </div>
-              </div>
-              <div className="w-4 h-[1px] bg-border" />
             </div>
           </div>
+
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <Popover open={equipmentOpen} onOpenChange={setEquipmentOpen}>
+              <PopoverTrigger asChild onPointerDownCapture={(e) => e.stopPropagation()}>
+                <Button variant="ghost" size="sm" className={chipButtonClassName}>
+                  <span>{workoutExercise.equipmentType || "Select Equip."}</span>
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className={cn(workoutPopoverClassName, "w-[220px]")}>
+                <div className="flex flex-col gap-1">
+                  {EQUIPMENT_CHOICES.map((choice) => (
+                    <Button
+                      key={choice}
+                      variant="ghost"
+                      size="sm"
+                      className={workoutMenuOptionClassName}
+                      onClick={() => {
+                        onEquipmentChange(choice);
+                        setEquipmentOpen(false);
+                      }}
+                      disabled={workoutExercise.equipmentType === choice}
+                    >
+                      {choice}
+                    </Button>
+                  ))}
+                  {showNewEquipmentInput ? (
+                    <div className="mt-2 border-t border-white/8 pt-2">
+                      <div className="flex items-center gap-1">
+                        <Input
+                          type="text"
+                          placeholder="New Equipment"
+                          value={newEquipmentName}
+                          onChange={(e) => setNewEquipmentName(e.target.value)}
+                          className={cn(workoutMenuInputClassName, "h-10 flex-grow px-3 text-xs")}
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && newEquipmentName.trim()) {
+                              onEquipmentChange(newEquipmentName.trim());
+                              setNewEquipmentName("");
+                              setShowNewEquipmentInput(false);
+                              setEquipmentOpen(false);
+                            } else if (e.key === 'Escape') {
+                              setNewEquipmentName("");
+                              setShowNewEquipmentInput(false);
+                            }
+                          }}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="verdigris-emblem h-10 w-10 rounded-[14px] p-0 hover:bg-white/[0.04]"
+                          onClick={() => {
+                            if (newEquipmentName.trim()) {
+                              onEquipmentChange(newEquipmentName.trim());
+                              setNewEquipmentName("");
+                              setShowNewEquipmentInput(false);
+                              setEquipmentOpen(false);
+                            }
+                          }}
+                          disabled={!newEquipmentName.trim()}
+                        >
+                          <Check size={16} />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="stone-chip h-10 w-10 rounded-[14px] p-0 text-muted-foreground hover:bg-white/[0.05] hover:text-foreground"
+                          onClick={() => {
+                            setNewEquipmentName("");
+                            setShowNewEquipmentInput(false);
+                          }}
+                        >
+                          <X size={16} />
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-2 border-t border-white/8 pt-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={cn(workoutMenuOptionClassName, "verdigris-text hover:text-foreground")}
+                        onClick={() => {
+                          setShowNewEquipmentInput(true);
+                          setNewEquipmentName("");
+                        }}
+                      >
+                        <Plus size={14} className="mr-1" /> Add New
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {!isAddingVariation ? (
+              <Popover open={variationOpen} onOpenChange={setVariationOpen}>
+                <PopoverTrigger asChild onPointerDownCapture={(e) => e.stopPropagation()}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={chipButtonClassName}
+                    disabled={isLoadingVariations || isSavingVariation}
+                  >
+                    <span>{isLoadingVariations ? "Loading..." : (selectedVariation ?? DEFAULT_VARIATION)}</span>
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className={cn(workoutPopoverClassName, "w-[220px]")}>
+                  <div className="flex flex-col gap-1">
+                    {variations?.map((variation) => (
+                      <Button
+                        key={variation}
+                        variant="ghost"
+                        size="sm"
+                        className={workoutMenuOptionClassName}
+                        onClick={() => {
+                          onVariationChange(variation);
+                          setVariationOpen(false);
+                        }}
+                        disabled={selectedVariation === variation || (selectedVariation === undefined && variation === DEFAULT_VARIATION)}
+                      >
+                        {variation}
+                      </Button>
+                    ))}
+                    <div className="mt-2 border-t border-white/8 pt-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={cn(workoutMenuOptionClassName, "verdigris-text hover:text-foreground")}
+                        onClick={() => {
+                          onVariationChange('add_new');
+                          setVariationOpen(false);
+                        }}
+                      >
+                        <Plus size={14} className="mr-1" /> Add New
+                      </Button>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            ) : (
+              <div className="flex flex-shrink-0 items-center gap-1">
+                <Input
+                  type="text"
+                  placeholder="New Variation"
+                  value={newVariationName}
+                  onChange={(e) => onNewVariationNameChange(e.target.value)}
+                  className={cn(workoutMenuInputClassName, "h-10 w-[140px] sm:w-[160px] text-xs")}
+                  disabled={isSavingVariation}
+                  autoFocus
+                />
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="verdigris-emblem h-10 w-10 flex-shrink-0 rounded-[14px] hover:bg-white/[0.04]"
+                  onClick={onSaveNewVariation}
+                  disabled={!newVariationName.trim() || newVariationName.trim().toLowerCase() === DEFAULT_VARIATION.toLowerCase() || isSavingVariation}
+                  aria-label="Save new variation"
+                >
+                  {isSavingVariation ? <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-current"></div> : <Check size={16} />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="stone-chip h-10 w-10 flex-shrink-0 rounded-[14px] text-muted-foreground hover:bg-white/[0.05] hover:text-foreground"
+                  onClick={onCancelAddVariation}
+                  disabled={isSavingVariation}
+                  aria-label="Cancel adding variation"
+                >
+                  <X size={16} />
+                </Button>
+              </div>
+            )}
+          </div>
+        </motion.div>
+
+        {isCardioExercise(workoutExercise.exercise) && (
+          <CardioZoneIndicator sessionFocus={sessionFocus} />
         )}
-      </div>
+
+        <div className="stone-surface overflow-hidden rounded-[18px]">
+          <Table className="w-full">
+            <TableHeader className="stone-table-head">
+              <TableRow className="stone-seam border-b hover:bg-transparent">
+                <TableHead className="w-[42px] px-2 py-3 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Set</TableHead>
+                <TableHead className="w-[92px] px-2 py-3 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Last</TableHead>
+
+                {isCardioExercise(workoutExercise.exercise) ? (
+                  <>
+                    <TableHead className="w-[88px] px-2 py-3 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Duration</TableHead>
+                    <TableHead className="w-[88px] px-2 py-3 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Distance</TableHead>
+                  </>
+                ) : (
+                  <>
+                    <TableHead className="w-[92px] px-2 py-3 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Weight</TableHead>
+                    <TableHead className="w-[84px] px-2 py-3 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                      {isExerciseStatic ? 'Time' : 'Reps'}
+                    </TableHead>
+                  </>
+                )}
+
+                <TableHead className="w-[52px] px-0 py-3 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                  <Check size={16} className="mx-auto" />
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <AnimatePresence initial={false}>
+                {workoutExercise.sets.map((set, index) => {
+                  const setNumber = index + 1;
+                  const previousPerformanceForSet = historicalSetPerformances?.[setNumber] ?? null;
+
+                  return (
+                    <SetComponent
+                      key={set.id}
+                      workoutExerciseId={workoutExercise.id}
+                      set={set}
+                      setIndex={index}
+                      previousPerformance={previousPerformanceForSet}
+                      userBodyweight={userBodyweight}
+                      isStatic={isExerciseStatic}
+                      exerciseName={workoutExercise.exercise.name}
+                      isActive={firstIncompleteSetIndex === -1 ? index === workoutExercise.sets.length - 1 : index === firstIncompleteSetIndex}
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ type: 'tween', duration: 0.5 }}
+                      layout
+                    />
+                  );
+                })}
+                <motion.tr
+                  key="add-set-row"
+                  layout={false}
+                  className="stone-seam border-t bg-white/[0.015]"
+                >
+                  <TableCell className="px-2 py-3 text-center align-middle">
+                    <div className="relative flex items-center justify-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={onAddSet}
+                        className="h-8 rounded-[10px] border-0 bg-transparent px-2 text-[13px] font-medium text-foreground/72 shadow-none hover:bg-transparent hover:text-foreground"
+                        aria-label="Add set"
+                      >
+                        <Plus size={15} />
+                      </Button>
+                      {restStartTime && (
+                        <RestTimer
+                          startTime={restStartTime}
+                          className="absolute left-full ml-2 whitespace-nowrap"
+                        />
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="px-2 py-3 align-middle"></TableCell>
+
+                  {isCardioExercise(workoutExercise.exercise) ? (
+                    <>
+                      <TableCell className="px-2 py-3 align-middle">
+                        <div className="flex items-center justify-center">
+                          <SwipeableIncrementer
+                            onAdjust={(adjustment) => onUpdateLastSet('time', adjustment * 30)}
+                            smallStepPositive={1}
+                            smallStepNegative={-1}
+                            swipeUpStep={2}
+                            swipeDownStep={-2}
+                            swipeRightStep={4}
+                            swipeLeftStep={-4}
+                            disabled={workoutExercise.sets.length === 0}
+                            label="Adjust duration of last set"
+                            buttonSize="sm"
+                            iconSize={14}
+                            buttonClassName="h-7 w-7 rounded-[10px] border-0 bg-transparent text-foreground/62 shadow-none hover:bg-transparent hover:text-foreground"
+                            wrapperClassName="gap-1"
+                          />
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-2 py-3 align-middle">
+                        <div className="flex items-center justify-center">
+                          <SwipeableIncrementer
+                            onAdjust={(adjustment) => onUpdateLastSet('distance', adjustment * 0.1)}
+                            smallStepPositive={1}
+                            smallStepNegative={-1}
+                            swipeUpStep={5}
+                            swipeDownStep={-5}
+                            swipeRightStep={10}
+                            swipeLeftStep={-10}
+                            disabled={workoutExercise.sets.length === 0}
+                            label="Adjust distance of last set"
+                            buttonSize="sm"
+                            iconSize={14}
+                            buttonClassName="h-7 w-7 rounded-[10px] border-0 bg-transparent text-foreground/62 shadow-none hover:bg-transparent hover:text-foreground"
+                            wrapperClassName="gap-1"
+                          />
+                        </div>
+                      </TableCell>
+                    </>
+                  ) : (
+                    <>
+                      <TableCell className="px-2 py-3 align-middle">
+                        <div className="flex items-center justify-center">
+                          <SwipeableIncrementer
+                            onAdjust={(adjustment) => onUpdateLastSet('weight', adjustment)}
+                            smallStepPositive={1}
+                            smallStepNegative={-1}
+                            swipeUpStep={5}
+                            swipeDownStep={-5}
+                            swipeRightStep={2.5}
+                            swipeLeftStep={-2.5}
+                            disabled={workoutExercise.sets.length === 0}
+                            label="Adjust weight of last set"
+                            buttonSize="sm"
+                            iconSize={14}
+                            buttonClassName="h-7 w-7 rounded-[10px] border-0 bg-transparent text-foreground/62 shadow-none hover:bg-transparent hover:text-foreground"
+                            wrapperClassName="gap-1"
+                          />
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-2 py-3 align-middle">
+                        <div className="flex items-center justify-center">
+                          <SwipeableIncrementer
+                            onAdjust={(adjustment) => onUpdateLastSet(isExerciseStatic ? 'time' : 'reps', adjustment)}
+                            smallStepPositive={1}
+                            smallStepNegative={-1}
+                            swipeUpStep={isExerciseStatic ? 5 : 10}
+                            swipeDownStep={isExerciseStatic ? -5 : -10}
+                            swipeRightStep={isExerciseStatic ? 2 : 5}
+                            swipeLeftStep={isExerciseStatic ? -2 : -5}
+                            disabled={workoutExercise.sets.length === 0}
+                            label={isExerciseStatic ? "Adjust time of last set" : "Adjust reps of last set"}
+                            buttonSize="sm"
+                            iconSize={14}
+                            buttonClassName="h-7 w-7 rounded-[10px] border-0 bg-transparent text-foreground/62 shadow-none hover:bg-transparent hover:text-foreground"
+                            wrapperClassName="gap-1"
+                          />
+                        </div>
+                      </TableCell>
+                    </>
+                  )}
+
+                  <TableCell className="px-0 py-3 align-middle"></TableCell>
+                </motion.tr>
+              </AnimatePresence>
+            </TableBody>
+          </Table>
+        </div>
+      </section>
 
       {/* Delete Confirmation Dialog */}
       {showDeleteConfirmDialog && (
