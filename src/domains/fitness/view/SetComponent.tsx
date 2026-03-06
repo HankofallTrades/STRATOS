@@ -22,6 +22,7 @@ interface SetComponentProps extends MotionProps {
   userBodyweight?: number | null;
   isStatic: boolean;
   exerciseName?: string;
+  isActive?: boolean;
 }
 
 const SetComponent: React.FC<SetComponentProps> = ({
@@ -32,6 +33,7 @@ const SetComponent: React.FC<SetComponentProps> = ({
   userBodyweight,
   isStatic,
   exerciseName,
+  isActive = false,
   ...motionProps
 }) => {
   const {
@@ -68,20 +70,26 @@ const SetComponent: React.FC<SetComponentProps> = ({
         {...motionProps}
         key={set.id}
         className={cn(
-          "group",
-          isCompleted && "bg-green-100 dark:bg-green-900/30",
-          "border-b-0"
+          "group stone-seam border-b",
+          isCompleted && "stone-row-complete",
+          !isCompleted && isActive && "stone-row-active"
         )}
       >
-        <TableCell className="font-medium text-center w-[35px] px-1 py-1 align-middle">{setIndex + 1}</TableCell>
-        <TableCell className="text-center text-xs text-muted-foreground w-[70px] px-1 py-1 align-middle">
+        <TableCell className={cn(
+          "w-[42px] px-2 py-2 text-center align-middle text-sm font-semibold text-foreground/85",
+          isCompleted && "text-foreground/62"
+        )}>{setIndex + 1}</TableCell>
+        <TableCell className={cn(
+          "w-[92px] px-2 py-2 align-middle text-center text-[13px] text-muted-foreground",
+          isCompleted && "text-foreground/48"
+        )}>
           -
         </TableCell>
 
         {/* Duration column */}
-        <TableCell className="w-[75px] px-1 py-1 align-middle relative">
+        <TableCell className="relative w-[88px] px-2 py-2 align-middle">
           <div className="flex items-center gap-1">
-            <Timer className="h-3 w-3 text-gray-400" />
+            <Timer className="h-3 w-3 text-muted-foreground/60" />
             <Input
               id={`duration-${set.id}`}
               type="number"
@@ -90,10 +98,9 @@ const SetComponent: React.FC<SetComponentProps> = ({
               onChange={handleDurationChange}
               onBlur={() => handleBlur('duration')}
               className={cn(
-                "h-9 w-full text-xs",
-                "text-center",
-                "border-none shadow-none focus-visible:ring-0",
+                "stone-inset h-10 w-full rounded-[14px] px-0 text-center text-sm font-medium text-foreground shadow-none focus-visible:ring-0",
                 "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                isCompleted && "stone-inset-complete text-foreground/58"
               )}
               placeholder={previousPerformance?.time_seconds ? String(previousPerformance.time_seconds) : "0"}
               aria-label="Duration in seconds"
@@ -103,9 +110,9 @@ const SetComponent: React.FC<SetComponentProps> = ({
         </TableCell>
 
         {/* Distance column */}
-        <TableCell className="w-[75px] px-1 py-1 align-middle relative">
+        <TableCell className="relative w-[88px] px-2 py-2 align-middle">
           <div className="flex items-center gap-1">
-            <MapPin className="h-3 w-3 text-gray-400" />
+            <MapPin className="h-3 w-3 text-muted-foreground/60" />
             <Input
               id={`distance-${set.id}`}
               type="number"
@@ -115,10 +122,9 @@ const SetComponent: React.FC<SetComponentProps> = ({
               onChange={handleDistanceChange}
               onBlur={() => handleBlur('distance')}
               className={cn(
-                "h-9 w-full text-xs",
-                "text-center",
-                "border-none shadow-none focus-visible:ring-0",
+                "stone-inset h-10 w-full rounded-[14px] px-0 text-center text-sm font-medium text-foreground shadow-none focus-visible:ring-0",
                 "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                isCompleted && "stone-inset-complete text-foreground/58"
               )}
               placeholder="0.0"
               aria-label="Distance in kilometers"
@@ -128,14 +134,16 @@ const SetComponent: React.FC<SetComponentProps> = ({
         </TableCell>
 
         {/* Completion checkbox */}
-        <TableCell className="w-[40px] align-middle px-0 py-0">
+        <TableCell className="w-[52px] align-middle px-0 py-0">
           <div className="flex justify-center items-center h-full">
             <button
               id={`completed-${set.id}`}
               onClick={() => handleCompletionChange(!isCompleted)}
               className={cn(
-                "p-1 rounded-full transition-colors",
-                isCompleted ? "text-green-500" : "text-gray-300"
+                "flex h-8 w-8 items-center justify-center rounded-[10px] bg-transparent transition-colors",
+                isCompleted
+                  ? "text-[#689f90]"
+                  : "text-muted-foreground/58 hover:text-foreground/82"
               )}
               aria-label="Mark set as completed"
             >
@@ -157,22 +165,28 @@ const SetComponent: React.FC<SetComponentProps> = ({
       {...motionProps}
       key={set.id}
       className={cn(
-        "group",
-        isCompleted && "bg-green-100 dark:bg-green-900/30",
-        "border-b-0"
+        "group stone-seam border-b",
+        isCompleted && "stone-row-complete",
+        !isCompleted && isActive && "stone-row-active"
       )}
     >
-      <TableCell className="font-medium text-center w-[35px] px-1 py-1 align-middle">{setIndex + 1}</TableCell>
-      <TableCell className="text-center text-xs text-muted-foreground w-[70px] px-1 py-1 align-middle">
+      <TableCell className={cn(
+        "w-[42px] px-2 py-2 text-center align-middle text-sm font-semibold text-foreground/85",
+        isCompleted && "text-foreground/62"
+      )}>{setIndex + 1}</TableCell>
+      <TableCell className={cn(
+        "w-[92px] px-2 py-2 align-middle text-center text-[13px] text-muted-foreground",
+        isCompleted && "text-foreground/48"
+      )}>
         {previousPerformance
           ? isStatic
-            ? `${previousPerformance.weight}kg x ${previousPerformance.time_seconds || '-'}s`
-            : `${previousPerformance.weight}kg x ${previousPerformance.reps || '-'}`
+            ? `${previousPerformance.weight} x ${previousPerformance.time_seconds || '-'}s`
+            : `${previousPerformance.weight} x ${previousPerformance.reps || '-'}`
           : '-'}
       </TableCell>
-      <TableCell className="w-[75px] px-1 py-1 align-middle relative">
+      <TableCell className="relative w-[92px] px-2 py-2 align-middle">
         <div>
-          <Input
+          <input
             id={`weight-${set.id}`}
             type="number"
             inputMode="decimal"
@@ -180,10 +194,10 @@ const SetComponent: React.FC<SetComponentProps> = ({
             onChange={handleWeightChange}
             onBlur={() => handleBlur('weight')}
             className={cn(
-              "h-9 w-full",
-              "text-center",
-              "border-none shadow-none focus-visible:ring-0",
+              "h-10 w-full rounded-[14px] border-0 bg-white/[0.018] px-0 text-center text-base font-medium text-foreground shadow-none outline-none placeholder:text-muted-foreground/40 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 disabled:cursor-default disabled:opacity-100",
               "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+              isCompleted && "bg-transparent text-foreground/58",
+              !isCompleted && isActive && "bg-white/[0.03]"
             )}
             placeholder={previousPerformance ? String(previousPerformance.weight) : '0'}
             aria-label="Weight in kilograms"
@@ -195,14 +209,14 @@ const SetComponent: React.FC<SetComponentProps> = ({
           previousValue={previousRepsValue}
           previousWeightKg={previousPerformance?.weight}
           isStatic={isStatic}
-          visible={showWeightIndicator}
+          visible={showWeightIndicator && !isCompleted}
           exerciseName={exerciseName}
         />
       </TableCell>
       {isStatic ? (
-        <TableCell className="w-[60px] px-1 py-1 align-middle relative">
+        <TableCell className="relative w-[84px] px-2 py-2 align-middle">
           <div>
-            <Input
+            <input
               id={`time-${set.id}`}
               type="number"
               inputMode="numeric"
@@ -210,10 +224,10 @@ const SetComponent: React.FC<SetComponentProps> = ({
               onChange={handleTimeChange}
               onBlur={() => handleBlur('time')}
               className={cn(
-                "h-9 w-full",
-                "text-center",
-                "border-none shadow-none focus-visible:ring-0",
+                "h-10 w-full rounded-[14px] border-0 bg-white/[0.018] px-0 text-center text-base font-medium text-foreground shadow-none outline-none placeholder:text-muted-foreground/40 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 disabled:cursor-default disabled:opacity-100",
                 "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                isCompleted && "bg-transparent text-foreground/58",
+                !isCompleted && isActive && "bg-white/[0.03]"
               )}
               placeholder={previousPerformance ? String(previousPerformance.time_seconds ?? '0') : '0'}
               aria-label="Time in seconds"
@@ -224,14 +238,14 @@ const SetComponent: React.FC<SetComponentProps> = ({
             metric="time"
             previousValue={previousTimeValue}
             isStatic={isStatic}
-            visible={showTimeIndicator}
+            visible={showTimeIndicator && !isCompleted}
             exerciseName={exerciseName}
           />
         </TableCell>
       ) : (
-        <TableCell className="w-[60px] px-1 py-1 align-middle relative">
+        <TableCell className="relative w-[84px] px-2 py-2 align-middle">
           <div>
-            <Input
+            <input
               id={`reps-${set.id}`}
               type="number"
               inputMode="numeric"
@@ -239,10 +253,10 @@ const SetComponent: React.FC<SetComponentProps> = ({
               onChange={handleRepsChange}
               onBlur={() => handleBlur('reps')}
               className={cn(
-                "h-9 w-full",
-                "text-center",
-                "border-none shadow-none focus-visible:ring-0",
+                "h-10 w-full rounded-[14px] border-0 bg-white/[0.018] px-0 text-center text-base font-medium text-foreground shadow-none outline-none placeholder:text-muted-foreground/40 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 disabled:cursor-default disabled:opacity-100",
                 "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                isCompleted && "bg-transparent text-foreground/58",
+                !isCompleted && isActive && "bg-white/[0.03]"
               )}
               placeholder={previousPerformance ? String(previousPerformance.reps ?? '0') : '0'}
               aria-label="Repetitions"
@@ -253,19 +267,21 @@ const SetComponent: React.FC<SetComponentProps> = ({
             metric="reps"
             previousValue={previousRepsValue}
             isStatic={isStatic}
-            visible={showRepsIndicator}
+            visible={showRepsIndicator && !isCompleted}
             exerciseName={exerciseName}
           />
         </TableCell>
       )}
-      <TableCell className="w-[40px] align-middle px-0 py-0">
+      <TableCell className="w-[52px] align-middle px-0 py-0">
         <div className="flex justify-center items-center h-full">
           <button
             id={`completed-${set.id}`}
             onClick={() => handleCompletionChange(!isCompleted)}
             className={cn(
-              "p-1 rounded-full transition-colors",
-              isCompleted ? "text-green-500" : "text-gray-300"
+              "flex h-8 w-8 items-center justify-center rounded-[10px] bg-transparent transition-colors",
+              isCompleted
+                ? "text-[#689f90]"
+                : "text-muted-foreground/58 hover:text-foreground/82"
             )}
             aria-label="Mark set as completed"
           >

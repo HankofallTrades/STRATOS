@@ -92,6 +92,14 @@ const workoutSlice = createSlice({
             state.currentWorkout.exercises.push(action.payload);
         }
     },
+    replaceWorkoutExercise(state, action: PayloadAction<WorkoutExercise>) {
+        if (!state.currentWorkout) return;
+        const exerciseIndex = state.currentWorkout.exercises.findIndex(
+            (ex) => ex.id === action.payload.id
+        );
+        if (exerciseIndex === -1) return;
+        state.currentWorkout.exercises[exerciseIndex] = action.payload;
+    },
     addSetToExercise(
         state,
         action: PayloadAction<{
@@ -280,6 +288,7 @@ export const {
   endWorkout,
   clearWorkout,
   addExerciseToWorkout,
+  replaceWorkoutExercise,
   addSetToExercise,
   addCardioSetToExercise,
   updateSet,

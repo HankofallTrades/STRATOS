@@ -20,7 +20,7 @@ import WaitlistPage from "./pages/WaitlistPage";
 import Coach from "./pages/Coach";
 // FAB Imports
 import { Button } from "@/components/core/button";
-import { Plus, Save } from "lucide-react";
+import { Plus } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,29 +29,18 @@ import {
 } from "@/components/core/dropdown-menu"
 // Imports for Save Workout Logic
 import React, { useState, useEffect } from 'react';
-import { useAppSelector, useAppDispatch } from "@/hooks/redux";
+import { useAppDispatch } from "@/hooks/redux";
 import {
   startWorkout as startWorkoutAction
 } from "@/state/workout/workoutSlice";
-import { toast } from "@/hooks/use-toast";
 import { supabase } from '@/lib/integrations/supabase/client';
 import { Tables } from '@/lib/integrations/supabase/types';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogClose,
-} from "@/components/core/Dialog";
 import AddSingleExerciseDialog from '@/domains/fitness/view/AddSingleExerciseDialog';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/state/auth/AuthProvider';
 import ProteinLogging from "@/domains/fitness/view/ProteinLogging";
 import SunExposureLogging from "@/domains/fitness/view/SunExposureLogging";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/core/sidebar";
-import { useWorkoutPersistence } from '@/domains/fitness/controller/useWorkout';
 
 const queryClient = new QueryClient();
 
@@ -67,16 +56,13 @@ const MainAppLayout = () => {
   const dispatch = useAppDispatch();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [isDiscardConfirmOpen, setIsDiscardConfirmOpen] = useState(false);
   const [isAddExerciseDialogOpen, setIsAddExerciseDialogOpen] = useState(false);
   const [isProteinModalOpen, setIsProteinModalOpen] = useState(false);
   const [isSunExposureModalOpen, setIsSunExposureModalOpen] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  const { saveWorkout, discardWorkout, currentWorkout } = useWorkoutPersistence();
-
   // *** Query to fetch the latest single exercise log ***
-  const { data: latestSingleLogData, isLoading: isLoadingLatestLog } = useQuery<LatestSingleLogData | null>({
+  const { data: latestSingleLogData } = useQuery<LatestSingleLogData | null>({
     queryKey: ['latestSingleLog', user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
@@ -153,23 +139,7 @@ const MainAppLayout = () => {
     setIsSunExposureModalOpen(true);
   };
 
-  const handleEndWorkout = async () => {
-    const hasCompletedSets = currentWorkout?.exercises.some(ex => ex.sets.some(set => set.completed));
-
-    if (!hasCompletedSets) {
-      setIsDiscardConfirmOpen(true);
-      return;
-    }
-
-    await saveWorkout();
-  };
-
-  const handleConfirmDiscard = () => {
-    discardWorkout();
-    setIsDiscardConfirmOpen(false);
-  };
-
-  const shouldShowGlobalFab = location.pathname !== '/coach' && location.pathname !== '/';
+  const shouldShowGlobalFab = location.pathname !== '/coach' && location.pathname !== '/' && location.pathname !== '/workout';
 
   return (
     <SidebarProvider>
@@ -190,42 +160,31 @@ const MainAppLayout = () => {
 
         {shouldShowGlobalFab && (
           <div className="fixed bottom-20 right-6 z-20">
-            {location.pathname === '/workout' ? (
-              <Button
-                onClick={handleEndWorkout}
-                variant="default"
-                size="icon"
-                className="rounded-full h-14 w-14 bg-[#15462C] hover:bg-[#15462C]/90 shadow-lg text-primary-foreground"
-              >
-                <Save size={24} />
-              </Button>
-            ) : (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="default"
-                    size="icon"
-                    className="rounded-full h-14 w-14 bg-primary hover:bg-primary/90 shadow-lg text-primary-foreground"
-                  >
-                    <Plus size={24} />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent side="top" align="end" className="w-56 bg-card border-border">
-                  <DropdownMenuItem onSelect={handleAddWorkout} className="focus:bg-accent focus:text-accent-foreground">
-                    Start New Workout
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={handleAddExercise} className="focus:bg-accent focus:text-accent-foreground">
-                    Log Single Exercise
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={handleLogProtein} className="focus:bg-accent focus:text-accent-foreground">
-                    Log Protein
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={handleLogSunExposure} className="focus:bg-accent focus:text-accent-foreground">
-                    Log Sun Exposure
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="default"
+                  size="icon"
+                  className="rounded-full h-14 w-14 bg-primary hover:bg-primary/90 shadow-lg text-primary-foreground"
+                >
+                  <Plus size={24} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="top" align="end" className="w-56 bg-card border-border">
+                <DropdownMenuItem onSelect={handleAddWorkout} className="focus:bg-accent focus:text-accent-foreground">
+                  Start New Workout
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={handleAddExercise} className="focus:bg-accent focus:text-accent-foreground">
+                  Log Single Exercise
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={handleLogProtein} className="focus:bg-accent focus:text-accent-foreground">
+                  Log Protein
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={handleLogSunExposure} className="focus:bg-accent focus:text-accent-foreground">
+                  Log Sun Exposure
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         )}
 
@@ -240,24 +199,6 @@ const MainAppLayout = () => {
           onClose={() => setIsSunExposureModalOpen(false)}
           userId={currentUserId}
         />
-
-        <Dialog open={isDiscardConfirmOpen} onOpenChange={setIsDiscardConfirmOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Discard Workout?</DialogTitle>
-              <DialogDescription>
-                You haven't completed any sets in this workout. Are you sure you want to discard it?
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="flex flex-row justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsDiscardConfirmOpen(false)}>Cancel</Button>
-              <DialogClose asChild>
-                <Button variant="destructive" onClick={handleConfirmDiscard}>Discard</Button>
-              </DialogClose>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
         <AddSingleExerciseDialog
           open={isAddExerciseDialogOpen}
           onOpenChange={setIsAddExerciseDialogOpen}

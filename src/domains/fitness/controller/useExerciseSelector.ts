@@ -6,13 +6,18 @@ import { useToast } from "@/components/core/Toast/use-toast";
 import * as fitnessRepo from '../model/fitnessRepository';
 import {
     addExerciseToWorkout,
-    addSetToExercise,
-    addCardioSetToExercise
+    replaceWorkoutExercise,
 } from "@/state/workout/workoutSlice";
-import { Exercise, isCardioExercise } from "@/lib/types/workout";
+import { Exercise, WorkoutExercise, isCardioExercise, secondsToTime } from "@/lib/types/workout";
 import { v4 as uuidv4 } from 'uuid';
 
-export const useExerciseSelector = (isOpen: boolean) => {
+interface ExerciseSelectionOptions {
+    mode?: 'add' | 'replace';
+    workoutExerciseId?: string;
+    setCount?: number;
+}
+
+export const useExerciseSelector = (isOpen: boolean, selectionOptions?: ExerciseSelectionOptions) => {
     const dispatch = useAppDispatch();
     const queryClient = useQueryClient();
     const { user } = useAuth();
@@ -46,7 +51,7 @@ export const useExerciseSelector = (isOpen: boolean) => {
         onSuccess: (newExercise) => {
             queryClient.invalidateQueries({ queryKey: ['exercises'] });
             selectExercise(newExercise as Exercise);
-            toast({ title: "Success", description: "Exercise created and added." });
+            toast({ title: "Success", description: "Exercise created and selected." });
         },
         onError: () => {
             toast({ title: "Error", description: "Failed to create exercise.", variant: "destructive" });
@@ -70,10 +75,13 @@ export const useExerciseSelector = (isOpen: boolean) => {
     });
 
     // Actions
-    const selectExercise = useCallback(async (exercise: Exercise) => {
-        const workoutExerciseId = uuidv4();
+    const buildWorkoutExercise = useCallback(async (exercise: Exercise): Promise<WorkoutExercise> => {
+        const workoutExerciseId =
+            selectionOptions?.mode === 'replace' && selectionOptions.workoutExerciseId
+                ? selectionOptions.workoutExerciseId
+                : uuidv4();
+        const setCount = Math.max(selectionOptions?.setCount ?? 1, 1);
 
-        // Fetch last config
         let config = { equipmentType: exercise.default_equipment_type || 'Barbell', variation: 'Standard' };
         try {
             const lastConfig = await fitnessRepo.fetchLastConfigForExercise(user!.id, exercise.id);
@@ -87,30 +95,46 @@ export const useExerciseSelector = (isOpen: boolean) => {
             console.warn("Failed to fetch last config", e);
         }
 
-        // Add to workout
-        dispatch(addExerciseToWorkout({
+        const sets = isCardioExercise(exercise)
+            ? Array.from({ length: setCount }, () => ({
+                id: uuidv4(),
+                exerciseId: exercise.id,
+                time: secondsToTime(300),
+                completed: false,
+            }))
+            : Array.from({ length: setCount }, () => ({
+                id: uuidv4(),
+                weight: 0,
+                reps: exercise.is_static ? null : 0,
+                time: exercise.is_static ? secondsToTime(30) : null,
+                exerciseId: exercise.id,
+                completed: false,
+                variation: config.variation,
+                equipmentType: config.equipmentType,
+            }));
+
+        return {
             id: workoutExerciseId,
             exerciseId: exercise.id,
             exercise,
             equipmentType: config.equipmentType,
             variation: config.variation,
-            sets: []
-        }));
+            sets,
+        };
+    }, [selectionOptions?.mode, selectionOptions?.setCount, selectionOptions?.workoutExerciseId, user]);
 
-        // Add first set
-        if (isCardioExercise(exercise)) {
-            dispatch(addCardioSetToExercise({ workoutExerciseId, exerciseId: exercise.id }));
+    const selectExercise = useCallback(async (exercise: Exercise) => {
+        const workoutExercise = await buildWorkoutExercise(exercise);
+
+        if (selectionOptions?.mode === 'replace' && selectionOptions.workoutExerciseId) {
+            dispatch(replaceWorkoutExercise(workoutExercise));
         } else {
-            dispatch(addSetToExercise({
-                workoutExerciseId,
-                exerciseId: exercise.id,
-                isStatic: exercise.is_static ?? false
-            }));
+            dispatch(addExerciseToWorkout(workoutExercise));
         }
 
         setSearchQuery("");
         setIsAddingNew(false);
-    }, [dispatch, user]);
+    }, [buildWorkoutExercise, dispatch, selectionOptions?.mode, selectionOptions?.workoutExerciseId]);
 
     const removeExercise = useCallback((exercise: Exercise) => {
         if (exercise.created_by_user_id === user?.id) {

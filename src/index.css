@@ -100,6 +100,132 @@
   }
 }
 
+@layer components {
+  .stone-workout-page {
+    background-color: #05090d;
+    background-image: linear-gradient(180deg, #081017 0%, #050a0f 100%);
+  }
+
+  .stone-panel {
+    border: 1px solid rgba(95, 109, 100, 0.16);
+    background: rgba(17, 21, 25, 0.96);
+    box-shadow:
+      0 20px 56px rgba(0, 0, 0, 0.28),
+      inset 0 1px 0 rgba(255, 255, 255, 0.03),
+      inset 0 -1px 0 rgba(81, 100, 91, 0.12);
+  }
+
+  .stone-panel-hero {
+    background: rgba(15, 19, 23, 0.98);
+  }
+
+  .stone-surface {
+    border: 1px solid rgba(87, 100, 92, 0.15);
+    background: rgba(16, 20, 24, 0.95);
+    box-shadow:
+      0 16px 40px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.03),
+      inset 0 -1px 0 rgba(74, 91, 83, 0.1);
+  }
+
+  .stone-chip {
+    border: 1px solid rgba(91, 105, 97, 0.15);
+    background: rgba(27, 32, 37, 0.92);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.03),
+      0 10px 24px rgba(0, 0, 0, 0.14);
+  }
+
+  .stone-inset {
+    border: 1px solid rgba(76, 88, 81, 0.16);
+    background: rgba(9, 13, 16, 0.96);
+    box-shadow:
+      inset 0 3px 10px rgba(0, 0, 0, 0.58),
+      inset 0 1px 0 rgba(78, 92, 85, 0.06);
+  }
+
+  .stone-inset-active {
+    border-color: rgba(101, 119, 107, 0.22);
+    background: rgba(12, 17, 20, 0.98);
+    box-shadow:
+      inset 0 4px 12px rgba(0, 0, 0, 0.62),
+      inset 0 1px 0 rgba(84, 102, 92, 0.08);
+  }
+
+  .stone-inset-complete {
+    border-color: rgba(74, 89, 81, 0.12);
+    background: rgba(11, 15, 18, 0.68);
+    box-shadow:
+      inset 0 2px 8px rgba(0, 0, 0, 0.42),
+      inset 0 1px 0 rgba(72, 88, 79, 0.04);
+  }
+
+  .workout-log-input {
+    border: 1px solid transparent;
+    background: rgba(255, 255, 255, 0.022);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.022),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+  }
+
+  .workout-log-input-active {
+    border-color: transparent;
+    background: rgba(255, 255, 255, 0.035);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.03),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.24);
+  }
+
+  .workout-log-input-complete {
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .stone-row-active {
+    background: rgba(53, 62, 57, 0.18);
+  }
+
+  .stone-row-complete {
+    background: rgba(24, 36, 33, 0.92);
+    box-shadow:
+      inset 3px 0 0 rgba(82, 145, 130, 0.44),
+      inset 0 1px 0 rgba(82, 145, 130, 0.04);
+  }
+
+  .stone-table-head {
+    background: rgba(23, 28, 33, 0.92);
+  }
+
+  .stone-seam {
+    border-color: rgba(91, 105, 97, 0.16);
+  }
+
+  .verdigris-text {
+    color: #5a9383;
+  }
+
+  .warm-metal-text {
+    color: #c8a06c;
+  }
+
+  .verdigris-emblem {
+    background: rgba(14, 54, 45, 0.24);
+    color: #689f90;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.03),
+      0 0 20px rgba(14, 54, 45, 0.06);
+  }
+
+  .warm-metal-emblem {
+    background: rgba(123, 94, 66, 0.18);
+    color: #d4bd99;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      0 0 20px rgba(123, 94, 66, 0.05);
+  }
+}
+
 /* Custom dark theme styles */
 .dark {
   .bg-white {

@@ -9,9 +9,17 @@ import {
 } from "@/state/workout/workoutSlice";
 import { useElapsedTime } from "@/hooks/useElapsedTime";
 import { formatTime } from "@/lib/utils/timeUtils";
-import { Clock, Heart, Zap, Dumbbell, Flame, ChevronDown } from "lucide-react";
+import { Clock, ChevronDown } from "lucide-react";
 import { Button } from "@/components/core/button";
-import { Badge } from "@/components/core/badge";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/core/Dialog";
 import { Input } from "@/components/core/input";
 import { Label } from "@/components/core/label";
 import { Textarea } from "@/components/core/textarea";
@@ -21,6 +29,7 @@ import { CardioSet, SessionFocus, StrengthSet, WorkoutExercise, isCardioExercise
 import { useState } from "react";
 import { cn } from "@/lib/utils/cn";
 import { useAuth } from "@/state/auth/AuthProvider";
+import { useWorkoutPersistence } from "@/domains/fitness/controller/useWorkout";
 import { usePeriodization } from "@/domains/periodization";
 import type { MesocycleProtocol, MesocycleSessionTemplate } from "@/domains/periodization";
 import { toast } from "@/hooks/use-toast";
@@ -100,6 +109,8 @@ const Workout = () => {
   const [mesocycleProtocol, setMesocycleProtocol] = useState<MesocycleProtocol>('occams');
   const [mesocycleNotes, setMesocycleNotes] = useState('');
   const [showQuickStart, setShowQuickStart] = useState(false);
+  const [isDiscardConfirmOpen, setIsDiscardConfirmOpen] = useState(false);
+  const { saveWorkout, discardWorkout } = useWorkoutPersistence();
 
   const nextOccamSession = activeProgram?.sessions.find(session => session.id === activeProgram.next_session_id)
     ?? activeProgram?.sessions[0]
@@ -245,48 +256,56 @@ const Workout = () => {
     setSelectedFocus(focus);
   };
 
+  const handleEndWorkout = async () => {
+    const hasCompletedSets = currentWorkout?.exercises.some((exercise) =>
+      exercise.sets.some((set) => set.completed)
+    );
+
+    if (!hasCompletedSets) {
+      setIsDiscardConfirmOpen(true);
+      return;
+    }
+
+    await saveWorkout();
+  };
+
+  const handleConfirmDiscard = () => {
+    discardWorkout();
+    setIsDiscardConfirmOpen(false);
+  };
+
   const getFocusDisplayInfo = (focus: SessionFocus) => {
-    // Map focuses to semantic theme variables where possible, or use standard palette overrides if needed.
-    // Ideally, these should feel distinct but harmonious with the theme.
-    // Using opacity variations or specific semantic roles can help.
     const focusMap = {
       strength: {
         title: 'Strength',
-        color: 'bg-primary', // Use primary for main strength
-        icon: <Dumbbell className="h-4 w-4" />
+        color: 'warm-metal-text',
       },
       hypertrophy: {
         title: 'Hypertrophy',
-        color: 'bg-secondary', // Secondary for hypertrophy
-        icon: <Flame className="h-4 w-4" />
+        color: 'warm-metal-text',
       },
       zone2: {
         title: 'Endurance',
-        color: 'bg-accent', // Accent for endurance
-        icon: <Heart className="h-4 w-4" />
+        color: 'warm-metal-text',
       },
       zone5: {
         title: 'Max HR',
-        color: 'bg-destructive', // Destructive/High intensity for Max HR
-        icon: <Zap className="h-4 w-4" />
+        color: 'warm-metal-text',
       },
       speed: {
         title: 'Speed & Power',
-        color: 'bg-primary/80',
-        icon: <Zap className="h-4 w-4" />
+        color: 'warm-metal-text',
       },
       recovery: {
         title: 'Recovery',
-        color: 'bg-muted-foreground',
-        icon: <Heart className="h-4 w-4" />
+        color: 'warm-metal-text',
       },
       mixed: {
         title: 'Mixed',
-        color: 'bg-card-foreground',
-        icon: <Dumbbell className="h-4 w-4" />
+        color: 'warm-metal-text',
       },
     };
-    return focusMap[focus] || { title: focus, color: 'bg-muted', icon: <Dumbbell className="h-4 w-4" /> };
+    return focusMap[focus] || { title: focus, color: 'warm-metal-text' };
   };
 
   if (!currentWorkout) {
@@ -495,35 +514,69 @@ const Workout = () => {
   const focusInfo = sessionFocus ? getFocusDisplayInfo(sessionFocus) : null;
 
   return (
-    <div className="max-w-screen-md mx-auto p-4 flex flex-col h-full">
-      <div className="bg-card border border-border p-4 rounded-lg mb-6 flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center">
-          <Clock className="text-primary mr-2" />
-          <span className="text-xl font-mono text-card-foreground">
-            {formatTime(currentWorkout.completed ? currentWorkout.duration : displayTime)}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {focusInfo && (
-            <div className="flex items-center gap-2">
-              <div className={cn("p-1.5 rounded-full", focusInfo.color.replace('bg-', 'text-'))}>
-                {focusInfo.icon}
+    <div className="stone-workout-page min-h-svh w-full">
+      <div className="mx-auto flex min-h-svh w-full max-w-[72rem] flex-col px-4 pb-6 pt-4 sm:px-6 lg:px-8">
+        <div className="stone-panel stone-panel-hero mb-6 flex shrink-0 items-center justify-between gap-3 rounded-[20px] px-5 py-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <Clock className="h-5 w-5 shrink-0 verdigris-text" />
+            <div className="min-w-0">
+              <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                Session
               </div>
-              <Badge
-                variant="outline"
-                className="text-xs"
-              >
-                {focusInfo.title}
-              </Badge>
+              <span className="text-[clamp(1.75rem,5vw,2.25rem)] font-medium leading-none text-foreground">
+                {formatTime(currentWorkout.completed ? currentWorkout.duration : displayTime)}
+              </span>
             </div>
-          )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {focusInfo && (
+              <div className={cn("text-sm font-medium", focusInfo.color)}>
+                {focusInfo.title}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="min-h-0 flex-1">
+          <WorkoutComponent />
+        </div>
+
+        <div className="mt-4 flex shrink-0 justify-end border-t stone-seam pt-4">
+          <Button
+            onClick={handleEndWorkout}
+            variant="ghost"
+            className="h-10 rounded-[10px] border-0 bg-transparent px-0 text-sm font-medium shadow-none hover:bg-transparent"
+          >
+            <span className="verdigris-text">Finish</span>
+          </Button>
         </div>
       </div>
 
-      <div className="flex-grow overflow-y-auto">
-        <WorkoutComponent />
-      </div>
+      <Dialog open={isDiscardConfirmOpen} onOpenChange={setIsDiscardConfirmOpen}>
+        <DialogContent className="stone-panel rounded-[24px] border-white/10">
+          <DialogHeader>
+            <DialogTitle>Discard Workout?</DialogTitle>
+            <DialogDescription>
+              You haven't completed any sets in this workout. Are you sure you want to discard it?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex flex-row justify-end gap-2">
+            <Button
+              variant="ghost"
+              onClick={() => setIsDiscardConfirmOpen(false)}
+              className="stone-chip rounded-[16px] px-4 hover:bg-white/[0.05]"
+            >
+              Cancel
+            </Button>
+            <DialogClose asChild>
+              <Button variant="destructive" onClick={handleConfirmDiscard} className="rounded-[16px]">
+                Discard
+              </Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

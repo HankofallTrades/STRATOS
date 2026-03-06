@@ -73,7 +73,7 @@ export function getPerformanceIndicatorDecision(
             : null;
         return {
           IconComponent: ArrowUp,
-          colorClass: "text-green-500",
+          colorClass: "verdigris-text",
           description: suggestedWeight
             ? `Occam: increase load to ${formatKg(suggestedWeight)}kg (max +5kg or +10%, snapped to ${OCCAMS_ROUNDING_INCREMENT_KG}kg).`
             : `Occam: increase load next time (met minimum ${occamsRepRange.min} reps).`,
@@ -81,7 +81,7 @@ export function getPerformanceIndicatorDecision(
       }
       return {
         IconComponent: Minus,
-        colorClass: "text-yellow-500",
+        colorClass: "warm-metal-text",
         description: `Occam: keep load the same and build reps to at least ${occamsRepRange.min}.`,
       };
     }
@@ -90,7 +90,7 @@ export function getPerformanceIndicatorDecision(
       if (previousValue < occamsRepRange.min) {
         return {
           IconComponent: ArrowUp,
-          colorClass: "text-green-500",
+          colorClass: "verdigris-text",
           description: `Occam: push reps up to at least ${occamsRepRange.min}.`,
         };
       }
@@ -102,7 +102,7 @@ export function getPerformanceIndicatorDecision(
             : null;
         return {
           IconComponent: ArrowDown,
-          colorClass: "text-sky-500",
+          colorClass: "warm-metal-text",
           description: suggestedWeight
             ? `Occam: reps above ${occamsRepRange.max}; increase to ${formatKg(suggestedWeight)}kg (max +5kg or +10%, snapped to ${OCCAMS_ROUNDING_INCREMENT_KG}kg).`
             : `Occam: reps are above ${occamsRepRange.max}; increase load so reps come back into range.`,
@@ -111,7 +111,7 @@ export function getPerformanceIndicatorDecision(
 
       return {
         IconComponent: Minus,
-        colorClass: "text-yellow-500",
+        colorClass: "warm-metal-text",
         description: "Occam: reps are in target range; keep execution strict and progress load when ready.",
       };
     }
@@ -119,7 +119,7 @@ export function getPerformanceIndicatorDecision(
     if (metric === 'time' && isStatic) {
       return {
         IconComponent: Minus,
-        colorClass: "text-yellow-500",
+        colorClass: "warm-metal-text",
         description: "Occam: keep static hold quality consistent before progressing load.",
       };
     }
@@ -132,7 +132,7 @@ export function getPerformanceIndicatorDecision(
       if (previousValue >= 6) {
         return {
           IconComponent: ArrowUp,
-          colorClass: "text-green-500",
+          colorClass: "verdigris-text",
           description: "Increase weight next set.",
         };
       }
@@ -141,7 +141,7 @@ export function getPerformanceIndicatorDecision(
       if (previousValue >= 15) {
         return {
           IconComponent: ArrowUp,
-          colorClass: "text-green-500",
+          colorClass: "verdigris-text",
           description: "Increase weight next set.",
         };
       }
@@ -156,13 +156,13 @@ export function getPerformanceIndicatorDecision(
       if (previousValue < 8) {
         return {
           IconComponent: ArrowUp,
-          colorClass: "text-green-500",
+          colorClass: "verdigris-text",
           description: "Push for more reps.",
         };
       } else {
         return {
           IconComponent: Minus,
-          colorClass: "text-yellow-500",
+          colorClass: "warm-metal-text",
           description: "Hold steady.",
         };
       }
@@ -171,13 +171,13 @@ export function getPerformanceIndicatorDecision(
       if (previousValue < 15) {
         return {
           IconComponent: ArrowUp,
-          colorClass: "text-green-500",
+          colorClass: "verdigris-text",
           description: "Push for more reps.",
         };
       } else {
         return {
           IconComponent: Minus,
-          colorClass: "text-yellow-500",
+          colorClass: "warm-metal-text",
           description: "Hold steady.",
         };
       }
@@ -191,13 +191,13 @@ export function getPerformanceIndicatorDecision(
       if (previousValue > 30) {
         return {
           IconComponent: ArrowUp,
-          colorClass: "text-green-500",
+          colorClass: "verdigris-text",
           description: "Increase hold time.",
         };
       } else {
         return {
           IconComponent: Minus,
-          colorClass: "text-yellow-500",
+          colorClass: "warm-metal-text",
           description: "Hold steady.",
         };
       }
@@ -206,13 +206,13 @@ export function getPerformanceIndicatorDecision(
       if (previousValue > 30) {
         return {
           IconComponent: ArrowUp,
-          colorClass: "text-green-500",
+          colorClass: "verdigris-text",
           description: "Increase hold time.",
         };
       } else {
         return {
           IconComponent: Minus,
-          colorClass: "text-yellow-500",
+          colorClass: "warm-metal-text",
           description: "Hold steady.",
         };
       }
