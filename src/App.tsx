@@ -8,6 +8,7 @@ import { store, persistor } from './state/store';
 import { ThemeProvider as NextThemeProvider } from "next-themes";
 import { ThemeProvider } from "@/lib/themes";
 import NavBar from "@/components/layout/NavBar";
+import BottomNav from "@/components/layout/BottomNav";
 import ProtectedRoute from "@/components/layout/ProtectedRoute";
 import Home from "./pages/Home";
 // FAB Imports
@@ -29,7 +30,7 @@ import { supabase } from '@/lib/integrations/supabase/client';
 import { Tables } from '@/lib/integrations/supabase/types';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/state/auth/AuthProvider';
-import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/core/sidebar";
+import { SidebarProvider, SidebarInset } from "@/components/core/sidebar";
 
 const Workout = lazy(() => import("./pages/Workout"));
 const Analytics = lazy(() => import("./pages/Analytics"));
@@ -139,12 +140,10 @@ const MainAppLayout = () => {
 
   return (
     <SidebarProvider defaultOpen={false}>
-      <NavBar />
+      <div className="hidden md:block">
+        <NavBar />
+      </div>
       <SidebarInset className="app-shell">
-        <div className="app-mobile-sidebar-trigger fixed z-50 md:hidden">
-          <SidebarTrigger className="h-10 w-10 rounded-full border border-white/10 bg-black/30 text-foreground shadow-lg backdrop-blur-md hover:bg-white/[0.08]" />
-        </div>
-
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/workout" element={renderDeferredRoute(<Workout />)} />
@@ -213,6 +212,7 @@ const MainAppLayout = () => {
           </Suspense>
         ) : null}
       </SidebarInset>
+      <BottomNav />
     </SidebarProvider>
   );
 };
