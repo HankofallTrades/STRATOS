@@ -1,7 +1,6 @@
 import { Toaster } from "@/components/core/Toast/toaster";
 import { Toaster as Sonner } from "@/components/core/sonner";
 import { TooltipProvider } from "@/components/core/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
@@ -11,13 +10,6 @@ import { ThemeProvider } from "@/lib/themes";
 import NavBar from "@/components/layout/NavBar";
 import ProtectedRoute from "@/components/layout/ProtectedRoute";
 import Home from "./pages/Home";
-import Workout from "./pages/Workout";
-import Analytics from "./pages/Analytics";
-import Settings from "./pages/Settings";
-import NotFound from "./pages/NotFound";
-import LoginPage from "./pages/LoginPage";
-import WaitlistPage from "./pages/WaitlistPage";
-import Coach from "./pages/Coach";
 // FAB Imports
 import { Button } from "@/components/core/button";
 import { Plus } from "lucide-react";
@@ -28,26 +20,44 @@ import {
   DropdownMenuTrigger,
 } from "@/components/core/dropdown-menu"
 // Imports for Save Workout Logic
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, lazy, useState } from 'react';
 import { useAppDispatch } from "@/hooks/redux";
 import {
   startWorkout as startWorkoutAction
 } from "@/state/workout/workoutSlice";
 import { supabase } from '@/lib/integrations/supabase/client';
 import { Tables } from '@/lib/integrations/supabase/types';
-import AddSingleExerciseDialog from '@/domains/fitness/view/AddSingleExerciseDialog';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/state/auth/AuthProvider';
-import ProteinLogging from "@/domains/fitness/view/ProteinLogging";
-import SunExposureLogging from "@/domains/fitness/view/SunExposureLogging";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/core/sidebar";
 
-const queryClient = new QueryClient();
+const Workout = lazy(() => import("./pages/Workout"));
+const Analytics = lazy(() => import("./pages/Analytics"));
+const Settings = lazy(() => import("./pages/Settings"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const LoginPage = lazy(() => import("./pages/LoginPage"));
+const WaitlistPage = lazy(() => import("./pages/WaitlistPage"));
+const Coach = lazy(() => import("./pages/Coach"));
+const AddSingleExerciseDialog = lazy(() => import('@/domains/fitness/view/AddSingleExerciseDialog'));
+const ProteinLogging = lazy(() => import("@/domains/fitness/view/ProteinLogging"));
+const SunExposureLogging = lazy(() => import("@/domains/fitness/view/SunExposureLogging"));
 
 // Interface for the latest single log data
 interface LatestSingleLogData extends Tables<'exercise_sets'> {
   exercise_id: string; // Ensure exercise_id is present (from workout_exercises)
 }
+
+const RouteFallback = () => (
+  <div className="app-page flex min-h-[40svh] items-center justify-center">
+    <div className="app-kicker">Loading</div>
+  </div>
+);
+
+const renderDeferredRoute = (element: React.ReactNode) => (
+  <Suspense fallback={<RouteFallback />}>
+    {element}
+  </Suspense>
+);
 
 // Main Application Layout (for authenticated users)
 const MainAppLayout = () => {
@@ -55,11 +65,10 @@ const MainAppLayout = () => {
   const location = useLocation();
   const dispatch = useAppDispatch();
   const { user } = useAuth();
-  const queryClient = useQueryClient();
   const [isAddExerciseDialogOpen, setIsAddExerciseDialogOpen] = useState(false);
   const [isProteinModalOpen, setIsProteinModalOpen] = useState(false);
   const [isSunExposureModalOpen, setIsSunExposureModalOpen] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const currentUserId = user?.id ?? null;
 
   // *** Query to fetch the latest single exercise log ***
   const { data: latestSingleLogData } = useQuery<LatestSingleLogData | null>({
@@ -105,22 +114,9 @@ const MainAppLayout = () => {
       }
       return null; // Return null if data or nested structure is missing
     },
-    enabled: !!user?.id,
+    enabled: !!user?.id && isAddExerciseDialogOpen,
     staleTime: 5 * 60 * 1000,
   });
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      if (authError) {
-        console.error("Error fetching user:", authError);
-        setCurrentUserId(null);
-      } else {
-        setCurrentUserId(user?.id || null);
-      }
-    };
-    fetchUser();
-  }, []);
 
   const handleAddWorkout = () => {
     dispatch(startWorkoutAction({}));
@@ -145,21 +141,21 @@ const MainAppLayout = () => {
     <SidebarProvider defaultOpen={false}>
       <NavBar />
       <SidebarInset className="app-shell">
-        <div className="fixed top-3 left-3 z-50 md:hidden">
-          <SidebarTrigger />
+        <div className="app-mobile-sidebar-trigger fixed z-50 md:hidden">
+          <SidebarTrigger className="h-10 w-10 rounded-full border border-white/10 bg-black/30 text-foreground shadow-lg backdrop-blur-md hover:bg-white/[0.08]" />
         </div>
 
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/workout" element={<Workout />} />
-          <Route path="/analytics" element={<Analytics />} />
-          <Route path="/coach" element={<Coach />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="*" element={<NotFound />} />
+          <Route path="/workout" element={renderDeferredRoute(<Workout />)} />
+          <Route path="/analytics" element={renderDeferredRoute(<Analytics />)} />
+          <Route path="/coach" element={renderDeferredRoute(<Coach />)} />
+          <Route path="/settings" element={renderDeferredRoute(<Settings />)} />
+          <Route path="*" element={renderDeferredRoute(<NotFound />)} />
         </Routes>
 
         {shouldShowGlobalFab && (
-          <div className="fixed bottom-20 right-6 z-20">
+          <div className="app-global-fab fixed z-20">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -188,22 +184,34 @@ const MainAppLayout = () => {
           </div>
         )}
 
-        <ProteinLogging
-          isOpen={isProteinModalOpen}
-          onClose={() => setIsProteinModalOpen(false)}
-          userId={currentUserId}
-        />
+        {isProteinModalOpen ? (
+          <Suspense fallback={null}>
+            <ProteinLogging
+              isOpen={isProteinModalOpen}
+              onClose={() => setIsProteinModalOpen(false)}
+              userId={currentUserId}
+            />
+          </Suspense>
+        ) : null}
 
-        <SunExposureLogging
-          isOpen={isSunExposureModalOpen}
-          onClose={() => setIsSunExposureModalOpen(false)}
-          userId={currentUserId}
-        />
-        <AddSingleExerciseDialog
-          open={isAddExerciseDialogOpen}
-          onOpenChange={setIsAddExerciseDialogOpen}
-          defaultLogData={latestSingleLogData}
-        />
+        {isSunExposureModalOpen ? (
+          <Suspense fallback={null}>
+            <SunExposureLogging
+              isOpen={isSunExposureModalOpen}
+              onClose={() => setIsSunExposureModalOpen(false)}
+              userId={currentUserId}
+            />
+          </Suspense>
+        ) : null}
+        {isAddExerciseDialogOpen ? (
+          <Suspense fallback={null}>
+            <AddSingleExerciseDialog
+              open={isAddExerciseDialogOpen}
+              onOpenChange={setIsAddExerciseDialogOpen}
+              defaultLogData={latestSingleLogData}
+            />
+          </Suspense>
+        ) : null}
       </SidebarInset>
     </SidebarProvider>
   );
@@ -222,8 +230,8 @@ const App = () => {
               <Router>
                 <Routes>
                   {/* Public Routes */}
-                  <Route path="/login" element={<LoginPage />} />
-                  <Route path="/waitlist" element={<WaitlistPage />} />
+                  <Route path="/login" element={renderDeferredRoute(<LoginPage />)} />
+                  <Route path="/waitlist" element={renderDeferredRoute(<WaitlistPage />)} />
 
                   {/* Protected Routes */}
                   <Route

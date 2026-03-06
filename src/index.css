@@ -4,6 +4,11 @@
 
 @layer base {
   :root {
+    --safe-area-top: env(safe-area-inset-top, 0px);
+    --safe-area-right: env(safe-area-inset-right, 0px);
+    --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-area-left: env(safe-area-inset-left, 0px);
+
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
 
@@ -91,17 +96,33 @@
 }
 
 @layer base {
+  html {
+    min-height: 100%;
+    background: #05090d;
+  }
+
   * {
     @apply border-border;
   }
 
+  #root {
+    min-height: 100dvh;
+    min-height: 100svh;
+  }
+
   body {
-    @apply bg-background text-foreground pb-20;
+    @apply bg-background text-foreground;
+    min-height: 100dvh;
+    min-height: 100svh;
+    padding-bottom: calc(5rem + var(--safe-area-bottom));
   }
 }
 
 @layer components {
   .app-shell {
+    min-height: 100dvh;
+    min-height: 100svh;
+    padding-bottom: var(--safe-area-bottom);
     background-color: #05090d;
     background-image: linear-gradient(180deg, #081017 0%, #050a0f 100%);
   }
@@ -111,21 +132,85 @@
     margin-right: auto;
     width: 100%;
     max-width: 72rem;
-    padding: 1.5rem 1rem 5rem;
+    padding-left: max(1rem, calc(1rem + var(--safe-area-left)));
+    padding-right: max(1rem, calc(1rem + var(--safe-area-right)));
+    padding-top: max(1.5rem, calc(0.875rem + var(--safe-area-top)));
+    padding-bottom: max(5rem, calc(4rem + var(--safe-area-bottom)));
   }
 
   @media (min-width: 640px) {
     .app-page {
-      padding-left: 1.5rem;
-      padding-right: 1.5rem;
-      padding-top: 2rem;
+      padding-left: max(1.5rem, calc(1.25rem + var(--safe-area-left)));
+      padding-right: max(1.5rem, calc(1.25rem + var(--safe-area-right)));
+      padding-top: max(2rem, calc(1rem + var(--safe-area-top)));
     }
   }
 
   @media (min-width: 1024px) {
     .app-page {
-      padding-left: 2rem;
-      padding-right: 2rem;
+      padding-left: max(2rem, calc(1.5rem + var(--safe-area-left)));
+      padding-right: max(2rem, calc(1.5rem + var(--safe-area-right)));
+    }
+  }
+
+  .app-mobile-sidebar-trigger {
+    left: calc(0.75rem + var(--safe-area-left));
+    top: calc(0.75rem + var(--safe-area-top));
+  }
+
+  .app-global-fab {
+    bottom: calc(1.25rem + var(--safe-area-bottom));
+    right: calc(1.25rem + var(--safe-area-right));
+  }
+
+  .app-safe-sheet {
+    padding-top: var(--safe-area-top);
+    padding-bottom: var(--safe-area-bottom);
+  }
+
+  .app-workout-page {
+    min-height: 100dvh;
+    min-height: 100svh;
+  }
+
+  .app-workout-frame {
+    padding-left: max(1rem, calc(1rem + var(--safe-area-left)));
+    padding-right: max(1rem, calc(1rem + var(--safe-area-right)));
+    padding-top: max(1rem, calc(0.5rem + var(--safe-area-top)));
+    padding-bottom: max(1.5rem, calc(1rem + var(--safe-area-bottom)));
+  }
+
+  .app-coach-page {
+    top: var(--safe-area-top);
+    bottom: 0;
+    padding-left: max(0.75rem, calc(0.75rem + var(--safe-area-left)));
+    padding-right: max(0.75rem, calc(0.75rem + var(--safe-area-right)));
+  }
+
+  .app-chat-scroll {
+    padding-top: 1rem;
+    scroll-padding-bottom: calc(7rem + var(--safe-area-bottom));
+  }
+
+  .app-chat-composer {
+    padding-bottom: max(1rem, calc(0.75rem + var(--safe-area-bottom)));
+  }
+
+  @media (min-width: 640px) {
+    .app-workout-frame {
+      padding-left: max(1.5rem, calc(1.25rem + var(--safe-area-left)));
+      padding-right: max(1.5rem, calc(1.25rem + var(--safe-area-right)));
+    }
+
+    .app-chat-scroll {
+      padding-top: 1.25rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .app-workout-frame {
+      padding-left: max(2rem, calc(1.5rem + var(--safe-area-left)));
+      padding-right: max(2rem, calc(1.5rem + var(--safe-area-right)));
     }
   }
 
