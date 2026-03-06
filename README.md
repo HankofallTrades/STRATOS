@@ -33,12 +33,6 @@ Note: RPG-style “character sheet” concepts are exciting but explicitly out-o
 - **Auth**: Supabase Auth
 - **AI**: Custom LLM client
 
-## Mobile Packaging
-
-- StratOS now includes an installable PWA baseline with a web manifest, app icons, and a lightweight service worker for shell/static caching.
-- The mobile shell also accounts for iPhone safe-area insets so fixed controls and page bottoms sit clear of the notch and home indicator.
-- This keeps the app on a single React codebase today while preserving a clean path to a later Capacitor iOS wrapper if native features become a priority.
-
 ## Getting Started (Development)
 
 1. Clone the repo

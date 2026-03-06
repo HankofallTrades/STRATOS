@@ -86,14 +86,18 @@ const Coach: React.FC = () => {
   };
 
   return (
-    <div className="app-coach-page fixed inset-x-0 overflow-hidden">
-      <div className="mx-auto flex h-full max-w-screen-md flex-col">
+    // Use fixed positioning to fill space above the bottom nav (assuming 4rem/16 height)
+    // overflow-hidden on the container, internal scrolling handled by Chat
+    <div className="fixed inset-x-0 top-0 bottom-16 overflow-hidden">
+      {/* Inner container for max-width, padding, and flex column structure */}
+      <div className="flex flex-col h-full max-w-screen-md mx-auto pt-4">
         <Chat
           messages={messages}
           input={input}
           isLoading={isLoading}
           onInputChange={handleInputChange}
           onSendMessage={handleSend}
+          // Chat component needs to grow within the inner container
           className="flex-grow min-h-0"
         />
       </div>
