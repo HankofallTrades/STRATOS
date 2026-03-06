@@ -10,16 +10,15 @@ import {
 export interface NavigationItem {
   to: string;
   label: string;
-  mobileLabel: string;
   icon: LucideIcon;
 }
 
 export const navigationItems: NavigationItem[] = [
-  { to: '/', label: 'Home', mobileLabel: 'Home', icon: Home },
-  { to: '/workout', label: 'Workout', mobileLabel: 'Train', icon: Dumbbell },
-  { to: '/analytics', label: 'Analytics', mobileLabel: 'Stats', icon: BarChart2 },
-  { to: '/coach', label: 'Coach', mobileLabel: 'Coach', icon: MessageCircle },
-  { to: '/settings', label: 'Settings', mobileLabel: 'Tune', icon: Settings },
+  { to: '/', label: 'Home', icon: Home },
+  { to: '/workout', label: 'Workout', icon: Dumbbell },
+  { to: '/analytics', label: 'Analytics', icon: BarChart2 },
+  { to: '/coach', label: 'Coach', icon: MessageCircle },
+  { to: '/settings', label: 'Settings', icon: Settings },
 ];
 
 export const isNavigationItemActive = (pathname: string, to: string): boolean => {
