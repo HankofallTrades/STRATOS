@@ -171,15 +171,9 @@
   }
 
   .app-bottom-nav {
+    padding-bottom: var(--safe-area-bottom);
     padding-left: max(0.5rem, calc(0.5rem + var(--safe-area-left)));
     padding-right: max(0.5rem, calc(0.5rem + var(--safe-area-right)));
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-    background:
-      linear-gradient(180deg, rgba(12, 18, 23, 0.9) 0%, rgba(8, 12, 16, 0.96) 100%);
-    backdrop-filter: blur(22px);
-    box-shadow:
-      0 -18px 42px rgba(0, 0, 0, 0.24),
-      inset 0 1px 0 rgba(255, 255, 255, 0.04);
   }
 
   .app-bottom-nav-frame {
@@ -187,7 +181,13 @@
     min-height: var(--mobile-nav-height);
     align-items: stretch;
     gap: 0.2rem;
-    padding-bottom: var(--safe-area-bottom);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    background:
+      linear-gradient(180deg, rgba(12, 18, 23, 0.9) 0%, rgba(8, 12, 16, 0.96) 100%);
+    backdrop-filter: blur(22px);
+    box-shadow:
+      0 -18px 42px rgba(0, 0, 0, 0.24),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
   }
 
   .app-bottom-nav-item {
