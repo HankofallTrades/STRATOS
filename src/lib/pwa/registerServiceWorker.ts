@@ -1,11 +1,23 @@
 export function registerServiceWorker() {
-  if (!import.meta.env.PROD || !("serviceWorker" in navigator)) {
+  if (!("serviceWorker" in navigator)) {
     return;
   }
 
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch((error) => {
-      console.error("Service worker registration failed:", error);
-    });
+    void disableServiceWorker();
   });
+}
+
+async function disableServiceWorker() {
+  try {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(registrations.map((registration) => registration.unregister()));
+
+    if ("caches" in window) {
+      const cacheKeys = await caches.keys();
+      await Promise.all(cacheKeys.map((cacheKey) => caches.delete(cacheKey)));
+    }
+  } catch (error) {
+    console.error("Service worker cleanup failed:", error);
+  }
 }
