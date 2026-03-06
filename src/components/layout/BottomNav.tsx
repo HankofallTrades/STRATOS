@@ -9,7 +9,7 @@ const BottomNav = () => {
   return (
     <nav className="app-bottom-nav fixed inset-x-0 bottom-0 z-40 md:hidden" aria-label="Primary">
       <div className="app-bottom-nav-frame">
-        {navigationItems.map(({ to, label, mobileLabel, icon: Icon }) => {
+        {navigationItems.map(({ to, label, icon: Icon }) => {
           const isActive = isNavigationItemActive(location.pathname, to);
 
           return (
@@ -22,7 +22,6 @@ const BottomNav = () => {
               <span className="app-bottom-nav-icon">
                 <Icon className="h-[1.15rem] w-[1.15rem]" aria-hidden="true" />
               </span>
-              <span className="app-bottom-nav-label">{mobileLabel}</span>
             </NavLink>
           );
         })}

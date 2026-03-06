@@ -1,8 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import resolveConfig from 'tailwindcss/resolveConfig';
-import tailwindConfig from '../../../../tailwind.config'; // Adjust path as needed
-
-const fullConfig = resolveConfig(tailwindConfig);
 
 interface SunMoonProgressProps {
   currentHours: number;
@@ -13,10 +9,18 @@ interface SunMoonProgressProps {
   textClassName?: string;
 }
 
-// Helper to get Tailwind colors programmatically
-const getGenesisColor = (colorName: string): string => {
-  const color = fullConfig.theme?.colors?.genesis?.[colorName] as string;
-  return color || '#000000'; // Default to black if color not found
+const GENESIS_COLORS = {
+  darkBlue: '#0A2A4D',
+  midBlue: '#2C5B8E',
+  lightBlue: '#73A2D5',
+  paleYellow: '#FFF9C4',
+  sunYellow: '#FFEC8B',
+  sunOrange: '#FFD180',
+  sunGlow: '#FFFDE7',
+} as const;
+
+const getGenesisColor = (colorName: keyof typeof GENESIS_COLORS): string => {
+  return GENESIS_COLORS[colorName];
 };
 
 const SunMoonProgress: React.FC<SunMoonProgressProps> = ({ 
@@ -46,17 +50,17 @@ const SunMoonProgress: React.FC<SunMoonProgressProps> = ({
     }
   }, [progress, runBurstAnimation]);
 
-  let strokeColorValue = getGenesisColor('dark-blue');
+  let strokeColorValue = getGenesisColor('darkBlue');
   if (progress > 0.85) {
-    strokeColorValue = getGenesisColor('sun-orange');
+    strokeColorValue = getGenesisColor('sunOrange');
   } else if (progress > 0.65) {
-    strokeColorValue = getGenesisColor('sun-yellow');
+    strokeColorValue = getGenesisColor('sunYellow');
   } else if (progress > 0.4) {
-    strokeColorValue = getGenesisColor('pale-yellow');
+    strokeColorValue = getGenesisColor('paleYellow');
   } else if (progress > 0.15) {
-    strokeColorValue = getGenesisColor('light-blue');
+    strokeColorValue = getGenesisColor('lightBlue');
   } else if (progress > 0) {
-    strokeColorValue = getGenesisColor('mid-blue');
+    strokeColorValue = getGenesisColor('midBlue');
   }
 
   const iconSize = size * 0.4;
