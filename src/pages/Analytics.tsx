@@ -120,10 +120,15 @@ const Analytics = () => {
   const zone2CardioGoalMinutes = 150;
 
   return (
-    <div className="container mx-auto p-4 max-w-4xl">
+    <div className="app-page">
+      <header className="mb-8 space-y-2">
+        <div className="app-kicker">Analytics</div>
+        <h1 className="app-page-title">Review the block.</h1>
+        <p className="app-page-subtitle">Performance, volume, benchmarks, and recovery markers in one consistent surface.</p>
+      </header>
+
       <main className="space-y-8">
-        {/* Main Analytics Tabs at the top */}
-        <div className="pt-2">
+        <div className="stone-surface rounded-[22px] p-4 md:p-5">
           <Tabs value={selectedAnalysisType} onValueChange={(value) => setSelectedAnalysisType(value as AnalysisType)} className="w-full">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="E1RM">Estimated 1RM</TabsTrigger>
@@ -163,13 +168,12 @@ const Analytics = () => {
           </Tabs>
         </div>
 
-        {/* Performance Overview in the middle */}
         <PerformanceOverview userId={userId} exercises={exercises} />
 
-        {/* Daily Progress Rings */}
-        <section className="space-y-6">
+        <section className="space-y-4">
+          <div className="app-kicker">Recovery Markers</div>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 justify-items-center">
-            <div className="flex flex-col items-center">
+            <div className="stone-surface flex w-full flex-col items-center rounded-[22px] p-5">
               <CircularProgressDisplay
                 currentValue={currentProtein}
                 goalValue={proteinGoal}
@@ -181,14 +185,16 @@ const Analytics = () => {
                 showCenterText={true}
               />
             </div>
-            <SunMoonProgress
-              currentHours={currentSunHours}
-              goalHours={sunExposureGoalHours}
-              size={140}
-              barSize={10}
-              label="Daily Sun Exposure"
-            />
-            <div className="flex flex-col items-center">
+            <div className="stone-surface flex w-full flex-col items-center rounded-[22px] p-5">
+              <SunMoonProgress
+                currentHours={currentSunHours}
+                goalHours={sunExposureGoalHours}
+                size={140}
+                barSize={10}
+                label="Daily Sun Exposure"
+              />
+            </div>
+            <div className="stone-surface flex w-full flex-col items-center rounded-[22px] p-5">
               <CircularProgressDisplay
                 currentValue={currentZone2Minutes}
                 goalValue={zone2CardioGoalMinutes}
@@ -205,7 +211,6 @@ const Analytics = () => {
           </div>
         </section>
 
-        {/* Recent Workouts at the bottom */}
         <div className="mt-8">
           <RecentWorkouts userId={userId} />
         </div>

@@ -72,13 +72,13 @@ const CalisthenicBenchmarksView: React.FC<CalisthenicBenchmarksProps> = ({
 
     const renderBenchmarkContent = () => {
         if (isLoadingCalisthenics) {
-            return <p className="text-gray-500 italic text-center py-4">Loading benchmarks...</p>;
+            return <p className="text-muted-foreground italic text-center py-4">Loading benchmarks...</p>;
         }
         if (errorCalisthenics) {
             return <p className="text-red-500 italic text-center py-4">Error loading benchmark data.</p>;
         }
         if (foundCalisthenicCount === 0 && exercises.length > 0) {
-            return <p className="text-gray-500 italic text-center py-4">Could not calculate benchmarks. Ensure exercises like Pull-up and Push-up exist.</p>;
+            return <p className="text-muted-foreground italic text-center py-4">Could not calculate benchmarks. Ensure exercises like Pull-up and Push-up exist.</p>;
         }
 
         if (!startAnimation) return null;
@@ -97,10 +97,10 @@ const CalisthenicBenchmarksView: React.FC<CalisthenicBenchmarksProps> = ({
                         <AnimatedLinearProgress
                             value={bench.progress}
                             className="h-2"
-                            barClassName="bg-blue-500"
+                            barClassName="bg-[#2d6c5b]"
                         />
                         {bench.progress >= 100 && (
-                            <p className="text-xs text-blue-600 font-medium mt-1 flex items-center">
+                            <p className="verdigris-text mt-1 flex items-center text-xs font-medium">
                                 <CheckCircle className="h-3 w-3 mr-1" /> Benchmark Met!
                             </p>
                         )}
@@ -111,19 +111,19 @@ const CalisthenicBenchmarksView: React.FC<CalisthenicBenchmarksProps> = ({
     };
 
     return (
-        <div className="relative md:p-6">
+        <div className="stone-surface relative rounded-[22px] p-5 md:p-6">
             <CardHeader className="p-0 mb-4 md:pb-0">
                 <div className="flex items-center justify-between mb-4">
-                    <PersonSimpleRun className="mr-2 h-5 w-5 text-fitnessBlue flex-shrink-0" />
+                    <PersonSimpleRun className="mr-2 h-5 w-5 verdigris-text flex-shrink-0" />
                     <CardTitle className="flex items-center flex-grow mr-2">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="p-0 h-auto font-bold text-lg hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 mr-1">
+                                <Button variant="ghost" className="mr-1 h-auto p-0 text-lg font-bold hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0">
                                     {currentType}
-                                    <ChevronDown className="h-4 w-4 text-gray-500 ml-1" />
+                                    <ChevronDown className="ml-1 h-4 w-4 text-muted-foreground" />
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start">
+                            <DropdownMenuContent align="start" className="stone-surface border-white/8 text-foreground">
                                 {ALL_BENCHMARK_TYPES.map((option) => (
                                     <DropdownMenuItem
                                         key={option}
@@ -138,11 +138,11 @@ const CalisthenicBenchmarksView: React.FC<CalisthenicBenchmarksProps> = ({
                         <TooltipProvider delayDuration={100}>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="ml-1 h-5 w-5 p-0 text-gray-500 hover:bg-transparent">
+                                    <Button variant="ghost" size="icon" className="ml-1 h-5 w-5 p-0 text-muted-foreground hover:bg-transparent">
                                         <Info className="h-4 w-4" />
                                     </Button>
                                 </TooltipTrigger>
-                                <TooltipContent side="bottom" className="max-w-xs">
+                                <TooltipContent side="bottom" className="stone-panel max-w-xs border-white/10">
                                     <p>See how your max reps compare to <span className='lowercase font-medium'>{selectedLevel}</span> calisthenic standards.</p>
                                 </TooltipContent>
                             </Tooltip>
@@ -152,21 +152,24 @@ const CalisthenicBenchmarksView: React.FC<CalisthenicBenchmarksProps> = ({
                         <Popover open={levelPopoverOpen} onOpenChange={setLevelPopoverOpen}>
                             <PopoverTrigger asChild>
                                 <Button
-                                    variant="default"
+                                    variant="ghost"
                                     size="sm"
-                                    className="rounded-full h-7 px-2.5 text-xs font-medium bg-fitnessBlue hover:bg-fitnessBlue/90 w-[80px] justify-center"
+                                    className="app-tonal-control h-8 w-[84px] justify-center rounded-[12px] px-2.5 text-xs font-medium"
                                 >
                                     {selectedLevel}
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-auto p-1">
+                            <PopoverContent className="stone-surface w-auto border-white/8 p-1">
                                 <div className="flex flex-col gap-1">
                                     {ALL_LEVELS.map((level) => (
                                         <Button
                                             key={level}
-                                            variant={selectedLevel === level ? "secondary" : "ghost"}
+                                            variant="ghost"
                                             size="sm"
-                                            className="w-full justify-start h-8 px-2 text-xs"
+                                            className={selectedLevel === level
+                                                ? "app-tonal-control h-8 w-full justify-start rounded-[12px] px-2 text-xs text-foreground"
+                                                : "h-8 w-full justify-start rounded-[12px] px-2 text-xs text-foreground/72 hover:bg-white/[0.03] hover:text-foreground"
+                                            }
                                             onClick={() => {
                                                 setSelectedLevel(level);
                                                 setLevelPopoverOpen(false);

@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Flame, Trophy } from "lucide-react";
+import { Trophy } from "lucide-react";
 
 import { Button } from "@/components/core/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/core/card";
+import { Card, CardContent, CardHeader } from "@/components/core/card";
 import { useAuth } from '@/state/auth/AuthProvider';
 import { useAppSelector } from "@/hooks/redux";
 import { selectCurrentWorkout } from "@/state/workout/workoutSlice";
@@ -407,6 +407,7 @@ const Home = () => {
 
   const todayExerciseCount = nextSession?.exercises.length ?? 0;
   const todayEstimatedMinutes = estimateSessionMinutes(todayExerciseCount, activeProgram?.mesocycle.protocol);
+  const todayFocusLabel = activeProgram ? formatSessionFocusLabel(activeProgram.mesocycle.goal_focus) : null;
 
   const displayName = useMemo(() => {
     const username = profile?.username?.trim();
@@ -429,6 +430,7 @@ const Home = () => {
   const movementDone = movementCompletionRecorded || workoutMovementDone;
   const meditationDone = meditationHabit ? Boolean(completions[meditationHabit.id]) : false;
   const writingDone = writingHabit ? Boolean(completions[writingHabit.id]) : false;
+  const sessionActionLabel = workoutStartedToday ? 'Resume Session' : 'Begin Session';
 
   const movementAutoSyncKeyRef = useRef<string>('');
 
@@ -450,133 +452,138 @@ const Home = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
-      <div className="max-w-6xl mx-auto px-4 py-6 md:py-8">
-        <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-6">
-          <div>
-            <p className="text-sm text-muted-foreground">{greetingFromHour(now.getHours())}, {displayName}</p>
-            <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">Time to train.</h1>
-          </div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 self-start md:self-auto">
-            <Flame className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium">
-              {movementStreak > 0 ? `${movementStreak}-day streak` : 'Start your streak today'}
-            </span>
-          </div>
-        </header>
+    <div className="app-page">
+      <header className="mb-7 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div className="space-y-1.5">
+          <p className="app-kicker">{greetingFromHour(now.getHours())}, {displayName}</p>
+          <h1 className="app-page-title">Time to train.</h1>
+        </div>
+        <div className="self-start text-sm font-medium md:self-auto">
+          <span className="home-header-status warm-metal-text">{movementStreak > 0 ? `${movementStreak}-day streak` : 'Start your streak today'}</span>
+        </div>
+      </header>
 
-        <main className="space-y-5">
-          <Card className="relative overflow-hidden border-primary/50 bg-gradient-to-br from-primary/10 via-card to-card">
-            <div className="absolute inset-y-0 left-0 w-1 bg-primary" />
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm tracking-wide text-muted-foreground uppercase">Today&apos;s Workout</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <h2 className="text-2xl font-semibold">{todayWorkoutTitle}</h2>
-                <p className="text-sm text-muted-foreground mt-1">
+      <main className="space-y-4">
+        <Card className="home-session-card stone-panel stone-panel-hero overflow-hidden border-white/10">
+          <CardContent className="relative flex flex-col gap-5 px-6 pb-6 pt-7 md:flex-row md:items-center md:justify-between md:gap-6 md:px-8 md:pb-7 md:pt-8">
+            <div className="space-y-3">
+              <div className="app-kicker">Today&apos;s Workout</div>
+              <div className="space-y-2">
+                <h2 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">{todayWorkoutTitle}</h2>
+                <p className="text-sm text-muted-foreground md:text-base">
                   {todayWorkoutMuscleTags.join(' · ')}
+                  {todayFocusLabel ? (
+                    <>
+                      {'  ·  '}
+                      <span className="home-session-meta-emphasis">{todayFocusLabel}</span>
+                    </>
+                  ) : null}
                   {'  ·  '}
-                  ~{todayEstimatedMinutes} min
+                  {todayEstimatedMinutes} min
                   {'  ·  '}
                   {todayExerciseCount || 1} {todayExerciseCount === 1 ? 'exercise' : 'exercises'}
                 </p>
               </div>
+            </div>
 
-              <Button onClick={() => navigate('/workout')} size="lg" className="w-full h-12 text-base font-semibold">
-                Begin Session
+            <div className="flex w-full flex-col items-start gap-3 md:w-auto md:min-w-[15rem] md:items-end">
+              <Button
+                onClick={() => navigate('/workout')}
+                size="lg"
+                className="home-session-cta app-primary-action h-11 w-full rounded-[18px] px-6 text-base font-semibold md:w-auto md:min-w-[14rem]"
+              >
+                {sessionActionLabel}
               </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <Card className="home-data-card">
+            <CardHeader className="pb-1 pt-4 md:px-5 md:pt-5">
+              <div className="app-kicker">Last Session</div>
+            </CardHeader>
+            <CardContent className="space-y-1 pb-5 pt-0 md:px-5 md:pb-5">
+              {lastSession ? (
+                <>
+                  <p className="text-lg font-semibold text-foreground">
+                    {inferSessionLabel(lastSession.exercise_names)}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {daysAgoLabel(lastSession.workout_created_at)}
+                    {'  ·  '}
+                    {formatSessionDuration(lastSession.duration_seconds)}
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">No completed sessions yet.</p>
+              )}
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm tracking-wide text-muted-foreground uppercase">Last Session</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {lastSession ? (
-                  <>
-                    <p className="text-lg font-semibold">
-                      {inferSessionLabel(lastSession.exercise_names)}
+          <Card className="home-data-card">
+            <CardHeader className="pb-1 pt-4 md:px-5 md:pt-5">
+              <div className="app-kicker">Recent PR</div>
+            </CardHeader>
+            <CardContent className="space-y-1 pb-5 pt-0 md:px-5 md:pb-5">
+              {recentPr ? (
+                <>
+                  <p className="text-lg font-semibold text-foreground">{recentPr.exerciseName}</p>
+                  {recentPr.topSetWeightLabel && recentPr.topSetRepsLabel ? (
+                    <p className="text-sm font-medium text-foreground/88">
+                      {recentPr.topSetWeightLabel} x {recentPr.topSetRepsLabel} reps
                     </p>
-                    <p className="text-sm text-muted-foreground">
-                      {daysAgoLabel(lastSession.workout_created_at)}
-                      {'  ·  '}
-                      {formatSessionDuration(lastSession.duration_seconds)}
-                    </p>
-                  </>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No completed sessions yet.</p>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm tracking-wide text-muted-foreground uppercase">Recent PR</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {recentPr ? (
-                  <>
-                    <p className="text-lg font-semibold">{recentPr.exerciseName}</p>
-                    {recentPr.topSetWeightLabel && recentPr.topSetRepsLabel ? (
-                      <p className="text-sm font-medium">
-                        {recentPr.topSetWeightLabel} x {recentPr.topSetRepsLabel} reps
-                      </p>
-                    ) : null}
-                    <p className="text-sm text-muted-foreground inline-flex items-center gap-1">
-                      <span>{recentPr.whenLabel}</span>
-                      <span>·</span>
-                      <Trophy className="h-3.5 w-3.5 text-primary" />
-                      <span>+{recentPr.deltaE1RMLabel} vs previous best</span>
-                      <span>·</span>
-                      <span>e1RM {recentPr.currentE1RMLabel}</span>
-                    </p>
-                  </>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No e1RM PR increase recorded yet.</p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card>
-            <CardContent className="py-4">
-              <div className="flex flex-wrap items-center gap-4 text-sm">
-                <span className="text-muted-foreground font-medium uppercase tracking-wide">Today</span>
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-2"
-                  disabled={isLoadingCompletions || !movementHabit || !!(movementHabit && pendingIds[movementHabit.id])}
-                  onClick={() => handleToggleHabit(movementHabit?.id, movementDone)}
-                >
-                  <span className={movementDone ? 'text-primary' : 'text-muted-foreground'}>{movementDone ? '◉' : '○'}</span>
-                  <span className={movementDone ? 'font-medium' : ''}>Movement</span>
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-2"
-                  disabled={isLoadingCompletions || !meditationHabit || !!(meditationHabit && pendingIds[meditationHabit.id])}
-                  onClick={() => handleToggleHabit(meditationHabit?.id, meditationDone)}
-                >
-                  <span className={meditationDone ? 'text-primary' : 'text-muted-foreground'}>{meditationDone ? '◉' : '○'}</span>
-                  <span className={meditationDone ? 'font-medium' : ''}>Meditation</span>
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-2"
-                  disabled={isLoadingCompletions || !writingHabit || !!(writingHabit && pendingIds[writingHabit.id])}
-                  onClick={() => handleToggleHabit(writingHabit?.id, writingDone)}
-                >
-                  <span className={writingDone ? 'text-primary' : 'text-muted-foreground'}>{writingDone ? '◉' : '○'}</span>
-                  <span className={writingDone ? 'font-medium' : ''}>Writing</span>
-                </button>
-              </div>
+                  ) : null}
+                  <p className="inline-flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
+                    <span>{recentPr.whenLabel}</span>
+                    <span>·</span>
+                    <Trophy className="h-3.5 w-3.5 verdigris-text" />
+                    <span>+{recentPr.deltaE1RMLabel} vs previous best</span>
+                    <span>·</span>
+                    <span>e1RM {recentPr.currentE1RMLabel}</span>
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">No e1RM PR increase recorded yet.</p>
+              )}
             </CardContent>
           </Card>
-        </main>
-      </div>
+        </div>
+
+        <Card className="home-habit-strip">
+          <CardContent className="py-3.5 md:px-5">
+            <div className="flex flex-wrap items-center gap-4 text-sm">
+              <button
+                type="button"
+                className="app-inline-action inline-flex items-center gap-2"
+                disabled={isLoadingCompletions || !movementHabit || !!(movementHabit && pendingIds[movementHabit.id])}
+                onClick={() => handleToggleHabit(movementHabit?.id, movementDone)}
+              >
+                <span className={movementDone ? 'verdigris-text' : 'text-muted-foreground'}>{movementDone ? '◉' : '○'}</span>
+                <span className={movementDone ? 'text-foreground' : ''}>Movement</span>
+              </button>
+              <button
+                type="button"
+                className="app-inline-action inline-flex items-center gap-2"
+                disabled={isLoadingCompletions || !meditationHabit || !!(meditationHabit && pendingIds[meditationHabit.id])}
+                onClick={() => handleToggleHabit(meditationHabit?.id, meditationDone)}
+              >
+                <span className={meditationDone ? 'verdigris-text' : 'text-muted-foreground'}>{meditationDone ? '◉' : '○'}</span>
+                <span className={meditationDone ? 'text-foreground' : ''}>Meditation</span>
+              </button>
+              <button
+                type="button"
+                className="app-inline-action inline-flex items-center gap-2"
+                disabled={isLoadingCompletions || !writingHabit || !!(writingHabit && pendingIds[writingHabit.id])}
+                onClick={() => handleToggleHabit(writingHabit?.id, writingDone)}
+              >
+                <span className={writingDone ? 'verdigris-text' : 'text-muted-foreground'}>{writingDone ? '◉' : '○'}</span>
+                <span className={writingDone ? 'text-foreground' : ''}>Writing</span>
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+      </main>
     </div>
   );
 };
