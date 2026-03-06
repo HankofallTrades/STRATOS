@@ -1,5 +1,13 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/core/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/core/Dialog';
 import { Input } from '@/components/core/input';
 import { useSunExposure } from '../controller/useSunExposure';
 
@@ -24,18 +32,19 @@ const SunExposureLogging: React.FC<SunExposureLoggingProps> = ({ isOpen, onClose
     }
   };
 
-  if (!isOpen) {
-    return null;
-  }
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-background p-6 rounded-lg shadow-xl w-full max-w-md">
-        <h2 className="text-xl font-semibold mb-4">Log Sun Exposure</h2>
-        <form onSubmit={handleSubmit}>
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div>
-              <label htmlFor="sunExposureHoursInput" className="block text-sm font-medium text-muted-foreground mb-1">
+    <Dialog open={isOpen} onOpenChange={(nextOpen) => { if (!nextOpen) onClose(); }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Log Sun Exposure</DialogTitle>
+          <DialogDescription>
+            Capture your outdoor time without breaking the current flow.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <label htmlFor="sunExposureHoursInput" className="block text-sm font-medium text-muted-foreground">
                 Hours
               </label>
               <Input
@@ -49,8 +58,8 @@ const SunExposureLogging: React.FC<SunExposureLoggingProps> = ({ isOpen, onClose
                 disabled={isLogging}
               />
             </div>
-            <div>
-              <label htmlFor="sunExposureMinutesInput" className="block text-sm font-medium text-muted-foreground mb-1">
+            <div className="space-y-1.5">
+              <label htmlFor="sunExposureMinutesInput" className="block text-sm font-medium text-muted-foreground">
                 Minutes
               </label>
               <Input
@@ -66,17 +75,17 @@ const SunExposureLogging: React.FC<SunExposureLoggingProps> = ({ isOpen, onClose
               />
             </div>
           </div>
-          <div className="flex justify-end space-x-2">
+          <DialogFooter className="gap-2">
             <Button type="button" variant="outline" onClick={onClose} disabled={isLogging}>
               Cancel
             </Button>
             <Button type="submit" disabled={isLogging}>
               {isLogging ? 'Logging...' : 'Log Sun Exposure'}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 

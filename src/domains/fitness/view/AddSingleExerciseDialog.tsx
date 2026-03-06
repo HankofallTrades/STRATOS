@@ -92,10 +92,10 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
           </DialogDescription>
         </DialogHeader>
 
-        <div className="py-4 grid gap-4">
+        <div className="grid gap-4 py-2 sm:py-4">
           {/* Exercise Selector */}
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex-grow min-w-0">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0 flex-grow">
               <label htmlFor="exercise-select" className="sr-only">Exercise</label>
               {isLoading ? (
                 <div className="h-9 flex items-center justify-center"><Loader2 className="h-5 w-5 animate-spin" /></div>
@@ -104,7 +104,7 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
                   id="exercise-select"
                   value={form.exerciseId}
                   onChange={(e) => updateField('exerciseId', e.target.value)}
-                  className="block w-full min-w-[150px] p-2 h-9 border border-input bg-background rounded-md shadow-sm focus:outline-none focus:ring-ring focus:border-ring text-sm"
+                  className="block h-10 w-full min-w-[150px] rounded-md border border-input bg-background p-2 text-base shadow-sm focus:border-ring focus:outline-none focus:ring-ring sm:text-sm"
                   disabled={isPending}
                 >
                   <option value="" disabled>Select Exercise...</option>
@@ -117,7 +117,7 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
               )}
             </div>
 
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
               <EquipmentSelector
                 selectedEquipment={form.equipmentType}
                 onSelectEquipment={handleEquipmentSelected}
@@ -127,13 +127,13 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
                 setPopoverOpen={setEquipmentPopoverOpen}
               />
               {isAddingVariation ? (
-                <div className="flex items-center gap-1 flex-shrink-0 h-8">
+                <div className="flex min-w-0 flex-1 items-center gap-1 sm:h-8 sm:flex-none">
                   <Input
                     type="text"
                     placeholder="New Variation Name"
                     value={newVariationName}
                     onChange={(e) => setNewVariationName(e.target.value)}
-                    className="h-full w-[120px] sm:w-[150px] text-xs"
+                    className="h-10 min-w-0 flex-1 text-sm sm:h-full sm:w-[150px] sm:flex-none sm:text-xs"
                     disabled={isPending}
                     autoFocus
                     onKeyDown={(e) => { if (e.key === 'Enter') handleSaveNewVariation(); if (e.key === 'Escape') handleCancelAddNewVariation(); }}
@@ -176,7 +176,7 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
           </div>
 
           {/* --- Weight & Reps/Time Inputs --- */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {/* Weight Input Group */}
             <div>
               <Label htmlFor="weight-input" className="block text-sm font-medium mb-1">Weight (kg/lbs)</Label>
@@ -285,7 +285,7 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
           </div>
         </div>
 
-        <DialogFooter className="flex justify-center gap-2">
+        <DialogFooter className="gap-2 sm:justify-center">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
             Cancel
           </Button>
