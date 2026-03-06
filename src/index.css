@@ -101,6 +101,149 @@
 }
 
 @layer components {
+  .app-shell {
+    background-color: #05090d;
+    background-image: linear-gradient(180deg, #081017 0%, #050a0f 100%);
+  }
+
+  .app-page {
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+    max-width: 72rem;
+    padding: 1.5rem 1rem 5rem;
+  }
+
+  @media (min-width: 640px) {
+    .app-page {
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
+      padding-top: 2rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .app-page {
+      padding-left: 2rem;
+      padding-right: 2rem;
+    }
+  }
+
+  .app-kicker {
+    color: rgba(214, 223, 218, 0.58);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+
+  .app-page-title {
+    color: #f3f7f4;
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 600;
+    letter-spacing: -0.04em;
+    line-height: 0.95;
+  }
+
+  .app-page-subtitle {
+    color: rgba(214, 223, 218, 0.7);
+    font-size: 0.95rem;
+  }
+
+  .app-inline-action {
+    border: 0;
+    background: transparent;
+    color: rgba(214, 223, 218, 0.72);
+    font-weight: 500;
+    transition: color 160ms ease;
+  }
+
+  .app-inline-action:hover {
+    color: #f3f7f4;
+  }
+
+  .app-primary-action {
+    border: 0;
+    background: #1f5146;
+    color: #eef7f4;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      0 14px 30px rgba(0, 0, 0, 0.18);
+  }
+
+  .app-primary-action:hover {
+    background: #275f52;
+  }
+
+  .app-tonal-control {
+    border: 0;
+    background: rgba(255, 255, 255, 0.03);
+    color: rgba(243, 247, 244, 0.78);
+    box-shadow: none;
+  }
+
+  .app-tonal-control:hover {
+    background: rgba(255, 255, 255, 0.045);
+    color: #f3f7f4;
+  }
+
+  .app-form-input {
+    border: 0;
+    background: rgba(255, 255, 255, 0.03);
+    color: #f3f7f4;
+    box-shadow: none;
+  }
+
+  .app-form-input::placeholder {
+    color: rgba(214, 223, 218, 0.55);
+  }
+
+  .app-form-select {
+    border: 0;
+    background: rgba(255, 255, 255, 0.03);
+    color: #f3f7f4;
+    box-shadow: none;
+  }
+
+  .app-nav-shell {
+    border-right: 1px solid rgba(255, 255, 255, 0.07);
+    background: rgba(9, 14, 18, 0.94);
+  }
+
+  .app-nav-item {
+    height: 2.5rem;
+    border-radius: 0.875rem;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+    color: rgba(214, 223, 218, 0.68);
+  }
+
+  .app-nav-item:hover {
+    background: rgba(255, 255, 255, 0.03);
+    color: #f3f7f4;
+  }
+
+  .app-nav-item[data-active="true"] {
+    background: rgba(255, 255, 255, 0.045);
+    color: #f3f7f4;
+    box-shadow: inset 2px 0 0 rgba(90, 147, 131, 0.85);
+  }
+
+  .app-nav-item[data-active="true"] > svg {
+    color: #5a9383;
+  }
+
+  .group[data-collapsible="icon"] .app-nav-shell {
+    background: rgba(8, 13, 17, 0.98);
+  }
+
+  .group[data-collapsible="icon"] .app-nav-item[data-active="true"] {
+    background: rgba(31, 81, 70, 0.32);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.03),
+      0 0 0 1px rgba(90, 147, 131, 0.18);
+  }
+
   .stone-workout-page {
     background-color: #05090d;
     background-image: linear-gradient(180deg, #081017 0%, #050a0f 100%);
@@ -117,6 +260,73 @@
 
   .stone-panel-hero {
     background: rgba(15, 19, 23, 0.98);
+  }
+
+  .home-session-card {
+    position: relative;
+    border-color: rgba(100, 114, 105, 0.18);
+    background: rgba(15, 19, 23, 0.98);
+    box-shadow:
+      0 24px 52px rgba(0, 0, 0, 0.26),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      inset 0 -1px 0 rgba(79, 97, 88, 0.12);
+  }
+
+  .home-session-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(circle at 16% 28%, rgba(20, 73, 60, 0.22), transparent 34%),
+      linear-gradient(90deg, rgba(92, 140, 124, 0.08), transparent 28%);
+    pointer-events: none;
+  }
+
+  .home-session-card::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 1.5rem;
+    bottom: 1.5rem;
+    width: 1px;
+    background: linear-gradient(180deg, transparent, rgba(92, 140, 124, 0.72), transparent);
+    opacity: 0.8;
+    pointer-events: none;
+  }
+
+  .home-header-status {
+    display: inline-block;
+    padding-top: 0.125rem;
+    font-size: 0.98rem;
+  }
+
+  .home-session-meta-emphasis {
+    color: rgba(200, 160, 108, 0.84);
+  }
+
+  .home-session-cta {
+    background: #224d42;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      0 14px 28px rgba(0, 0, 0, 0.2);
+  }
+
+  .home-session-cta:hover {
+    background: #295a4d;
+  }
+
+  .home-data-card {
+    box-shadow:
+      0 14px 28px rgba(0, 0, 0, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  }
+
+  .home-habit-strip {
+    border-color: rgba(88, 102, 94, 0.14);
+    background: rgba(13, 18, 22, 0.92);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.025),
+      0 10px 24px rgba(0, 0, 0, 0.12);
   }
 
   .stone-surface {

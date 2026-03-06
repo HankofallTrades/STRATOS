@@ -142,9 +142,9 @@ const MainAppLayout = () => {
   const shouldShowGlobalFab = location.pathname !== '/coach' && location.pathname !== '/' && location.pathname !== '/workout';
 
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={false}>
       <NavBar />
-      <SidebarInset>
+      <SidebarInset className="app-shell">
         <div className="fixed top-3 left-3 z-50 md:hidden">
           <SidebarTrigger />
         </div>

@@ -83,17 +83,17 @@ const StrengthBenchmarksView: React.FC<StrengthBenchmarksProps> = ({
 
     const renderBenchmarkContent = () => {
         if (isLoadingProfile || isLoadingStrength) {
-            return <p className="text-gray-500 italic text-center py-4">Loading benchmarks...</p>;
+            return <p className="text-muted-foreground italic text-center py-4">Loading benchmarks...</p>;
         }
         if (errorProfile) {
             return <p className="text-red-500 italic text-center py-4">Error loading profile data.</p>;
         }
         if (!userProfile?.weight_kg) {
             return (
-                <Alert variant="default" className="bg-blue-50 border-blue-200">
-                    <Target className="h-4 w-4 !text-blue-700" />
-                    <AlertTitle className="text-blue-800">Set Your Weight</AlertTitle>
-                    <AlertDescription className="text-blue-700">
+                <Alert variant="default" className="border-white/8 bg-white/[0.03]">
+                    <Target className="h-4 w-4 verdigris-text" />
+                    <AlertTitle className="text-foreground">Set Your Weight</AlertTitle>
+                    <AlertDescription className="text-muted-foreground">
                         Go to <Link to="/settings" className="font-medium underline">Settings</Link> to enter your weight and see your strength benchmarks.
                     </AlertDescription>
                 </Alert>
@@ -103,7 +103,7 @@ const StrengthBenchmarksView: React.FC<StrengthBenchmarksProps> = ({
             return <p className="text-red-500 italic text-center py-4">Error loading benchmark data.</p>;
         }
         if (foundStrengthCount === 0 && exercises.length > 0) {
-            return <p className="text-gray-500 italic text-center py-4">Could not calculate benchmarks. Ensure exercises like Deadlift and Squat exist.</p>;
+            return <p className="text-muted-foreground italic text-center py-4">Could not calculate benchmarks. Ensure exercises like Deadlift and Squat exist.</p>;
         }
 
         if (!startAnimation) return null;
@@ -122,10 +122,10 @@ const StrengthBenchmarksView: React.FC<StrengthBenchmarksProps> = ({
                         <AnimatedLinearProgress
                             value={bench.progress}
                             className="h-2"
-                            barClassName="bg-green-500"
+                            barClassName="bg-[#2d6c5b]"
                         />
                         {bench.progress >= 100 && (
-                            <p className="text-xs text-green-600 font-medium mt-1 flex items-center">
+                            <p className="verdigris-text mt-1 flex items-center text-xs font-medium">
                                 <CheckCircle className="h-3 w-3 mr-1" /> Benchmark Met!
                             </p>
                         )}
@@ -136,19 +136,19 @@ const StrengthBenchmarksView: React.FC<StrengthBenchmarksProps> = ({
     };
 
     return (
-        <div className="relative md:p-6">
+        <div className="stone-surface relative rounded-[22px] p-5 md:p-6">
             <CardHeader className="p-0 mb-4 md:pb-0">
                 <div className="flex items-center justify-between mb-4">
-                    <Barbell className="mr-2 h-5 w-5 text-fitnessIndigo flex-shrink-0" />
+                    <Barbell className="mr-2 h-5 w-5 verdigris-text flex-shrink-0" />
                     <CardTitle className="flex items-center flex-grow mr-2">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="p-0 h-auto font-bold text-lg hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 mr-1">
+                                <Button variant="ghost" className="mr-1 h-auto p-0 text-lg font-bold hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0">
                                     {currentType}
-                                    <ChevronDown className="h-4 w-4 text-gray-500 ml-1" />
+                                    <ChevronDown className="ml-1 h-4 w-4 text-muted-foreground" />
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start">
+                            <DropdownMenuContent align="start" className="stone-surface border-white/8 text-foreground">
                                 {ALL_BENCHMARK_TYPES.map((option) => (
                                     <DropdownMenuItem
                                         key={option}
@@ -163,11 +163,11 @@ const StrengthBenchmarksView: React.FC<StrengthBenchmarksProps> = ({
                         <TooltipProvider delayDuration={100}>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="ml-1 h-5 w-5 p-0 text-gray-500 hover:bg-transparent">
+                                    <Button variant="ghost" size="icon" className="ml-1 h-5 w-5 p-0 text-muted-foreground hover:bg-transparent">
                                         <Info className="h-4 w-4" />
                                     </Button>
                                 </TooltipTrigger>
-                                <TooltipContent side="bottom" className="max-w-xs">
+                                <TooltipContent side="bottom" className="stone-panel max-w-xs border-white/10">
                                     <p>See how your estimated one-rep max compares to <span className='lowercase font-medium'>{selectedLevel}</span> strength standards.</p>
                                 </TooltipContent>
                             </Tooltip>
@@ -178,21 +178,24 @@ const StrengthBenchmarksView: React.FC<StrengthBenchmarksProps> = ({
                         <Popover open={levelPopoverOpen} onOpenChange={setLevelPopoverOpen}>
                             <PopoverTrigger asChild>
                                 <Button
-                                    variant="default"
+                                    variant="ghost"
                                     size="sm"
-                                    className="rounded-full h-7 px-2.5 text-xs font-medium bg-fitnessIndigo hover:bg-fitnessIndigo/90 w-[80px] justify-center"
+                                    className="app-tonal-control h-8 w-[84px] justify-center rounded-[12px] px-2.5 text-xs font-medium"
                                 >
                                     {selectedLevel}
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-auto p-1">
+                            <PopoverContent className="stone-surface w-auto border-white/8 p-1">
                                 <div className="flex flex-col gap-1">
                                     {ALL_LEVELS.map((level) => (
                                         <Button
                                             key={level}
-                                            variant={selectedLevel === level ? "secondary" : "ghost"}
+                                            variant="ghost"
                                             size="sm"
-                                            className="w-full justify-start h-8 px-2 text-xs"
+                                            className={selectedLevel === level
+                                                ? "app-tonal-control h-8 w-full justify-start rounded-[12px] px-2 text-xs text-foreground"
+                                                : "h-8 w-full justify-start rounded-[12px] px-2 text-xs text-foreground/72 hover:bg-white/[0.03] hover:text-foreground"
+                                            }
                                             onClick={() => {
                                                 setSelectedLevel(level);
                                                 setLevelPopoverOpen(false);

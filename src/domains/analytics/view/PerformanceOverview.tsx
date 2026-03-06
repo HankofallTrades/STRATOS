@@ -47,7 +47,7 @@ const PerformanceOverviewView: React.FC<PerformanceOverviewProps> = ({ userId, e
             <Card>
                 <CardHeader className="pb-2">
                     <CardTitle className="text-lg font-medium flex items-center">
-                        <Calendar className="mr-2 h-4 w-4 text-fitnessBlue" />
+                        <Calendar className="mr-2 h-4 w-4 verdigris-text" />
                         Total Workouts
                     </CardTitle>
                 </CardHeader>
@@ -59,7 +59,7 @@ const PerformanceOverviewView: React.FC<PerformanceOverviewProps> = ({ userId, e
             <Card>
                 <CardHeader className="pb-2">
                     <CardTitle className="text-lg font-medium flex items-center">
-                        <Clock className="mr-2 h-4 w-4 text-fitnessBlue" />
+                        <Clock className="mr-2 h-4 w-4 verdigris-text" />
                         Total Time
                     </CardTitle>
                 </CardHeader>
@@ -71,7 +71,7 @@ const PerformanceOverviewView: React.FC<PerformanceOverviewProps> = ({ userId, e
             <Card>
                 <CardHeader className="pb-2">
                     <CardTitle className="text-lg font-medium flex items-center">
-                        <Barbell className="mr-2 h-4 w-4 text-fitnessBlue" />
+                        <Barbell className="mr-2 h-4 w-4 verdigris-text" />
                         Avg. Duration
                     </CardTitle>
                 </CardHeader>
@@ -83,7 +83,7 @@ const PerformanceOverviewView: React.FC<PerformanceOverviewProps> = ({ userId, e
             <Card>
                 <CardHeader className="pb-2">
                     <CardTitle className="text-lg font-medium flex items-center">
-                        <Award className="mr-2 h-4 w-4 text-fitnessBlue" />
+                        <Award className="mr-2 h-4 w-4 warm-metal-text" />
                         Top Exercise
                     </CardTitle>
                 </CardHeader>

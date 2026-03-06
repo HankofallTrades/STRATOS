@@ -46,7 +46,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
         const date = new Date(timestamp);
 
         return (
-            <div className="custom-tooltip bg-white p-3 border border-gray-300 rounded shadow-lg text-sm space-y-1">
+            <div className="stone-panel rounded-[16px] border-white/10 p-3 text-sm space-y-1">
                 <p className="label font-semibold mb-1">{`Date: ${formatDate(date)}`}</p>
                 {payload.map((entry: any, index: number) => {
                     const name = entry.name;
@@ -145,11 +145,11 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
     return (
         <>
             {isLoadingExercises ? (
-                <p className="text-gray-500 italic">Loading exercises...</p>
+                <p className="text-muted-foreground italic">Loading exercises...</p>
             ) : errorExercises ? (
                 <p className="text-red-500 italic text-center py-10">Error loading exercises: {errorExercises.message}</p>
             ) : exercises.length > 0 ? (
-                <div className="md:p-6">
+                <div className="stone-surface rounded-[22px] p-5 md:p-6">
                     <CardHeader className="p-0 mb-4 md:pb-0">
                         <div className="flex items-center mb-4">
                             <div className="relative inline-flex items-center cursor-pointer min-w-0">
@@ -157,7 +157,7 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
                                     {selectedExercise ? selectedExercise.name : "Exercise"}
                                 </span>
                                 <div className="flex items-center ml-1">
-                                    <ChevronDown className="h-4 w-4 text-gray-400" />
+                                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
                                 </div>
                                 <select
                                     className="absolute inset-0 w-full h-full opacity-0 appearance-none cursor-pointer"
@@ -183,11 +183,14 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
                                 {timeRangeOptions.map(range => (
                                     <Button
                                         key={range}
-                                        variant={selectedTimeRange === range ? "default" : "outline"}
+                                        variant="ghost"
                                         size="sm"
                                         onClick={() => setSelectedTimeRange(range)}
                                         aria-label={`Select ${range}`}
-                                        className="px-2 h-8"
+                                        className={selectedTimeRange === range
+                                            ? "app-tonal-control h-8 rounded-[12px] px-2 text-foreground"
+                                            : "h-8 rounded-[12px] border-0 bg-transparent px-2 text-foreground/62 hover:bg-white/[0.03] hover:text-foreground"
+                                        }
                                     >
                                         {range}
                                     </Button>
@@ -199,7 +202,7 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
                         {selectedExercise && (
                             <>
                                 {isLoadingHistory ? (
-                                    <p className="text-gray-500 italic text-center py-10">Loading history...</p>
+                                    <p className="text-muted-foreground italic text-center py-10">Loading history...</p>
                                 ) : errorHistory ? (
                                     <p className="text-red-500 italic text-center py-10">Error loading history: {errorHistory.message}</p>
                                 ) : chartData.length > 0 ? (
@@ -250,7 +253,7 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
                                                         dataKey={key}
                                                         name={displayName}
                                                         stroke={lineColors[index % lineColors.length]}
-                                                        strokeWidth={2}
+                                                    strokeWidth={2}
                                                         dot={true}
                                                         activeDot={{ r: 10 }}
                                                         connectNulls={true}
@@ -260,7 +263,7 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
                                         </LineChart>
                                     </ResponsiveContainer>
                                 ) : (
-                                    <p className="text-gray-500 italic text-center py-10">
+                                    <p className="text-muted-foreground italic text-center py-10">
                                         {selectedTimeRange === 'ALL'
                                             ? "No estimated 1RM history found for this exercise. Complete some sets!"
                                             : `No estimated 1RM history found for this exercise in the last ${selectedTimeRange}.`}
@@ -269,12 +272,12 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
                             </>
                         )}
                         {!selectedExercise && (
-                            <p className="text-gray-500 italic text-center py-10">Select an exercise above to see its progress.</p>
+                            <p className="text-muted-foreground italic text-center py-10">Select an exercise above to see its progress.</p>
                         )}
                     </CardContent>
                 </div>
             ) : (
-                <p className="text-gray-500 italic">No exercises defined yet. Add some via the workout screen.</p>
+                <p className="text-muted-foreground italic">No exercises defined yet. Add some via the workout screen.</p>
             )}
         </>
     );

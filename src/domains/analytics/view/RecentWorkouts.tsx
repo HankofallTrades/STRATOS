@@ -67,20 +67,23 @@ const RecentWorkoutsView: React.FC<{ userId: string | undefined }> = ({ userId }
 
     return (
         <div>
-            <h2 className="text-xl font-semibold mb-4">Recent Workouts</h2>
+            <div className="mb-4">
+                <div className="app-kicker">History</div>
+                <h2 className="pt-2 text-2xl font-semibold tracking-tight text-foreground">Recent Workouts</h2>
+            </div>
             {recentWorkouts.length > 0 ? (
                 <div className="space-y-4">
                     {recentWorkouts.map((workout) => (
                         <Card
                             key={workout.workout_id}
                             onClick={() => handleCardClick(workout.workout_id)}
-                            className="cursor-pointer hover:shadow-md transition-shadow"
+                            className="cursor-pointer transition-colors hover:bg-white/[0.03]"
                         >
                             <CardHeader className="pb-2">
                                 <CardTitle className="text-lg flex justify-between">
                                     <span>Workout on {formatDate(workout.workout_created_at)}</span>
-                                    <span className="text-sm font-normal flex items-center">
-                                        <Clock className="mr-1 h-4 w-4" />
+                                    <span className="text-sm font-normal flex items-center text-muted-foreground">
+                                        <Clock className="mr-1 h-4 w-4 verdigris-text" />
                                         {formatTime(workout.duration_seconds ?? 0)}
                                     </span>
                                 </CardTitle>
@@ -88,13 +91,13 @@ const RecentWorkoutsView: React.FC<{ userId: string | undefined }> = ({ userId }
                             <CardContent>
                                 <div className="space-y-2">
                                     {workout.exercise_names.length > 0 ? (
-                                        <p className="text-sm font-medium truncate" title={workout.exercise_names.join(', ')}>
+                                        <p className="text-sm font-medium truncate text-foreground/86" title={workout.exercise_names.join(', ')}>
                                             Exercises: {workout.exercise_names.join(', ')}
                                         </p>
                                     ) : (
-                                        <p className="text-sm text-gray-500 italic">No exercises recorded.</p>
+                                        <p className="text-sm text-muted-foreground italic">No exercises recorded.</p>
                                     )}
-                                    <p className="text-sm text-gray-600">
+                                    <p className="text-sm text-muted-foreground">
                                         {workout.total_completed_sets} sets completed
                                     </p>
                                 </div>
@@ -103,11 +106,11 @@ const RecentWorkoutsView: React.FC<{ userId: string | undefined }> = ({ userId }
                     ))}
                 </div>
             ) : (
-                <p className="text-gray-500 italic">No workout history available yet. Complete a workout to see it here!</p>
+                <p className="text-muted-foreground italic">No workout history available yet. Complete a workout to see it here.</p>
             )}
 
             <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
-                <DialogContent className="sm:max-w-lg md:max-w-xl max-h-[80vh] overflow-y-auto">
+                <DialogContent className="stone-panel max-h-[80vh] overflow-y-auto border-white/10 sm:max-w-lg md:max-w-xl">
                     <DialogHeader>
                         <DialogTitle>Workout Details</DialogTitle>
                         {detailedWorkout && (
@@ -125,25 +128,25 @@ const RecentWorkoutsView: React.FC<{ userId: string | undefined }> = ({ userId }
                     )}
 
                     {errorDetailedWorkout && !isLoadingDetailedWorkout && (
-                        <div className="flex flex-col items-center justify-center py-8 text-red-600">
+                        <div className="flex flex-col items-center justify-center py-8 text-red-400">
                             <AlertTriangle className="h-8 w-8 mb-2" />
                             <p>Error loading workout details.</p>
-                            <p className="text-sm text-red-500">{errorDetailedWorkout.message}</p>
+                            <p className="text-sm text-red-300">{errorDetailedWorkout.message}</p>
                         </div>
                     )}
 
                     {!isLoadingDetailedWorkout && !errorDetailedWorkout && detailedWorkout && (
                         <div className="mt-4 space-y-4">
                             {detailedWorkout.exercises.length > 0 ? detailedWorkout.exercises.map(exercise => (
-                                <div key={exercise.exercise_id} className="p-3 border rounded-md bg-slate-50 dark:bg-slate-800">
+                                <div key={exercise.exercise_id} className="stone-surface rounded-[18px] p-4">
                                     <h4 className="font-semibold text-md mb-1.5">{exercise.exercise_name}</h4>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                                    <p className="mb-2 text-xs text-muted-foreground">
                                         {exercise.completed_sets_count} completed set{exercise.completed_sets_count !== 1 ? 's' : ''}
                                     </p>
                                     {exercise.sets.length > 0 ? (
-                                        <ul className="space-y-1 text-sm list-disc list-inside pl-1">
+                                        <ul className="list-inside list-disc space-y-1 pl-1 text-sm">
                                             {exercise.sets.filter(set => set.completed).map((set, idx) => (
-                                                <li key={idx} className="text-gray-700 dark:text-gray-300">
+                                                <li key={idx} className="text-foreground/78">
                                                     Set {set.set_number}:
                                                     {set.reps !== null && set.weight !== null ?
                                                         ` ${set.reps}x${set.weight}` :
@@ -159,18 +162,18 @@ const RecentWorkoutsView: React.FC<{ userId: string | undefined }> = ({ userId }
                                             ))}
                                         </ul>
                                     ) : (
-                                        <p className="text-xs text-gray-400 italic">No sets recorded for this exercise.</p>
+                                        <p className="text-xs text-muted-foreground italic">No sets recorded for this exercise.</p>
                                     )}
                                 </div>
                             )) : (
-                                <p className="text-gray-500 italic">No exercises found in this workout.</p>
+                                <p className="text-muted-foreground italic">No exercises found in this workout.</p>
                             )}
                         </div>
                     )}
 
                     <DialogFooter className="mt-6">
                         <DialogClose asChild>
-                            <Button type="button" variant="outline">Close</Button>
+                            <Button type="button" variant="ghost" className="app-tonal-control rounded-[16px] px-4">Close</Button>
                         </DialogClose>
                     </DialogFooter>
                 </DialogContent>

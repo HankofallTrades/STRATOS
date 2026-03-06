@@ -18,12 +18,12 @@ const VolumeView: React.FC<VolumeProps> = ({ userId }) => {
     const { progressDisplayData, isLoading, error } = useVolumeChart(userId);
     const [hoveredArchetype, setHoveredArchetype] = useState<string | null>(null);
 
-    if (isLoading) return <p className="text-gray-500 italic text-center py-10">Loading volume data...</p>;
+    if (isLoading) return <p className="text-muted-foreground italic text-center py-10">Loading volume data...</p>;
     if (error) return <p className="text-red-500 italic text-center py-10">Error loading volume data.</p>;
 
     return (
         <TooltipProvider>
-            <div className="md:p-6">
+            <div className="stone-surface rounded-[22px] p-5 md:p-6">
                 <CardHeader className="p-0 mb-6">
                     <CardTitle className="text-2xl font-bold">Weekly Volume</CardTitle>
                     <CardDescription>Target sets per archetype for comprehensive progress.</CardDescription>
@@ -35,9 +35,9 @@ const VolumeView: React.FC<VolumeProps> = ({ userId }) => {
                                 <TooltipTrigger asChild>
                                     <div
                                         className={cn(
-                                            "space-y-2 p-3 rounded-xl transition-all duration-200 cursor-help border border-transparent",
+                                            "space-y-2 p-3 rounded-[18px] transition-all duration-200 cursor-help border border-transparent",
                                             hoveredArchetype === arch.name
-                                                ? "bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-800 shadow-sm"
+                                                ? "bg-white/[0.03] border-white/[0.05]"
                                                 : ""
                                         )}
                                         onMouseEnter={() => setHoveredArchetype(arch.name)}
@@ -45,19 +45,19 @@ const VolumeView: React.FC<VolumeProps> = ({ userId }) => {
                                     >
                                         <div className="flex justify-between items-end">
                                             <div className="space-y-0.5 flex items-center gap-2">
-                                                <span className="text-sm font-bold text-gray-900 dark:text-gray-100 uppercase tracking-tight">{arch.name}</span>
-                                                <Info className="h-3.5 w-3.5 text-gray-400" />
+                                                <span className="text-sm font-bold uppercase tracking-tight text-foreground">{arch.name}</span>
+                                                <Info className="h-3.5 w-3.5 text-muted-foreground" />
                                             </div>
                                             <div className="flex flex-col items-end">
-                                                <span className="text-xs font-bold text-gray-900 dark:text-gray-100">
+                                                <span className="text-xs font-bold text-foreground">
                                                     {arch.totalSets} / {arch.goal} sets
                                                 </span>
                                                 {arch.totalSets >= arch.goal && (
-                                                    <span className="text-[10px] text-green-600 font-medium">Goal Met!</span>
+                                                    <span className="verdigris-text text-[10px] font-medium">Goal Met</span>
                                                 )}
                                             </div>
                                         </div>
-                                        <div className="h-2.5 w-full bg-gray-100 dark:bg-gray-800/80 rounded-full overflow-hidden flex shadow-inner">
+                                        <div className="h-2.5 w-full rounded-full overflow-hidden flex bg-white/[0.04]">
                                             {arch.name === 'Push' || arch.name === 'Pull' ? (
                                                 <>
                                                     <div
@@ -90,28 +90,28 @@ const VolumeView: React.FC<VolumeProps> = ({ userId }) => {
                                         </div>
                                     </div>
                                 </TooltipTrigger>
-                                <TooltipContent side="top" className="max-w-[240px] p-3 shadow-xl border-gray-200 dark:border-gray-800">
+                                <TooltipContent side="top" className="stone-panel max-w-[240px] border-white/10 p-3 shadow-xl">
                                     <div className="space-y-2">
-                                        <div className="flex items-center gap-2 border-b pb-1">
+                                        <div className="flex items-center gap-2 border-b border-white/8 pb-1">
                                             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: arch.displayColor }} />
                                             <p className="font-bold text-sm tracking-tight">{arch.name} Progress</p>
                                         </div>
-                                        <p className="text-xs leading-relaxed text-gray-600 dark:text-gray-400">
-                                            You've completed <span className="font-bold text-gray-900 dark:text-gray-100">{arch.totalSets}</span> of your <span className="font-bold text-gray-900 dark:text-gray-100">{arch.goal}</span> target sets this week.
+                                        <p className="text-xs leading-relaxed text-muted-foreground">
+                                            You've completed <span className="font-bold text-foreground">{arch.totalSets}</span> of your <span className="font-bold text-foreground">{arch.goal}</span> target sets this week.
                                         </p>
                                         {(arch.name === 'Push' || arch.name === 'Pull') && (
-                                            <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t">
+                                            <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-white/8">
                                                 <div className="space-y-0.5">
-                                                    <p className="text-[10px] uppercase text-gray-500 font-semibold">Vertical</p>
+                                                    <p className="text-[10px] uppercase text-muted-foreground font-semibold">Vertical</p>
                                                     <p className="text-xs font-bold" style={{ color: arch.displayVerticalColor }}>{arch.verticalSets} sets</p>
                                                 </div>
                                                 <div className="space-y-0.5">
-                                                    <p className="text-[10px] uppercase text-gray-500 font-semibold">Horizontal</p>
+                                                    <p className="text-[10px] uppercase text-muted-foreground font-semibold">Horizontal</p>
                                                     <p className="text-xs font-bold" style={{ color: arch.displayHorizontalColor }}>{arch.horizontalSets} sets</p>
                                                 </div>
                                             </div>
                                         )}
-                                        <div className="w-full bg-gray-100 dark:bg-gray-800 h-1 rounded-full mt-2 overflow-hidden">
+                                        <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-white/[0.04]">
                                             <div
                                                 className="h-full"
                                                 style={{
@@ -120,7 +120,7 @@ const VolumeView: React.FC<VolumeProps> = ({ userId }) => {
                                                 }}
                                             />
                                         </div>
-                                        <p className="text-[10px] text-right font-medium text-gray-500 italic">
+                                        <p className="text-[10px] text-right font-medium text-muted-foreground italic">
                                             {Math.round((arch.totalSets / arch.goal) * 100)}% of weekly goal
                                         </p>
                                     </div>

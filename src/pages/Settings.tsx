@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/state/auth/AuthProvider';
 import { Button } from '@/components/core/button';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/integrations/supabase/client';
 import { Input } from '@/components/core/input';
 import { Label } from '@/components/core/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/core/card';
 import {
   Select,
   SelectContent,
@@ -52,8 +52,6 @@ const Settings: React.FC = () => {
   const [unitPref, setUnitPref] = useState<'kg' | 'lb'>(() => {
     return (localStorage.getItem(BODYWEIGHT_UNIT_PREF_KEY) as 'kg' | 'lb') || 'kg';
   });
-  const navigate = useNavigate();
-
   // Save LLM provider preference to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem(LLM_PROVIDER_PREF_KEY, llmProviderPref);
@@ -193,24 +191,31 @@ const Settings: React.FC = () => {
   };
 
   return (
-    <div className="p-4 space-y-8 max-w-md mx-auto">
-      <h1 className="text-2xl font-bold">Settings</h1>
-      {user && (
-        <p className="text-muted-foreground">Logged in as: {user.email}</p>
-      )}
+    <div className="app-page max-w-3xl">
+      <header className="mb-8 space-y-2">
+        <div className="app-kicker">Settings</div>
+        <h1 className="app-page-title">Tune the environment.</h1>
+        {user && (
+          <p className="app-page-subtitle">Logged in as {user.email}</p>
+        )}
+      </header>
 
-      <div className="border p-4 rounded-md space-y-4">
-        <h2 className="text-lg font-medium">App Theme</h2>
+      <div className="space-y-5">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl">App Theme</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="theme-select">Theme</Label>
           <Select
             value={currentTheme.id}
             onValueChange={(value) => setTheme(value as any)}
           >
-            <SelectTrigger id="theme-select">
+            <SelectTrigger id="theme-select" className="app-form-select">
               <SelectValue placeholder="Select Theme" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="stone-surface border-white/8 text-foreground">
               {availableThemes.map((theme) => (
                 <SelectItem key={theme.id} value={theme.id}>
                   <div className="flex flex-col">
@@ -225,10 +230,15 @@ const Settings: React.FC = () => {
             Choose your preferred app theme. Changes apply immediately.
           </p>
         </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      <form onSubmit={handleUpdateBodyweight} className="space-y-4 border p-4 rounded-md">
-        <h2 className="text-lg font-medium">Profile Information</h2>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl">Profile Information</CardTitle>
+        </CardHeader>
+        <CardContent>
+      <form onSubmit={handleUpdateBodyweight} className="space-y-4">
         <div className="space-y-2">
           <Label>Preferred Unit</Label>
           <RadioGroup
@@ -256,18 +266,24 @@ const Settings: React.FC = () => {
             placeholder={`Enter your weight in ${unitPref}`}
             disabled={loadingBodyweight}
             step="0.1"
+            className="app-form-input"
           />
           <p className="text-xs text-muted-foreground">
             Used for calculating strength benchmarks.
           </p>
         </div>
-        <Button type="submit" disabled={loadingBodyweight}>
+        <Button type="submit" disabled={loadingBodyweight} className="app-primary-action rounded-[16px]">
           {loadingBodyweight ? "Saving..." : "Save Weight"}
         </Button>
       </form>
+        </CardContent>
+      </Card>
 
-      <div className="border p-4 rounded-md space-y-4">
-        <h2 className="text-lg font-medium">Developer Settings</h2>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl">Developer Settings</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="llm-provider">LLM Provider</Label>
           <Select
@@ -282,10 +298,10 @@ const Settings: React.FC = () => {
               }
             }}
           >
-            <SelectTrigger id="llm-provider">
+            <SelectTrigger id="llm-provider" className="app-form-select">
               <SelectValue placeholder="Select LLM Provider" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="stone-surface border-white/8 text-foreground">
               <SelectItem value="local">Local (LM Studio/Ollama)</SelectItem>
               <SelectItem value="openrouter">OpenRouter</SelectItem>
             </SelectContent>
@@ -295,10 +311,10 @@ const Settings: React.FC = () => {
             <div className="space-y-2 pt-4"> {/* Add padding */}
               <Label htmlFor="llm-model">Model (OpenRouter)</Label>
               <Select value={llmModelPref} onValueChange={setLlmModelPref}>
-                <SelectTrigger id="llm-model">
+                <SelectTrigger id="llm-model" className="app-form-select">
                   <SelectValue placeholder="Select Model" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="stone-surface border-white/8 text-foreground">
                   {/* Updated list for OpenRouter/DeepSeek based on user request */}
                   {llmProviderPref === 'openrouter' && (
                     <>
@@ -322,20 +338,26 @@ const Settings: React.FC = () => {
           </p>
         </div>
         <div className="pt-2">
-          <Button variant="secondary" onClick={triggerOnboarding}>
+          <Button variant="ghost" onClick={triggerOnboarding} className="app-tonal-control rounded-[16px] px-4">
             Re-Trigger Onboarding Flow
           </Button>
           <p className="text-xs text-muted-foreground pt-1">
             Test the onboarding dialog even if already completed.
           </p>
         </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      <div className="border p-4 rounded-md">
-        <h2 className="text-lg font-medium mb-4">Account</h2>
-        <Button onClick={handleSignOut} disabled={loadingSignOut} variant="destructive">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl">Account</CardTitle>
+        </CardHeader>
+        <CardContent>
+        <Button onClick={handleSignOut} disabled={loadingSignOut} variant="destructive" className="rounded-[16px]">
           {loadingSignOut ? "Logging out..." : "Log Out"}
         </Button>
+        </CardContent>
+      </Card>
       </div>
     </div>
   );
