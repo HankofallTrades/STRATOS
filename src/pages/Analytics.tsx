@@ -1,8 +1,14 @@
-import React, { Suspense, lazy, useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchExercisesFromDB } from '@/lib/integrations/supabase/exercises';
 import { Exercise } from "@/lib/types/workout";
 import { useAuth } from '@/state/auth/AuthProvider';
+import StrengthBenchmarks from '@/domains/analytics/view/benchmarks/StrengthBenchmarks';
+import CalisthenicBenchmarks from '@/domains/analytics/view/benchmarks/CalisthenicBenchmarks';
+import OneRepMax from '@/domains/analytics/view/OneRepMax';
+import RecentWorkouts from '@/domains/analytics/view/RecentWorkouts';
+import Volume from '@/domains/analytics/view/Volume';
+import PerformanceOverview from '@/domains/analytics/view/PerformanceOverview';
 import {
   Tabs,
   TabsContent,
@@ -18,15 +24,8 @@ import {
   WeeklyZone2CardioData,
   getDailySunExposure
 } from "@/domains/fitness/model/fitnessRepository";
-
-const StrengthBenchmarks = lazy(() => import('@/domains/analytics/view/benchmarks/StrengthBenchmarks'));
-const CalisthenicBenchmarks = lazy(() => import('@/domains/analytics/view/benchmarks/CalisthenicBenchmarks'));
-const OneRepMax = lazy(() => import('@/domains/analytics/view/OneRepMax'));
-const RecentWorkouts = lazy(() => import('@/domains/analytics/view/RecentWorkouts'));
-const Volume = lazy(() => import('@/domains/analytics/view/Volume'));
-const PerformanceOverview = lazy(() => import('@/domains/analytics/view/PerformanceOverview'));
-const CircularProgressDisplay = lazy(() => import('@/components/core/charts/CircularProgressDisplay'));
-const SunMoonProgress = lazy(() => import('@/components/core/charts/SunMoonProgress'));
+import CircularProgressDisplay from '@/components/core/charts/CircularProgressDisplay';
+import SunMoonProgress from '@/components/core/charts/SunMoonProgress';
 
 // LocalStorage Key for persistence
 const ANALYTICS_VIEW_STORAGE_KEY = 'selectedAnalyticsView_v2';
@@ -36,18 +35,6 @@ type BenchmarkType = 'Strength' | 'Calisthenics';
 
 // Define Analysis Type
 type AnalysisType = 'E1RM' | 'Volume' | 'Benchmarks';
-
-const AnalyticsPanelFallback = ({ label }: { label: string }) => (
-  <div className="stone-surface rounded-[22px] p-5 text-center text-sm text-muted-foreground md:p-6">
-    Loading {label.toLowerCase()}...
-  </div>
-);
-
-const RecoveryMarkerFallback = () => (
-  <div className="stone-surface flex h-[12.5rem] w-full items-center justify-center rounded-[22px] p-5 text-sm text-muted-foreground">
-    Loading marker...
-  </div>
-);
 
 const Analytics = () => {
   const { user } = useAuth();
@@ -149,99 +136,83 @@ const Analytics = () => {
               <TabsTrigger value="Benchmarks">Benchmarks</TabsTrigger>
             </TabsList>
             <TabsContent value="E1RM">
-              <Suspense fallback={<AnalyticsPanelFallback label="estimated 1RM" />}>
-                <OneRepMax
-                  userId={userId}
-                  exercises={exercises}
-                  isLoadingExercises={isLoadingExercises}
-                  errorExercises={errorExercises}
-                />
-              </Suspense>
+              <OneRepMax
+                userId={userId}
+                exercises={exercises}
+                isLoadingExercises={isLoadingExercises}
+                errorExercises={errorExercises}
+              />
             </TabsContent>
             <TabsContent value="Volume">
-              <Suspense fallback={<AnalyticsPanelFallback label="volume" />}>
-                <Volume
-                  userId={userId}
-                />
-              </Suspense>
+              <Volume
+                userId={userId}
+              />
             </TabsContent>
             <TabsContent value="Benchmarks">
-              <Suspense fallback={<AnalyticsPanelFallback label="benchmarks" />}>
-                {selectedBenchmarkType === 'Strength' ? (
-                  <StrengthBenchmarks
-                    userId={userId}
-                    exercises={exercises}
-                    currentType={selectedBenchmarkType}
-                    onTypeChange={setSelectedBenchmarkType}
-                  />
-                ) : (
-                  <CalisthenicBenchmarks
-                    userId={userId}
-                    exercises={exercises}
-                    currentType={selectedBenchmarkType}
-                    onTypeChange={setSelectedBenchmarkType}
-                  />
-                )}
-              </Suspense>
+              {selectedBenchmarkType === 'Strength' ? (
+                <StrengthBenchmarks
+                  userId={userId}
+                  exercises={exercises}
+                  currentType={selectedBenchmarkType}
+                  onTypeChange={setSelectedBenchmarkType}
+                />
+              ) : (
+                <CalisthenicBenchmarks
+                  userId={userId}
+                  exercises={exercises}
+                  currentType={selectedBenchmarkType}
+                  onTypeChange={setSelectedBenchmarkType}
+                />
+              )}
             </TabsContent>
           </Tabs>
         </div>
 
-        <Suspense fallback={<AnalyticsPanelFallback label="performance overview" />}>
-          <PerformanceOverview userId={userId} exercises={exercises} />
-        </Suspense>
+        <PerformanceOverview userId={userId} exercises={exercises} />
 
         <section className="space-y-4">
           <div className="app-kicker">Recovery Markers</div>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 justify-items-center">
             <div className="stone-surface flex w-full flex-col items-center rounded-[22px] p-5">
-              <Suspense fallback={<RecoveryMarkerFallback />}>
-                <CircularProgressDisplay
-                  currentValue={currentProtein}
-                  goalValue={proteinGoal}
-                  label="Today's Protein"
-                  unit="g"
-                  size={140}
-                  barSize={12}
-                  showTooltip={!!userId && proteinGoal > 0}
-                  showCenterText={true}
-                />
-              </Suspense>
+              <CircularProgressDisplay
+                currentValue={currentProtein}
+                goalValue={proteinGoal}
+                label="Today's Protein"
+                unit="g"
+                size={140}
+                barSize={12}
+                showTooltip={!!userId && proteinGoal > 0}
+                showCenterText={true}
+              />
             </div>
             <div className="stone-surface flex w-full flex-col items-center rounded-[22px] p-5">
-              <Suspense fallback={<RecoveryMarkerFallback />}>
-                <SunMoonProgress
-                  currentHours={currentSunHours}
-                  goalHours={sunExposureGoalHours}
-                  size={140}
-                  barSize={10}
-                  label="Daily Sun Exposure"
-                />
-              </Suspense>
+              <SunMoonProgress
+                currentHours={currentSunHours}
+                goalHours={sunExposureGoalHours}
+                size={140}
+                barSize={10}
+                label="Daily Sun Exposure"
+              />
             </div>
             <div className="stone-surface flex w-full flex-col items-center rounded-[22px] p-5">
-              <Suspense fallback={<RecoveryMarkerFallback />}>
-                <CircularProgressDisplay
-                  currentValue={currentZone2Minutes}
-                  goalValue={zone2CardioGoalMinutes}
-                  label="Weekly Endurance"
-                  unit="min"
-                  size={140}
-                  barSize={12}
-                  defaultColor="#16A34A"
-                  highlightColor="#059669"
-                  showTooltip={true}
-                  showCenterText={true}
-                />
-              </Suspense>
+              <CircularProgressDisplay
+                currentValue={currentZone2Minutes}
+                goalValue={zone2CardioGoalMinutes}
+                label="Weekly Endurance"
+                unit="min"
+                size={140}
+                barSize={12}
+                defaultColor="#16A34A"
+                highlightColor="#059669"
+                showTooltip={true}
+                showCenterText={true}
+              />
             </div>
           </div>
         </section>
 
         <div className="mt-8">
-          <Suspense fallback={<AnalyticsPanelFallback label="recent workouts" />}>
-            <RecentWorkouts userId={userId} />
-          </Suspense>
+          <RecentWorkouts userId={userId} />
         </div>
       </main>
     </div>
