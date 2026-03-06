@@ -514,8 +514,8 @@ const Workout = () => {
   const focusInfo = sessionFocus ? getFocusDisplayInfo(sessionFocus) : null;
 
   return (
-    <div className="stone-workout-page app-workout-page w-full">
-      <div className="app-workout-frame mx-auto flex min-h-svh w-full max-w-[72rem] flex-col">
+    <div className="stone-workout-page min-h-svh w-full">
+      <div className="mx-auto flex min-h-svh w-full max-w-[72rem] flex-col px-4 pb-6 pt-4 sm:px-6 lg:px-8">
         <div className="stone-panel stone-panel-hero mb-6 flex shrink-0 items-center justify-between gap-3 rounded-[20px] px-5 py-4">
           <div className="flex min-w-0 items-center gap-3">
             <Clock className="h-5 w-5 shrink-0 verdigris-text" />

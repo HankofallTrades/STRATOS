@@ -1,13 +1,5 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/core/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/core/Dialog';
 import { Input } from '@/components/core/input';
 import { useNutrition } from '../controller/useNutrition';
 
@@ -30,18 +22,17 @@ const ProteinLogging: React.FC<ProteinLoggingProps> = ({ isOpen, onClose, userId
     }
   };
 
+  if (!isOpen) {
+    return null;
+  }
+
   return (
-    <Dialog open={isOpen} onOpenChange={(nextOpen) => { if (!nextOpen) onClose(); }}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Log Protein Intake</DialogTitle>
-          <DialogDescription>
-            Add a quick protein entry without leaving the current screen.
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <label htmlFor="proteinAmount" className="block text-sm font-medium text-muted-foreground">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-background p-6 rounded-lg shadow-xl w-full max-w-md">
+        <h2 className="text-xl font-semibold mb-4">Log Protein Intake</h2>
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label htmlFor="proteinAmount" className="block text-sm font-medium text-muted-foreground mb-1">
               Protein Amount (grams)
             </label>
             <Input
@@ -54,17 +45,17 @@ const ProteinLogging: React.FC<ProteinLoggingProps> = ({ isOpen, onClose, userId
               disabled={isLogging}
             />
           </div>
-          <DialogFooter className="gap-2">
+          <div className="flex justify-end space-x-2">
             <Button type="button" variant="outline" onClick={onClose} disabled={isLogging}>
               Cancel
             </Button>
             <Button type="submit" disabled={isLogging}>
               {isLogging ? 'Logging...' : 'Log Protein'}
             </Button>
-          </DialogFooter>
+          </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 };
 

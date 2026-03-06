@@ -108,7 +108,7 @@ const Chat: React.FC<ChatProps> = ({
     <div className={`flex flex-col h-full ${className}`}>
       <div
         ref={messageContainerRef}
-        className="app-chat-scroll mb-4 min-h-0 flex-grow space-y-4 overflow-y-auto px-4"
+        className="flex-grow overflow-y-auto mb-4 p-4 space-y-4 min-h-0"
       >
         {[...messages]
           .filter(msg => msg.role !== 'system')
@@ -143,7 +143,7 @@ const Chat: React.FC<ChatProps> = ({
         )}
       </div>
 
-      <div className="app-chat-composer px-4">
+      <div className="px-4 pb-4">
         {!hasUserMessages && (
           <div className="mb-2">
             <ChatPrimers
