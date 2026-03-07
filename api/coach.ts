@@ -34,23 +34,11 @@ try {
 }
 
 import {
-  coachAgentRequestSchema,
-  createCoachErrorResponse,
-} from '../src/domains/guidance/agent/contracts.js';
-import { runCoachAgentTurn } from '../src/domains/guidance/agent/runtime.js';
+  handleCoachAgentRequest,
+  resolveCoachAgentEnvironment,
+} from '../src/domains/guidance/agent/http.js';
 
-// --- Read ALL necessary environment variables server-side ---
-// Secrets
-const openRouterApiKey = process.env.OPENROUTER_API_KEY || process.env.VITE_OPENROUTER_API_KEY;
-
-// Configs (Note: VITE_ prefix is part of the key name set in Vercel/env.local)
-const openRouterModel = process.env.OPENROUTER_MODEL || process.env.VITE_OPENROUTER_MODEL;
-const localLlmUrl = process.env.LOCAL_LLM_URL || process.env.VITE_LOCAL_LLM_URL;
-const openRouterApiUrl = process.env.OPENROUTER_API_URL || process.env.VITE_OPENROUTER_API_URL || 'https://openrouter.ai/api/v1/chat/completions';
-const appUrl = process.env.VITE_APP_URL || process.env.APP_URL || 'http://localhost:5173';
-const appName = process.env.VITE_APP_NAME || process.env.APP_NAME || 'STRATOS';
-const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+const coachAgentEnvironment = resolveCoachAgentEnvironment(process.env);
 
 export default async function handler(
   req: VercelRequest,
@@ -61,38 +49,10 @@ export default async function handler(
     return res.status(405).end(`Method ${req.method} Not Allowed`);
   }
 
-  try {
-    const parsedRequest = coachAgentRequestSchema.safeParse(req.body);
-    if (!parsedRequest.success) {
-      return res.status(400).json({
-        error: 'Invalid request body for coach agent.',
-        details: parsedRequest.error.flatten(),
-      });
-    }
+  const response = await handleCoachAgentRequest({
+    body: req.body,
+    env: coachAgentEnvironment,
+  });
 
-    const agentResponse = await runCoachAgentTurn({
-      ...parsedRequest.data,
-      env: {
-        localLlmUrl,
-        openRouterApiKey,
-        openRouterApiUrl,
-        openRouterAppName: appName,
-        openRouterReferer: appUrl,
-        supabaseAnonKey,
-        supabaseUrl,
-      },
-    });
-
-    return res.status(200).json(agentResponse);
-
-  } catch (error) {
-    console.error('Error in /api/coach:', error);
-    const errorMessage =
-      error instanceof Error ? error.message : 'An internal server error occurred';
-    return res.status(200).json(
-      createCoachErrorResponse(
-        `Sorry, STRATOS Coach could not respond: ${errorMessage}.`
-      )
-    );
-  }
+  return res.status(response.status).json(response.body);
 }

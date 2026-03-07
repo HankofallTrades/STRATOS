@@ -13,25 +13,38 @@ import { sendCoachMessage } from "@/domains/guidance/agent/transport";
 import {
   coachToolDefinitions,
   executeCoachTool,
+  getCoachToolLabel,
 } from "@/domains/guidance/agent/tools";
+import { useVolumeChart } from "@/domains/analytics/hooks/useVolumeChart";
 import { readLlmPreferences } from "@/domains/guidance/data/llmPreferences";
 import { useGuidanceWorkoutCatalog } from "@/domains/guidance/hooks/useGuidanceWorkoutCatalog";
 import { useWorkoutGenerator } from "@/domains/guidance/hooks/useWorkoutGenerator";
+import { usePeriodization } from "@/domains/periodization";
 import type { PrimerButton } from "@/domains/guidance/ui/ChatPrimers";
 import type { ChatMessage } from "@/lib/llm/llmClient";
 import { useAuth } from "@/state/auth/AuthProvider";
 
 export const useCoachScreen = () => {
   const navigate = useNavigate();
-  const { session } = useAuth();
+  const { session, user } = useAuth();
   const [conversation, setConversation] = useState<CoachConversationMessage[]>(
     []
   );
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const { baseExercises, movementArchetypes, isLoading: isLoadingWorkoutCatalog } =
     useGuidanceWorkoutCatalog();
-  const { generateWorkout } = useWorkoutGenerator(baseExercises, movementArchetypes);
+  const { activeProgram } = usePeriodization(user?.id);
+  const { progressDisplayData } = useVolumeChart(user?.id);
+  const { generateWorkout, isReady: isWorkoutGeneratorReady } = useWorkoutGenerator(
+    baseExercises,
+    movementArchetypes,
+    {
+      activeProgram,
+      volumeProgress: progressDisplayData,
+    }
+  );
 
   const handleSend = async (textOrEvent?: string | FormEvent<HTMLFormElement>) => {
     let messageToSend = "";
@@ -58,6 +71,7 @@ export const useCoachScreen = () => {
     setConversation(nextConversation);
     setInput("");
     setIsLoading(true);
+    setStatusMessage("Coach is reviewing your training context...");
 
     try {
       const { provider, model } = readLlmPreferences();
@@ -78,6 +92,7 @@ export const useCoachScreen = () => {
         }
 
         if (agentResponse.status !== "client_tool_required") {
+          setStatusMessage(null);
           return;
         }
 
@@ -90,6 +105,10 @@ export const useCoachScreen = () => {
             "Coach agent requested client tool execution without returning a client tool call."
           );
         }
+
+        setStatusMessage(
+          `Running ${getCoachToolLabel(clientToolCalls[0].toolName)}...`
+        );
 
         const toolResults = clientToolCalls.map(toolCall => {
           try {
@@ -125,6 +144,7 @@ export const useCoachScreen = () => {
 
         nextConversation = [...nextConversation, ...toolResults];
         setConversation(nextConversation);
+        setStatusMessage("Coach is finalizing the workout plan...");
       }
 
       throw new Error("Coach agent exceeded the client tool loop limit.");
@@ -138,6 +158,7 @@ export const useCoachScreen = () => {
       setConversation(previousMessages => [...previousMessages, errorMessage]);
     } finally {
       setIsLoading(false);
+      setStatusMessage(null);
       if (pendingNavigation) {
         navigate(pendingNavigation);
       }
@@ -177,13 +198,14 @@ export const useCoachScreen = () => {
     {
       label: coachToolDefinitions.generate_strength_workout.label,
       onClick: () => {
-        void handleSend("Generate a strength workout for me.");
+        void handleSend(
+          "Create a workout based on my current period and movement archetype volume."
+        );
       },
       disabled:
         isLoading ||
         isLoadingWorkoutCatalog ||
-        !baseExercises ||
-        !movementArchetypes,
+        !isWorkoutGeneratorReady,
     },
     {
       label: "How can I get max swol?",
@@ -200,6 +222,7 @@ export const useCoachScreen = () => {
   ];
 
   return {
+    conversation,
     handleInputChange,
     handleSend,
     input,
@@ -207,5 +230,6 @@ export const useCoachScreen = () => {
     messages,
     primerButtons,
     showPrimers,
+    statusMessage,
   };
 };

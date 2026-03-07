@@ -175,7 +175,7 @@ export const WorkoutGenerator: React.FC = () => {
             return;
         }
 
-        dispatch(startWorkout());
+        dispatch(startWorkout({}));
 
         exercisesToCreate.forEach(exercise => {
             const defaultEquipment = exercise.default_equipment_type ?? undefined;
