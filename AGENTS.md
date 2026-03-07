@@ -9,6 +9,13 @@ Read `/Users/hank/projects/stratos/CODEMAP.md` before doing substantial work in 
 3. Read `/Users/hank/projects/stratos/docs/plan.md` if the task is part of the ongoing refactor or a new domain rollout.
 4. Run `git status --short` before editing because this repo may be intentionally dirty during refactors.
 
+## Database Workflow
+
+- For anything that depends on actual remote database state, inspect the linked Supabase project before making assumptions.
+- Prefer the Supabase CLI first for linked-project inspection and management.
+- If the CLI path is blocked by environment limits but the task still requires remote verification, use the linked project credentials to inspect the database directly rather than guessing from migrations or local code.
+- This especially applies to exercise catalog cleanup, variation/equipment normalization, foreign-key cleanup, RLS-sensitive data checks, and mesocycle/session template data.
+
 ## Architecture Rules
 
 - Use `ui / hooks / data`. Do not introduce `view / controller / model`.
