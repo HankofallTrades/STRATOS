@@ -1,6 +1,6 @@
 import React, { useMemo, useEffect } from 'react';
-import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { CardContent, CardHeader, CardTitle } from "@/components/core/card";
+import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { CardContent, CardHeader } from "@/components/core/card";
 import { ChevronDown } from "lucide-react";
 import { Exercise } from '@/lib/types/workout';
 import { Button } from "@/components/core/button";
@@ -11,11 +11,18 @@ interface OneRepMaxProps {
     exercises: Exercise[];
     isLoadingExercises: boolean;
     errorExercises: Error | null;
+    embedded?: boolean;
 }
 
 const lineColors = [
-    "#3B82F6", "#82ca9d", "#ffc658", "#ff7300", "#387908",
-    "#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#a4de6c",
+    "#7cad9d",
+    "#c8a06c",
+    "#5f8377",
+    "#a5b7b1",
+    "#709787",
+    "#b78d62",
+    "#91b8ab",
+    "#67757d",
 ];
 
 const timeRangeOptions: TimeRange[] = ['1W', '1M', '3M', '6M', '1Y', 'ALL'];
@@ -47,7 +54,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
         return (
             <div className="stone-panel rounded-[16px] border-white/10 p-3 text-sm space-y-1">
-                <p className="label font-semibold mb-1">{`Date: ${formatDate(date)}`}</p>
+                <p className="label mb-1 font-semibold text-foreground">{`Date: ${formatDate(date)}`}</p>
                 {payload.map((entry: any, index: number) => {
                     const name = entry.name;
                     const value = entry.value;
@@ -99,6 +106,7 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
     exercises,
     isLoadingExercises,
     errorExercises,
+    embedded = false,
 }) => {
     const {
         selectedExercise,
@@ -145,13 +153,17 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
     return (
         <>
             {isLoadingExercises ? (
-                <p className="text-muted-foreground italic">Loading exercises...</p>
+                <div className="p-5 text-sm italic text-muted-foreground md:p-6">
+                    Loading exercises...
+                </div>
             ) : errorExercises ? (
-                <p className="text-red-500 italic text-center py-10">Error loading exercises: {errorExercises.message}</p>
+                <div className="p-5 text-center text-sm italic text-red-400 md:p-6">
+                    Error loading exercises: {errorExercises.message}
+                </div>
             ) : exercises.length > 0 ? (
-                <div className="stone-surface rounded-[22px] p-5 md:p-6">
-                    <CardHeader className="p-0 mb-4 md:pb-0">
-                        <div className="flex items-center mb-4">
+                <div className={embedded ? "" : "stone-surface rounded-[26px] p-5 md:p-6"}>
+                    <CardHeader className="mb-4 p-0 md:pb-0">
+                        <div className="mb-4 flex items-center">
                             <div className="relative inline-flex items-center cursor-pointer min-w-0">
                                 <span className="text-2xl font-semibold truncate" title={selectedExercise?.name || 'Exercise'}>
                                     {selectedExercise ? selectedExercise.name : "Exercise"}
@@ -179,7 +191,7 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
                         </div>
 
                         {selectedExercise && (
-                            <div className="flex justify-center space-x-1 mb-4">
+                            <div className="flex flex-wrap gap-1.5">
                                 {timeRangeOptions.map(range => (
                                     <Button
                                         key={range}
@@ -189,7 +201,7 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
                                         aria-label={`Select ${range}`}
                                         className={selectedTimeRange === range
                                             ? "app-tonal-control h-8 rounded-[12px] px-2 text-foreground"
-                                            : "h-8 rounded-[12px] border-0 bg-transparent px-2 text-foreground/62 hover:bg-white/[0.03] hover:text-foreground"
+                                            : "h-8 rounded-[12px] border-0 bg-transparent px-2 text-foreground/62 hover:bg-white/[0.04] hover:text-foreground"
                                         }
                                     >
                                         {range}
@@ -211,26 +223,31 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
                                             data={chartData}
                                             margin={{ top: 5, right: -15, left: 20, bottom: 5 }}
                                         >
+                                            <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.06)" />
                                             <XAxis
                                                 dataKey="workout_timestamp"
                                                 tickFormatter={(ts) => formatAxisDate(ts, selectedTimeRange)}
                                                 type="number"
                                                 domain={domain}
                                                 ticks={ticks}
-                                                tick={{ fontSize: 12 }}
+                                                tick={{ fontSize: 12, fill: 'rgba(214, 223, 218, 0.64)' }}
+                                                axisLine={false}
+                                                tickLine={false}
                                             />
                                             <YAxis
                                                 orientation="right"
-                                                tick={{ fontSize: 12 }}
+                                                tick={{ fontSize: 12, fill: 'rgba(214, 223, 218, 0.64)' }}
                                                 domain={['auto', 'auto']}
                                                 tickFormatter={(value) => `${value} kg`}
+                                                axisLine={false}
+                                                tickLine={false}
                                             />
                                             <Tooltip content={<CustomTooltip />} cursor={false} />
                                             <Legend
                                                 onClick={(data) => toggleCombination(data.id)}
                                                 formatter={(value, entry: any) => {
                                                     const isActive = activeCombinationKeys.includes(entry.id);
-                                                    const color = isActive ? entry.color : '#9ca3af';
+                                                    const color = isActive ? entry.color : 'rgba(214, 223, 218, 0.4)';
                                                     return <span style={{ color, cursor: 'pointer' }}>{value}</span>;
                                                 }}
                                                 payload={legendPayload}
@@ -253,9 +270,9 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
                                                         dataKey={key}
                                                         name={displayName}
                                                         stroke={lineColors[index % lineColors.length]}
-                                                    strokeWidth={2}
-                                                        dot={true}
-                                                        activeDot={{ r: 10 }}
+                                                        strokeWidth={2.2}
+                                                        dot={{ r: 2.75, fill: lineColors[index % lineColors.length], strokeWidth: 0 }}
+                                                        activeDot={{ r: 7, fill: lineColors[index % lineColors.length] }}
                                                         connectNulls={true}
                                                     />
                                                 );
@@ -277,7 +294,9 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
                     </CardContent>
                 </div>
             ) : (
-                <p className="text-muted-foreground italic">No exercises defined yet. Add some via the workout screen.</p>
+                <div className="p-5 text-sm italic text-muted-foreground md:p-6">
+                    No exercises defined yet. Add some via the workout screen.
+                </div>
             )}
         </>
     );

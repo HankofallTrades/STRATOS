@@ -18,7 +18,7 @@ export const workoutMenuSecondaryButtonClassName =
   "stone-chip h-11 rounded-[14px] text-foreground/88 hover:bg-white/[0.04] hover:text-foreground";
 
 export const workoutMenuPrimaryButtonClassName =
-  "h-11 rounded-[16px] bg-[#1f5146] text-[#eef7f4] hover:bg-[#275f52]";
+  "h-11 rounded-[16px] bg-[var(--stone-accent)] text-[#eef7f4] hover:bg-[var(--stone-accent-hover)]";
 
 export const workoutMenuSelectTriggerClassName =
   "stone-inset h-11 rounded-[16px] text-sm text-foreground shadow-none focus:ring-0 focus:ring-offset-0";

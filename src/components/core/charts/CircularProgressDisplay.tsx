@@ -31,9 +31,9 @@ const CircularProgressDisplay: React.FC<CircularProgressDisplayProps> = ({
   unit = '',
   size = 160, // Default size
   barSize = 12, // Default bar thickness
-  defaultColor = '#2563EB', // Default blue
-  highlightColor = '#16A34A', // Default green
-  backgroundColor = 'rgba(128, 128, 128, 0.08)',
+  defaultColor = '#1e5c52',
+  highlightColor = '#7cad9d',
+  backgroundColor = 'rgba(255, 255, 255, 0.05)',
   className,
   textClassName,
   showTooltip = false,
@@ -91,7 +91,7 @@ const CircularProgressDisplay: React.FC<CircularProgressDisplayProps> = ({
       style={{ width: size, height: size + (label ? 40 : 20) }} // Adjust height for label
     >
       {label && (
-        <h3 className={cn("text-md font-semibold mb-1 text-center", textClassName)}>
+        <h3 className={cn("mb-1 text-center text-sm font-semibold tracking-tight text-foreground", textClassName)}>
           {label}
         </h3>
       )}
@@ -124,10 +124,11 @@ const CircularProgressDisplay: React.FC<CircularProgressDisplayProps> = ({
             {showTooltip && goalValue > 0 && (
               <Tooltip 
                 contentStyle={{ 
-                  backgroundColor: 'rgba(0,0,0,0.8)', 
-                  color: '#fff', 
-                  borderRadius: '5px', 
-                  padding: '5px 10px',
+                  backgroundColor: 'rgba(17, 21, 25, 0.96)',
+                  color: '#eef7f4',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '14px',
+                  padding: '8px 10px',
                   fontSize: '12px'
                 }}
                 formatter={(value: number, name: string) => [

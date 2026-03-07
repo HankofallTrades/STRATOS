@@ -24,6 +24,7 @@ interface StrengthBenchmarksProps {
     currentType: BenchmarkTypeOption;
     onTypeChange: (newType: BenchmarkTypeOption) => void;
     shouldAnimate?: boolean;
+    embedded?: boolean;
 }
 
 const ALL_LEVELS: BenchmarkLevel[] = ['Solid', 'Strong', 'Elite'];
@@ -34,7 +35,8 @@ const StrengthBenchmarksView: React.FC<StrengthBenchmarksProps> = ({
     exercises,
     currentType,
     onTypeChange,
-    shouldAnimate = true
+    shouldAnimate = true,
+    embedded = false,
 }) => {
     const {
         selectedLevel,
@@ -113,7 +115,7 @@ const StrengthBenchmarksView: React.FC<StrengthBenchmarksProps> = ({
                     <div key={index}>
                         <div className="flex justify-between items-center mb-1">
                             <span className="font-medium text-sm">{bench.name}</span>
-                            <span className="text-xs text-gray-600">
+                            <span className="text-xs text-muted-foreground">
                                 {bench.currentValue !== null
                                     ? `~${bench.currentValue.toFixed(1)} kg / ${bench.goalValue?.toFixed(1)} kg Goal`
                                     : `No Data / ${bench.goalValue?.toFixed(1)} kg Goal`}
@@ -122,7 +124,7 @@ const StrengthBenchmarksView: React.FC<StrengthBenchmarksProps> = ({
                         <AnimatedLinearProgress
                             value={bench.progress}
                             className="h-2"
-                            barClassName="bg-[#2d6c5b]"
+                            barClassName="bg-[#1e5c52]"
                         />
                         {bench.progress >= 100 && (
                             <p className="verdigris-text mt-1 flex items-center text-xs font-medium">
@@ -136,7 +138,7 @@ const StrengthBenchmarksView: React.FC<StrengthBenchmarksProps> = ({
     };
 
     return (
-        <div className="stone-surface relative rounded-[22px] p-5 md:p-6">
+        <div className={embedded ? "relative" : "stone-surface relative rounded-[26px] p-5 md:p-6"}>
             <CardHeader className="p-0 mb-4 md:pb-0">
                 <div className="flex items-center justify-between mb-4">
                     <Barbell className="mr-2 h-5 w-5 verdigris-text flex-shrink-0" />

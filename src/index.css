@@ -49,6 +49,12 @@
     --sidebar-border: 220 13% 91%;
 
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --stone-accent-rgb: 30, 92, 82;
+    --stone-accent: #1e5c52;
+    --stone-accent-hover: #286b60;
+    --stone-accent-text: #7cad9d;
+    --stone-accent-strong: #95bfae;
   }
 
   .dark {
@@ -161,7 +167,7 @@
   }
 
   .app-bottom-nav-item.is-active .app-bottom-nav-icon {
-    background: rgba(34, 77, 66, 0.58);
+    background: rgba(var(--stone-accent-rgb), 0.44);
     color: #dff3ec;
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.05),
@@ -226,7 +232,7 @@
 
   .app-primary-action {
     border: 0;
-    background: #1f5146;
+    background: var(--stone-accent);
     color: #eef7f4;
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.04),
@@ -234,7 +240,7 @@
   }
 
   .app-primary-action:hover {
-    background: #275f52;
+    background: var(--stone-accent-hover);
   }
 
   .app-tonal-control {
@@ -288,11 +294,11 @@
   .app-nav-item[data-active="true"] {
     background: rgba(255, 255, 255, 0.045);
     color: #f3f7f4;
-    box-shadow: inset 2px 0 0 rgba(90, 147, 131, 0.85);
+    box-shadow: inset 2px 0 0 rgba(var(--stone-accent-rgb), 0.88);
   }
 
   .app-nav-item[data-active="true"] > svg {
-    color: #5a9383;
+    color: var(--stone-accent-text);
   }
 
   .group[data-collapsible="icon"] .app-nav-shell {
@@ -300,10 +306,10 @@
   }
 
   .group[data-collapsible="icon"] .app-nav-item[data-active="true"] {
-    background: rgba(31, 81, 70, 0.32);
+    background: rgba(var(--stone-accent-rgb), 0.28);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.03),
-      0 0 0 1px rgba(90, 147, 131, 0.18);
+      0 0 0 1px rgba(var(--stone-accent-rgb), 0.18);
   }
 
   .stone-workout-page {
@@ -339,8 +345,8 @@
     position: absolute;
     inset: 0;
     background:
-      radial-gradient(circle at 16% 28%, rgba(20, 73, 60, 0.22), transparent 34%),
-      linear-gradient(90deg, rgba(92, 140, 124, 0.08), transparent 28%);
+      radial-gradient(circle at 16% 28%, rgba(var(--stone-accent-rgb), 0.24), transparent 34%),
+      linear-gradient(90deg, rgba(var(--stone-accent-rgb), 0.1), transparent 28%);
     pointer-events: none;
   }
 
@@ -351,7 +357,7 @@
     top: 1.5rem;
     bottom: 1.5rem;
     width: 1px;
-    background: linear-gradient(180deg, transparent, rgba(92, 140, 124, 0.72), transparent);
+    background: linear-gradient(180deg, transparent, rgba(var(--stone-accent-rgb), 0.72), transparent);
     opacity: 0.8;
     pointer-events: none;
   }
@@ -367,14 +373,14 @@
   }
 
   .home-session-cta {
-    background: #224d42;
+    background: var(--stone-accent);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.04),
       0 14px 28px rgba(0, 0, 0, 0.2);
   }
 
   .home-session-cta:hover {
-    background: #295a4d;
+    background: var(--stone-accent-hover);
   }
 
   .home-data-card {
@@ -461,8 +467,8 @@
   .stone-row-complete {
     background: rgba(24, 36, 33, 0.92);
     box-shadow:
-      inset 3px 0 0 rgba(82, 145, 130, 0.44),
-      inset 0 1px 0 rgba(82, 145, 130, 0.04);
+      inset 3px 0 0 rgba(var(--stone-accent-rgb), 0.44),
+      inset 0 1px 0 rgba(var(--stone-accent-rgb), 0.04);
   }
 
   .stone-table-head {
@@ -473,20 +479,22 @@
     border-color: rgba(91, 105, 97, 0.16);
   }
 
+  .app-accent-text,
   .verdigris-text {
-    color: #5a9383;
+    color: var(--stone-accent-text);
   }
 
   .warm-metal-text {
     color: #c8a06c;
   }
 
+  .app-accent-emblem,
   .verdigris-emblem {
-    background: rgba(14, 54, 45, 0.24);
-    color: #689f90;
+    background: rgba(var(--stone-accent-rgb), 0.2);
+    color: var(--stone-accent-text);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.03),
-      0 0 20px rgba(14, 54, 45, 0.06);
+      0 0 20px rgba(var(--stone-accent-rgb), 0.08);
   }
 
   .warm-metal-emblem {
