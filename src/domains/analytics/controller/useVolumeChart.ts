@@ -27,13 +27,13 @@ const GOAL_SETS: Record<ProgressArchetypeName, number> = {
 };
 
 const archetypeColors: Record<string, { default: string; highlight: string; vertical?: string; horizontal?: string }> = {
-    'Squat': { default: '#2563EB', highlight: '#16A34A' },
-    'Lunge': { default: '#2563EB', highlight: '#16A34A' },
-    'Push': { default: '#2563EB', highlight: '#16A34A', vertical: '#2563EB', horizontal: '#60A5FA' },
-    'Pull': { default: '#2563EB', highlight: '#16A34A', vertical: '#2563EB', horizontal: '#60A5FA' },
-    'Bend': { default: '#2563EB', highlight: '#16A34A' },
-    'Twist': { default: '#2563EB', highlight: '#16A34A' },
-    'Default': { default: '#A1A1AA', highlight: '#16A34A' }
+    'Squat': { default: '#5f8377', highlight: '#7cad9d' },
+    'Lunge': { default: '#5f8377', highlight: '#7cad9d' },
+    'Push': { default: '#6b9485', highlight: '#7cad9d', vertical: '#6b9485', horizontal: '#93b9ac' },
+    'Pull': { default: '#6b9485', highlight: '#7cad9d', vertical: '#6b9485', horizontal: '#93b9ac' },
+    'Bend': { default: '#6a7f78', highlight: '#7cad9d' },
+    'Twist': { default: '#6a7f78', highlight: '#7cad9d' },
+    'Default': { default: '#8c8f96', highlight: '#7cad9d' }
 };
 
 function getCurrentWeekRange() {
@@ -99,7 +99,7 @@ export const useVolumeChart = (userId: string | undefined) => {
             const colors = archetypeColors[name] || archetypeColors['Default'];
             const isGoalMet = archSetup.totalSets >= archSetup.goal;
 
-            let displayColor = isGoalMet ? colors.highlight : colors.default;
+            const displayColor = isGoalMet ? colors.highlight : colors.default;
             let displayVerticalColor: string | undefined = undefined;
             let displayHorizontalColor: string | undefined = undefined;
 

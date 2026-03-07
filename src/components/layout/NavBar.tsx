@@ -39,7 +39,7 @@ const NavBar = () => {
                     tooltip={label}
                     className={cn(
                       "app-nav-item [&>svg]:text-muted-foreground/70 [&>span]:font-medium",
-                      isActive && "[&>svg]:text-[#5a9383]"
+                      isActive && "[&>svg]:text-[var(--stone-accent-text)]"
                     )}
                   >
                     <NavLink to={to}>

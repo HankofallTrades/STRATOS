@@ -37,14 +37,17 @@ type BenchmarkType = 'Strength' | 'Calisthenics';
 // Define Analysis Type
 type AnalysisType = 'E1RM' | 'Volume' | 'Benchmarks';
 
+const ANALYTICS_ACCENT = '#1e5c52';
+const ANALYTICS_ACCENT_HIGHLIGHT = '#7cad9d';
+
 const AnalyticsPanelFallback = ({ label }: { label: string }) => (
-  <div className="stone-surface rounded-[22px] p-5 text-center text-sm text-muted-foreground md:p-6">
+  <div className="stone-surface rounded-[26px] p-5 text-left text-sm text-muted-foreground md:p-6">
     Loading {label.toLowerCase()}...
   </div>
 );
 
 const RecoveryMarkerFallback = () => (
-  <div className="stone-surface flex h-[12.5rem] w-full items-center justify-center rounded-[22px] p-5 text-sm text-muted-foreground">
+  <div className="flex h-[12.5rem] w-full items-center justify-center text-sm text-muted-foreground">
     Loading marker...
   </div>
 );
@@ -131,114 +134,159 @@ const Analytics = () => {
 
   const sunExposureGoalHours = 2;
   const zone2CardioGoalMinutes = 150;
+  const proteinMeta = proteinGoal > 0
+    ? `${proteinGoal}g goal`
+    : 'Set bodyweight goal';
+  const sunMeta = `${sunExposureGoalHours}h today`;
+  const zone2Meta = `${zone2CardioGoalMinutes} min week`;
 
   return (
     <div className="app-page">
-      <header className="mb-8 space-y-2">
-        <div className="app-kicker">Analytics</div>
-        <h1 className="app-page-title">Review the block.</h1>
-        <p className="app-page-subtitle">Performance, volume, benchmarks, and recovery markers in one consistent surface.</p>
-      </header>
-
-      <main className="space-y-8">
-        <div className="stone-surface rounded-[22px] p-4 md:p-5">
-          <Tabs value={selectedAnalysisType} onValueChange={(value) => setSelectedAnalysisType(value as AnalysisType)} className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="E1RM">Estimated 1RM</TabsTrigger>
-              <TabsTrigger value="Volume">Volume</TabsTrigger>
-              <TabsTrigger value="Benchmarks">Benchmarks</TabsTrigger>
-            </TabsList>
-            <TabsContent value="E1RM">
-              <Suspense fallback={<AnalyticsPanelFallback label="estimated 1RM" />}>
-                <OneRepMax
-                  userId={userId}
-                  exercises={exercises}
-                  isLoadingExercises={isLoadingExercises}
-                  errorExercises={errorExercises}
-                />
-              </Suspense>
-            </TabsContent>
-            <TabsContent value="Volume">
-              <Suspense fallback={<AnalyticsPanelFallback label="volume" />}>
-                <Volume
-                  userId={userId}
-                />
-              </Suspense>
-            </TabsContent>
-            <TabsContent value="Benchmarks">
-              <Suspense fallback={<AnalyticsPanelFallback label="benchmarks" />}>
-                {selectedBenchmarkType === 'Strength' ? (
-                  <StrengthBenchmarks
-                    userId={userId}
-                    exercises={exercises}
-                    currentType={selectedBenchmarkType}
-                    onTypeChange={setSelectedBenchmarkType}
-                  />
-                ) : (
-                  <CalisthenicBenchmarks
-                    userId={userId}
-                    exercises={exercises}
-                    currentType={selectedBenchmarkType}
-                    onTypeChange={setSelectedBenchmarkType}
-                  />
-                )}
-              </Suspense>
-            </TabsContent>
-          </Tabs>
-        </div>
-
+      <main className="space-y-6">
         <Suspense fallback={<AnalyticsPanelFallback label="performance overview" />}>
           <PerformanceOverview userId={userId} exercises={exercises} />
         </Suspense>
 
-        <section className="space-y-4">
-          <div className="app-kicker">Recovery Markers</div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 justify-items-center">
-            <div className="stone-surface flex w-full flex-col items-center rounded-[22px] p-5">
-              <Suspense fallback={<RecoveryMarkerFallback />}>
-                <CircularProgressDisplay
-                  currentValue={currentProtein}
-                  goalValue={proteinGoal}
-                  label="Today's Protein"
-                  unit="g"
-                  size={140}
-                  barSize={12}
-                  showTooltip={!!userId && proteinGoal > 0}
-                  showCenterText={true}
-                />
-              </Suspense>
-            </div>
-            <div className="stone-surface flex w-full flex-col items-center rounded-[22px] p-5">
-              <Suspense fallback={<RecoveryMarkerFallback />}>
-                <SunMoonProgress
-                  currentHours={currentSunHours}
-                  goalHours={sunExposureGoalHours}
-                  size={140}
-                  barSize={10}
-                  label="Daily Sun Exposure"
-                />
-              </Suspense>
-            </div>
-            <div className="stone-surface flex w-full flex-col items-center rounded-[22px] p-5">
-              <Suspense fallback={<RecoveryMarkerFallback />}>
-                <CircularProgressDisplay
-                  currentValue={currentZone2Minutes}
-                  goalValue={zone2CardioGoalMinutes}
-                  label="Weekly Endurance"
-                  unit="min"
-                  size={140}
-                  barSize={12}
-                  defaultColor="#16A34A"
-                  highlightColor="#059669"
-                  showTooltip={true}
-                  showCenterText={true}
-                />
-              </Suspense>
-            </div>
+        <section className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(21rem,0.85fr)]">
+          <div className="stone-surface overflow-hidden rounded-[26px]">
+            <Tabs value={selectedAnalysisType} onValueChange={(value) => setSelectedAnalysisType(value as AnalysisType)} className="w-full">
+              <div className="px-2 pt-2">
+                <TabsList className="grid h-auto w-full grid-cols-3 gap-1 rounded-none bg-transparent p-0">
+                  <TabsTrigger
+                    value="E1RM"
+                    className="min-h-[3.25rem] rounded-[14px] px-3 py-2.5 text-sm font-medium text-foreground/64 data-[state=active]:bg-white/[0.05] data-[state=active]:text-foreground"
+                  >
+                    Estimated 1RM
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="Volume"
+                    className="min-h-[3.25rem] rounded-[14px] px-3 py-2.5 text-sm font-medium text-foreground/64 data-[state=active]:bg-white/[0.05] data-[state=active]:text-foreground"
+                  >
+                    Volume
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="Benchmarks"
+                    className="min-h-[3.25rem] rounded-[14px] px-3 py-2.5 text-sm font-medium text-foreground/64 data-[state=active]:bg-white/[0.05] data-[state=active]:text-foreground"
+                  >
+                    Benchmarks
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+
+              <div className="p-5 md:p-6">
+                <TabsContent value="E1RM" className="mt-0">
+                  <Suspense fallback={<AnalyticsPanelFallback label="estimated 1RM" />}>
+                    <OneRepMax
+                      userId={userId}
+                      exercises={exercises}
+                      isLoadingExercises={isLoadingExercises}
+                      errorExercises={errorExercises}
+                      embedded={true}
+                    />
+                  </Suspense>
+                </TabsContent>
+                <TabsContent value="Volume" className="mt-0">
+                  <Suspense fallback={<AnalyticsPanelFallback label="volume" />}>
+                    <Volume
+                      userId={userId}
+                      embedded={true}
+                    />
+                  </Suspense>
+                </TabsContent>
+                <TabsContent value="Benchmarks" className="mt-0">
+                  <Suspense fallback={<AnalyticsPanelFallback label="benchmarks" />}>
+                    {selectedBenchmarkType === 'Strength' ? (
+                      <StrengthBenchmarks
+                        userId={userId}
+                        exercises={exercises}
+                        currentType={selectedBenchmarkType}
+                        onTypeChange={setSelectedBenchmarkType}
+                        embedded={true}
+                      />
+                    ) : (
+                      <CalisthenicBenchmarks
+                        userId={userId}
+                        exercises={exercises}
+                        currentType={selectedBenchmarkType}
+                        onTypeChange={setSelectedBenchmarkType}
+                        embedded={true}
+                      />
+                    )}
+                  </Suspense>
+                </TabsContent>
+              </div>
+            </Tabs>
           </div>
+
+          <section className="stone-surface rounded-[26px] p-5 md:p-6">
+            <h2 className="text-xl font-semibold tracking-tight text-foreground">Recovery</h2>
+
+            <div className="mt-4 divide-y divide-white/6">
+              <div className="grid gap-4 py-4 first:pt-0 sm:grid-cols-[minmax(0,1fr)_9rem] sm:items-center">
+                <div className="flex items-baseline gap-2">
+                  <h3 className="text-base font-semibold text-foreground">Protein</h3>
+                  <span className="text-sm text-muted-foreground">{proteinMeta}</span>
+                </div>
+                <div className="flex justify-center sm:justify-end">
+                  <Suspense fallback={<RecoveryMarkerFallback />}>
+                    <CircularProgressDisplay
+                      currentValue={currentProtein}
+                      goalValue={proteinGoal}
+                      unit="g"
+                      size={112}
+                      barSize={11}
+                      defaultColor={ANALYTICS_ACCENT}
+                      highlightColor={ANALYTICS_ACCENT_HIGHLIGHT}
+                      showTooltip={!!userId && proteinGoal > 0}
+                      showCenterText={true}
+                    />
+                  </Suspense>
+                </div>
+              </div>
+
+              <div className="grid gap-4 py-4 sm:grid-cols-[minmax(0,1fr)_9rem] sm:items-center">
+                <div className="flex items-baseline gap-2">
+                  <h3 className="text-base font-semibold text-foreground">Sunlight</h3>
+                  <span className="text-sm text-muted-foreground">{sunMeta}</span>
+                </div>
+                <div className="flex justify-center sm:justify-end">
+                  <Suspense fallback={<RecoveryMarkerFallback />}>
+                    <SunMoonProgress
+                      currentHours={currentSunHours}
+                      goalHours={sunExposureGoalHours}
+                      size={112}
+                      barSize={10}
+                    />
+                  </Suspense>
+                </div>
+              </div>
+
+              <div className="grid gap-4 pb-0 pt-4 sm:grid-cols-[minmax(0,1fr)_9rem] sm:items-center">
+                <div className="flex items-baseline gap-2">
+                  <h3 className="text-base font-semibold text-foreground">Zone 2</h3>
+                  <span className="text-sm text-muted-foreground">{zone2Meta}</span>
+                </div>
+                <div className="flex justify-center sm:justify-end">
+                  <Suspense fallback={<RecoveryMarkerFallback />}>
+                    <CircularProgressDisplay
+                      currentValue={currentZone2Minutes}
+                      goalValue={zone2CardioGoalMinutes}
+                      unit="min"
+                      size={112}
+                      barSize={11}
+                      defaultColor={ANALYTICS_ACCENT}
+                      highlightColor={ANALYTICS_ACCENT_HIGHLIGHT}
+                      showTooltip={true}
+                      showCenterText={true}
+                    />
+                  </Suspense>
+                </div>
+              </div>
+            </div>
+          </section>
         </section>
 
-        <div className="mt-8">
+        <div>
           <Suspense fallback={<AnalyticsPanelFallback label="recent workouts" />}>
             <RecentWorkouts userId={userId} />
           </Suspense>

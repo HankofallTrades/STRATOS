@@ -1,7 +1,6 @@
 import React from 'react';
 import { formatTime } from '@/lib/utils/timeUtils';
-import { Clock, Loader2, AlertTriangle } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/core/card";
+import { Clock, Loader2, AlertTriangle, ChevronRight } from "lucide-react";
 import { Skeleton } from "@/components/core/skeleton";
 import {
     Dialog,
@@ -24,7 +23,7 @@ const formatDate = (dateInput: string): string => {
             month: 'short',
             day: 'numeric'
         });
-    } catch (e) {
+    } catch {
         return "Invalid Date";
     }
 };
@@ -44,69 +43,72 @@ const RecentWorkoutsView: React.FC<{ userId: string | undefined }> = ({ userId }
 
     if (isLoadingWorkouts) {
         return (
-            <div className="space-y-4">
-                {[...Array(3)].map((_, i) => (
-                    <Card key={i}>
-                        <CardHeader className="pb-2">
-                            <Skeleton className="h-5 w-3/4 mb-1" />
-                            <Skeleton className="h-4 w-1/4" />
-                        </CardHeader>
-                        <CardContent>
-                            <Skeleton className="h-4 w-1/2 mb-1" />
-                            <Skeleton className="h-4 w-1/3" />
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
+            <section className="stone-surface rounded-[26px] p-5 md:p-6">
+                <Skeleton className="h-8 w-48" />
+                <div className="mt-5 space-y-4">
+                    {[...Array(3)].map((_, i) => (
+                        <div key={i} className="border-t border-white/6 pt-4 first:border-t-0 first:pt-0">
+                            <Skeleton className="h-6 w-48" />
+                            <Skeleton className="mt-3 h-4 w-32" />
+                            <Skeleton className="mt-3 h-4 w-full" />
+                        </div>
+                    ))}
+                </div>
+            </section>
         );
     }
 
     if (errorWorkouts) {
-        return <p className="text-red-500 italic text-center">Error loading recent workouts.</p>;
+        return (
+            <div className="stone-surface rounded-[26px] p-5 text-center text-sm italic text-red-400 md:p-6">
+                Error loading recent workouts.
+            </div>
+        );
     }
 
     return (
-        <div>
-            <div className="mb-4">
-                <div className="app-kicker">History</div>
-                <h2 className="pt-2 text-2xl font-semibold tracking-tight text-foreground">Recent Workouts</h2>
-            </div>
+        <section className="stone-surface rounded-[26px] p-5 md:p-6">
+            <h2 className="text-xl font-semibold tracking-tight text-foreground">Recent Workouts</h2>
+
             {recentWorkouts.length > 0 ? (
-                <div className="space-y-4">
+                <div className="mt-5 divide-y divide-white/6">
                     {recentWorkouts.map((workout) => (
-                        <Card
+                        <button
                             key={workout.workout_id}
+                            type="button"
                             onClick={() => handleCardClick(workout.workout_id)}
-                            className="cursor-pointer transition-colors hover:bg-white/[0.03]"
+                            className="group flex w-full flex-col gap-3 py-4 text-left transition-colors first:pt-0 last:pb-0 hover:text-foreground"
                         >
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-lg flex justify-between">
-                                    <span>Workout on {formatDate(workout.workout_created_at)}</span>
-                                    <span className="text-sm font-normal flex items-center text-muted-foreground">
-                                        <Clock className="mr-1 h-4 w-4 verdigris-text" />
-                                        {formatTime(workout.duration_seconds ?? 0)}
-                                    </span>
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="space-y-2">
-                                    {workout.exercise_names.length > 0 ? (
-                                        <p className="text-sm font-medium truncate text-foreground/86" title={workout.exercise_names.join(', ')}>
-                                            Exercises: {workout.exercise_names.join(', ')}
-                                        </p>
-                                    ) : (
-                                        <p className="text-sm text-muted-foreground italic">No exercises recorded.</p>
-                                    )}
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0 space-y-1">
+                                    <h3 className="text-lg font-semibold tracking-tight text-foreground">
+                                        Workout on {formatDate(workout.workout_created_at)}
+                                    </h3>
                                     <p className="text-sm text-muted-foreground">
                                         {workout.total_completed_sets} sets completed
                                     </p>
                                 </div>
-                            </CardContent>
-                        </Card>
+                                <div className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground">
+                                    <Clock className="h-4 w-4 app-accent-text" />
+                                    <span>{formatTime(workout.duration_seconds ?? 0)}</span>
+                                    <ChevronRight className="h-4 w-4 text-foreground/28 transition-transform group-hover:translate-x-0.5" />
+                                </div>
+                            </div>
+
+                            {workout.exercise_names.length > 0 ? (
+                                <p className="text-sm text-foreground/80" title={workout.exercise_names.join(', ')}>
+                                    Exercises: {workout.exercise_names.join(', ')}
+                                </p>
+                            ) : (
+                                <p className="text-sm italic text-muted-foreground">No exercises recorded.</p>
+                            )}
+                        </button>
                     ))}
                 </div>
             ) : (
-                <p className="text-muted-foreground italic">No workout history available yet. Complete a workout to see it here.</p>
+                <div className="mt-5 text-sm italic text-muted-foreground">
+                    No workout history available yet. Complete a workout to see it here.
+                </div>
             )}
 
             <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
@@ -122,14 +124,14 @@ const RecentWorkoutsView: React.FC<{ userId: string | undefined }> = ({ userId }
 
                     {isLoadingDetailedWorkout && (
                         <div className="flex items-center justify-center py-8">
-                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                            <p className="ml-2">Loading workout details...</p>
+                            <Loader2 className="h-8 w-8 animate-spin app-accent-text" />
+                            <p className="ml-2 text-foreground/82">Loading workout details...</p>
                         </div>
                     )}
 
                     {errorDetailedWorkout && !isLoadingDetailedWorkout && (
                         <div className="flex flex-col items-center justify-center py-8 text-red-400">
-                            <AlertTriangle className="h-8 w-8 mb-2" />
+                            <AlertTriangle className="mb-2 h-8 w-8" />
                             <p>Error loading workout details.</p>
                             <p className="text-sm text-red-300">{errorDetailedWorkout.message}</p>
                         </div>
@@ -139,7 +141,7 @@ const RecentWorkoutsView: React.FC<{ userId: string | undefined }> = ({ userId }
                         <div className="mt-4 space-y-4">
                             {detailedWorkout.exercises.length > 0 ? detailedWorkout.exercises.map(exercise => (
                                 <div key={exercise.exercise_id} className="stone-surface rounded-[18px] p-4">
-                                    <h4 className="font-semibold text-md mb-1.5">{exercise.exercise_name}</h4>
+                                    <h4 className="mb-1.5 text-base font-semibold text-foreground">{exercise.exercise_name}</h4>
                                     <p className="mb-2 text-xs text-muted-foreground">
                                         {exercise.completed_sets_count} completed set{exercise.completed_sets_count !== 1 ? 's' : ''}
                                     </p>
@@ -162,11 +164,11 @@ const RecentWorkoutsView: React.FC<{ userId: string | undefined }> = ({ userId }
                                             ))}
                                         </ul>
                                     ) : (
-                                        <p className="text-xs text-muted-foreground italic">No sets recorded for this exercise.</p>
+                                        <p className="text-xs italic text-muted-foreground">No sets recorded for this exercise.</p>
                                     )}
                                 </div>
                             )) : (
-                                <p className="text-muted-foreground italic">No exercises found in this workout.</p>
+                                <p className="text-sm italic text-muted-foreground">No exercises found in this workout.</p>
                             )}
                         </div>
                     )}
@@ -178,7 +180,7 @@ const RecentWorkoutsView: React.FC<{ userId: string | undefined }> = ({ userId }
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div>
+        </section>
     );
 };
 
