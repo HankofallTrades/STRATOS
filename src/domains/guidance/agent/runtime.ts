@@ -25,7 +25,7 @@ import {
 } from "./contracts.js";
 import { coachToolDefinitions } from "./tools.js";
 
-interface CoachAgentRuntimeEnvironment {
+export interface CoachAgentRuntimeEnvironment {
   localLlmUrl?: string;
   openRouterApiKey?: string;
   openRouterApiUrl: string;
@@ -59,7 +59,7 @@ You are operating as an AI agent inside the STRATOS Coach screen.
 Tool rules:
 - Use \`get_user_profile_summary\` when profile data would materially improve the answer.
 - Use \`get_recent_workout_summary\` when recent training history is relevant.
-- Use \`generate_strength_workout\` when the user explicitly wants you to create, start, or generate a strength workout in the app.
+- Use \`generate_strength_workout\` when the user explicitly wants you to create, start, or generate a workout in the app, especially when they mention their current block, phase, or archetype volume.
 - Call at most one client tool in a single turn.
 - Never invent tool outputs. If a tool returns limited data, say so plainly.
 - After any tool result, respond with a concise coaching follow-up.`;
