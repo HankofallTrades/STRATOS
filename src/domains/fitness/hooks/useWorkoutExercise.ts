@@ -1,11 +1,13 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useAppDispatch } from "@/hooks/redux";
+import { useAppDispatch, useAppSelector } from "@/hooks/redux";
 import { useAuth } from '@/state/auth/AuthProvider';
 import * as fitnessRepo from '../data/fitnessRepository';
+import { buildRecommendedStrengthSetPerformances } from '../data/recommendations';
 import {
     addSetToExercise as addSetAction,
     addCardioSetToExercise as addCardioSetAction,
+    selectSessionFocus,
     updateWorkoutExerciseEquipment as updateEquipmentAction,
     updateWorkoutExerciseVariation as updateVariationAction,
     deleteWorkoutExercise as deleteExerciseAction,
@@ -25,6 +27,7 @@ const DEFAULT_VARIATION = 'Standard';
 
 export const useWorkoutExercise = (workoutExercise: WorkoutExercise) => {
     const dispatch = useAppDispatch();
+    const sessionFocus = useAppSelector(selectSessionFocus);
     const queryClient = useQueryClient();
     const { user } = useAuth();
     const userId = user?.id;
@@ -93,6 +96,18 @@ export const useWorkoutExercise = (workoutExercise: WorkoutExercise) => {
         });
         return performances;
     }, [historicalSets]);
+
+    const recommendedSetPerformances = useMemo(() => {
+        if (isCardioExercise(workoutExercise.exercise) || workoutExercise.exercise.is_static) {
+            return {};
+        }
+
+        return buildRecommendedStrengthSetPerformances({
+            focus: sessionFocus,
+            currentSetCount: workoutExercise.sets.length,
+            historicalSets,
+        });
+    }, [historicalSets, sessionFocus, workoutExercise.exercise, workoutExercise.sets.length]);
 
     const overallLastPerformance = useMemo(() => {
         if (!historicalSets || historicalSets.length === 0) return null;
@@ -204,6 +219,7 @@ export const useWorkoutExercise = (workoutExercise: WorkoutExercise) => {
     return {
         variations,
         historicalSetPerformances,
+        recommendedSetPerformances,
         overallLastPerformance,
         userWeight: userWeight?.weight_kg ?? null,
         isAddingVariation,

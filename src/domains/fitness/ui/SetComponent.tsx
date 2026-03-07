@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion, MotionProps } from 'framer-motion';
+import type { RecommendedStrengthSetPerformance } from '../data/recommendations';
 import {
   ExerciseSet,
   isStrengthSet,
@@ -19,9 +20,9 @@ interface SetComponentProps extends MotionProps {
   set: ExerciseSet;
   setIndex: number;
   previousPerformance: { weight: number; reps: number | null; time_seconds?: number | null } | null;
+  recommendedPerformance: RecommendedStrengthSetPerformance | null;
   userBodyweight?: number | null;
   isStatic: boolean;
-  exerciseName?: string;
   isActive?: boolean;
 }
 
@@ -30,9 +31,9 @@ const SetComponent: React.FC<SetComponentProps> = ({
   set,
   setIndex,
   previousPerformance,
+  recommendedPerformance,
   userBodyweight,
   isStatic,
-  exerciseName,
   isActive = false,
   ...motionProps
 }) => {
@@ -52,16 +53,23 @@ const SetComponent: React.FC<SetComponentProps> = ({
     handleBlur,
     showWeightIndicator,
     showRepsIndicator,
-    showTimeIndicator,
-    previousRepsValue,
-    previousTimeValue
+    showTimeIndicator
   } = useSet({
     workoutExerciseId,
     set,
     userBodyweight,
     isStatic,
-    previousPerformance
+    previousPerformance,
+    recommendedPerformance
   });
+  const weightIndicatorDirection =
+    recommendedPerformance?.action === 'increase_load'
+      ? 'up'
+      : recommendedPerformance?.action === 'decrease_load'
+        ? 'down'
+        : null;
+  const repsIndicatorDirection =
+    recommendedPerformance?.action === 'increase_reps' ? 'up' : null;
 
   // Handle cardio sets with table layout
   if (isCardioSet(set)) {
@@ -79,12 +87,6 @@ const SetComponent: React.FC<SetComponentProps> = ({
           "w-[42px] px-2 py-2 text-center align-middle text-sm font-semibold text-foreground/85",
           isCompleted && "text-foreground/62"
         )}>{setIndex + 1}</TableCell>
-        <TableCell className={cn(
-          "w-[92px] px-2 py-2 align-middle text-center text-[13px] text-muted-foreground",
-          isCompleted && "text-foreground/48"
-        )}>
-          -
-        </TableCell>
 
         {/* Duration column */}
         <TableCell className="relative w-[88px] px-2 py-2 align-middle">
@@ -174,16 +176,6 @@ const SetComponent: React.FC<SetComponentProps> = ({
         "w-[42px] px-2 py-2 text-center align-middle text-sm font-semibold text-foreground/85",
         isCompleted && "text-foreground/62"
       )}>{setIndex + 1}</TableCell>
-      <TableCell className={cn(
-        "w-[92px] px-2 py-2 align-middle text-center text-[13px] text-muted-foreground",
-        isCompleted && "text-foreground/48"
-      )}>
-        {previousPerformance
-          ? isStatic
-            ? `${previousPerformance.weight} x ${previousPerformance.time_seconds || '-'}s`
-            : `${previousPerformance.weight} x ${previousPerformance.reps || '-'}`
-          : '-'}
-      </TableCell>
       <TableCell className="relative w-[92px] px-2 py-2 align-middle">
         <div>
           <input
@@ -205,12 +197,9 @@ const SetComponent: React.FC<SetComponentProps> = ({
           />
         </div>
         <PerformanceIndicator
-          metric="weight"
-          previousValue={previousRepsValue}
-          previousWeightKg={previousPerformance?.weight}
-          isStatic={isStatic}
+          direction={weightIndicatorDirection}
           visible={showWeightIndicator && !isCompleted}
-          exerciseName={exerciseName}
+          description={weightIndicatorDirection === 'up' ? 'Increase load.' : 'Reduce load.'}
         />
       </TableCell>
       {isStatic ? (
@@ -235,11 +224,8 @@ const SetComponent: React.FC<SetComponentProps> = ({
             />
           </div>
           <PerformanceIndicator
-            metric="time"
-            previousValue={previousTimeValue}
-            isStatic={isStatic}
+            direction={null}
             visible={showTimeIndicator && !isCompleted}
-            exerciseName={exerciseName}
           />
         </TableCell>
       ) : (
@@ -264,11 +250,9 @@ const SetComponent: React.FC<SetComponentProps> = ({
             />
           </div>
           <PerformanceIndicator
-            metric="reps"
-            previousValue={previousRepsValue}
-            isStatic={isStatic}
+            direction={repsIndicatorDirection}
             visible={showRepsIndicator && !isCompleted}
-            exerciseName={exerciseName}
+            description="Increase reps."
           />
         </TableCell>
       )}

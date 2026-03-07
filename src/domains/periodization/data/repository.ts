@@ -4,15 +4,16 @@ import type {
   CreateCustomMesocycleSessionInput,
   CreateMesocycleInput,
   Mesocycle,
+  MesocycleStatus,
   MesocycleSession,
   MesocycleSessionExerciseWithExercise,
   MesocycleSessionTemplate,
 } from './types';
-import type { Exercise } from '@/lib/types/workout';
+import type { Exercise, SessionFocus } from '@/lib/types/workout';
 
 interface OccamsSessionTemplateDefinition {
   name: string;
-  sessionFocus: 'hypertrophy';
+  sessionFocus: SessionFocus;
   setsPerExercise: number;
   repRange: string;
   progressionRule: string;
@@ -25,6 +26,25 @@ interface OccamsSessionTemplateDefinition {
     loadIncrementKg: number;
     notes: string;
   }>;
+}
+
+interface ExistingExerciseTemplateDefinition {
+  candidateNames: string[];
+  presetEquipmentType?: string | null;
+  presetVariation?: string | null;
+  targetSets: number | null;
+  targetReps: string | null;
+  loadIncrementKg: number | null;
+  notes: string | null;
+}
+
+interface CustomSessionTemplateDefinition {
+  name: string;
+  sessionFocus: SessionFocus | null;
+  setsPerExercise: number;
+  repRange: string | null;
+  progressionRule: string | null;
+  exercises: ExistingExerciseTemplateDefinition[];
 }
 
 const OCCAMS_TEMPLATE: OccamsSessionTemplateDefinition[] = [
@@ -46,7 +66,7 @@ const OCCAMS_TEMPLATE: OccamsSessionTemplateDefinition[] = [
         notes: '5s up / 5s down tempo, one set to technical failure.',
       },
       {
-        canonicalName: 'Shoulder Press',
+        canonicalName: 'Overhead Press',
         targetSets: 1,
         targetReps: '7-12',
         targetEquipmentType: 'Machine',
@@ -65,7 +85,7 @@ const OCCAMS_TEMPLATE: OccamsSessionTemplateDefinition[] = [
       'One all-out work set per exercise to technical failure at 5s up / 5s down. For leg press use 10-12 reps minimum. Increase load by about max(10 lb, 10%) when minimum reps are met. Optional posterior-chain finisher: high-rep swings.',
     exercises: [
       {
-        canonicalName: 'Chest Press',
+        canonicalName: 'Bench Press',
         targetSets: 1,
         targetReps: '7-12',
         targetEquipmentType: 'Machine',
@@ -81,6 +101,117 @@ const OCCAMS_TEMPLATE: OccamsSessionTemplateDefinition[] = [
         targetVariation: 'Standard',
         loadIncrementKg: 9.07,
         notes: '5s up / 5s down tempo, one set to technical failure.',
+      },
+    ],
+  },
+];
+
+const CUSTOM_TEMPLATE: CustomSessionTemplateDefinition[] = [
+  {
+    name: 'Workout A',
+    sessionFocus: null,
+    setsPerExercise: 3,
+    repRange: null,
+    progressionRule: null,
+    exercises: [
+      {
+        candidateNames: ['Squat', 'Back Squat'],
+        presetEquipmentType: null,
+        presetVariation: null,
+        targetSets: null,
+        targetReps: null,
+        loadIncrementKg: null,
+        notes: null,
+      },
+      {
+        candidateNames: ['Bench Press'],
+        presetEquipmentType: null,
+        presetVariation: null,
+        targetSets: null,
+        targetReps: null,
+        loadIncrementKg: null,
+        notes: null,
+      },
+      {
+        candidateNames: ['Row'],
+        presetEquipmentType: null,
+        presetVariation: null,
+        targetSets: null,
+        targetReps: null,
+        loadIncrementKg: null,
+        notes: null,
+      },
+    ],
+  },
+  {
+    name: 'Workout B',
+    sessionFocus: null,
+    setsPerExercise: 3,
+    repRange: null,
+    progressionRule: null,
+    exercises: [
+      {
+        candidateNames: ['Back Extension'],
+        presetEquipmentType: null,
+        presetVariation: null,
+        targetSets: null,
+        targetReps: null,
+        loadIncrementKg: null,
+        notes: null,
+      },
+      {
+        candidateNames: ['Overhead Press'],
+        presetEquipmentType: null,
+        presetVariation: null,
+        targetSets: null,
+        targetReps: null,
+        loadIncrementKg: null,
+        notes: null,
+      },
+      {
+        candidateNames: ['Pull-up', 'Pull Up', 'Pullups', 'Pull-Ups'],
+        presetEquipmentType: null,
+        presetVariation: null,
+        targetSets: null,
+        targetReps: null,
+        loadIncrementKg: null,
+        notes: null,
+      },
+    ],
+  },
+  {
+    name: 'Workout C',
+    sessionFocus: null,
+    setsPerExercise: 3,
+    repRange: null,
+    progressionRule: null,
+    exercises: [
+      {
+        candidateNames: ['Split Squat', 'Bulgarian Split Squat'],
+        presetEquipmentType: null,
+        presetVariation: null,
+        targetSets: null,
+        targetReps: null,
+        loadIncrementKg: null,
+        notes: null,
+      },
+      {
+        candidateNames: ['Bench Press'],
+        presetEquipmentType: 'Barbell',
+        presetVariation: 'Incline',
+        targetSets: null,
+        targetReps: null,
+        loadIncrementKg: null,
+        notes: null,
+      },
+      {
+        candidateNames: ['Wood Chop', 'Cable Wood Chop'],
+        presetEquipmentType: null,
+        presetVariation: null,
+        targetSets: null,
+        targetReps: null,
+        loadIncrementKg: null,
+        notes: null,
       },
     ],
   },
@@ -191,6 +322,47 @@ const ensureCanonicalExerciseForUser = async (
   exerciseCatalog.push(createdExercise);
   await ensureExerciseVariation(createdExercise.id, requiredVariation);
   return createdExercise;
+};
+
+const findExistingExerciseByCandidateNames = (
+  exerciseCatalog: Exercise[],
+  candidateNames: string[]
+): Exercise | null => {
+  for (const candidateName of candidateNames) {
+    const normalizedCandidateName = normalizeName(candidateName);
+    const match = exerciseCatalog.find(
+      exercise => normalizeName(exercise.name) === normalizedCandidateName
+    );
+
+    if (match) {
+      return match;
+    }
+  }
+
+  return null;
+};
+
+const buildTemplateExerciseNotes = (
+  templateExercise: ExistingExerciseTemplateDefinition
+): string | null => {
+  const preset: Record<string, string> = {};
+
+  if (templateExercise.presetEquipmentType) {
+    preset.equipmentType = templateExercise.presetEquipmentType;
+  }
+
+  if (templateExercise.presetVariation) {
+    preset.variation = templateExercise.presetVariation;
+  }
+
+  const presetLine =
+    Object.keys(preset).length > 0
+      ? `__preset__:${JSON.stringify(preset)}`
+      : null;
+
+  return [templateExercise.notes?.trim() || null, presetLine]
+    .filter((value): value is string => Boolean(value))
+    .join('\n') || null;
 };
 
 const fetchSessionsForMesocycle = async (mesocycleId: string): Promise<MesocycleSession[]> => {
@@ -322,7 +494,15 @@ const upsertOccamsProtocolSession = async (
         target_sets: templateExercise.targetSets,
         target_reps: templateExercise.targetReps,
         load_increment_kg: templateExercise.loadIncrementKg,
-        notes: templateExercise.notes,
+        notes: buildTemplateExerciseNotes({
+          candidateNames: [templateExercise.canonicalName],
+          presetEquipmentType: templateExercise.targetEquipmentType,
+          presetVariation: templateExercise.targetVariation,
+          targetSets: templateExercise.targetSets,
+          targetReps: templateExercise.targetReps,
+          loadIncrementKg: templateExercise.loadIncrementKg,
+          notes: templateExercise.notes,
+        }),
       } : null;
     });
 
@@ -330,6 +510,23 @@ const upsertOccamsProtocolSession = async (
   const desiredSessionExerciseRows = resolvedSessionExercises
       .filter((value): value is NonNullable<typeof value> => value !== null);
 
+  await syncSessionExercises(sessionId, desiredSessionExerciseRows);
+};
+
+type SessionExerciseRowPayload = {
+  mesocycle_session_id: string;
+  exercise_id: string;
+  exercise_order: number;
+  target_sets: number | null;
+  target_reps: string | null;
+  load_increment_kg: number | null;
+  notes: string | null;
+};
+
+const syncSessionExercises = async (
+  sessionId: string,
+  desiredSessionExerciseRows: SessionExerciseRowPayload[]
+): Promise<void> => {
   if (desiredSessionExerciseRows.length === 0) return;
 
   const { data: currentSessionExercises, error: currentSessionExercisesError } = await supabase
@@ -386,6 +583,74 @@ const upsertOccamsProtocolSession = async (
   if (insertExercisesError) throw insertExercisesError;
 };
 
+const upsertCustomProtocolSession = async (
+  mesocycleId: string,
+  sessionOrder: number,
+  definition: CustomSessionTemplateDefinition,
+  exerciseCatalog: Exercise[],
+  existingSession: MesocycleSession | null
+): Promise<void> => {
+  let sessionId = existingSession?.id ?? null;
+
+  const sessionPayload = {
+    mesocycle_id: mesocycleId,
+    name: definition.name,
+    session_order: sessionOrder,
+    session_focus: definition.sessionFocus,
+    sets_per_exercise: definition.setsPerExercise,
+    rep_range: definition.repRange,
+    progression_rule: definition.progressionRule,
+  };
+
+  if (!sessionId) {
+    const { data: insertedSession, error: insertSessionError } = await supabase
+      .from('mesocycle_sessions' as never)
+      .insert(sessionPayload)
+      .select('*')
+      .single();
+
+    if (insertSessionError || !insertedSession) {
+      throw insertSessionError ?? new Error('Failed to create custom session template.');
+    }
+
+    sessionId = insertedSession.id as string;
+  } else {
+    const { error: updateSessionError } = await supabase
+      .from('mesocycle_sessions' as never)
+      .update(sessionPayload)
+      .eq('id', sessionId);
+
+    if (updateSessionError) throw updateSessionError;
+  }
+
+  const desiredSessionExerciseRows = definition.exercises.map(
+    (templateExercise, exerciseIndex) => {
+      const resolvedExercise = findExistingExerciseByCandidateNames(
+        exerciseCatalog,
+        templateExercise.candidateNames
+      );
+
+      if (!resolvedExercise) {
+        throw new Error(
+          `Missing exercise for ${definition.name}: ${templateExercise.candidateNames.join(' / ')}`
+        );
+      }
+
+      return {
+        mesocycle_session_id: sessionId as string,
+        exercise_id: resolvedExercise.id,
+        exercise_order: exerciseIndex + 1,
+        target_sets: templateExercise.targetSets,
+        target_reps: templateExercise.targetReps,
+        load_increment_kg: templateExercise.loadIncrementKg,
+        notes: buildTemplateExerciseNotes(templateExercise),
+      };
+    }
+  );
+
+  await syncSessionExercises(sessionId, desiredSessionExerciseRows);
+};
+
 const ensureOccamsProtocolSessions = async (
   userId: string,
   mesocycleId: string,
@@ -398,6 +663,25 @@ const ensureOccamsProtocolSessions = async (
     const definition = OCCAMS_TEMPLATE[index];
     await upsertOccamsProtocolSession(
       userId,
+      mesocycleId,
+      index + 1,
+      definition,
+      exercises,
+      existingByName.get(normalizeName(definition.name)) ?? null
+    );
+  }
+};
+
+const ensureCustomProtocolSessions = async (
+  mesocycleId: string,
+  existingSessions: MesocycleSession[]
+): Promise<void> => {
+  const exercises = await fetchExerciseCatalog();
+  const existingByName = new Map(existingSessions.map(session => [normalizeName(session.name), session]));
+
+  for (let index = 0; index < CUSTOM_TEMPLATE.length; index += 1) {
+    const definition = CUSTOM_TEMPLATE[index];
+    await upsertCustomProtocolSession(
       mesocycleId,
       index + 1,
       definition,
@@ -429,6 +713,9 @@ export const getActiveMesocycleProgram = async (userId: string): Promise<ActiveM
   if (mesocycle.protocol === 'occams') {
     await ensureOccamsProtocolSessions(userId, mesocycle.id, sessions);
     sessions = await fetchSessionsForMesocycle(mesocycle.id);
+  } else if (mesocycle.protocol === 'custom') {
+    await ensureCustomProtocolSessions(mesocycle.id, sessions);
+    sessions = await fetchSessionsForMesocycle(mesocycle.id);
   }
 
   const groupedExercises = await fetchSessionExercises(sessions.map(session => session.id));
@@ -455,6 +742,21 @@ export const createMesocycle = async (
   userId: string,
   input: CreateMesocycleInput
 ): Promise<Mesocycle> => {
+  return createMesocycleWithPreviousStatus(userId, input, 'completed');
+};
+
+export const resetMesocycle = async (
+  userId: string,
+  input: CreateMesocycleInput
+): Promise<Mesocycle> => {
+  return createMesocycleWithPreviousStatus(userId, input, 'cancelled');
+};
+
+const createMesocycleWithPreviousStatus = async (
+  userId: string,
+  input: CreateMesocycleInput,
+  previousStatus: MesocycleStatus
+): Promise<Mesocycle> => {
   if (input.duration_weeks < 4 || input.duration_weeks > 12) {
     throw new Error('Mesocycles must be between 4 and 12 weeks.');
   }
@@ -462,7 +764,7 @@ export const createMesocycle = async (
   const nowIso = new Date().toISOString();
   const { error: deactivateError } = await supabase
     .from('mesocycles' as never)
-    .update({ status: 'completed', updated_at: nowIso })
+    .update({ status: previousStatus, updated_at: nowIso })
     .eq('user_id', userId)
     .eq('status', 'active');
 
@@ -497,6 +799,8 @@ export const createMesocycle = async (
 
   if (input.protocol === 'occams') {
     await ensureOccamsProtocolSessions(userId, createdMesocycle.id, []);
+  } else if (input.protocol === 'custom') {
+    await ensureCustomProtocolSessions(createdMesocycle.id, []);
   }
 
   return createdMesocycle;

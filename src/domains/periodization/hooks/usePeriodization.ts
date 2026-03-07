@@ -4,6 +4,7 @@ import {
   createCustomMesocycleSession,
   createMesocycle,
   getActiveMesocycleProgram,
+  resetMesocycle,
 } from '@/domains/periodization/data/repository';
 import type {
   ActiveMesocycleProgram,
@@ -55,6 +56,16 @@ export const usePeriodization = (userId: string | null | undefined) => {
     },
   });
 
+  const resetMesocycleMutation = useMutation({
+    mutationFn: async (input: CreateMesocycleInput) => {
+      if (!userId) throw new Error('User is required to reset a mesocycle.');
+      return resetMesocycle(userId, input);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [ACTIVE_MESOCYCLE_QUERY_KEY, userId] });
+    },
+  });
+
   const activeMesocycle = useMemo(() => activeProgramQuery.data?.mesocycle ?? null, [activeProgramQuery.data]);
 
   return {
@@ -67,6 +78,9 @@ export const usePeriodization = (userId: string | null | undefined) => {
     createMesocycle: createMesocycleMutation.mutateAsync,
     isCreatingMesocycle: createMesocycleMutation.isPending,
     createMesocycleError: createMesocycleMutation.error as Error | null,
+    resetMesocycle: resetMesocycleMutation.mutateAsync,
+    isResettingMesocycle: resetMesocycleMutation.isPending,
+    resetMesocycleError: resetMesocycleMutation.error as Error | null,
     createCustomSession: createCustomSessionMutation.mutateAsync,
     isCreatingCustomSession: createCustomSessionMutation.isPending,
     createCustomSessionError: createCustomSessionMutation.error as Error | null,

@@ -41,29 +41,39 @@ export const getOccamsExercisePrescription = (
 ): { equipmentType: string; variation: string } | null => {
   const normalized = exerciseName.trim().toLowerCase();
 
-  if (
-    normalized === "pulldown" ||
-    normalized === "close-grip supinated pulldown"
-  ) {
+  if (normalized === "pulldown") {
     return { equipmentType: "Machine", variation: "Supinated" };
   }
 
-  if (
-    normalized === "shoulder press" ||
-    normalized === "machine shoulder press" ||
-    normalized === "leg press"
-  ) {
+  if (normalized === "leg press") {
     return { equipmentType: "Machine", variation: "Standard" };
   }
 
-  if (
-    normalized === "chest press" ||
-    normalized === "slight incline chest press"
-  ) {
-    return { equipmentType: "Machine", variation: "Incline" };
-  }
-
   return null;
+};
+
+const getTemplateExercisePresentationPreset = (
+  notes: string | null | undefined
+): { equipmentType?: string; variation?: string } | null => {
+  if (!notes) return null;
+
+  const presetLine = notes
+    .split("\n")
+    .map(line => line.trim())
+    .find(line => line.startsWith("__preset__:"));
+
+  if (!presetLine) return null;
+
+  try {
+    const parsed = JSON.parse(presetLine.slice("__preset__:".length)) as {
+      equipmentType?: string;
+      variation?: string;
+    };
+
+    return parsed;
+  } catch {
+    return null;
+  }
 };
 
 export const buildExercisesFromSessionTemplate = (
@@ -75,11 +85,18 @@ export const buildExercisesFromSessionTemplate = (
       const exercise = row.exercise!;
       const setCount = row.target_sets ?? sessionTemplate.sets_per_exercise ?? 2;
       const occamsPrescription = getOccamsExercisePrescription(exercise.name);
+      const templatePresentationPreset = getTemplateExercisePresentationPreset(
+        row.notes
+      );
       const targetEquipmentType =
+        templatePresentationPreset?.equipmentType ??
         occamsPrescription?.equipmentType ??
         exercise.default_equipment_type ??
         "Machine";
-      const targetVariation = occamsPrescription?.variation ?? "Standard";
+      const targetVariation =
+        templatePresentationPreset?.variation ??
+        occamsPrescription?.variation ??
+        "Standard";
 
       if (isCardioExercise(exercise)) {
         const cardioSets: CardioSet[] = Array.from({ length: setCount }, () => ({

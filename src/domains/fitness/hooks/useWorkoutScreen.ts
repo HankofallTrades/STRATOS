@@ -49,11 +49,13 @@ export const useWorkoutScreen = () => {
   } = usePeriodization(user?.id);
   const { saveWorkout, discardWorkout } = useWorkoutPersistence();
 
-  const nextOccamSession =
-    activeProgram?.sessions.find(
-      session => session.id === activeProgram.next_session_id
+  const templatedSessions =
+    activeProgram?.sessions.filter(session => session.exercises.length > 0) ?? [];
+  const nextProgramSession =
+    templatedSessions.find(
+      session => session.id === activeProgram?.next_session_id
     ) ??
-    activeProgram?.sessions[0] ??
+    templatedSessions[0] ??
     null;
   const periodProgressValue = activeProgram
     ? Math.round(
@@ -124,8 +126,8 @@ export const useWorkoutScreen = () => {
   };
 
   const handleStartNextProtocolSession = () => {
-    if (!nextOccamSession) return;
-    handleStartProtocolSession(nextOccamSession);
+    if (!nextProgramSession) return;
+    handleStartProtocolSession(nextProgramSession);
   };
 
   const handleStartCustomMesocycleSession = async () => {
@@ -194,7 +196,7 @@ export const useWorkoutScreen = () => {
     isLoadingMesocycle,
     isCreatingMesocycle,
     isCreatingCustomSession,
-    nextOccamSession,
+    nextProgramSession,
     periodProgressValue,
     focusInfo,
     setSelectedFocus,

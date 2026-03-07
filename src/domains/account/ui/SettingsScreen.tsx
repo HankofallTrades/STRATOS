@@ -1,5 +1,13 @@
 import { Button } from "@/components/core/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/core/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/core/Dialog";
 import { Input } from "@/components/core/input";
 import { Label } from "@/components/core/label";
 import { RadioGroup, RadioGroupItem } from "@/components/core/radio-group";
@@ -12,9 +20,14 @@ import {
 } from "@/components/core/select";
 import { useSettingsScreen } from "@/domains/account/hooks/useSettingsScreen";
 import {
+  formatSessionFocusLabel,
+  sessionFocusOptions,
+} from "@/domains/fitness/data/workoutScreen";
+import {
   OPENROUTER_MODEL_OPTIONS,
   type LlmProviderPreference,
 } from "@/domains/guidance/data/llmPreferences";
+import type { MesocycleProtocol } from "@/domains/periodization";
 
 const providerDescriptions: Record<LlmProviderPreference, string> = {
   local: "Local (LM Studio/Ollama)",
@@ -23,20 +36,34 @@ const providerDescriptions: Record<LlmProviderPreference, string> = {
 
 const SettingsScreen = () => {
   const {
+    activeProgram,
     availableThemes,
     bodyweight,
     handleLlmModelChange,
+    handleOpenPeriodDialog,
     handleLlmProviderChange,
+    handleSavePeriod,
     handleSignOut,
     handleThemeChange,
     handleUnitChange,
     handleUpdateBodyweight,
+    isLoadingActiveProgram,
+    isPeriodDialogOpen,
+    isPeriodUpdating,
+    isPeriodWorkoutInProgress,
     isProfileBusy,
     isSigningOut,
     llmModelPref,
     llmProviderPref,
+    periodDurationWeeks,
+    periodGoalFocus,
+    periodProtocol,
     selectedThemeId,
     setBodyweight,
+    setIsPeriodDialogOpen,
+    setPeriodDurationWeeks,
+    setPeriodGoalFocus,
+    setPeriodProtocol,
     triggerOnboarding,
     unitPref,
     userEmail,
@@ -134,6 +161,52 @@ const SettingsScreen = () => {
 
         <Card>
           <CardHeader>
+            <CardTitle className="text-xl">Training Period</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {isLoadingActiveProgram ? (
+              <p className="text-sm text-muted-foreground">
+                Loading your active period...
+              </p>
+            ) : activeProgram ? (
+              <div className="space-y-2">
+                <p className="font-medium text-foreground">
+                  {activeProgram.mesocycle.name}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Week {activeProgram.current_week} of{" "}
+                  {activeProgram.mesocycle.duration_weeks}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {`${formatSessionFocusLabel(activeProgram.mesocycle.goal_focus)} focus · ${
+                    activeProgram.mesocycle.protocol === "occams" ? "Occam's" : "Custom"
+                  }`}
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No active period. Start one here if you want block-based progression.
+              </p>
+            )}
+
+            <Button
+              onClick={handleOpenPeriodDialog}
+              disabled={isLoadingActiveProgram || isPeriodWorkoutInProgress}
+              className="app-primary-action rounded-[16px]"
+            >
+              {activeProgram ? "Reset / Change Period" : "Start Period"}
+            </Button>
+
+            {isPeriodWorkoutInProgress ? (
+              <p className="text-xs text-muted-foreground">
+                Finish or discard the active block workout before resetting your period.
+              </p>
+            ) : null}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
             <CardTitle className="text-xl">Developer Settings</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -209,6 +282,97 @@ const SettingsScreen = () => {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={isPeriodDialogOpen} onOpenChange={setIsPeriodDialogOpen}>
+        <DialogContent className="stone-panel rounded-[24px] border-white/10">
+          <DialogHeader>
+            <DialogTitle>
+              {activeProgram ? "Reset Training Period" : "Start Training Period"}
+            </DialogTitle>
+            <DialogDescription>
+              {activeProgram
+                ? "Start a fresh block from week 1 today. Your current active block will be marked as cancelled."
+                : "Create a new active training period."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="settings-period-focus">Focus</Label>
+              <Select
+                value={periodGoalFocus}
+                onValueChange={value => setPeriodGoalFocus(value as typeof periodGoalFocus)}
+              >
+                <SelectTrigger id="settings-period-focus" className="app-form-select">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="stone-surface border-white/8 text-foreground">
+                  {sessionFocusOptions.map(option => (
+                    <SelectItem key={option} value={option}>
+                      {formatSessionFocusLabel(option)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="settings-period-protocol">Protocol</Label>
+              <Select
+                value={periodProtocol}
+                onValueChange={value => setPeriodProtocol(value as MesocycleProtocol)}
+              >
+                <SelectTrigger id="settings-period-protocol" className="app-form-select">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="stone-surface border-white/8 text-foreground">
+                  <SelectItem value="custom">Custom</SelectItem>
+                  <SelectItem value="occams">Occam&apos;s</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="settings-period-duration">Duration (weeks)</Label>
+              <Input
+                id="settings-period-duration"
+                type="number"
+                min={4}
+                max={12}
+                value={periodDurationWeeks}
+                onChange={event => setPeriodDurationWeeks(Number(event.target.value))}
+                className="app-form-input"
+              />
+              <p className="text-xs text-muted-foreground">
+                Choose a value between 4 and 12 weeks.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:justify-end">
+            <Button
+              variant="ghost"
+              onClick={() => setIsPeriodDialogOpen(false)}
+              className="stone-chip rounded-[16px] px-4 hover:bg-white/[0.05]"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSavePeriod}
+              disabled={isPeriodUpdating}
+              className="app-primary-action rounded-[16px]"
+            >
+              {isPeriodUpdating
+                ? activeProgram
+                  ? "Resetting..."
+                  : "Creating..."
+                : activeProgram
+                  ? "Reset Period"
+                  : "Create Period"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
