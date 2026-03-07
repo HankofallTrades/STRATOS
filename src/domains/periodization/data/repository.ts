@@ -110,7 +110,7 @@ const CUSTOM_TEMPLATE: CustomSessionTemplateDefinition[] = [
   {
     name: 'Workout A',
     sessionFocus: null,
-    setsPerExercise: 3,
+    setsPerExercise: 1,
     repRange: null,
     progressionRule: null,
     exercises: [
@@ -146,7 +146,7 @@ const CUSTOM_TEMPLATE: CustomSessionTemplateDefinition[] = [
   {
     name: 'Workout B',
     sessionFocus: null,
-    setsPerExercise: 3,
+    setsPerExercise: 1,
     repRange: null,
     progressionRule: null,
     exercises: [
@@ -182,7 +182,7 @@ const CUSTOM_TEMPLATE: CustomSessionTemplateDefinition[] = [
   {
     name: 'Workout C',
     sessionFocus: null,
-    setsPerExercise: 3,
+    setsPerExercise: 1,
     repRange: null,
     progressionRule: null,
     exercises: [
