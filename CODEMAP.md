@@ -6,7 +6,7 @@ This file is the fast operational map for agents and future sessions. It is not 
 
 - Architecture rename is complete: use `ui / hooks / data`, not `view / controller / model`.
 - `npm run build` passes.
-- `npm run lint` passes with 8 warnings and 0 errors.
+- `npm run lint` currently reports 8 warnings and 2 existing errors in `vite.config.ts` for `@typescript-eslint/no-explicit-any`.
 - There is no test script in `package.json`.
 - Do not run `npm run build` and `npm run lint` at the same time. Vite can create transient `vite.config.ts.timestamp-*.mjs` files that make ESLint fail with `ENOENT`.
 
@@ -105,6 +105,7 @@ The workout flow is the main Redux-heavy area. Most other features should prefer
 - Hooks:
   - `hooks/useOnboarding.ts`
   - `hooks/useSettingsScreen.ts`
+    - Owns theme/profile preferences plus active training-period reset/create from Settings.
 - UI:
   - `ui/AuthForm.tsx`
   - `ui/OnboardingDialog.tsx`
@@ -140,6 +141,8 @@ The workout flow is the main Redux-heavy area. Most other features should prefer
 - Canonical data surface:
   - `data/fitnessRepository.ts`
   - This is the main Supabase repository for fitness-related data.
+  - `data/recommendations.ts`
+  - Pure placeholder/indicator recommendation logic for set progression.
 - Screen/state entry:
   - `ui/WorkoutScreen.tsx`
   - `hooks/useWorkoutScreen.ts`
@@ -203,9 +206,11 @@ Current Coach architecture:
 - Purpose: mesocycles, session templates, progression blocks.
 - Data:
   - `data/repository.ts`
+    - Seeds default `Workout A/B/C` session templates for otherwise-empty custom mesocycles and keeps Occam templates synced.
   - `data/types.ts`
 - Hooks:
   - `hooks/usePeriodization.ts`
+    - Owns active program query plus create/reset mesocycle mutations.
 - No dedicated `ui/` layer yet; consumed from dashboard and workout.
 
 ### Placeholder Domains

@@ -115,31 +115,17 @@ const workoutSlice = createSlice({
       );
       if (!workoutExercise) return;
 
-      // Create a new set, potentially copying weight/reps/variation/equipment from the last set
-      const lastSet = workoutExercise.sets.length > 0 ? workoutExercise.sets[workoutExercise.sets.length - 1] : null;
-
-      // Determine initial weight: Bodyweight if applicable, else last set weight or 0
-      let weightForNewSet = lastSet && isStrengthSet(lastSet) ? lastSet.weight : 0;
-      if (
-          // Check against the string "Bodyweight"
-          workoutExercise.equipmentType === "Bodyweight" &&
-          action.payload.userBodyweight != null &&
-          action.payload.userBodyweight > 0
-      ) {
-          weightForNewSet = action.payload.userBodyweight;
-      }
-
       const isStatic = action.payload.isStatic;
 
       const newSet: StrengthSet = {
         id: uuidv4(),
-        weight: weightForNewSet, // Use calculated initial weight
-        reps: isStatic ? null : (lastSet && isStrengthSet(lastSet) ? lastSet.reps : 0),
-        time: isStatic ? (lastSet && isStrengthSet(lastSet) ? lastSet.time : secondsToTime(30)) : null,
+        weight: 0,
+        reps: isStatic ? null : 0,
+        time: null,
         exerciseId: action.payload.exerciseId,
         completed: false,
-        variation: lastSet && isStrengthSet(lastSet) ? lastSet.variation : workoutExercise.variation ?? 'Standard', 
-        equipmentType: lastSet && isStrengthSet(lastSet) ? lastSet.equipmentType : workoutExercise.equipmentType, // Use workoutExercise equipment as fallback
+        variation: workoutExercise.variation ?? 'Standard',
+        equipmentType: workoutExercise.equipmentType,
       };
       workoutExercise.sets.push(newSet);
     },
@@ -156,15 +142,11 @@ const workoutSlice = createSlice({
       );
       if (!workoutExercise) return;
 
-      // Create a new cardio set, potentially copying values from the last cardio set
-      const lastSet = workoutExercise.sets.length > 0 ? workoutExercise.sets[workoutExercise.sets.length - 1] : null;
-      const lastCardioSet = lastSet && isCardioSet(lastSet) ? lastSet : null;
-
       const newSet: CardioSet = {
         id: uuidv4(),
         exerciseId: action.payload.exerciseId,
-        time: lastCardioSet?.time ?? secondsToTime(300), // Default to 5 minutes
-        distance_km: lastCardioSet?.distance_km,
+        time: secondsToTime(0),
+        distance_km: undefined,
         completed: false,
       };
       workoutExercise.sets.push(newSet);

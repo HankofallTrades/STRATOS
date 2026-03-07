@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAppDispatch } from "@/hooks/redux";
+import type { RecommendedStrengthSetPerformance } from '../data/recommendations';
 import {
     ExerciseSet,
-    StrengthSet,
-    CardioSet,
     isStrengthSet,
     isCardioSet,
     timeToSeconds,
@@ -22,6 +21,7 @@ interface UseSetProps {
     userBodyweight?: number | null;
     isStatic: boolean;
     previousPerformance: { weight: number; reps: number | null; time_seconds?: number | null; distance_km?: number | null } | null;
+    recommendedPerformance: RecommendedStrengthSetPerformance | null;
 }
 
 type StrengthSetUpdatePayload = {
@@ -39,7 +39,8 @@ export const useSet = ({
     set,
     userBodyweight,
     isStatic,
-    previousPerformance
+    previousPerformance,
+    recommendedPerformance
 }: UseSetProps) => {
     const dispatch = useAppDispatch();
 
@@ -110,12 +111,13 @@ export const useSet = ({
             strengthSetEquipmentType === "Bodyweight" &&
             userBodyweight &&
             userBodyweight > 0 &&
+            !previousPerformance &&
             !weightTouched &&
             (!localWeight || parseFloat(localWeight) === 0)
         ) {
             setLocalWeight(String(userBodyweight));
         }
-    }, [strengthSet, strengthSetEquipmentType, userBodyweight, weightTouched, localWeight]);
+    }, [strengthSet, strengthSetEquipmentType, userBodyweight, previousPerformance, weightTouched, localWeight]);
 
     // --- Handlers ---
 
@@ -306,12 +308,25 @@ export const useSet = ({
     }, [dispatch, workoutExerciseId, set, isStatic, isCompleted, localWeight, localReps, localTime, localDuration, localDistance]);
 
     // Derived values for indicators
-    const showWeightIndicator = !!(previousPerformance && !weightTouched && (localWeight === '' || parseFloat(localWeight) === previousPerformance.weight));
-    const showRepsIndicator = !!(!isStatic && previousPerformance && !repsTouched && localReps === '');
-    const showTimeIndicator = !!(isStatic && previousPerformance && !timeTouched && localTime === '');
-
-    const previousRepsValue = isStatic ? undefined : previousPerformance?.reps ?? undefined;
-    const previousTimeValue = isStatic ? previousPerformance?.time_seconds ?? undefined : undefined;
+    const showWeightIndicator = !!(
+        recommendedPerformance &&
+        (recommendedPerformance.action === 'increase_load' || recommendedPerformance.action === 'decrease_load') &&
+        !weightTouched &&
+        (localWeight === '' || parseFloat(localWeight) === recommendedPerformance.weight)
+    );
+    const showRepsIndicator = !!(
+        !isStatic &&
+        recommendedPerformance &&
+        recommendedPerformance.action === 'increase_reps' &&
+        !repsTouched &&
+        localReps === ''
+    );
+    const showTimeIndicator = !!(
+        isStatic &&
+        recommendedPerformance &&
+        !timeTouched &&
+        localTime === ''
+    );
 
     return {
         isCompleted,
@@ -330,8 +345,6 @@ export const useSet = ({
         handleDelete,
         showWeightIndicator,
         showRepsIndicator,
-        showTimeIndicator,
-        previousRepsValue,
-        previousTimeValue
+        showTimeIndicator
     };
 };

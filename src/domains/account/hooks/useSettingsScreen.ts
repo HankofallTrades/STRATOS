@@ -2,10 +2,12 @@ import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { toast } from "sonner";
 
+import { useAppSelector } from "@/hooks/redux";
 import {
   fetchUserProfile,
   updateUserProfile,
 } from "@/domains/account/data/accountRepository";
+import { usePeriodization, type MesocycleProtocol } from "@/domains/periodization";
 import {
   readLlmPreferences,
   resolveStoredModelForProvider,
@@ -15,11 +17,26 @@ import {
 } from "@/domains/guidance/data/llmPreferences";
 import { useTheme } from "@/lib/themes";
 import type { ThemeId } from "@/lib/themes";
+import type { SessionFocus } from "@/lib/types/workout";
 import { useAuth } from "@/state/auth/AuthProvider";
+import { selectCurrentWorkout } from "@/state/workout/workoutSlice";
 
 type WeightUnit = "kg" | "lb";
 
 const KG_TO_LB = 2.20462;
+const DEFAULT_PERIOD_DURATION_WEEKS = 6;
+const DEFAULT_PERIOD_GOAL_FOCUS: SessionFocus = "hypertrophy";
+const DEFAULT_PERIOD_PROTOCOL: MesocycleProtocol = "custom";
+
+const SESSION_FOCUS_LABELS: Record<SessionFocus, string> = {
+  hypertrophy: "Hypertrophy",
+  strength: "Strength",
+  zone2: "Zone 2",
+  zone5: "Zone 5",
+  speed: "Speed",
+  recovery: "Recovery",
+  mixed: "Mixed",
+};
 
 const isThemeId = (value: string): value is ThemeId => {
   return value === "fantasy" || value === "modern" || value === "cyberpunk";
@@ -45,9 +62,28 @@ const toKilograms = (weight: number, unit: WeightUnit): number => {
   return weight;
 };
 
+const buildPeriodName = (
+  focus: SessionFocus,
+  protocol: MesocycleProtocol
+) => {
+  const focusLabel = SESSION_FOCUS_LABELS[focus];
+  return protocol === "occams"
+    ? `Occam ${focusLabel} Block`
+    : `${focusLabel} Block`;
+};
+
 export const useSettingsScreen = () => {
   const { signOut, user, triggerOnboarding } = useAuth();
   const { themeId, setTheme, availableThemes } = useTheme();
+  const currentWorkout = useAppSelector(selectCurrentWorkout);
+  const {
+    activeProgram,
+    isLoading: isLoadingActiveProgram,
+    createMesocycle,
+    isCreatingMesocycle,
+    resetMesocycle,
+    isResettingMesocycle,
+  } = usePeriodization(user?.id);
 
   const initialLlmPreferences = readLlmPreferences();
 
@@ -60,6 +96,15 @@ export const useSettingsScreen = () => {
     initialLlmPreferences.provider
   );
   const [llmModelPref, setLlmModelPref] = useState(initialLlmPreferences.model);
+  const [isPeriodDialogOpen, setIsPeriodDialogOpen] = useState(false);
+  const [periodDurationWeeks, setPeriodDurationWeeks] = useState(
+    DEFAULT_PERIOD_DURATION_WEEKS
+  );
+  const [periodGoalFocus, setPeriodGoalFocus] = useState<SessionFocus>(
+    DEFAULT_PERIOD_GOAL_FOCUS
+  );
+  const [periodProtocol, setPeriodProtocol] =
+    useState<MesocycleProtocol>(DEFAULT_PERIOD_PROTOCOL);
 
   const loadProfile = useCallback(async () => {
     if (!user) {
@@ -183,21 +228,110 @@ export const useSettingsScreen = () => {
     }
   };
 
+  const seedPeriodDraft = useCallback(() => {
+    const activeMesocycle = activeProgram?.mesocycle;
+
+    setPeriodDurationWeeks(
+      activeMesocycle?.duration_weeks ?? DEFAULT_PERIOD_DURATION_WEEKS
+    );
+    setPeriodGoalFocus(
+      activeMesocycle?.goal_focus ?? DEFAULT_PERIOD_GOAL_FOCUS
+    );
+    setPeriodProtocol(activeMesocycle?.protocol ?? DEFAULT_PERIOD_PROTOCOL);
+  }, [activeProgram]);
+
+  const handleOpenPeriodDialog = useCallback(() => {
+    seedPeriodDraft();
+    setIsPeriodDialogOpen(true);
+  }, [seedPeriodDraft]);
+
+  const handleSavePeriod = useCallback(async () => {
+    if (!user) {
+      toast.error("You must be logged in to change your training period.");
+      return;
+    }
+
+    if (currentWorkout && !currentWorkout.completed && currentWorkout.mesocycle_id) {
+      toast.error("Finish or discard the active block workout before changing period.");
+      return;
+    }
+
+    const duration = Number(periodDurationWeeks);
+    if (!Number.isFinite(duration) || duration < 4 || duration > 12) {
+      toast.error("Training periods must be between 4 and 12 weeks.");
+      return;
+    }
+
+    try {
+      const input = {
+        name: buildPeriodName(periodGoalFocus, periodProtocol),
+        goal_focus: periodGoalFocus,
+        protocol: periodProtocol,
+        start_date: new Date().toISOString().split("T")[0],
+        duration_weeks: duration,
+      };
+
+      if (activeProgram) {
+        await resetMesocycle(input);
+        toast.success("Training period reset.");
+      } else {
+        await createMesocycle(input);
+        toast.success("Training period created.");
+      }
+
+      setIsPeriodDialogOpen(false);
+    } catch (error) {
+      console.error("Error updating training period:", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to update your training period."
+      );
+    }
+  }, [
+    activeProgram,
+    createMesocycle,
+    currentWorkout,
+    periodDurationWeeks,
+    periodGoalFocus,
+    periodProtocol,
+    resetMesocycle,
+    user,
+  ]);
+
+  const isPeriodWorkoutInProgress = Boolean(
+    currentWorkout && !currentWorkout.completed && currentWorkout.mesocycle_id
+  );
+
   return {
+    activeProgram,
     availableThemes,
     bodyweight,
     handleLlmModelChange,
+    handleOpenPeriodDialog,
     handleLlmProviderChange,
+    handleSavePeriod,
     handleSignOut,
     handleThemeChange,
     handleUnitChange,
     handleUpdateBodyweight,
+    isLoadingActiveProgram,
+    isPeriodDialogOpen,
+    isPeriodUpdating: isCreatingMesocycle || isResettingMesocycle,
+    isPeriodWorkoutInProgress,
     isProfileBusy: isLoadingProfile || isSavingProfile,
     isSigningOut,
     llmModelPref,
     llmProviderPref,
+    periodDurationWeeks,
+    periodGoalFocus,
+    periodProtocol,
     selectedThemeId: themeId,
     setBodyweight,
+    setIsPeriodDialogOpen,
+    setPeriodDurationWeeks,
+    setPeriodGoalFocus,
+    setPeriodProtocol,
     triggerOnboarding,
     unitPref,
     userEmail: user?.email ?? null,

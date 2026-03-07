@@ -1,5 +1,6 @@
 import React, { Fragment, useMemo, useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import type { RecommendedStrengthSetPerformance } from '../data/recommendations';
 // TanStack Query - Removed hooks, just keep types if needed
 // import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MutationStatus } from '@tanstack/react-query'; // Keep MutationStatus type
@@ -57,6 +58,7 @@ interface WorkoutExerciseViewProps {
     equipmentType?: string
   };
   historicalSetPerformances: Record<number, { weight: number; reps: number | null; time_seconds?: number | null } | null>; // Updated for time
+  recommendedSetPerformances: Record<number, RecommendedStrengthSetPerformance | null>;
   userBodyweight?: number | null; // Add user bodyweight prop
   onAddSet: () => void;
   onEquipmentChange: (value: string) => void; // Changed signature to accept string
@@ -136,6 +138,7 @@ export const WorkoutExerciseView = ({
   // Destructure all props
   workoutExercise,
   historicalSetPerformances,
+  recommendedSetPerformances,
   userBodyweight, // Destructure userBodyweight
   onAddSet,
   onEquipmentChange,
@@ -474,7 +477,6 @@ export const WorkoutExerciseView = ({
             <TableHeader className="stone-table-head">
               <TableRow className="stone-seam border-b hover:bg-transparent">
                 <TableHead className="w-[42px] px-2 py-3 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Set</TableHead>
-                <TableHead className="w-[92px] px-2 py-3 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Last</TableHead>
 
                 {isCardioExercise(workoutExercise.exercise) ? (
                   <>
@@ -508,9 +510,9 @@ export const WorkoutExerciseView = ({
                       set={set}
                       setIndex={index}
                       previousPerformance={previousPerformanceForSet}
+                      recommendedPerformance={recommendedSetPerformances?.[setNumber] ?? null}
                       userBodyweight={userBodyweight}
                       isStatic={isExerciseStatic}
-                      exerciseName={workoutExercise.exercise.name}
                       isActive={firstIncompleteSetIndex === -1 ? index === workoutExercise.sets.length - 1 : index === firstIncompleteSetIndex}
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
@@ -544,7 +546,6 @@ export const WorkoutExerciseView = ({
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="px-2 py-3 align-middle"></TableCell>
 
                   {isCardioExercise(workoutExercise.exercise) ? (
                     <>

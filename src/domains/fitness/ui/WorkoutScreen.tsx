@@ -64,6 +64,7 @@ const WorkoutScreen = () => {
     isLoadingMesocycle,
     isCreatingMesocycle,
     isCreatingCustomSession,
+    nextProgramSession,
     periodProgressValue,
     focusInfo,
     setSelectedFocus,
@@ -84,9 +85,7 @@ const WorkoutScreen = () => {
   } = useWorkoutScreen();
 
   if (!currentWorkout) {
-    const usesOccamsProtocol =
-      activeProgram?.mesocycle.protocol === "occams" &&
-      activeProgram.sessions.length > 0;
+    const usesProgramSessions = nextProgramSession !== null;
 
     return (
       <div className="stone-workout-page min-h-svh w-full">
@@ -127,13 +126,15 @@ const WorkoutScreen = () => {
                   />
                 </div>
 
-                {usesOccamsProtocol ? (
+                {usesProgramSessions ? (
                   <div className="mt-6 flex justify-end">
                     <Button
                       onClick={handleStartNextProtocolSession}
                       className="app-primary-action h-11 w-full rounded-[18px] px-6 text-base font-semibold sm:w-auto"
                     >
-                      Start
+                      {nextProgramSession?.name
+                        ? `Start ${nextProgramSession.name}`
+                        : "Start"}
                     </Button>
                   </div>
                 ) : (
