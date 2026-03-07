@@ -1,2 +1,2 @@
-export * from './controller/usePeriodization';
-export * from './model/types';
+export * from './hooks/usePeriodization';
+export * from './data/types';

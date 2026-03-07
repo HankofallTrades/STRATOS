@@ -1,4 +1,4 @@
-import { AuthForm } from "@/domains/account/view/AuthForm";
+import { AuthForm } from "@/domains/account/ui/AuthForm";
 
 const LoginPage = () => {
   return (

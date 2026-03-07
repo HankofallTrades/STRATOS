@@ -16,44 +16,56 @@ Guiding principles:
 - Runtime: React + TypeScript + Vite SPA.
 - Backend/Data: Supabase (Postgres, RLS policies, SQL views/RPCs).
 - State: React Query for server state; Redux Toolkit only where cross-page, cross-session global state is needed.
-- UI: shadcn/ui primitives in `src/components/core`, feature/domain views in `src/domains/*/view`.
-- Organization: Domain‑scoped MVC for clarity and testability.
+- UI: shadcn/ui primitives in `src/components/core`, feature/domain UI in `src/domains/*/ui`.
+- Organization: domain-scoped `ui / hooks / data` layers.
 
-### Domain‑scoped MVC
+### Domain‑scoped layers
+We are standardizing on `ui / hooks / data` instead of `view / controller / model`.
+
+Reason:
+- The old MVC names implied stricter boundaries than the code currently enforces.
+- `ui`, `hooks`, and `data` are literal names that match how this React app actually behaves today.
+- This makes migration work safer because we can rename first, then tighten boundaries without pretending we already have strict MVC.
+
 Each domain follows the same structure and responsibilities. Example for `habits`:
 
 ```
 src/domains/
   habits/
-    model/         # Pure TS (no React)
+    data/          # Pure TS, repositories, types, pure logic
       types.ts     # zod + TS types
       repository.ts# Supabase CRUD/RPC; the only place that does I/O
       logic.ts     # Pure derivations/business rules; no I/O
       slice.ts     # Optional Redux slice if the domain needs global state
-    controller/    # React-only orchestration (hooks)
+    hooks/         # React-only orchestration
       useTriad.ts
       useCompletions.ts
-    view/          # Presentational JSX only; no data access
+    ui/            # Domain components and screens
       Triad.tsx
     index.ts       # Barrel re-export (public API for the domain)
 ```
 
 Responsibilities:
-- Model: Types, validation, repositories (data access), business logic (pure functions). No React.
-- Controller: Hooks that orchestrate repositories/logic, wire React Query, handle optimistic updates. No JSX.
-- View: Presentational components. Receive data/handlers via props only. No Supabase/Redux imports.
+- Data: Types, validation, repositories (data access), business logic (pure functions), and optional domain state helpers. No React.
+- Hooks: React orchestration. Wire React Query, Redux, navigation, and domain workflows. No JSX.
+- UI: Domain components and screens. The target state is props-first presentational UI, but some container UI still exists during migration. New UI code must not introduce direct Supabase access.
+
+Migration rule:
+- Rename only first.
+- Move behavior only after the imports are stable.
+- Do not combine directory moves with business logic rewrites in the same change unless there is no alternative.
 
 ### Data contract
 - Keep tables in `public` with strict RLS.
 - Expose cross-domain/aggregated data through SQL views or RPCs. Example: an RPC `get_character_sheet(user_id)` that returns XP/Level from habits, workouts, and nutrition.
-- Frontend controllers call `supabase.rpc(...)` and never assemble complex cross-domain joins in components.
+- Frontend hooks call repositories and RPCs. Complex joins should not be assembled in pages or UI components.
 
 ## Source structure
 
 - `src/`
   - `domains/` (primary organization)
     - `workout/`, `habits/`, `goals/`, `rpg/`, `notes/` (as needed)
-      - `model/`, `controller/`, `view/`, `index.ts`
+      - `data/`, `hooks/`, `ui/`, `index.ts`
   - `components/`
     - `core/` shadcn-style primitives (buttons, dialogs, inputs, etc.)
     - `layout/` global layout components (e.g., navigation)
@@ -61,7 +73,7 @@ Responsibilities:
   - `lib/`
     - `constants.ts`, `utils/*`, `prompts/*`, etc.
     - `integrations/supabase/client.ts` (shared Supabase client)
-  - `pages/` route-level components that compose domain views
+  - `pages/` route-level components that compose domain UI and call domain hooks
   - `state/` Redux store and slices used by multiple pages (only if necessary)
 
 - `supabase/`
@@ -76,9 +88,11 @@ Responsibilities:
 
 ## Coding conventions
 
-- Views never import Supabase or Redux directly; they consume props from controllers.
-- Controllers use React Query for server state; repository functions are the query/mutation fetchers.
-- Repositories are the only place that perform I/O. Keep them thin and typed, and re-use them across controllers.
+- New `ui` code must not import Supabase directly. Existing violations are migration debt and should be moved behind hooks or data modules.
+- `hooks` use React Query for server state; repository functions are the query/mutation fetchers.
+- `data` modules are the only place that should perform I/O. Keep them thin and typed, and re-use them across hooks.
+- Pages should stay thin and compose domain UI plus domain hooks. They should not become ad hoc feature containers.
+- ESLint blocks direct Supabase imports from `src/pages`, `src/components/layout`, and `src/domains/*/hooks` so infrastructure access stays behind shared auth or domain data seams.
 - Prefer SQL views/RPCs for non-trivial aggregations so frontends remain simple and portable.
 - Export only from each domain’s `index.ts` to keep a clean public surface.
 - Use clear, descriptive names; avoid abbreviations; favor pure functions and early returns.
@@ -86,10 +100,10 @@ Responsibilities:
 ## Adding new features (workflow)
 
 1. Define the domain or extend an existing one.
-2. Model: add/adjust tables/migrations and repository functions; add types/validation.
-3. Controller: add hooks that wrap repository calls with React Query and orchestration.
-4. View: build presentational components that consume the controller hooks via props.
-5. Route: wire a page in `src/pages` if needed and compose domain views.
+2. Data: add/adjust tables/migrations and repository functions; add types/validation.
+3. Hooks: add React hooks that wrap repository calls with React Query and orchestration.
+4. UI: build components that consume hook data via props or a thin container.
+5. Route: wire a page in `src/pages` if needed and compose domain UI.
 6. Keep RLS and RPCs updated in `supabase/migrations` when data shapes change.
 
 ## Roadmap snapshot
