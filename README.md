@@ -65,19 +65,23 @@ The app will be available at `http://localhost:5173`.
 
 ```
 src/
-├── components/           # Reusable UI components
-│   ├── core/             # shadcn/ui base components
-│   ├── features/         # Feature-specific components
-│   └── layout/           # Layout components
-├── hooks/                # Custom React hooks
-├── lib/                  # Utilities and integrations
-│   ├── integrations/     # Supabase client and API functions
-│   ├── types/            # TypeScript type definitions
-│   └── utils/            # Helper functions
-├── pages/                # Page components
+├── domains/              # Feature-first organization
+│   └── <domain>/
+│       ├── ui/           # Domain components and screens
+│       ├── hooks/        # React orchestration for the domain
+│       ├── data/         # Repositories, types, pure domain logic
+│       └── index.ts      # Domain public surface
+├── components/
+│   ├── core/             # Shared UI primitives
+│   └── layout/           # Global shell/navigation components
+├── hooks/                # Shared app-level hooks
+├── lib/                  # Cross-domain utilities and integrations
+├── pages/                # Thin route-level composition
 ├── state/                # Redux store and slices
 └── main.tsx              # Application entry point
 ```
+
+The codebase is currently migrating from older `view/controller/model` naming to `ui/hooks/data`. The rename is complete; tightening the actual boundaries is the next phase.
 
 ## Fitness-Only Fork
 

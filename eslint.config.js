@@ -24,6 +24,54 @@ export default tseslint.config(
         { allowConstantExport: true },
       ],
       "@typescript-eslint/no-unused-vars": "off",
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [
+                "**/view",
+                "**/view/**",
+                "**/controller",
+                "**/controller/**",
+                "**/model",
+                "**/model/**",
+              ],
+              message:
+                "Use ui/hooks/data paths. The old view/controller/model layer names are deprecated.",
+            },
+          ],
+        },
+      ],
+    },
+  }
+  ,
+  {
+    files: [
+      "src/domains/**/hooks/**/*.{ts,tsx}",
+      "src/pages/**/*.{ts,tsx}",
+      "src/components/layout/**/*.{ts,tsx}",
+    ],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [
+                "@/lib/integrations/supabase/client",
+                "@/lib/integrations/supabase/types",
+                "**/lib/integrations/supabase/client",
+                "**/lib/integrations/supabase/client.*",
+                "**/lib/integrations/supabase/types",
+                "**/lib/integrations/supabase/types.*",
+              ],
+              message:
+                "Pages, layout components, and domain hooks should depend on domain data/auth seams instead of importing Supabase directly.",
+            },
+          ],
+        },
+      ],
     },
   }
 );

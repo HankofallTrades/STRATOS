@@ -7,8 +7,8 @@ import React, {
 } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/integrations/supabase/client";
-import { OnboardingDialog } from "@/domains/account/view/OnboardingDialog";
-import { fetchUserProfile, type ProfileRow } from "@/domains/account/model/accountRepository";
+import { OnboardingDialog } from "@/domains/account/ui/OnboardingDialog";
+import { fetchUserProfile, type ProfileRow } from "@/domains/account/data/accountRepository";
 import type { Database } from '@/lib/integrations/supabase/types';
 
 
