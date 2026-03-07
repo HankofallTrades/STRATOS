@@ -17,6 +17,13 @@ This file is the fast operational map for agents and future sessions. It is not 
 3. `docs/plan.md` for migration history and remaining roadmap items.
 4. `git status --short` before editing, because the repo may be intentionally dirty during refactors.
 
+## Database Workflow
+
+- For tasks that depend on actual remote data, inspect the linked Supabase project before making assumptions.
+- Prefer the Supabase CLI first for remote database inspection and management.
+- If the CLI path is blocked by local environment limits, fall back to direct database inspection with the linked project credentials instead of inferring remote state from migrations or local code.
+- This is required for exercise catalog cleanup, variation/equipment normalization, foreign-key cleanup, RLS-sensitive checks, and mesocycle/session-template repairs.
+
 ## Runtime Entrypoints
 
 - `src/main.tsx`
@@ -282,7 +289,7 @@ Run these sequentially, not in parallel:
 
 Current expected lint baseline:
 - 8 warnings
-- 0 errors
+- 2 existing errors in `vite.config.ts` for `@typescript-eslint/no-explicit-any`
 - warnings are `react-refresh/only-export-components` in shared UI/provider files
 
 ## When To Update This File
