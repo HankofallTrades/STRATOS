@@ -17,6 +17,7 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
     isAddingVariation,
     newVariationName,
     isLoading,
+    addVariationMutationStatus,
     setNewVariationName,
     setIsAddingVariation,
     addSet,
@@ -46,7 +47,7 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
       isAddingVariation={isAddingVariation}
       newVariationName={newVariationName}
       isLoadingVariations={isLoading}
-      addVariationMutationStatus={isAddingVariation ? 'pending' : 'idle'}
+      addVariationMutationStatus={addVariationMutationStatus}
       onVariationChange={updateVariation}
       onNewVariationNameChange={setNewVariationName}
       onSaveNewVariation={handleSaveNewVariation}

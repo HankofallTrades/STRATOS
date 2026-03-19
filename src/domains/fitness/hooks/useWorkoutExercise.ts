@@ -225,6 +225,7 @@ export const useWorkoutExercise = (workoutExercise: WorkoutExercise) => {
         isAddingVariation,
         newVariationName,
         isLoading: isLoadingVariations || isLoadingHistory,
+        addVariationMutationStatus: addVariationMutation.status,
         setNewVariationName,
         setIsAddingVariation,
         addSet,
