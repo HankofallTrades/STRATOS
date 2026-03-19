@@ -1,4 +1,4 @@
-import React, { Fragment, useMemo, useState, useRef, useEffect } from 'react';
+import React, { Fragment, useMemo, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { RecommendedStrengthSetPerformance } from '../data/recommendations';
 // TanStack Query - Removed hooks, just keep types if needed
@@ -75,6 +75,7 @@ interface WorkoutExerciseViewProps {
   onSaveNewVariation: () => void;
   onCancelAddVariation: () => void;
   onUpdateLastSet: (field: 'weight' | 'reps' | 'time' | 'distance', change: number) => void;
+  restStartTime: number | null;
 }
 
 const DEFAULT_VARIATION = 'Standard'; // Define default variation
@@ -155,42 +156,16 @@ export const WorkoutExerciseView = ({
   onSaveNewVariation,
   onCancelAddVariation,
   onUpdateLastSet, // Destructure new prop
+  restStartTime,
 }: WorkoutExerciseViewProps) => {
-  // Removed state: selectedVariation, isAddingVariation, newVariationName
-  // Removed queryClient
-  // REMOVED revealedItemId, cardX, deleteOpacity
-  // const [revealedItemId, setRevealedItemId] = useState<string | null>(null); 
-
   // State for Popover open state
   const [equipmentOpen, setEquipmentOpen] = useState(false);
   const [variationOpen, setVariationOpen] = useState(false);
   const [showNewEquipmentInput, setShowNewEquipmentInput] = useState(false);
   const [newEquipmentName, setNewEquipmentName] = useState("");
-  const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false); // New state for delete dialog
-  const [restStartTime, setRestStartTime] = useState<number | null>(null);
-
-  const prevCompletedSetsRef = useRef<number>(0);
-  const prevTotalSetsRef = useRef<number>(0);
+  const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
 
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Monitor sets to start/stop rest timer
-  useEffect(() => {
-    const completedSets = workoutExercise.sets.filter(s => s.completed).length;
-    const totalSets = workoutExercise.sets.length;
-
-    // Reset timer if a new set is added
-    if (totalSets > prevTotalSetsRef.current) {
-      setRestStartTime(null);
-    }
-    // Start/Restart timer if a set was just completed
-    else if (completedSets > prevCompletedSetsRef.current) {
-      setRestStartTime(Date.now());
-    }
-
-    prevCompletedSetsRef.current = completedSets;
-    prevTotalSetsRef.current = totalSets;
-  }, [workoutExercise.sets]);
 
   // REMOVED Motion value and transform
   // const cardX = useMotionValue(0);
@@ -472,6 +447,7 @@ export const WorkoutExerciseView = ({
           <CardioZoneIndicator sessionFocus={sessionFocus} />
         )}
 
+        <div className="relative">
         <div className="stone-surface overflow-hidden rounded-[18px]">
           <Table className="w-full">
             <TableHeader className="stone-table-head">
@@ -528,7 +504,7 @@ export const WorkoutExerciseView = ({
                   className="stone-seam border-t bg-white/[0.015]"
                 >
                   <TableCell className="px-2 py-3 text-center align-middle">
-                    <div className="relative flex items-center justify-center">
+                    <div className="flex items-center justify-center">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -538,12 +514,6 @@ export const WorkoutExerciseView = ({
                       >
                         <Plus size={15} />
                       </Button>
-                      {restStartTime && (
-                        <RestTimer
-                          startTime={restStartTime}
-                          className="absolute left-full ml-2 whitespace-nowrap"
-                        />
-                      )}
                     </div>
                   </TableCell>
 
@@ -636,6 +606,13 @@ export const WorkoutExerciseView = ({
               </AnimatePresence>
             </TableBody>
           </Table>
+        </div>
+        {restStartTime && (
+          <RestTimer
+            startTime={restStartTime}
+            className="absolute bottom-2.5 right-3 pointer-events-none"
+          />
+        )}
         </div>
       </section>
 
