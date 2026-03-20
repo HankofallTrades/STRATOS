@@ -5,9 +5,10 @@ import { WorkoutExerciseView } from './WorkoutExerciseView';
 
 interface WorkoutExerciseContainerProps {
   workoutExercise: WorkoutExercise;
+  restStartTime?: number | null;
 }
 
-export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> = ({ workoutExercise }) => {
+export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> = ({ workoutExercise, restStartTime }) => {
   const DEFAULT_VARIATION = 'Standard';
   const {
     variations,
@@ -53,6 +54,7 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
       onSaveNewVariation={handleSaveNewVariation}
       onCancelAddVariation={handleCancelAddVariation}
       onUpdateLastSet={updateLastSetField}
+      restStartTime={restStartTime ?? null}
     />
   );
 };

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAppSelector } from "@/hooks/redux";
 import { selectCurrentWorkout } from "@/state/workout/workoutSlice";
 import ExerciseSelector from "./ExerciseSelector";
@@ -7,6 +7,32 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const WorkoutComponent = () => {
   const currentWorkout = useAppSelector(selectCurrentWorkout);
+
+  const [restTimerState, setRestTimerState] = useState<{ exerciseId: string; startTime: number } | null>(null);
+  const isInitializedRef = useRef(false);
+  const prevCompletedCountsRef = useRef<Record<string, number>>({});
+
+  useEffect(() => {
+    if (!currentWorkout) return;
+
+    if (!isInitializedRef.current) {
+      isInitializedRef.current = true;
+      for (const exercise of currentWorkout.exercises) {
+        prevCompletedCountsRef.current[exercise.id] = exercise.sets.filter(s => s.completed).length;
+      }
+      return;
+    }
+
+    for (const exercise of currentWorkout.exercises) {
+      const completedCount = exercise.sets.filter(s => s.completed).length;
+      const prevCount = prevCompletedCountsRef.current[exercise.id] ?? 0;
+
+      if (completedCount > prevCount) {
+        setRestTimerState({ exerciseId: exercise.id, startTime: Date.now() });
+      }
+      prevCompletedCountsRef.current[exercise.id] = completedCount;
+    }
+  }, [currentWorkout]);
 
   if (!currentWorkout) {
     return null;
@@ -27,7 +53,10 @@ const WorkoutComponent = () => {
                   exit={{ opacity: 0, height: 0, marginBottom: 0 }}
                   transition={{ type: "spring", stiffness: 250, damping: 30 }}
                 >
-                  <WorkoutExerciseContainer workoutExercise={exercise} />
+                  <WorkoutExerciseContainer
+                    workoutExercise={exercise}
+                    restStartTime={restTimerState?.exerciseId === exercise.id ? restTimerState.startTime : null}
+                  />
                 </motion.div>
               ))}
             </AnimatePresence>
