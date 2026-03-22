@@ -7,7 +7,7 @@ import {
   isCardioSet,
 } from "@/lib/types/workout";
 import { Input } from "@/components/core/input";
-import { Timer, MapPin, Check } from "lucide-react";
+import { Timer, MapPin, Check, Play, Square } from "lucide-react";
 import {
   TableCell,
 } from "@/components/core/table";
@@ -44,6 +44,7 @@ const SetComponent: React.FC<SetComponentProps> = ({
     localTime,
     localDuration,
     localDistance,
+    cardioTimerRunning,
     handleWeightChange,
     handleRepsChange,
     handleTimeChange,
@@ -51,6 +52,8 @@ const SetComponent: React.FC<SetComponentProps> = ({
     handleDistanceChange,
     handleCompletionChange,
     handleBlur,
+    handleStartCardioTimer,
+    handleStopCardioTimer,
     showWeightIndicator,
     showRepsIndicator,
     showTimeIndicator
@@ -91,7 +94,22 @@ const SetComponent: React.FC<SetComponentProps> = ({
         {/* Duration column */}
         <TableCell className="relative w-[88px] px-2 py-2 align-middle">
           <div className="flex items-center gap-1">
-            <Timer className="h-3 w-3 text-muted-foreground/60" />
+            {!isCompleted ? (
+              <button
+                onClick={cardioTimerRunning ? handleStopCardioTimer : handleStartCardioTimer}
+                className={cn(
+                  "flex h-5 w-5 shrink-0 items-center justify-center rounded-[6px] transition-colors",
+                  cardioTimerRunning
+                    ? "bg-rose-500/12 text-rose-400"
+                    : "text-muted-foreground/60 hover:text-foreground/80"
+                )}
+                aria-label={cardioTimerRunning ? "Stop timer" : "Start timer"}
+              >
+                {cardioTimerRunning ? <Square size={10} className="fill-current" /> : <Play size={10} className="fill-current" />}
+              </button>
+            ) : (
+              <Timer className="h-3 w-3 text-muted-foreground/60" />
+            )}
             <Input
               id={`duration-${set.id}`}
               type="number"
@@ -102,11 +120,12 @@ const SetComponent: React.FC<SetComponentProps> = ({
               className={cn(
                 "stone-inset h-10 w-full rounded-[14px] px-0 text-center text-sm font-medium text-foreground shadow-none focus-visible:ring-0",
                 "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-                isCompleted && "stone-inset-complete text-foreground/58"
+                isCompleted && "stone-inset-complete text-foreground/58",
+                cardioTimerRunning && "tabular-nums"
               )}
               placeholder={previousPerformance?.time_seconds ? String(previousPerformance.time_seconds) : "0"}
               aria-label="Duration in seconds"
-              disabled={isCompleted}
+              disabled={isCompleted || cardioTimerRunning}
             />
           </div>
         </TableCell>

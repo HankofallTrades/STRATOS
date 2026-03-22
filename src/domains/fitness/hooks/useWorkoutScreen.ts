@@ -9,7 +9,11 @@ import {
   selectCurrentWorkout,
   selectSessionFocus,
   selectWorkoutStartTime,
+  selectWarmupStartTime,
+  selectWarmupSeconds,
   startWorkout as startWorkoutAction,
+  startWarmup,
+  stopWarmup,
 } from "@/state/workout/workoutSlice";
 import { useAuth } from "@/state/auth/AuthProvider";
 import { useWorkoutPersistence } from "@/domains/fitness/hooks/useWorkout";
@@ -24,7 +28,10 @@ export const useWorkoutScreen = () => {
   const currentWorkout = useAppSelector(selectCurrentWorkout);
   const workoutStartTime = useAppSelector(selectWorkoutStartTime);
   const sessionFocus = useAppSelector(selectSessionFocus);
+  const warmupStartTime = useAppSelector(selectWarmupStartTime);
+  const warmupSeconds = useAppSelector(selectWarmupSeconds);
   const displayTime = useElapsedTime(workoutStartTime);
+  const warmupElapsed = useElapsedTime(warmupStartTime);
   const { user } = useAuth();
 
   const [selectedFocus, setSelectedFocus] = useState<SessionFocus | null>(null);
@@ -179,9 +186,15 @@ export const useWorkoutScreen = () => {
     setIsDiscardConfirmOpen(false);
   };
 
+  const handleStartWarmup = () => dispatch(startWarmup());
+  const handleStopWarmup = () => dispatch(stopWarmup());
+
   return {
     currentWorkout,
     displayTime,
+    warmupStartTime,
+    warmupElapsed,
+    warmupSeconds,
     sessionFocus,
     selectedFocus,
     customSessionFocus,
@@ -214,5 +227,7 @@ export const useWorkoutScreen = () => {
     handleStartCustomMesocycleSession,
     handleEndWorkout,
     handleConfirmDiscard,
+    handleStartWarmup,
+    handleStopWarmup,
   };
 };

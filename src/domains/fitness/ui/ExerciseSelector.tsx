@@ -4,7 +4,8 @@ import { Plus, Search, Trash2 } from "lucide-react";
 import { Label } from "@/components/core/label";
 import { Input } from "@/components/core/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/core/Dialog";
-import { Exercise } from "@/lib/types/workout";
+import { Exercise, ExerciseCategory } from "@/lib/types/workout";
+import { cn } from "@/lib/utils/cn";
 import { Switch } from "@/components/core/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/core/select";
 import { useExerciseSelector } from '../hooks/useExerciseSelector';
@@ -44,6 +45,22 @@ const formatArchetypeName = (name: string): string => {
   return firstPart;
 };
 
+const CATEGORY_OPTIONS: { value: ExerciseCategory; label: string }[] = [
+  { value: 'weights', label: 'Weights' },
+  { value: 'calisthenics', label: 'Calisthenics' },
+  { value: 'cardio', label: 'Cardio' },
+  { value: 'mobility', label: 'Mobility' },
+  { value: 'stability', label: 'Stability' },
+];
+
+const CATEGORY_BADGE_STYLES: Record<ExerciseCategory, string> = {
+  weights: 'bg-white/[0.06] text-foreground/50',
+  calisthenics: 'bg-amber-500/10 text-amber-400/70',
+  cardio: 'bg-sky-500/10 text-sky-400/70',
+  mobility: 'bg-emerald-500/10 text-emerald-400/70',
+  stability: 'bg-violet-500/10 text-violet-400/70',
+};
+
 const ExerciseSelector = ({
   openOnMount = false,
   iconOnly = false,
@@ -66,6 +83,8 @@ const ExerciseSelector = ({
     newExerciseName,
     isStaticNewExercise,
     selectedArchetypeId,
+    categoryFilter,
+    newExerciseCategory,
     isLoading,
     isLoadingArchetypes,
     isPending,
@@ -74,6 +93,8 @@ const ExerciseSelector = ({
     setNewExerciseName,
     setIsStaticNewExercise,
     setSelectedArchetypeId,
+    setCategoryFilter,
+    setNewExerciseCategory,
     selectExercise,
     removeExercise,
     handleCreate
@@ -119,10 +140,12 @@ const ExerciseSelector = ({
       setNewExerciseName("");
       setIsStaticNewExercise(false);
       setSelectedArchetypeId(null);
+      setCategoryFilter(null);
+      setNewExerciseCategory(null);
       clearLongPressTimer();
       setExerciseToDelete(null);
     }
-  }, [open, setSearchQuery, setIsAddingNew, setNewExerciseName, setIsStaticNewExercise, setSelectedArchetypeId]);
+  }, [open, setSearchQuery, setIsAddingNew, setNewExerciseName, setIsStaticNewExercise, setSelectedArchetypeId, setCategoryFilter, setNewExerciseCategory]);
 
   return (
     <div className={trigger ? "" : "flex justify-end"}>
@@ -161,6 +184,35 @@ const ExerciseSelector = ({
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-4">
+            {/* Category filter chips */}
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                onClick={() => setCategoryFilter(null)}
+                className={cn(
+                  "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                  !categoryFilter
+                    ? "bg-white/[0.1] text-foreground"
+                    : "bg-white/[0.03] text-muted-foreground hover:text-foreground/80"
+                )}
+              >
+                All
+              </button>
+              {CATEGORY_OPTIONS.map((cat) => (
+                <button
+                  key={cat.value}
+                  onClick={() => setCategoryFilter(categoryFilter === cat.value ? null : cat.value)}
+                  className={cn(
+                    "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                    categoryFilter === cat.value
+                      ? CATEGORY_BADGE_STYLES[cat.value]
+                      : "bg-white/[0.03] text-muted-foreground hover:text-foreground/80"
+                  )}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+
             <div className="relative">
               <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/75" />
               <Input
@@ -197,7 +249,15 @@ const ExerciseSelector = ({
                     }`}
                     style={{ WebkitTouchCallout: 'none' }}
                   >
-                    {exercise.name}
+                    <span className="truncate">{exercise.name}</span>
+                    {exercise.exercise_category && exercise.exercise_category !== 'weights' && (
+                      <span className={cn(
+                        "ml-auto shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium",
+                        CATEGORY_BADGE_STYLES[exercise.exercise_category as ExerciseCategory] ?? "bg-white/[0.06] text-foreground/50"
+                      )}>
+                        {CATEGORY_OPTIONS.find(c => c.value === exercise.exercise_category)?.label ?? exercise.exercise_category}
+                      </span>
+                    )}
                   </Button>
                 ))
               ) : (
@@ -219,16 +279,38 @@ const ExerciseSelector = ({
                   />
                 </div>
 
+                <div className="space-y-1 pt-2">
+                  <Label className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Category</Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {CATEGORY_OPTIONS.map((cat) => (
+                      <button
+                        key={cat.value}
+                        type="button"
+                        onClick={() => setNewExerciseCategory(newExerciseCategory === cat.value ? null : cat.value)}
+                        disabled={isPending}
+                        className={cn(
+                          "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                          newExerciseCategory === cat.value
+                            ? CATEGORY_BADGE_STYLES[cat.value]
+                            : "bg-white/[0.03] text-muted-foreground hover:text-foreground/80"
+                        )}
+                      >
+                        {cat.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="flex items-end space-x-4 pt-2">
                   <div className="flex-grow space-y-1">
-                    <Label htmlFor="movement-type-select" className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Type</Label>
+                    <Label htmlFor="movement-type-select" className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Movement</Label>
                     <Select
                       value={selectedArchetypeId ?? undefined}
                       onValueChange={setSelectedArchetypeId}
                       disabled={isLoadingArchetypes || isPending}
                     >
                       <SelectTrigger id="movement-type-select" className={workoutMenuSelectTriggerClassName}>
-                        <SelectValue placeholder={isLoadingArchetypes ? "Loading types..." : "Select type..."} />
+                        <SelectValue placeholder={isLoadingArchetypes ? "Loading..." : "Select movement..."} />
                       </SelectTrigger>
                       <SelectContent className={workoutMenuSelectContentClassName}>
                         {archetypes.map(archetype => (

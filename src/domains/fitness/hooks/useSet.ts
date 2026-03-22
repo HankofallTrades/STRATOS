@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAppDispatch } from "@/hooks/redux";
 import type { RecommendedStrengthSetPerformance } from '../data/recommendations';
 import {
@@ -68,6 +68,43 @@ export const useSet = ({
     const cardioSetDistanceKm = cardioSet?.distance_km;
     const [localDuration, setLocalDuration] = useState(() => (cardioSet ? timeToSeconds(cardioSet.time).toString() : ''));
     const [localDistance, setLocalDistance] = useState(() => (cardioSet ? (cardioSet.distance_km || 0).toString() : ''));
+
+    // --- Cardio Timer ---
+    const [cardioTimerRunning, setCardioTimerRunning] = useState(false);
+    const cardioTimerStartRef = useRef<number | null>(null);
+
+    const handleStartCardioTimer = useCallback(() => {
+        cardioTimerStartRef.current = Date.now();
+        setCardioTimerRunning(true);
+    }, []);
+
+    const handleStopCardioTimer = useCallback(() => {
+        if (cardioTimerStartRef.current) {
+            const elapsed = Math.round((Date.now() - cardioTimerStartRef.current) / 1000);
+            setLocalDuration(String(elapsed));
+            if (cardioSet) {
+                dispatch(updateCardioSetAction({
+                    workoutExerciseId,
+                    setId: set.id,
+                    time: secondsToTime(elapsed),
+                    distance_km: parseFloat(localDistance) > 0 ? parseFloat(localDistance) : undefined,
+                }));
+            }
+        }
+        cardioTimerStartRef.current = null;
+        setCardioTimerRunning(false);
+    }, [dispatch, workoutExerciseId, set.id, cardioSet, localDistance]);
+
+    // Live elapsed display while cardio timer is running
+    useEffect(() => {
+        if (!cardioTimerRunning || !cardioTimerStartRef.current) return;
+        const interval = setInterval(() => {
+            if (cardioTimerStartRef.current) {
+                setLocalDuration(String(Math.round((Date.now() - cardioTimerStartRef.current) / 1000)));
+            }
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [cardioTimerRunning]);
 
     // --- Sync Effects ---
     useEffect(() => {
@@ -335,6 +372,7 @@ export const useSet = ({
         localTime,
         localDuration,
         localDistance,
+        cardioTimerRunning,
         handleWeightChange,
         handleRepsChange,
         handleTimeChange,
@@ -343,6 +381,8 @@ export const useSet = ({
         handleCompletionChange,
         handleBlur,
         handleDelete,
+        handleStartCardioTimer,
+        handleStopCardioTimer,
         showWeightIndicator,
         showRepsIndicator,
         showTimeIndicator

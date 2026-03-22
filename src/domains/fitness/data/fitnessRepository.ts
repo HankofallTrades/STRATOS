@@ -246,6 +246,7 @@ export const createExercise = async (userId: string, exercise: {
     name: string;
     is_static: boolean;
     archetype_id: string;
+    exercise_category?: string;
 }): Promise<ExerciseRow> => {
     const { data, error } = await supabase
         .from('exercises')
@@ -384,6 +385,7 @@ export const saveWorkoutToDb = async (
         type: workoutType,
         session_focus: workoutToEnd.session_focus || null,
         notes: workoutToEnd.notes || null,
+        warmup_seconds: workoutToEnd.warmup_seconds || null,
     };
 
     const optionalPeriodizationFields: Record<string, unknown> = {};
