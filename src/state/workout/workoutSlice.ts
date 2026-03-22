@@ -7,6 +7,7 @@ import type { RootState } from '../store'; // Import RootState for selectors
 interface WorkoutState {
   currentWorkout: Workout | null;
   workoutStartTime: number | null; // Store start time as timestamp (ms)
+  warmupStartTime: number | null;
 }
 
 interface StartWorkoutPayload {
@@ -20,7 +21,8 @@ interface StartWorkoutPayload {
 
 const initialState: WorkoutState = {
   currentWorkout: null,
-  workoutStartTime: null, // Initialize as null
+  workoutStartTime: null,
+  warmupStartTime: null,
 };
 
 const workoutSlice = createSlice({
@@ -86,6 +88,16 @@ const workoutSlice = createSlice({
     clearWorkout(state) {
       state.currentWorkout = null;
       state.workoutStartTime = null;
+      state.warmupStartTime = null;
+    },
+    startWarmup(state) {
+      state.warmupStartTime = Date.now();
+    },
+    stopWarmup(state) {
+      if (state.currentWorkout && state.warmupStartTime) {
+        state.currentWorkout.warmup_seconds = Math.round((Date.now() - state.warmupStartTime) / 1000);
+        state.warmupStartTime = null;
+      }
     },
     addExerciseToWorkout(state, action: PayloadAction<WorkoutExercise>) {
         if (state.currentWorkout) {
@@ -269,6 +281,8 @@ export const {
   setWorkoutNotes,
   endWorkout,
   clearWorkout,
+  startWarmup,
+  stopWarmup,
   addExerciseToWorkout,
   replaceWorkoutExercise,
   addSetToExercise,
@@ -291,6 +305,8 @@ export const selectSessionFocus = (state: RootState) => state.workout.currentWor
 export const selectMesocycleProtocol = (state: RootState) => state.workout.currentWorkout?.mesocycle_protocol;
 
 export const selectWorkoutNotes = (state: RootState) => state.workout.currentWorkout?.notes;
+export const selectWarmupStartTime = (state: RootState) => state.workout.warmupStartTime;
+export const selectWarmupSeconds = (state: RootState) => state.workout.currentWorkout?.warmup_seconds;
 
 // Additional selectors for session focus guidance
 export const selectIsZone2Workout = (state: RootState) => state.workout.currentWorkout?.session_focus === 'zone2';

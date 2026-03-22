@@ -249,6 +249,7 @@ export type Database = {
           created_at: string | null
           created_by_user_id: string | null
           default_equipment_type: string | null
+          exercise_category: string | null
           exercise_type: string | null
           id: string
           is_static: boolean | null
@@ -260,6 +261,7 @@ export type Database = {
           created_at?: string | null
           created_by_user_id?: string | null
           default_equipment_type?: string | null
+          exercise_category?: string | null
           exercise_type?: string | null
           id?: string
           is_static?: boolean | null
@@ -271,6 +273,7 @@ export type Database = {
           created_at?: string | null
           created_by_user_id?: string | null
           default_equipment_type?: string | null
+          exercise_category?: string | null
           exercise_type?: string | null
           id?: string
           is_static?: boolean | null
@@ -896,6 +899,7 @@ export type Database = {
           session_focus: string | null
           type: string | null
           user_id: string
+          warmup_seconds: number | null
         }
         Insert: {
           completed?: boolean
@@ -910,6 +914,7 @@ export type Database = {
           session_focus?: string | null
           type?: string | null
           user_id: string
+          warmup_seconds?: number | null
         }
         Update: {
           completed?: boolean
@@ -924,6 +929,7 @@ export type Database = {
           session_focus?: string | null
           type?: string | null
           user_id?: string
+          warmup_seconds?: number | null
         }
         Relationships: [
           {

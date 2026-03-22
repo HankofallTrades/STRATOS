@@ -1,5 +1,5 @@
 import { Barbell } from "@phosphor-icons/react";
-import { ChevronDown, Clock } from "lucide-react";
+import { ChevronDown, Clock, Play, Square } from "lucide-react";
 
 import { Button } from "@/components/core/button";
 import {
@@ -51,6 +51,9 @@ const WorkoutScreen = () => {
   const {
     currentWorkout,
     displayTime,
+    warmupStartTime,
+    warmupElapsed,
+    warmupSeconds,
     selectedFocus,
     customSessionFocus,
     mesocycleName,
@@ -82,6 +85,8 @@ const WorkoutScreen = () => {
     handleStartCustomMesocycleSession,
     handleEndWorkout,
     handleConfirmDiscard,
+    handleStartWarmup,
+    handleStopWarmup,
   } = useWorkoutScreen();
 
   if (!currentWorkout) {
@@ -391,6 +396,39 @@ const WorkoutScreen = () => {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Warmup Timer */}
+        <div className="mb-4 flex items-center gap-3 rounded-[16px] stone-surface px-4 py-3">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+            Warmup
+          </div>
+          {warmupStartTime ? (
+            <>
+              <span className="text-lg font-medium tabular-nums text-foreground">
+                {formatTime(warmupElapsed)}
+              </span>
+              <button
+                onClick={handleStopWarmup}
+                className="ml-auto flex h-8 w-8 items-center justify-center rounded-[10px] bg-rose-500/12 text-rose-400 transition-colors hover:bg-rose-500/20"
+                aria-label="Stop warmup"
+              >
+                <Square size={14} className="fill-current" />
+              </button>
+            </>
+          ) : warmupSeconds ? (
+            <span className="text-sm font-medium text-foreground/60">
+              {formatTime(warmupSeconds)}
+            </span>
+          ) : (
+            <button
+              onClick={handleStartWarmup}
+              className="ml-auto flex h-8 w-8 items-center justify-center rounded-[10px] bg-white/[0.04] text-foreground/60 transition-colors hover:bg-white/[0.08] hover:text-foreground"
+              aria-label="Start warmup"
+            >
+              <Play size={14} className="fill-current" />
+            </button>
+          )}
         </div>
 
         <div className="min-h-0 flex-1">

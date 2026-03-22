@@ -1,17 +1,21 @@
 /**
+ * Organizational category for exercises (filtering/display only, doesn't affect set structure)
+ */
+export type ExerciseCategory = 'weights' | 'calisthenics' | 'cardio' | 'mobility' | 'stability';
+
+/**
  * Represents the core definition of an exercise, mirroring the Supabase 'exercises' table.
  */
 export interface Exercise {
   id: string;
   name: string;
-  exercise_type?: 'strength' | 'cardio'; // Added: Exercise type for cardio support
-  archetype_id?: string | null; // Added for movement archetype support
-  // oneRepMax?: number; // Removed - Likely stored in user_exercise_stats
-  default_equipment_type?: string | null; // Renamed from equipmentType, matching DB
-  created_by_user_id?: string | null; // Add the creator user ID field
-  // variations?: string[]; // Removed - Likely stored in exercise_variations
-  muscle_groups?: string[]; // Added: Array of muscle group names targeted
-  is_static?: boolean | null; // Added is_static
+  exercise_type?: 'strength' | 'cardio';
+  exercise_category?: ExerciseCategory | null;
+  archetype_id?: string | null;
+  default_equipment_type?: string | null;
+  created_by_user_id?: string | null;
+  muscle_groups?: string[];
+  is_static?: boolean | null;
 }
 
 /**
@@ -178,7 +182,8 @@ export interface Workout {
   completed: boolean;
   workout_type?: 'strength' | 'cardio' | 'mixed'; // Auto-determined based on exercises
   session_focus?: SessionFocus; // User-selected training focus
-  notes?: string; // Workout notes
+  notes?: string;
+  warmup_seconds?: number;
   mesocycle_id?: string;
   mesocycle_session_id?: string;
   mesocycle_week?: number;

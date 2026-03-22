@@ -8,7 +8,7 @@ import {
     addExerciseToWorkout,
     replaceWorkoutExercise,
 } from "@/state/workout/workoutSlice";
-import { Exercise, WorkoutExercise, isCardioExercise, secondsToTime } from "@/lib/types/workout";
+import { Exercise, ExerciseCategory, WorkoutExercise, isCardioExercise, secondsToTime } from "@/lib/types/workout";
 import { v4 as uuidv4 } from 'uuid';
 
 interface ExerciseSelectionOptions {
@@ -28,6 +28,16 @@ export const useExerciseSelector = (isOpen: boolean, selectionOptions?: Exercise
     const [newExerciseName, setNewExerciseName] = useState("");
     const [isStaticNewExercise, setIsStaticNewExercise] = useState(false);
     const [selectedArchetypeId, setSelectedArchetypeId] = useState<string | null>(null);
+    const [categoryFilter, setCategoryFilter] = useState<ExerciseCategory | null>(null);
+    const [newExerciseCategory, setNewExerciseCategoryRaw] = useState<ExerciseCategory | null>(null);
+
+    // When setting category to mobility/stability, default the timed toggle to true
+    const setNewExerciseCategory = useCallback((category: ExerciseCategory | null) => {
+        setNewExerciseCategoryRaw(category);
+        if (category === 'mobility' || category === 'stability') {
+            setIsStaticNewExercise(true);
+        }
+    }, []);
 
     // Queries
     const { data: exercises = [], isLoading: isLoadingExercises } = useQuery({
@@ -46,7 +56,7 @@ export const useExerciseSelector = (isOpen: boolean, selectionOptions?: Exercise
 
     // Mutations
     const createMutation = useMutation({
-        mutationFn: (data: { name: string; is_static: boolean; archetype_id: string }) =>
+        mutationFn: (data: { name: string; is_static: boolean; archetype_id: string; exercise_category?: string }) =>
             fitnessRepo.createExercise(user!.id, data),
         onSuccess: (newExercise) => {
             queryClient.invalidateQueries({ queryKey: ['exercises'] });
@@ -149,16 +159,18 @@ export const useExerciseSelector = (isOpen: boolean, selectionOptions?: Exercise
             createMutation.mutate({
                 name: newExerciseName.trim(),
                 is_static: isStaticNewExercise,
-                archetype_id: selectedArchetypeId
+                archetype_id: selectedArchetypeId,
+                ...(newExerciseCategory ? { exercise_category: newExerciseCategory } : {}),
             });
         }
-    }, [newExerciseName, isStaticNewExercise, selectedArchetypeId, createMutation]);
+    }, [newExerciseName, isStaticNewExercise, selectedArchetypeId, newExerciseCategory, createMutation]);
 
     const filteredExercises = useMemo(() => {
         return exercises.filter(ex =>
-            ex.name.toLowerCase().includes(searchQuery.toLowerCase())
+            ex.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
+            (!categoryFilter || ex.exercise_category === categoryFilter)
         );
-    }, [exercises, searchQuery]);
+    }, [exercises, searchQuery, categoryFilter]);
 
     return {
         exercises: filteredExercises,
@@ -168,6 +180,8 @@ export const useExerciseSelector = (isOpen: boolean, selectionOptions?: Exercise
         newExerciseName,
         isStaticNewExercise,
         selectedArchetypeId,
+        categoryFilter,
+        newExerciseCategory,
         isLoading: isLoadingExercises,
         isLoadingArchetypes,
         isPending: createMutation.isPending || deleteMutation.isPending || hideMutation.isPending,
@@ -176,6 +190,8 @@ export const useExerciseSelector = (isOpen: boolean, selectionOptions?: Exercise
         setNewExerciseName,
         setIsStaticNewExercise,
         setSelectedArchetypeId,
+        setCategoryFilter,
+        setNewExerciseCategory,
         selectExercise,
         removeExercise,
         handleCreate
