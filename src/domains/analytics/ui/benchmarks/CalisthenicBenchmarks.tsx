@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/core/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/core/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/core/popover";
+import { Skeleton } from "@/components/core/skeleton";
 import { useAnimatedValue } from '@/hooks/useAnimatedValue';
 import AnimatedLinearProgress from '@/components/core/AnimatedLinearProgress';
 import { useBenchmarks, BenchmarkLevel, BenchmarkTypeOption } from '../../hooks/useBenchmarks';
@@ -74,7 +75,19 @@ const CalisthenicBenchmarksView: React.FC<CalisthenicBenchmarksProps> = ({
 
     const renderBenchmarkContent = () => {
         if (isLoadingCalisthenics) {
-            return <p className="text-muted-foreground italic text-center py-4">Loading benchmarks...</p>;
+            return (
+                <div className="space-y-5">
+                    {[...Array(4)].map((_, i) => (
+                        <div key={i}>
+                            <div className="mb-1 flex items-center justify-between">
+                                <Skeleton className="h-4 w-24" />
+                                <Skeleton className="h-3 w-32" />
+                            </div>
+                            <Skeleton className="h-2 w-full rounded-full" />
+                        </div>
+                    ))}
+                </div>
+            );
         }
         if (errorCalisthenics) {
             return <p className="text-red-500 italic text-center py-4">Error loading benchmark data.</p>;
