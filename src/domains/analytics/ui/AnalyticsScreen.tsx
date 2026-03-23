@@ -26,15 +26,86 @@ const SunMoonProgress = lazy(
   () => import("@/components/core/charts/SunMoonProgress")
 );
 
-const AnalyticsPanelFallback = ({ label }: { label: string }) => (
-  <div className="stone-surface rounded-[26px] p-5 md:p-6">
-    <Skeleton className="mb-4 h-6 w-40" />
-    <div className="space-y-3">
-      <Skeleton className="h-4 w-full" />
-      <Skeleton className="h-4 w-3/4" />
-      <Skeleton className="h-4 w-1/2" />
+/** Mirrors PerformanceOverview: 4-col stat grid (icon + label / big value) */
+const PerformanceOverviewFallback = () => (
+  <section className="stone-panel stone-panel-hero overflow-hidden rounded-[28px] p-5 md:p-6">
+    <div className="grid grid-cols-2 gap-x-6 gap-y-5 md:grid-cols-4">
+      {[...Array(4)].map((_, i) => (
+        <div key={i} className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-4 w-4 rounded" />
+            <Skeleton className="h-4 w-16" />
+          </div>
+          <Skeleton className="h-9 w-3/4" />
+        </div>
+      ))}
+    </div>
+  </section>
+);
+
+/** Mirrors OneRepMax: exercise selector + time-range chips + chart area */
+const OneRepMaxFallback = () => (
+  <>
+    <Skeleton className="mb-4 h-8 w-48" />
+    <div className="mb-4 flex flex-wrap gap-1.5">
+      {[...Array(6)].map((_, i) => (
+        <Skeleton key={i} className="h-8 w-10 rounded-[12px]" />
+      ))}
+    </div>
+    <Skeleton className="h-[400px] w-full rounded-[16px]" />
+  </>
+);
+
+/** Mirrors Volume: 2-col grid of archetype label + sets count + progress bar */
+const VolumeFallback = () => (
+  <div className="grid grid-cols-1 gap-x-12 gap-y-5 md:grid-cols-2">
+    {[...Array(4)].map((_, i) => (
+      <div key={i} className="space-y-2">
+        <div className="flex items-end justify-between gap-3">
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-4 w-12" />
+        </div>
+        <Skeleton className="h-2.5 w-full rounded-full" />
+      </div>
+    ))}
+  </div>
+);
+
+/** Mirrors Benchmarks: dropdown header + 5 exercise progress bars */
+const BenchmarksFallback = () => (
+  <div className="relative">
+    <div className="mb-4 flex items-center gap-2">
+      <Skeleton className="h-5 w-5 rounded" />
+      <Skeleton className="h-6 w-28" />
+    </div>
+    <div className="space-y-5">
+      {[...Array(5)].map((_, i) => (
+        <div key={i}>
+          <div className="mb-1 flex items-center justify-between">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-3 w-40" />
+          </div>
+          <Skeleton className="h-2 w-full rounded-full" />
+        </div>
+      ))}
     </div>
   </div>
+);
+
+/** Mirrors RecentWorkouts: title + 3 workout rows (name / sets / exercises) */
+const RecentWorkoutsFallback = () => (
+  <section className="stone-surface rounded-[26px] p-5 md:p-6">
+    <Skeleton className="h-7 w-44" />
+    <div className="mt-5 space-y-4">
+      {[...Array(3)].map((_, i) => (
+        <div key={i} className="border-t border-white/6 pt-4 first:border-t-0 first:pt-0">
+          <Skeleton className="h-6 w-48" />
+          <Skeleton className="mt-3 h-4 w-32" />
+          <Skeleton className="mt-3 h-4 w-full" />
+        </div>
+      ))}
+    </div>
+  </section>
 );
 
 const RecoveryMarkerFallback = () => (
@@ -67,7 +138,7 @@ const AnalyticsScreen = () => {
   return (
     <div className="app-page">
       <main className="space-y-6">
-        <Suspense fallback={<AnalyticsPanelFallback label="performance overview" />}>
+        <Suspense fallback={<PerformanceOverviewFallback />}>
           <PerformanceOverview userId={userId} exercises={exercises} />
         </Suspense>
 
@@ -107,7 +178,7 @@ const AnalyticsScreen = () => {
 
               <div className="p-5 md:p-6">
                 <TabsContent value="E1RM" className="mt-0">
-                  <Suspense fallback={<AnalyticsPanelFallback label="estimated 1RM" />}>
+                  <Suspense fallback={<OneRepMaxFallback />}>
                     <OneRepMax
                       userId={userId}
                       exercises={exercises}
@@ -118,12 +189,12 @@ const AnalyticsScreen = () => {
                   </Suspense>
                 </TabsContent>
                 <TabsContent value="Volume" className="mt-0">
-                  <Suspense fallback={<AnalyticsPanelFallback label="volume" />}>
+                  <Suspense fallback={<VolumeFallback />}>
                     <Volume userId={userId} embedded={true} />
                   </Suspense>
                 </TabsContent>
                 <TabsContent value="Benchmarks" className="mt-0">
-                  <Suspense fallback={<AnalyticsPanelFallback label="benchmarks" />}>
+                  <Suspense fallback={<BenchmarksFallback />}>
                     {selectedBenchmarkType === "Strength" ? (
                       <StrengthBenchmarks
                         userId={userId}
@@ -218,7 +289,7 @@ const AnalyticsScreen = () => {
         </section>
 
         <div>
-          <Suspense fallback={<AnalyticsPanelFallback label="recent workouts" />}>
+          <Suspense fallback={<RecentWorkoutsFallback />}>
             <RecentWorkouts userId={userId} />
           </Suspense>
         </div>
