@@ -6,6 +6,7 @@ import { CardContent, CardHeader } from "@/components/core/card";
 import { ChevronDown } from "lucide-react";
 import { Exercise } from '@/lib/types/workout';
 import { Button } from "@/components/core/button";
+import { Skeleton } from "@/components/core/skeleton";
 import { useOneRepMax, TimeRange, UnifiedDataPoint } from '../hooks/useOneRepMax';
 
 interface OneRepMaxProps {
@@ -175,8 +176,14 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
     return (
         <>
             {isLoadingExercises ? (
-                <div className="p-5 text-sm italic text-muted-foreground md:p-6">
-                    Loading exercises...
+                <div className={embedded ? "" : "stone-surface rounded-[26px] p-5 md:p-6"}>
+                    <Skeleton className="mb-4 h-8 w-48" />
+                    <div className="flex flex-wrap gap-1.5 mb-4">
+                        {[...Array(6)].map((_, i) => (
+                            <Skeleton key={i} className="h-8 w-10 rounded-[12px]" />
+                        ))}
+                    </div>
+                    <Skeleton className="h-[400px] w-full rounded-[16px]" />
                 </div>
             ) : errorExercises ? (
                 <div className="p-5 text-center text-sm italic text-red-400 md:p-6">
@@ -236,7 +243,9 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
                         {selectedExercise && (
                             <>
                                 {isLoadingHistory ? (
-                                    <p className="text-muted-foreground italic text-center py-10">Loading history...</p>
+                                    <div className="py-10">
+                                        <Skeleton className="mx-auto h-[300px] w-full rounded-[16px]" />
+                                    </div>
                                 ) : errorHistory ? (
                                     <p className="text-red-500 italic text-center py-10">Error loading history: {errorHistory.message}</p>
                                 ) : chartData.length > 0 ? (

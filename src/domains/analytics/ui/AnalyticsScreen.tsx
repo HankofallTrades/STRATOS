@@ -1,6 +1,7 @@
 import { Suspense, lazy } from "react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/core/tabs";
+import { Skeleton } from "@/components/core/skeleton";
 import { useAnalyticsScreen } from "@/domains/analytics/hooks/useAnalyticsScreen";
 import { isAnalysisType } from "@/domains/analytics/data/analyticsScreen";
 
@@ -26,15 +27,18 @@ const SunMoonProgress = lazy(
 );
 
 const AnalyticsPanelFallback = ({ label }: { label: string }) => (
-  <div className="stone-surface rounded-[26px] p-5 text-left text-sm text-muted-foreground md:p-6">
-    Loading {label.toLowerCase()}...
+  <div className="stone-surface rounded-[26px] p-5 md:p-6">
+    <Skeleton className="mb-4 h-6 w-40" />
+    <div className="space-y-3">
+      <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-4 w-3/4" />
+      <Skeleton className="h-4 w-1/2" />
+    </div>
   </div>
 );
 
 const RecoveryMarkerFallback = () => (
-  <div className="flex h-[12.5rem] w-full items-center justify-center text-sm text-muted-foreground">
-    Loading marker...
-  </div>
+  <Skeleton className="h-[112px] w-[112px] rounded-full" />
 );
 
 const AnalyticsScreen = () => {
