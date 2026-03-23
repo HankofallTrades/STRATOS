@@ -2,6 +2,7 @@ import { Barbell } from "@phosphor-icons/react";
 import { ChevronDown, Clock, Play, Square } from "lucide-react";
 
 import { Button } from "@/components/core/button";
+import { Skeleton } from "@/components/core/skeleton";
 import {
   Dialog,
   DialogClose,
@@ -96,15 +97,33 @@ const WorkoutScreen = () => {
       <div className="stone-workout-page min-h-svh w-full">
         <div className="mx-auto flex min-h-svh w-full max-w-[72rem] flex-col px-4 pb-8 pt-5 sm:px-6 lg:px-8">
           {isLoadingMesocycle ? (
-            <section className="stone-panel stone-panel-hero rounded-[28px] p-6 md:p-7">
-              <div className="flex items-center gap-3">
-                <Barbell size={18} className="verdigris-text" />
-                <div className="app-kicker">Loading</div>
-              </div>
-              <h1 className="mt-3 text-[clamp(2rem,4vw,2.75rem)] font-semibold leading-none tracking-tight text-foreground">
-                Preparing your session.
-              </h1>
-            </section>
+            <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.92fr)]">
+              <section className="stone-panel stone-panel-hero overflow-hidden rounded-[28px] p-5 md:p-6">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-[18px] w-[18px] rounded" />
+                  <Skeleton className="h-3 w-32" />
+                </div>
+                <div className="mt-3">
+                  <Skeleton className="h-4 w-40" />
+                </div>
+                <div className="mt-5 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                  <Skeleton className="h-2 w-full rounded-full" />
+                </div>
+                <div className="mt-6 flex justify-end">
+                  <Skeleton className="h-11 w-full rounded-[18px] sm:w-44" />
+                </div>
+              </section>
+              <section className="stone-surface rounded-[26px] p-5 md:p-6">
+                <Skeleton className="h-3 w-16" />
+                <div className="mt-5 space-y-4">
+                  <Skeleton className="h-10 w-full rounded-[16px]" />
+                  <Skeleton className="h-11 w-full rounded-[18px]" />
+                </div>
+              </section>
+            </div>
           ) : activeProgram ? (
             <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.92fr)]">
               <section className="stone-panel stone-panel-hero overflow-hidden rounded-[28px] p-5 md:p-6">

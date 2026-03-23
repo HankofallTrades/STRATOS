@@ -6,6 +6,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/core/tooltip";
+import { Skeleton } from "@/components/core/skeleton";
 import { useVolumeChart, DisplayArchetypeData } from '../hooks/useVolumeChart';
 
 interface VolumeProps {
@@ -18,8 +19,19 @@ const VolumeView: React.FC<VolumeProps> = ({ userId, embedded = false }) => {
 
     if (isLoading) {
         return (
-            <div className="p-5 text-center text-sm italic text-muted-foreground md:p-6">
-                Loading volume data...
+            <div className={embedded ? "" : "stone-surface rounded-[26px] p-5 md:p-6"}>
+                {!embedded && <Skeleton className="mb-5 h-6 w-36" />}
+                <div className={`${embedded ? "" : "mt-5 "}grid grid-cols-1 gap-x-12 gap-y-5 md:grid-cols-2`}>
+                    {[...Array(4)].map((_, i) => (
+                        <div key={i} className="space-y-2">
+                            <div className="flex items-end justify-between gap-3">
+                                <Skeleton className="h-4 w-16" />
+                                <Skeleton className="h-4 w-12" />
+                            </div>
+                            <Skeleton className="h-2.5 w-full rounded-full" />
+                        </div>
+                    ))}
+                </div>
             </div>
         );
     }
