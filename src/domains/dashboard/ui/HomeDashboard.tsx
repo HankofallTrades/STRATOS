@@ -5,60 +5,10 @@ import { Button } from "@/components/core/button";
 import { Skeleton } from "@/components/core/skeleton";
 import { useHomeDashboard } from "@/domains/dashboard/hooks/useHomeDashboard";
 
-const HomeDashboardSkeleton = () => (
-  <div className="app-page">
-    <header className="mb-7 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-      <div className="space-y-1.5">
-        <Skeleton className="h-4 w-40" />
-        <Skeleton className="h-9 w-56" />
-      </div>
-      <Skeleton className="h-5 w-32 self-start md:self-auto" />
-    </header>
-
-    <main className="space-y-4">
-      <Card className="home-session-card stone-panel stone-panel-hero overflow-hidden border-white/10">
-        <CardContent className="relative flex flex-col gap-5 px-6 pb-6 pt-7 md:flex-row md:items-center md:justify-between md:gap-6 md:px-8 md:pb-7 md:pt-8">
-          <div className="space-y-3">
-            <Skeleton className="h-3 w-28" />
-            <div className="space-y-2">
-              <Skeleton className="h-10 w-64" />
-              <Skeleton className="h-4 w-80" />
-            </div>
-          </div>
-          <Skeleton className="h-11 w-full rounded-[18px] md:w-56" />
-        </CardContent>
-      </Card>
-
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        {[...Array(2)].map((_, i) => (
-          <Card key={i} className="home-data-card">
-            <CardHeader className="pb-1 pt-4 md:px-5 md:pt-5">
-              <Skeleton className="h-3 w-24" />
-            </CardHeader>
-            <CardContent className="space-y-1 pb-5 pt-0 md:px-5 md:pb-5">
-              <Skeleton className="h-6 w-40" />
-              <Skeleton className="h-4 w-56" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <Card className="home-habit-strip">
-        <CardContent className="py-3.5 md:px-5">
-          <div className="flex flex-wrap items-center gap-4">
-            {[...Array(3)].map((_, i) => (
-              <Skeleton key={i} className="h-5 w-24" />
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    </main>
-  </div>
-);
-
 const HomeDashboard = () => {
   const {
-    isLoading,
+    isLoadingLastSession,
+    isLoadingRecentPr,
     displayName,
     greeting,
     movementStreakLabel,
@@ -74,8 +24,6 @@ const HomeDashboard = () => {
     handleToggleHabit,
     goToWorkout,
   } = useHomeDashboard();
-
-  if (isLoading) return <HomeDashboardSkeleton />;
 
   return (
     <div className="app-page">
@@ -132,7 +80,12 @@ const HomeDashboard = () => {
               <div className="app-kicker">Last Session</div>
             </CardHeader>
             <CardContent className="space-y-1 pb-5 pt-0 md:px-5 md:pb-5">
-              {lastSessionSummary ? (
+              {isLoadingLastSession ? (
+                <>
+                  <Skeleton className="h-6 w-40" />
+                  <Skeleton className="h-4 w-56" />
+                </>
+              ) : lastSessionSummary ? (
                 <>
                   <p className="text-lg font-semibold text-foreground">{lastSessionSummary.title}</p>
                   <p className="text-sm text-muted-foreground">{lastSessionSummary.subtitle}</p>
@@ -148,7 +101,13 @@ const HomeDashboard = () => {
               <div className="app-kicker">Recent PR</div>
             </CardHeader>
             <CardContent className="space-y-1 pb-5 pt-0 md:px-5 md:pb-5">
-              {recentPr ? (
+              {isLoadingRecentPr ? (
+                <>
+                  <Skeleton className="h-6 w-36" />
+                  <Skeleton className="h-4 w-28" />
+                  <Skeleton className="h-4 w-56" />
+                </>
+              ) : recentPr ? (
                 <>
                   <p className="text-lg font-semibold text-foreground">{recentPr.exerciseName}</p>
                   {recentPr.topSetWeightLabel && recentPr.topSetRepsLabel ? (
