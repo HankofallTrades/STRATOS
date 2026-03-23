@@ -29,8 +29,7 @@ export const resolveCoachAgentEnvironment = (
   envSource: EnvironmentSource
 ): CoachAgentRuntimeEnvironment => ({
   localLlmUrl: envSource.LOCAL_LLM_URL || envSource.VITE_LOCAL_LLM_URL,
-  openRouterApiKey:
-    envSource.OPENROUTER_API_KEY || envSource.VITE_OPENROUTER_API_KEY,
+  openRouterApiKey: envSource.OPENROUTER_API_KEY,
   openRouterApiUrl:
     envSource.OPENROUTER_API_URL ||
     envSource.VITE_OPENROUTER_API_URL ||

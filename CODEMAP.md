@@ -85,6 +85,7 @@ Pages should stay thin wrappers around domain screens.
   - Also owns onboarding completeness checks and renders `OnboardingDialog`.
 - `src/domains/account/ui/AuthForm.tsx`
   - Still imports Supabase directly only for the Supabase Auth widget.
+  - Enables self-signup in local dev, or when `VITE_ENABLE_SELF_SIGNUP=true`.
   - Should not create its own auth state source.
 
 ### Server State

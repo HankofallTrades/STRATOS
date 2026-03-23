@@ -1,65 +1,86 @@
-# StratOS — Operating System for Life
+# STRATOS
 
-StratOS is a personal operating system that helps you operate your life with intent. It brings together body (fitness, nutrition, sunlight), systems (habits, goals, routines), and guidance (AI coach) into one cohesive daily workspace.
+STRATOS is a personal operating system for training, recovery, and daily execution. The current product center is fitness: workouts, analytics, nutrition, sunlight, and an AI coach. Habits, goals, and broader life-OS pieces are in progress.
 
-This repository is the new home for StratOS. The fitness-only application has been preserved in a separate fork so it can evolve independently and be monetized on its own.
+## Stack
 
-## Vision
+- React 18 + TypeScript + Vite
+- Tailwind CSS + shadcn/ui
+- Redux Toolkit + React Query
+- Supabase Auth + Postgres
+- Vercel-style serverless endpoint for Coach
 
-- **Unify**: One place to see and act on what matters today.
-- **Close the loop**: Plan, do, reflect. Turn data into decisions.
-- **Delight**: Fast, tactile, mobile-first interactions that get out of your way.
+## Local Development
 
-## Pillars
+### Prerequisites
 
-- **Body**: Fitness tracking, weekly cardio targets, protein intake, sun exposure
-- **Systems**: Habits, goals, and routines with clear weekly/daily focus
-- **Guidance**: Context-aware coaching that learns from your profile and history
+- Node.js 20+
+- npm
+- Docker Desktop or another running Docker daemon
 
-Note: RPG-style “character sheet” concepts are exciting but explicitly out-of-scope for MVP.
+### 1. Install dependencies
 
-## Status
+```sh
+npm install
+```
 
-- Current state: Working fitness and wellness foundation (from the original app)
-- In-progress: OS-level UX, habits/goals primitives, unified daily dashboard
-- Deferred: Character sheet RPG stats, complex program design
+### 2. Start local Supabase
 
-## Tech Stack
+```sh
+npm run supabase:start
+```
 
-- **Frontend**: React 18 + TypeScript + Vite
-- **Styling**: Tailwind CSS + shadcn/ui components
-- **State**: Redux Toolkit with persistence
-- **Database**: Supabase (PostgreSQL)
-- **Auth**: Supabase Auth
-- **AI**: Custom LLM client
+This repo is configured for local Supabase development. Docker is required for this step.
 
-## Getting Started (Development)
+### 3. Create `.env.local`
 
-1. Clone the repo
-   ```sh
-   git clone <YOUR_GIT_URL>
-   cd STRATOS
-   ```
-2. Install dependencies
-   ```sh
-   npm install
-   ```
-3. Environment variables
-   Create a `.env.local` file with your Supabase credentials:
-   ```env
-   VITE_SUPABASE_URL=your_supabase_url
-   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-   ```
-4. Database setup
-   ```sh
-   npx supabase db reset
-   ```
-5. Start the dev server
-   ```sh
-   npm run dev
-   ```
+Start from the example file:
 
-The app will be available at `http://localhost:5173`.
+```sh
+cp .env.example .env.local
+```
+
+Then run:
+
+```sh
+npm run supabase:status
+```
+
+Copy the `API_URL` value into `VITE_SUPABASE_URL` and the `ANON_KEY` value into `VITE_SUPABASE_ANON_KEY`.
+
+Important:
+
+- `VITE_*` variables are shipped to the browser. Only put public values there.
+- `OPENROUTER_API_KEY`, service-role keys, personal access tokens, and similar credentials must stay server-side and must not use the `VITE_` prefix.
+
+### 4. Apply migrations
+
+```sh
+npm run supabase:reset
+```
+
+There is currently no demo seed file. You will create your own local account and data.
+
+### 5. Start the app
+
+```sh
+npm run dev
+```
+
+The app runs at [http://localhost:8080](http://localhost:8080).
+
+In local `vite dev`, self-signup is enabled automatically on the login screen so you can create an account without any external backend.
+
+## Coach Setup
+
+The app runs without a hosted AI provider, but the Coach screen needs one of these:
+
+- Local model runtime:
+  Set `VITE_LLM_PROVIDER=local` and `LOCAL_LLM_URL=http://127.0.0.1:11434/v1/chat/completions`
+- OpenRouter:
+  Set `VITE_LLM_PROVIDER=openrouter` and `OPENROUTER_API_KEY=...`
+
+`OPENROUTER_API_KEY` is server-only. Do not move it behind a `VITE_` prefix.
 
 ## Project Structure
 
@@ -83,21 +104,23 @@ src/
 
 The codebase is currently migrating from older `view/controller/model` naming to `ui/hooks/data`. The rename is complete; tightening the actual boundaries is the next phase.
 
-## Fitness-Only Fork
-
-The fitness tracker is maintained separately as its own project ("StratOS Fit"). It preserves the original experience and roadmap focused purely on training, analytics, and simple nutrition/wellness logging. Link to its repo will be added when published.
-
 ## Development Commands
 
 - `npm run dev` — Start development server
 - `npm run build` — Build for production
 - `npm run preview` — Preview production build
 - `npm run lint` — Run ESLint
+- `npm run supabase:start` — Start local Supabase services
+- `npm run supabase:stop` — Stop local Supabase services
+- `npm run supabase:reset` — Rebuild the local database from migrations
+- `npm run supabase:status` — Print local Supabase URLs and keys
+
+## Security Notes
+
+- The current app only needs `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` on the client.
+- Any private provider key must stay server-side.
+- Before making the repo public, rotate any secret that was ever committed and rewrite git history to remove it.
 
 ## License
 
 MIT
-
----
-
-Built for people who want to run their lives like a high-performance system.

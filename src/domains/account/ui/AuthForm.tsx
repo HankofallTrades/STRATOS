@@ -8,6 +8,8 @@ import { useAuth } from "@/state/auth/AuthProvider";
 export const AuthForm = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const allowSelfSignup =
+    import.meta.env.DEV || import.meta.env.VITE_ENABLE_SELF_SIGNUP === "true";
 
   useEffect(() => {
     if (user) {
@@ -18,12 +20,12 @@ export const AuthForm = () => {
   return (
     <div className="w-full max-w-sm mx-auto mt-12 p-6 flex flex-col items-center">
       {/* You might want a logo or title here */}
-      <h2 className="text-2xl font-semibold mb-6 text-center">Login</h2>
+      <h2 className="text-2xl font-semibold mb-6 text-center">Sign In</h2>
       <div className="w-full p-6 border rounded-lg shadow-md bg-card">
         <Auth
           supabaseClient={supabase}
           view="sign_in"
-          showLinks={false}
+          showLinks={allowSelfSignup}
           providers={[]}
           appearance={{
             theme: ThemeSupa,
@@ -39,13 +41,18 @@ export const AuthForm = () => {
           }}
         />
       </div>
-      <p className="mt-6 text-center text-sm text-muted-foreground">
-        Don't have an account?{" "}
-        {/* Link this to your waitlist page/modal later */}
-        <Link to="/waitlist" className="underline hover:text-primary">
-          Join the waitlist
-        </Link>
-      </p>
+      {allowSelfSignup ? (
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          Self-signup is enabled in this environment. Use any email/password to create a local account.
+        </p>
+      ) : (
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          Don't have an account?{" "}
+          <Link to="/waitlist" className="underline hover:text-primary">
+            Join the waitlist
+          </Link>
+        </p>
+      )}
       {/* You could add a forgotten password link manually here if desired */}
       {/* <Link to="/forgot-password" className="mt-2 text-sm underline hover:text-primary">
         Forgot password?
