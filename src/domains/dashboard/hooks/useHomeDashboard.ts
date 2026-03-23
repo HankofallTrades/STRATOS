@@ -55,7 +55,7 @@ export const useHomeDashboard = () => {
     [habits]
   );
 
-  const { data: profile, isLoading: isLoadingProfile } = useQuery({
+  const { data: profile } = useQuery({
     queryKey: ["homeProfile", userId],
     queryFn: async () => {
       if (!userId) return null;
@@ -252,10 +252,9 @@ export const useHomeDashboard = () => {
     ]
   );
 
-  const isLoading = isLoadingProfile || isLoadingRecentWorkouts || isLoadingPrRows;
-
   return {
-    isLoading,
+    isLoadingLastSession: isLoadingRecentWorkouts,
+    isLoadingRecentPr: isLoadingPrRows,
     displayName,
     greeting: greetingFromHour(now.getHours()),
     movementStreakLabel:
