@@ -16,6 +16,7 @@ import type {
   Workout,
   WorkoutExercise,
 } from "@/lib/types/workout";
+import { useAuth } from "@/state/auth/AuthProvider";
 import { selectWorkoutHistory } from "@/state/history/historySlice";
 import { startWorkout } from "@/state/workout/workoutSlice";
 
@@ -442,6 +443,7 @@ export const useWorkoutGenerator = (
   planningContext?: WorkoutGeneratorPlanningContext
 ) => {
   const dispatch = useAppDispatch();
+  const { user } = useAuth();
   const workoutHistory = useAppSelector(selectWorkoutHistory);
 
   const archetypeMap = useMemo(() => {
@@ -552,6 +554,7 @@ export const useWorkoutGenerator = (
         mesocycleProtocol: activeProgram?.mesocycle.protocol,
         mesocycleSessionId: templateExerciseCount > 0 ? nextSession?.id : undefined,
         mesocycleWeek: activeProgram?.current_week,
+        ownerUserId: user?.id ?? null,
         sessionFocus,
       })
     );

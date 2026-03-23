@@ -1,13 +1,22 @@
 # Repository Instructions
 
-Read `/Users/hank/projects/stratos/CODEMAP.md` before doing substantial work in this repo.
+Read `./CODEMAP.md` before doing substantial work in this repo.
 
 ## Session Startup
 
-1. Read `/Users/hank/projects/stratos/CODEMAP.md`.
-2. Read `/Users/hank/projects/stratos/docs/overview.md` if the task touches architecture or boundaries.
-3. Read `/Users/hank/projects/stratos/docs/plan.md` if the task is part of the ongoing refactor or a new domain rollout.
+1. Read `./CODEMAP.md`.
+2. Read `./docs/overview.md` if the task touches architecture or boundaries.
+3. Read `./docs/plan.md` if it exists and the task is part of an ongoing refactor or a new domain rollout.
 4. Run `git status --short` before editing because this repo may be intentionally dirty during refactors.
+
+## Working Tree Hygiene
+
+- After `git status --short`, run `git diff --stat` when the tree is dirty so you can classify the changes before editing.
+- Do not assume all dirty paths are part of the task. This repo often mixes real WIP with generated local artifacts.
+- Treat `.vite/` as generated Vite cache output unless the task is explicitly about build tooling.
+- Treat `supabase/.temp/*` as linked-project CLI state unless the task is explicitly about Supabase CLI setup or repo hygiene.
+- If the working tree includes changes across `vite.config.ts`, `package.json`, `package-lock.json`, `index.html`, `src/state/store.ts`, `src/domains/fitness/hooks/useWorkout.ts`, `src/components/layout/MainAppLayout.tsx`, `src/hooks/useOfflineSync.ts`, `src/lib/offlineQueue.ts`, and `public/icon-*.svg`, assume you are looking at one unfinished offline/PWA feature thread until proven otherwise.
+- Never revert or overwrite dirty files just to get a clean starting point. Understand whether they are user work, generated noise, or task-relevant first.
 
 ## Database Workflow
 
@@ -34,7 +43,7 @@ Read `/Users/hank/projects/stratos/CODEMAP.md` before doing substantial work in 
 
 ## Codemap Maintenance
 
-Update `/Users/hank/projects/stratos/CODEMAP.md` in the same change whenever you alter:
+Update `./CODEMAP.md` in the same change whenever you alter:
 
 - route ownership
 - domain entrypoints

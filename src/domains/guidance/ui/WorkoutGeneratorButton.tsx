@@ -15,6 +15,7 @@ import {
 import type { ExerciseMuscleGroupMapping } from '@/domains/fitness/data/fitnessRepository';
 import type { Exercise, ExerciseSet, WorkoutExercise, Workout } from '@/lib/types/workout';
 import { Skeleton } from '@/components/core/skeleton';
+import { useAuth } from '@/state/auth/AuthProvider';
 
 const calculateWeeklySetsPerMuscleGroup = (
     workoutHistory: Workout[],
@@ -117,6 +118,7 @@ const selectExercisesForWorkout = (
 export const WorkoutGenerator: React.FC = () => {
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
+    const { user } = useAuth();
     const workoutHistory = useAppSelector(selectWorkoutHistory);
     const [generationStatusMessage, setGenerationStatusMessage] = useState<string | null>(null);
 
@@ -175,7 +177,7 @@ export const WorkoutGenerator: React.FC = () => {
             return;
         }
 
-        dispatch(startWorkout({}));
+        dispatch(startWorkout({ ownerUserId: user?.id ?? null }));
 
         exercisesToCreate.forEach(exercise => {
             const defaultEquipment = exercise.default_equipment_type ?? undefined;

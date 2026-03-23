@@ -25,8 +25,14 @@ const historyPersistConfig = {
   whitelist: ['workoutHistory'], // Persist workout history
 };
 
+const workoutPersistConfig = {
+  key: 'workout',
+  storage,
+  whitelist: ['currentWorkout', 'ownerUserId', 'workoutStartTime', 'warmupStartTime'],
+};
+
 const rootReducer = combineReducers({
-  workout: workoutReducer, // Workout state is not persisted by default
+  workout: persistReducer(workoutPersistConfig, workoutReducer),
   exercise: persistReducer(exercisePersistConfig, exerciseReducer),
   history: persistReducer(historyPersistConfig, historyReducer),
 });

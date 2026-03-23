@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/integrations/supabase/client';
 import { Tables, TablesInsert } from '@/lib/integrations/supabase/types';
 import { Workout as WorkoutType, isStrengthSet, isCardioSet, timeToSeconds } from "@/lib/types/workout";
+import type { PersistedWorkoutType } from './workoutPersistence';
 
 // --- Types ---
 export type ExerciseRow = Tables<'exercises'>;
@@ -375,10 +376,10 @@ export const saveWorkoutToDb = async (
     userId: string,
     workoutToEnd: WorkoutType,
     durationInSeconds: number,
-    workoutType: 'strength' | 'cardio' | 'mixed'
+    workoutType: PersistedWorkoutType
 ) => {
-    // 1. Insert Workout
     const workoutDataForDb: TablesInsert<'workouts'> & Record<string, unknown> = {
+        id: workoutToEnd.id,
         user_id: userId,
         duration_seconds: durationInSeconds,
         completed: true,
@@ -399,13 +400,15 @@ export const saveWorkoutToDb = async (
         optionalPeriodizationFields.mesocycle_week = workoutToEnd.mesocycle_week;
     }
 
-    const attemptInsertWorkout = async (payload: Record<string, unknown>) => supabase
+    const attemptUpsertWorkout = async (payload: Record<string, unknown>) => supabase
         .from('workouts')
-        .insert(payload as unknown as TablesInsert<'workouts'>)
+        .upsert(payload as unknown as TablesInsert<'workouts'>, {
+            onConflict: 'id',
+        })
         .select()
         .single();
 
-    let { data: savedWorkout, error: workoutError } = await attemptInsertWorkout({
+    let { data: savedWorkout, error: workoutError } = await attemptUpsertWorkout({
         ...workoutDataForDb,
         ...optionalPeriodizationFields,
     });
@@ -419,7 +422,7 @@ export const saveWorkoutToDb = async (
             workoutError.code === 'PGRST204';
 
         if (isMissingPeriodizationColumn) {
-            ({ data: savedWorkout, error: workoutError } = await attemptInsertWorkout(workoutDataForDb));
+            ({ data: savedWorkout, error: workoutError } = await attemptUpsertWorkout(workoutDataForDb));
         }
     }
 
@@ -429,8 +432,6 @@ export const saveWorkoutToDb = async (
 
     const workoutId = savedWorkout.id;
 
-    // 2. Insert Workout Exercises (Grouped by Exercise ID to handle duplicates)
-    // We group by exerciseId to satisfy DB unique constraints and merge sets into a single logical entry.
     const exerciseOrder: string[] = [];
     const exerciseGroups: Record<string, typeof workoutToEnd.exercises> = {};
 
@@ -445,25 +446,27 @@ export const saveWorkoutToDb = async (
     });
 
     if (exerciseOrder.length === 0) {
-        return { workoutId, savedWorkoutExercises: [] };
+        return { workoutId };
     }
 
-    const workoutExercisesDataForDb: TablesInsert<'workout_exercises'>[] = exerciseOrder.map((exId, index) => ({
+    const workoutExercisesDataForDb: TablesInsert<'workout_exercises'>[] = exerciseOrder.map((exerciseId, index) => ({
+        id: exerciseGroups[exerciseId][0].id,
         workout_id: workoutId,
-        exercise_id: exId,
+        exercise_id: exerciseId,
         order: index + 1,
     }));
 
     const { data: savedWorkoutExercises, error: workoutExercisesError } = await supabase
         .from('workout_exercises')
-        .insert(workoutExercisesDataForDb)
+        .upsert(workoutExercisesDataForDb, {
+            onConflict: 'id',
+        })
         .select();
 
     if (workoutExercisesError || !savedWorkoutExercises || savedWorkoutExercises.length !== workoutExercisesDataForDb.length) {
         throw workoutExercisesError || new Error("Failed to save workout exercises records.");
     }
 
-    // 3. Insert Exercise Sets (Aggregated across all instances of the same exercise)
     const exerciseSetsDataForDb: TablesInsert<'exercise_sets'>[] = [];
 
     savedWorkoutExercises.forEach((savedWorkoutExercise) => {
@@ -479,6 +482,7 @@ export const saveWorkoutToDb = async (
 
                 if (isStrengthSet(set)) {
                     exerciseSetsDataForDb.push({
+                        id: set.id,
                         workout_exercise_id: savedWorkoutExercise.id,
                         set_number: globalSetIndex,
                         weight: set.weight,
@@ -490,6 +494,7 @@ export const saveWorkoutToDb = async (
                     });
                 } else if (isCardioSet(set)) {
                     exerciseSetsDataForDb.push({
+                        id: set.id,
                         workout_exercise_id: savedWorkoutExercise.id,
                         set_number: globalSetIndex,
                         weight: 0,
@@ -506,12 +511,14 @@ export const saveWorkoutToDb = async (
     if (exerciseSetsDataForDb.length > 0) {
         const { error: setsError } = await supabase
             .from('exercise_sets')
-            .insert(exerciseSetsDataForDb);
+            .upsert(exerciseSetsDataForDb, {
+                onConflict: 'id',
+            });
 
         if (setsError) throw setsError;
     }
 
-    return { workoutId, savedWorkoutExercises };
+    return { workoutId };
 };
 
 // --- Nutrition ---

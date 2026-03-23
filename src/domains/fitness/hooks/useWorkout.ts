@@ -3,15 +3,20 @@ import { useAppSelector, useAppDispatch } from "@/hooks/redux";
 import {
     selectCurrentWorkout,
     selectWorkoutStartTime,
-    endWorkout as endWorkoutAction,
+    selectWarmupStartTime,
     clearWorkout,
 } from "@/state/workout/workoutSlice";
 import { addWorkoutToHistory } from "@/state/history/historySlice";
 import { toast } from "@/hooks/use-toast";
-import { isStrengthSet, isCardioSet, Workout as WorkoutType } from "@/lib/types/workout";
 import { saveWorkoutToDb } from '../data/fitnessRepository';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/state/auth/AuthProvider';
+import { enqueueWorkout } from '../data/offlineQueue';
+import {
+    buildCompletedWorkoutForHistory,
+    finalizeWorkout,
+    isLikelyNetworkError,
+} from '../data/workoutPersistence';
 
 export const useWorkoutPersistence = () => {
     const navigate = useNavigate();
@@ -20,6 +25,7 @@ export const useWorkoutPersistence = () => {
     const { user } = useAuth();
     const currentWorkout = useAppSelector(selectCurrentWorkout);
     const workoutStartTime = useAppSelector(selectWorkoutStartTime);
+    const warmupStartTime = useAppSelector(selectWarmupStartTime);
 
     const saveWorkout = async () => {
         if (!currentWorkout) return;
@@ -44,84 +50,31 @@ export const useWorkoutPersistence = () => {
         }
 
         const endTime = Date.now();
-        const durationInSeconds = workoutStartTime
-            ? Math.max(0, Math.round((endTime - workoutStartTime) / 1000))
-            : 0;
-
-        // Determine workout type
-        const hasStrengthSets = currentWorkout.exercises.some(ex =>
-            ex.sets.some(set => set.completed && isStrengthSet(set))
-        );
-        const hasCardioSets = currentWorkout.exercises.some(ex =>
-            ex.sets.some(set => set.completed && isCardioSet(set))
-        );
-
-        let workoutType: 'strength' | 'cardio' | 'mixed' = 'strength';
-        if (hasStrengthSets && hasCardioSets) {
-            workoutType = 'mixed';
-        } else if (hasCardioSets) {
-            workoutType = 'cardio';
-        }
+        const finalizedWorkout = finalizeWorkout({
+            workout: currentWorkout,
+            endTime,
+            workoutStartTime,
+            warmupStartTime,
+        });
+        const completedWorkoutForState = buildCompletedWorkoutForHistory(finalizedWorkout.workout);
 
         try {
-            const { workoutId, savedWorkoutExercises } = await saveWorkoutToDb(
+            const { workoutId } = await saveWorkoutToDb(
                 user.id,
-                currentWorkout,
-                durationInSeconds,
-                workoutType
+                finalizedWorkout.workout,
+                finalizedWorkout.durationInSeconds,
+                finalizedWorkout.workoutType
             );
-
-            // 4. Update Redux History (Merging identical exercises to match DB structure)
-            type CompletedSetWithWorkoutExerciseId =
-                WorkoutType['exercises'][number]['sets'][number] & { workoutExerciseId: string };
-            type MergedHistoryExercise =
-                Omit<WorkoutType['exercises'][number], 'id' | 'workoutId' | 'sets'> & {
-                    id: string;
-                    workoutId: string;
-                    sets: CompletedSetWithWorkoutExerciseId[];
-                };
-
-            const exerciseHistoryMap: Record<string, MergedHistoryExercise> = {};
-            const orderedExerciseIds: string[] = [];
-
-            currentWorkout.exercises.forEach(woEx => {
-                const completedSets = woEx.sets.filter(s => s.completed);
-                if (completedSets.length === 0) return;
-
-                const savedWoEx = savedWorkoutExercises.find(swe =>
-                    swe.exercise_id === woEx.exerciseId && swe.workout_id === workoutId
-                );
-                if (!savedWoEx) return;
-
-                if (!exerciseHistoryMap[woEx.exerciseId]) {
-                    orderedExerciseIds.push(woEx.exerciseId);
-                    exerciseHistoryMap[woEx.exerciseId] = {
-                        ...woEx,
-                        id: savedWoEx.id,
-                        workoutId: workoutId,
-                        sets: [],
-                    };
-                }
-
-                // Add sets to the single exercise entry
-                exerciseHistoryMap[woEx.exerciseId].sets.push(
-                    ...completedSets.map(set => ({ ...set, workoutExerciseId: savedWoEx.id }))
-                );
-            });
-
-            const completedWorkoutForState: WorkoutType = {
-                ...currentWorkout,
-                id: workoutId,
-                completed: true,
-                duration: durationInSeconds,
-                exercises: orderedExerciseIds.map(id => exerciseHistoryMap[id]),
-            };
-
-            dispatch(addWorkoutToHistory(completedWorkoutForState));
+            dispatch(
+                addWorkoutToHistory(
+                    buildCompletedWorkoutForHistory({
+                        ...finalizedWorkout.workout,
+                        id: workoutId,
+                    })
+                )
+            );
             dispatch(clearWorkout());
-            dispatch(endWorkoutAction());
-
-            queryClient.invalidateQueries({ queryKey: ['activeMesocycleProgram', user.id] });
+            await queryClient.invalidateQueries();
 
             toast({
                 title: "Workout Saved",
@@ -133,6 +86,29 @@ export const useWorkoutPersistence = () => {
 
         } catch (error: unknown) {
             console.error("Error saving workout:", error);
+
+            if (isLikelyNetworkError(error)) {
+                enqueueWorkout({
+                    id: finalizedWorkout.workout.id,
+                    userId: user.id,
+                    workout: finalizedWorkout.workout,
+                    durationInSeconds: finalizedWorkout.durationInSeconds,
+                    workoutType: finalizedWorkout.workoutType,
+                    queuedAt: Date.now(),
+                });
+
+                dispatch(addWorkoutToHistory(completedWorkoutForState));
+                dispatch(clearWorkout());
+
+                toast({
+                    title: "Saved Offline",
+                    description: "Your workout is saved locally and will sync when you're back online.",
+                });
+
+                navigate('/');
+                return { success: true, offline: true };
+            }
+
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             toast({
                 title: "Save Error",
@@ -144,7 +120,6 @@ export const useWorkoutPersistence = () => {
     };
 
     const discardWorkout = () => {
-        dispatch(endWorkoutAction());
         dispatch(clearWorkout());
         navigate('/');
     };

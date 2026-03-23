@@ -25,5 +25,7 @@ dist-ssr
 *.sw?
 .vercel
 .cursor
+.vite
+supabase/.temp/
 
 .env*.local

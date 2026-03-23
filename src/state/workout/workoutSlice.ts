@@ -6,6 +6,7 @@ import type { RootState } from '../store'; // Import RootState for selectors
 
 interface WorkoutState {
   currentWorkout: Workout | null;
+  ownerUserId: string | null;
   workoutStartTime: number | null; // Store start time as timestamp (ms)
   warmupStartTime: number | null;
 }
@@ -17,10 +18,12 @@ interface StartWorkoutPayload {
   mesocycleSessionId?: string;
   mesocycleWeek?: number;
   mesocycleProtocol?: 'occams' | 'custom';
+  ownerUserId?: string | null;
 }
 
 const initialState: WorkoutState = {
   currentWorkout: null,
+  ownerUserId: null,
   workoutStartTime: null,
   warmupStartTime: null,
 };
@@ -48,6 +51,7 @@ const workoutSlice = createSlice({
         mesocycle_week: action?.payload?.mesocycleWeek,
         mesocycle_protocol: action?.payload?.mesocycleProtocol,
       };
+      state.ownerUserId = action?.payload?.ownerUserId ?? null;
       state.workoutStartTime = startTime; // Store start time
     },
     setSessionFocus(state, action: PayloadAction<SessionFocus>) {
@@ -87,6 +91,7 @@ const workoutSlice = createSlice({
     },
     clearWorkout(state) {
       state.currentWorkout = null;
+      state.ownerUserId = null;
       state.workoutStartTime = null;
       state.warmupStartTime = null;
     },
@@ -298,6 +303,7 @@ export const {
 
 // Selectors
 export const selectCurrentWorkout = (state: RootState) => state.workout.currentWorkout;
+export const selectWorkoutOwnerUserId = (state: RootState) => state.workout.ownerUserId;
 export const selectWorkoutStartTime = (state: RootState) => state.workout.workoutStartTime;
 export const selectIsWorkoutActive = (state: RootState) => state.workout.currentWorkout !== null && !state.workout.currentWorkout.completed && state.workout.workoutStartTime !== null;
 export const selectWorkoutType = (state: RootState) => state.workout.currentWorkout?.workout_type;

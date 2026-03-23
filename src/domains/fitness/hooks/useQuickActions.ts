@@ -27,7 +27,7 @@ export const useQuickActions = () => {
   });
 
   const handleAddWorkout = () => {
-    dispatch(startWorkoutAction({}));
+    dispatch(startWorkoutAction({ ownerUserId: user?.id ?? null }));
     navigate("/workout");
   };
 

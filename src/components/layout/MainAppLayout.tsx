@@ -14,6 +14,7 @@ import { SidebarInset, SidebarProvider } from "@/components/core/sidebar";
 import AddSingleExerciseDialog from "@/domains/fitness/ui/AddSingleExerciseDialog";
 import ProteinLogging from "@/domains/fitness/ui/ProteinLogging";
 import SunExposureLogging from "@/domains/fitness/ui/SunExposureLogging";
+import { useOfflineWorkoutSync } from "@/domains/fitness/hooks/useOfflineWorkoutSync";
 import { useQuickActions } from "@/domains/fitness/hooks/useQuickActions";
 import Home from "@/pages/Home";
 import Workout from "@/pages/Workout";
@@ -23,6 +24,7 @@ import Settings from "@/pages/Settings";
 import NotFound from "@/pages/NotFound";
 
 const MainAppLayout = () => {
+  useOfflineWorkoutSync();
   const location = useLocation();
   const {
     userId,

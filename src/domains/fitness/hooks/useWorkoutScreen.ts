@@ -74,6 +74,7 @@ export const useWorkoutScreen = () => {
   const handleStartWorkout = () => {
     dispatch(
       startWorkoutAction({
+        ownerUserId: user?.id ?? null,
         sessionFocus: selectedFocus || undefined,
       })
     );
@@ -121,6 +122,7 @@ export const useWorkoutScreen = () => {
 
     dispatch(
       startWorkoutAction({
+        ownerUserId: user?.id ?? null,
         sessionFocus: (sessionTemplate.session_focus ??
           activeProgram.mesocycle.goal_focus) as SessionFocus,
         mesocycleId: activeProgram.mesocycle.id,
@@ -150,6 +152,7 @@ export const useWorkoutScreen = () => {
 
       dispatch(
         startWorkoutAction({
+          ownerUserId: user?.id ?? null,
           sessionFocus: resolvedSessionFocus,
           mesocycleId: activeProgram.mesocycle.id,
           mesocycleSessionId: createdSession.id,

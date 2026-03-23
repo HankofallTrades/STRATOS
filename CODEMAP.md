@@ -6,7 +6,7 @@ This file is the fast operational map for agents and future sessions. It is not 
 
 - Architecture rename is complete: use `ui / hooks / data`, not `view / controller / model`.
 - `npm run build` passes.
-- `npm run lint` currently reports 8 warnings and 2 existing errors in `vite.config.ts` for `@typescript-eslint/no-explicit-any`.
+- `npm run lint` currently reports 8 warnings and 0 errors.
 - There is no test script in `package.json`.
 - Do not run `npm run build` and `npm run lint` at the same time. Vite can create transient `vite.config.ts.timestamp-*.mjs` files that make ESLint fail with `ENOENT`.
 
@@ -38,6 +38,7 @@ This file is the fast operational map for agents and future sessions. It is not 
   - Protected app shell.
   - Defines in-app routes.
   - Owns the global FAB and quick-action dialogs.
+  - Mounts the fitness offline-workout sync hook for protected sessions.
 - `api/coach.ts`
   - Vercel server function for Coach.
   - Validates requests with the guidance agent contracts and delegates to the agent runtime.
@@ -96,7 +97,7 @@ Pages should stay thin wrappers around domain screens.
 
 - Redux store: `src/state/store.ts`
 - Slices:
-  - `workout`: active in-progress workout, not persisted
+  - `workout`: active in-progress workout, persisted with the owning user id so workouts can survive refreshes without leaking across accounts
   - `exercise`: persisted exercise metadata/helpers
   - `history`: persisted workout history
 
@@ -155,11 +156,15 @@ The workout flow is the main Redux-heavy area. Most other features should prefer
   - `hooks/useWorkoutScreen.ts`
 - Other important hooks:
   - `hooks/useWorkout.ts` for save/discard persistence
+  - `hooks/useOfflineWorkoutSync.ts` for replaying queued offline workout saves
   - `hooks/useWorkoutExercise.ts`
   - `hooks/useSet.ts`
   - `hooks/useExerciseSelector.ts`
   - `hooks/useSingleExerciseLog.ts`
   - `hooks/useQuickActions.ts`
+- Persistence helpers:
+  - `data/offlineQueue.ts` stores queued workout saves in local storage
+  - `data/workoutPersistence.ts` finalizes completed workout snapshots and history shaping
 - Important UI:
   - `ui/AddSingleExerciseDialog.tsx`
   - `ui/WorkoutExerciseContainer.tsx`
@@ -252,6 +257,8 @@ These are scaffold placeholders only. They currently expose empty `data/hooks/ui
 - Workout persistence:
   - `src/domains/fitness/hooks/useWorkout.ts`
   - `src/domains/fitness/data/fitnessRepository.ts`
+  - `src/domains/fitness/hooks/useOfflineWorkoutSync.ts`
+  - `src/domains/fitness/data/offlineQueue.ts`
 - Home dashboard:
   - `src/domains/dashboard/hooks/useHomeDashboard.ts`
 - Coach runtime:
@@ -289,7 +296,6 @@ Run these sequentially, not in parallel:
 
 Current expected lint baseline:
 - 8 warnings
-- 2 existing errors in `vite.config.ts` for `@typescript-eslint/no-explicit-any`
 - warnings are `react-refresh/only-export-components` in shared UI/provider files
 
 ## When To Update This File
