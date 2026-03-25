@@ -13,10 +13,7 @@ const HomeDashboard = () => {
     greeting,
     movementStreakLabel,
     todayWorkoutTitle,
-    todayWorkoutMuscleTags,
-    todayFocusLabel,
-    todayEstimatedMinutes,
-    todayExerciseCount,
+    todayWorkoutDetail,
     sessionActionLabel,
     lastSessionSummary,
     recentPr,
@@ -47,17 +44,7 @@ const HomeDashboard = () => {
                   {todayWorkoutTitle}
                 </h2>
                 <p className="text-sm text-muted-foreground md:text-base">
-                  {todayWorkoutMuscleTags.join(" · ")}
-                  {todayFocusLabel ? (
-                    <>
-                      {"  ·  "}
-                      <span className="home-session-meta-emphasis">{todayFocusLabel}</span>
-                    </>
-                  ) : null}
-                  {"  ·  "}
-                  {todayEstimatedMinutes} min
-                  {"  ·  "}
-                  {todayExerciseCount || 1} {todayExerciseCount === 1 ? "exercise" : "exercises"}
+                  {todayWorkoutDetail}
                 </p>
               </div>
             </div>
@@ -110,19 +97,22 @@ const HomeDashboard = () => {
               ) : recentPr ? (
                 <>
                   <p className="text-lg font-semibold text-foreground">{recentPr.exerciseName}</p>
-                  {recentPr.topSetWeightLabel && recentPr.topSetRepsLabel ? (
-                    <p className="text-sm font-medium text-foreground/88">
-                      {recentPr.topSetWeightLabel} x {recentPr.topSetRepsLabel} reps
-                    </p>
-                  ) : null}
-                  <p className="inline-flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
-                    <span>{recentPr.whenLabel}</span>
-                    <span>·</span>
-                    <Trophy className="h-3.5 w-3.5 verdigris-text" />
-                    <span>+{recentPr.deltaE1RMLabel} vs previous best</span>
-                    <span>·</span>
-                    <span>e1RM {recentPr.currentE1RMLabel}</span>
-                  </p>
+                  <div className="space-y-1.5">
+                    <div className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                      <p className="inline-flex items-center gap-1.5 font-medium text-foreground/88">
+                        <Trophy className="h-3.5 w-3.5 verdigris-text" />
+                        <span>
+                          {recentPr.topSetWeightLabel && recentPr.topSetRepsLabel
+                            ? `${recentPr.topSetWeightLabel} x ${recentPr.topSetRepsLabel}`
+                            : "PR set"}
+                        </span>
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        (e1RM {recentPr.currentE1RMLabel})
+                      </p>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{recentPr.whenLabel}</p>
+                  </div>
                 </>
               ) : (
                 <p className="text-sm text-muted-foreground">No e1RM PR increase recorded yet.</p>
@@ -133,12 +123,13 @@ const HomeDashboard = () => {
 
         <Card className="home-habit-strip">
           <CardContent className="py-3.5 md:px-5">
-            <div className="flex flex-wrap items-center gap-4 text-sm">
+            <div className="home-habit-grid">
               {habitItems.map(item => (
                 <button
                   key={item.label}
                   type="button"
-                  className="app-inline-action inline-flex items-center gap-2"
+                  className="home-habit-option app-inline-action inline-flex items-center gap-2 text-sm disabled:cursor-not-allowed"
+                  data-done={item.done ? "true" : "false"}
                   disabled={item.disabled}
                   onClick={() => handleToggleHabit(item.id, item.done)}
                 >

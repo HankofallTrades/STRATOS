@@ -16,10 +16,12 @@ import { selectCurrentWorkout } from "@/state/workout/workoutSlice";
 import {
   calculateStreak,
   estimateSessionMinutes,
+  formatEstimatedSessionLabel,
   formatLocalIsoDate,
   formatSessionFocusLabel,
   greetingFromHour,
-  inferMuscleTagsFromExercises,
+  inferSessionLabel,
+  isGenericSessionName,
   summarizeRecentPr,
   summarizeRecentWorkout,
 } from "@/domains/dashboard/data/homeDashboard";
@@ -119,12 +121,6 @@ export const useHomeDashboard = () => {
     );
   }, [activeProgram]);
 
-  const todayWorkoutTitle = useMemo(() => {
-    if (!activeProgram) return "Today's Session";
-    if (nextSession?.name) return nextSession.name;
-    return `${formatSessionFocusLabel(activeProgram.mesocycle.goal_focus)} Session`;
-  }, [activeProgram, nextSession]);
-
   const todayWorkoutExerciseNames = useMemo(
     () =>
       (nextSession?.exercises ?? [])
@@ -133,22 +129,35 @@ export const useHomeDashboard = () => {
     [nextSession]
   );
 
-  const todayWorkoutMuscleTags = useMemo(() => {
-    const inferred = inferMuscleTagsFromExercises(todayWorkoutExerciseNames);
-    if (inferred.length > 0) return inferred;
-
-    if (!activeProgram) return ["General"];
-    return [formatSessionFocusLabel(activeProgram.mesocycle.goal_focus)];
-  }, [todayWorkoutExerciseNames, activeProgram]);
-
   const todayExerciseCount = nextSession?.exercises.length ?? 0;
   const todayEstimatedMinutes = estimateSessionMinutes(
     todayExerciseCount,
     activeProgram?.mesocycle.protocol
   );
+  const hasGenericSessionName = isGenericSessionName(nextSession?.name);
   const todayFocusLabel = activeProgram
     ? formatSessionFocusLabel(activeProgram.mesocycle.goal_focus)
     : null;
+
+  const todayWorkoutTitle = useMemo(() => {
+    if (nextSession?.name && !hasGenericSessionName) return nextSession.name;
+    if (todayWorkoutExerciseNames.length > 0) return inferSessionLabel(todayWorkoutExerciseNames);
+    if (!activeProgram) return "Today's Session";
+    return `${formatSessionFocusLabel(activeProgram.mesocycle.goal_focus)} Session`;
+  }, [activeProgram, hasGenericSessionName, nextSession?.name, todayWorkoutExerciseNames]);
+
+  const todayWorkoutDetail = useMemo(() => {
+    if (!nextSession) return "Ready when you are";
+
+    const parts: string[] = [];
+
+    if (hasGenericSessionName && todayFocusLabel && todayFocusLabel !== "Mixed") {
+      parts.push(`${todayFocusLabel} focus`);
+    }
+
+    parts.push(formatEstimatedSessionLabel(todayEstimatedMinutes));
+    return parts.join(" · ");
+  }, [hasGenericSessionName, nextSession, todayEstimatedMinutes, todayFocusLabel]);
 
   const displayName = useMemo(() => {
     const username = profile?.username?.trim();
@@ -260,10 +269,7 @@ export const useHomeDashboard = () => {
     movementStreakLabel:
       movementStreak > 0 ? `${movementStreak}-day streak` : "Start your streak today",
     todayWorkoutTitle,
-    todayWorkoutMuscleTags,
-    todayFocusLabel,
-    todayEstimatedMinutes,
-    todayExerciseCount,
+    todayWorkoutDetail,
     sessionActionLabel,
     lastSessionSummary,
     recentPr,

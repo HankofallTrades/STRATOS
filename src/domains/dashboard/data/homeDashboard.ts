@@ -3,6 +3,7 @@ import type { SessionFocus } from "@/lib/types/workout";
 import { calculateOneRepMax } from "@/lib/utils/workoutUtils";
 
 const E1RM_IMPROVEMENT_EPSILON = 0.001;
+const GENERIC_SESSION_NAME_PATTERN = /^(workout|session|occam)\s+[a-z0-9]+$/i;
 
 export interface RecentPrSummary {
   exerciseName: string;
@@ -10,7 +11,6 @@ export interface RecentPrSummary {
   topSetReps: number;
   topSetRepsLabel: string;
   currentE1RMLabel: string;
-  deltaE1RMLabel: string;
   whenLabel: string;
 }
 
@@ -90,13 +90,30 @@ export const inferSessionLabel = (exerciseNames: string[]): string => {
   const names = exerciseNames.map(name => name.toLowerCase());
   const isPull = names.some(name => name.includes("pull") || name.includes("row"));
   const isPush = names.some(name => name.includes("press") || name.includes("chest"));
-  const isLower = names.some(name => name.includes("leg") || name.includes("squat"));
+  const isLower = names.some(
+    name =>
+      name.includes("leg") ||
+      name.includes("squat") ||
+      name.includes("lunge") ||
+      name.includes("back extension")
+  );
 
+  if (isLower && (isPull || isPush)) return "Full Body";
   if (isLower) return "Lower Body";
   if (isPull && !isPush) return "Upper Body Pull";
   if (isPush && !isPull) return "Upper Body Push";
   if (isPull && isPush) return "Upper Body Mixed";
   return "Strength Session";
+};
+
+export const isGenericSessionName = (value: string | null | undefined): boolean => {
+  if (!value) return false;
+  return GENERIC_SESSION_NAME_PATTERN.test(value.trim());
+};
+
+export const formatEstimatedSessionLabel = (minutes: number): string => {
+  const normalized = Math.max(1, Math.round(minutes));
+  return `About ${normalized} min`;
 };
 
 export const formatLiftWeight = (
@@ -223,7 +240,6 @@ export const summarizeRecentPr = (
     exerciseName: string;
     workoutCreatedAt: string;
     maxE1RM: number;
-    deltaE1RM: number;
     topSetWeightKg: number;
     topSetReps: number;
   } | null = null;
@@ -239,7 +255,6 @@ export const summarizeRecentPr = (
         exerciseName: performance.exerciseName,
         workoutCreatedAt: performance.workoutCreatedAt,
         maxE1RM: performance.maxE1RM,
-        deltaE1RM: performance.maxE1RM - previousMax,
         topSetWeightKg: performance.topSetWeightKg,
         topSetReps: performance.topSetReps,
       };
@@ -258,7 +273,6 @@ export const summarizeRecentPr = (
     topSetReps: latestPrEvent.topSetReps,
     topSetRepsLabel: formatReps(latestPrEvent.topSetReps),
     currentE1RMLabel: formatLiftWeight(latestPrEvent.maxE1RM, preferredWeightUnit),
-    deltaE1RMLabel: formatLiftWeight(latestPrEvent.deltaE1RM, preferredWeightUnit),
     whenLabel: daysAgoLabel(latestPrEvent.workoutCreatedAt),
   };
 };

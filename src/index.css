@@ -368,10 +368,6 @@
     font-size: 0.98rem;
   }
 
-  .home-session-meta-emphasis {
-    color: rgba(200, 160, 108, 0.84);
-  }
-
   .home-session-cta {
     background: var(--stone-accent);
     box-shadow:
@@ -395,6 +391,44 @@
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.025),
       0 10px 24px rgba(0, 0, 0, 0.12);
+  }
+
+  .home-habit-grid {
+    margin: 0 auto;
+    display: grid;
+    width: 100%;
+    max-width: 48rem;
+    gap: 0.625rem;
+  }
+
+  @media (min-width: 640px) {
+    .home-habit-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .home-habit-option {
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 1rem;
+    padding: 0.7rem 1rem;
+    background: rgba(255, 255, 255, 0.02);
+    text-align: center;
+    transition:
+      background-color 160ms ease,
+      border-color 160ms ease,
+      color 160ms ease;
+  }
+
+  .home-habit-option:hover {
+    border-color: rgba(var(--stone-accent-rgb), 0.16);
+    background: rgba(var(--stone-accent-rgb), 0.08);
+  }
+
+  .home-habit-option[data-done="true"] {
+    border-color: rgba(var(--stone-accent-rgb), 0.18);
+    background: rgba(var(--stone-accent-rgb), 0.12);
+    color: #f3f7f4;
   }
 
   .stone-surface {
