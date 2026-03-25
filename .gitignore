@@ -1,5 +1,17 @@
+# Dependencies
+/node_modules/
+
+# Build and cache output
+/dist/
+/dist-ssr/
+/coverage/
+/.vite/
+vite.config.ts.timestamp-*.mjs
+*.tsbuildinfo
+.eslintcache
+
 # Logs
-logs
+/logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -7,25 +19,27 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# Local environment files
+.env
+.env.*
+!.env.example
+!.env.*.example
 *.local
-/docs
 
-# Editor directories and files
+# Editor and local agent config
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
+.cursor/
+.claude/
+.codex/
 .DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-.vercel
-.cursor
-.vite
-supabase/.temp/
 
-.env*.local
+# Deployment and backend tooling state
+.vercel/
+supabase/.temp/
