@@ -39,14 +39,15 @@ const WorkoutComponent = () => {
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex-1 overflow-y-auto">
+    <div className="flex h-full flex-col overflow-x-hidden">
+      <div className="flex-1 overflow-x-hidden overflow-y-auto overscroll-x-none">
         {currentWorkout.exercises.length > 0 ? (
-          <div className="space-y-8 pb-8">
+          <div className="space-y-8 overflow-x-hidden pb-8">
             <AnimatePresence initial={false}>
               {currentWorkout.exercises.map((exercise) => (
                 <motion.div
                   key={exercise.id}
+                  className="overflow-x-hidden [contain:paint]"
                   layout="position"
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}

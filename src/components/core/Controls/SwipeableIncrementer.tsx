@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion, PanInfo } from 'framer-motion';
+import { animate, motion, PanInfo, useMotionValue } from 'framer-motion';
 import { Plus, Minus } from 'lucide-react';
 import { Button } from '@/components/core/button'; // Assuming this path is correct
 import { cn } from '@/lib/utils/cn'; // Assuming this path is correct
@@ -24,6 +24,7 @@ interface SwipeableIncrementerProps {
 
 const SWIPE_THRESHOLD = 30; // Min distance for a swipe to be registered
 const SWIPE_VELOCITY_THRESHOLD = 200; // Min velocity for a swipe
+const VISUAL_OFFSET_LIMIT = 10;
 
 export const SwipeableIncrementer: React.FC<SwipeableIncrementerProps> = ({
   onAdjust,
@@ -44,6 +45,9 @@ export const SwipeableIncrementer: React.FC<SwipeableIncrementerProps> = ({
 }) => {
   // Store the initial pointer position to determine swipe direction
   const initialPanPoint = React.useRef<{ x: number; y: number } | null>(null);
+  const visualOffsetX = useMotionValue(0);
+  const visualOffsetY = useMotionValue(0);
+  const [isPanning, setIsPanning] = React.useState(false);
 
   const handleDecrementClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation(); // Prevent pan event from firing on the parent
@@ -64,6 +68,9 @@ export const SwipeableIncrementer: React.FC<SwipeableIncrementerProps> = ({
     info: PanInfo
   ) => {
     initialPanPoint.current = null; // Reset initial pan point
+    setIsPanning(false);
+    animate(visualOffsetX, 0, { type: "spring", stiffness: 380, damping: 28 });
+    animate(visualOffsetY, 0, { type: "spring", stiffness: 380, damping: 28 });
     if (disabled) return;
 
     const { offset, velocity } = info;
@@ -90,13 +97,37 @@ export const SwipeableIncrementer: React.FC<SwipeableIncrementerProps> = ({
     }
   };
 
+  React.useEffect(() => {
+    const root = document.documentElement;
+    const body = document.body;
+
+    if (isPanning) {
+      root.classList.add('gesture-lock');
+      body.classList.add('gesture-lock');
+      return () => {
+        root.classList.remove('gesture-lock');
+        body.classList.remove('gesture-lock');
+      };
+    }
+
+    root.classList.remove('gesture-lock');
+    body.classList.remove('gesture-lock');
+
+    return undefined;
+  }, [isPanning]);
+
   return (
     <motion.div
-      className={cn("flex items-center justify-center gap-1", wrapperClassName)}
+      className={cn("flex items-center justify-center gap-1 overflow-hidden [contain:paint] touch-none", wrapperClassName)}
+      data-card-swipe-block="true"
+      style={{ x: visualOffsetX, y: visualOffsetY }}
       onPanStart={(event, info) => {
         // Store the initial pointer position.
         // The 'point' object in PanInfo contains x and y coordinates.
         initialPanPoint.current = { x: info.point.x, y: info.point.y };
+        setIsPanning(true);
+        visualOffsetX.set(0);
+        visualOffsetY.set(0);
 
         // It's important to check if the event is a TouchEvent and has touches
         // as preventDefault might not be available or behave differently otherwise.
@@ -106,6 +137,17 @@ export const SwipeableIncrementer: React.FC<SwipeableIncrementerProps> = ({
       }}
       onPan={(event, info) => {
         if (disabled || !initialPanPoint.current) return;
+
+        visualOffsetX.set(
+          Math.round(
+            Math.max(-VISUAL_OFFSET_LIMIT, Math.min(VISUAL_OFFSET_LIMIT, info.offset.x * 0.16))
+          )
+        );
+        visualOffsetY.set(
+          Math.round(
+            Math.max(-VISUAL_OFFSET_LIMIT, Math.min(VISUAL_OFFSET_LIMIT, info.offset.y * 0.16))
+          )
+        );
 
         const currentPoint = info.point;
         const deltaX = Math.abs(currentPoint.x - initialPanPoint.current.x);
@@ -139,17 +181,6 @@ export const SwipeableIncrementer: React.FC<SwipeableIncrementerProps> = ({
         }
       }}
       onPanEnd={handlePanEnd}
-      // Prevent the div itself from being dragged visually
-      // drag={false} // onPan events might not fire if drag is false. Let's test this.
-      // If onPan doesn't fire, we might need to set drag={true} or drag="x"/"y"
-      // and then use dragConstraints and dragElastic to prevent visual movement.
-      drag // Let's enable drag and see if onPan fires. We'll constrain it later.
-      dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-      dragElastic={0} // No elasticity, snaps back immediately
-      // Or, if you want to allow drag but constrain it so it snaps back:
-      // drag="x" // or "y" or true
-      // dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-      // dragElastic={0} // No elasticity, snaps back immediately
       aria-label={label || 'Value adjuster'}
       role="group"
     >
