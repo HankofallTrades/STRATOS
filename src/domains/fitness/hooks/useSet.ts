@@ -22,6 +22,7 @@ interface UseSetProps {
     isStatic: boolean;
     previousPerformance: { weight: number; reps: number | null; time_seconds?: number | null; distance_km?: number | null } | null;
     recommendedPerformance: RecommendedStrengthSetPerformance | null;
+    onComplete?: () => void;
 }
 
 type StrengthSetUpdatePayload = {
@@ -40,7 +41,8 @@ export const useSet = ({
     userBodyweight,
     isStatic,
     previousPerformance,
-    recommendedPerformance
+    recommendedPerformance,
+    onComplete,
 }: UseSetProps) => {
     const dispatch = useAppDispatch();
 
@@ -247,6 +249,7 @@ export const useSet = ({
                     }
                 }
                 dispatch(completeSetAction({ workoutExerciseId, setId: set.id, completed: true }));
+                onComplete?.();
             } else {
                 dispatch(completeSetAction({ workoutExerciseId, setId: set.id, completed: false }));
             }
@@ -274,6 +277,7 @@ export const useSet = ({
                         distance_km: distanceVal > 0 ? distanceVal : undefined,
                     }));
                     dispatch(completeSetAction({ workoutExerciseId, setId: set.id, completed: true }));
+                    onComplete?.();
                 } else {
                     setIsCompleted(false);
                 }
@@ -281,7 +285,7 @@ export const useSet = ({
                 dispatch(completeSetAction({ workoutExerciseId, setId: set.id, completed: false }));
             }
         }
-    }, [dispatch, workoutExerciseId, set, isStatic, localWeight, localReps, localTime, localDuration, localDistance, previousPerformance]);
+    }, [dispatch, workoutExerciseId, set, isStatic, localWeight, localReps, localTime, localDuration, localDistance, previousPerformance, onComplete]);
 
     const handleBlur = useCallback((field: 'weight' | 'reps' | 'time' | 'duration' | 'distance') => {
         if (isCompleted) return;
