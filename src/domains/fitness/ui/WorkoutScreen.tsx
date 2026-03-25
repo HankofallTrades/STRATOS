@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Barbell } from "@phosphor-icons/react";
 import { ChevronDown, Clock, Play, Square } from "lucide-react";
 
@@ -89,6 +90,26 @@ const WorkoutScreen = () => {
     handleStartWarmup,
     handleStopWarmup,
   } = useWorkoutScreen();
+
+  useEffect(() => {
+    if (!currentWorkout) {
+      return undefined;
+    }
+
+    const html = document.documentElement;
+    const body = document.body;
+    const root = document.getElementById("root");
+
+    html.classList.add("route-lock-scroll");
+    body.classList.add("route-lock-scroll");
+    root?.classList.add("route-lock-scroll");
+
+    return () => {
+      html.classList.remove("route-lock-scroll");
+      body.classList.remove("route-lock-scroll");
+      root?.classList.remove("route-lock-scroll");
+    };
+  }, [currentWorkout]);
 
   if (!currentWorkout) {
     const usesProgramSessions = nextProgramSession !== null;
@@ -393,8 +414,8 @@ const WorkoutScreen = () => {
   }
 
   return (
-    <div className="stone-workout-page min-h-svh w-full">
-      <div className="mx-auto flex min-h-svh w-full max-w-[72rem] flex-col px-4 pb-6 pt-4 sm:px-6 lg:px-8">
+    <div className="stone-workout-page h-svh w-full overflow-hidden">
+      <div className="mx-auto flex h-full w-full max-w-[72rem] flex-col px-4 pb-24 pt-4 sm:px-6 md:pb-6 lg:px-8">
         <div className="stone-panel stone-panel-hero mb-6 flex shrink-0 items-center justify-between gap-3 rounded-[20px] px-5 py-4">
           <div className="flex min-w-0 items-center gap-3">
             <Clock className="h-5 w-5 shrink-0 verdigris-text" />

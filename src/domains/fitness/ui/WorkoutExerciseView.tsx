@@ -8,7 +8,7 @@ import { MutationStatus } from '@tanstack/react-query'; // Keep MutationStatus t
 import { useAppSelector } from '@/hooks/redux';
 import { selectSessionFocus } from '@/state/workout/workoutSlice';
 // Selector
-import { Exercise, ExerciseSet, isCardioExercise } from '@/lib/types/workout';
+import { Exercise, ExerciseSet, isCardioExercise, isCardioSet } from '@/lib/types/workout';
 // Removed EquipmentType imports
 // import { EquipmentType, EquipmentTypeEnum } from '@/lib/types/enums'; // Correct import path
 import { Button } from '@/components/core/button';
@@ -74,6 +74,7 @@ interface WorkoutExerciseViewProps {
   onSaveNewVariation: () => void;
   onCancelAddVariation: () => void;
   onUpdateLastSet: (field: 'weight' | 'reps' | 'time' | 'distance', change: number) => void;
+  onCopyCompletedValueToLatestSet: (field: 'weight' | 'reps', value: number) => void;
   restStartTime: number | null;
 }
 
@@ -81,6 +82,10 @@ const DEFAULT_VARIATION = 'Standard'; // Define default variation
 
 const SWIPE_REVEAL_WIDTH = 84;
 const SWIPE_DIRECTION_LOCK_DISTANCE = 10;
+const SWIPE_REVEAL_COMMIT_OFFSET = 36;
+const SWIPE_REVEAL_FLICK_VELOCITY = 0.35;
+const SWIPE_REVEAL_FLICK_OFFSET = 12;
+const AUTO_ADDED_SET_DROP_OFFSET = 32;
 const CARD_SWIPE_BLOCK_SELECTOR =
   'button, input, textarea, select, a, [contenteditable="true"], [data-card-swipe-block]';
 
@@ -89,6 +94,9 @@ type SwipeGestureState = {
   startX: number;
   startY: number;
   baseOffset: number;
+  lastX: number;
+  lastTimestamp: number;
+  velocityX: number;
   direction: 'pending' | 'horizontal' | 'vertical';
 };
 
@@ -166,6 +174,7 @@ export const WorkoutExerciseView = ({
   onSaveNewVariation,
   onCancelAddVariation,
   onUpdateLastSet, // Destructure new prop
+  onCopyCompletedValueToLatestSet,
   restStartTime,
 }: WorkoutExerciseViewProps) => {
   // State for Popover open state
@@ -181,6 +190,10 @@ export const WorkoutExerciseView = ({
   const cardSwipeOffsetRef = useRef(0);
   const didMoveDuringSwipeRef = useRef(false);
   const suppressNextCardClickRef = useRef(false);
+  const previousSetIdsRef = useRef(workoutExercise.sets.map((set) => set.id));
+  const pendingAutoAddRef = useRef(false);
+
+  const [autoAddedSetId, setAutoAddedSetId] = useState<string | null>(null);
 
   // REMOVED Motion value and transform
   // const cardX = useMotionValue(0);
@@ -217,10 +230,20 @@ export const WorkoutExerciseView = ({
     }
   };
 
-  const finishCardSwipe = (cancelled = false) => {
-    const shouldRevealDeleteAction = cancelled
-      ? isDeleteActionRevealed
-      : cardSwipeOffsetRef.current <= -(SWIPE_REVEAL_WIDTH / 2);
+  const finishCardSwipe = () => {
+    const gesture = cardSwipeGestureRef.current;
+    const currentOffset = cardSwipeOffsetRef.current;
+    const velocityX = gesture?.velocityX ?? 0;
+    const shouldRevealByOffset =
+      currentOffset <= -SWIPE_REVEAL_COMMIT_OFFSET;
+    const shouldRevealByFlick =
+      velocityX <= -SWIPE_REVEAL_FLICK_VELOCITY &&
+      currentOffset <= -SWIPE_REVEAL_FLICK_OFFSET;
+    const shouldCloseByFlick =
+      velocityX >= SWIPE_REVEAL_FLICK_VELOCITY &&
+      currentOffset >= -(SWIPE_REVEAL_WIDTH - SWIPE_REVEAL_FLICK_OFFSET);
+    const shouldRevealDeleteAction =
+      shouldRevealByFlick || (!shouldCloseByFlick && shouldRevealByOffset);
 
     suppressNextCardClickRef.current = didMoveDuringSwipeRef.current;
     didMoveDuringSwipeRef.current = false;
@@ -242,13 +265,14 @@ export const WorkoutExerciseView = ({
       return;
     }
 
-    event.preventDefault();
-
     cardSwipeGestureRef.current = {
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
       baseOffset: cardSwipeOffsetRef.current,
+      lastX: event.clientX,
+      lastTimestamp: event.timeStamp,
+      velocityX: 0,
       direction: 'pending',
     };
 
@@ -288,10 +312,21 @@ export const WorkoutExerciseView = ({
     }
 
     if (gesture.direction !== 'horizontal') {
+      releaseCardPointerCapture(event);
+      cardSwipeGestureRef.current = null;
+      didMoveDuringSwipeRef.current = false;
+      setIsCardSwiping(false);
       return;
     }
 
-    event.preventDefault();
+    if (event.cancelable) {
+      event.preventDefault();
+    }
+
+    const timeDelta = Math.max(event.timeStamp - gesture.lastTimestamp, 1);
+    gesture.velocityX = (event.clientX - gesture.lastX) / timeDelta;
+    gesture.lastX = event.clientX;
+    gesture.lastTimestamp = event.timeStamp;
     didMoveDuringSwipeRef.current = true;
     setIsCardSwiping(true);
     updateCardSwipeOffset(
@@ -309,8 +344,8 @@ export const WorkoutExerciseView = ({
       return;
     }
 
-    releaseCardPointerCapture(event);
     finishCardSwipe();
+    releaseCardPointerCapture(event);
   };
 
   const handleCardPointerCancel = (
@@ -321,8 +356,19 @@ export const WorkoutExerciseView = ({
       return;
     }
 
+    finishCardSwipe();
     releaseCardPointerCapture(event);
-    finishCardSwipe(true);
+  };
+
+  const handleCardLostPointerCapture = (
+    event: React.PointerEvent<HTMLDivElement>
+  ) => {
+    const gesture = cardSwipeGestureRef.current;
+    if (!gesture || gesture.pointerId !== event.pointerId) {
+      return;
+    }
+
+    finishCardSwipe();
   };
 
   const handleDeleteExercise = () => {
@@ -366,9 +412,38 @@ export const WorkoutExerciseView = ({
     closeDeleteAction();
   };
 
+  const handleAutoAddSetFromLastCompletion = () => {
+    pendingAutoAddRef.current = true;
+    onAddSet();
+  };
+
+  useEffect(() => {
+    const previousSetIds = previousSetIdsRef.current;
+    const currentSetIds = workoutExercise.sets.map((set) => set.id);
+    const appendedSetId = currentSetIds.at(-1) ?? null;
+    const appendedToEnd =
+      currentSetIds.length === previousSetIds.length + 1 &&
+      previousSetIds.every((setId, index) => currentSetIds[index] === setId);
+
+    if (pendingAutoAddRef.current && appendedToEnd) {
+      setAutoAddedSetId(appendedSetId);
+    } else if (!pendingAutoAddRef.current || !appendedToEnd) {
+      setAutoAddedSetId(null);
+    }
+
+    pendingAutoAddRef.current = false;
+    previousSetIdsRef.current = currentSetIds;
+  }, [workoutExercise.sets]);
+
   const completedSetCount = useMemo(
     () => workoutExercise.sets.filter((set) => set.completed).length,
     [workoutExercise.sets]
+  );
+  const latestSet = workoutExercise.sets.at(-1);
+  const canCopyIntoLatestStrengthSet = !!(
+    latestSet &&
+    !latestSet.completed &&
+    !isCardioSet(latestSet)
   );
   const firstIncompleteSetIndex = useMemo(
     () => workoutExercise.sets.findIndex((set) => !set.completed),
@@ -397,8 +472,8 @@ export const WorkoutExerciseView = ({
 
   return (
     <Fragment>
-      <section className="overflow-x-hidden pb-6">
-        <div className="relative w-full max-w-full overflow-hidden rounded-[20px] [contain:paint]">
+      <section className="[overflow:clip] pb-6">
+        <div className="relative w-full max-w-full [overflow:clip] rounded-[20px] [contain:paint]">
           <div
             className="absolute inset-y-0 right-0 flex w-[84px] items-center justify-center bg-white/[0.03] transition-opacity duration-200"
             style={{ opacity: swipeDeleteProgress === 0 ? 0 : 1 }}
@@ -421,9 +496,10 @@ export const WorkoutExerciseView = ({
             onPointerMove={handleCardPointerMove}
             onPointerUp={handleCardPointerUp}
             onPointerCancel={handleCardPointerCancel}
+            onLostPointerCapture={handleCardLostPointerCapture}
             onClick={handleCardClick}
             className={cn(
-              "relative max-w-full touch-pan-y select-none [contain:paint] [&_input]:select-text [&_textarea]:select-text",
+              "relative max-w-full touch-pan-y select-none [overflow:clip] [contain:paint]",
               isCardSwiping
                 ? "select-none cursor-grabbing"
                 : "transition-transform duration-200 ease-out"
@@ -640,7 +716,7 @@ export const WorkoutExerciseView = ({
             )}
 
             <div>
-              <div className="stone-surface overflow-hidden rounded-[18px]">
+              <div className="stone-surface [overflow:clip] rounded-[18px]">
                 <Table className="w-full">
                   <TableHeader className="stone-table-head">
                     <TableRow className="stone-seam border-b hover:bg-transparent">
@@ -668,6 +744,26 @@ export const WorkoutExerciseView = ({
                       {workoutExercise.sets.map((set, index) => {
                         const setNumber = index + 1;
                         const previousPerformanceForSet = historicalSetPerformances?.[setNumber] ?? null;
+                        const isLastSet = index === workoutExercise.sets.length - 1;
+                        const isAutoAddedSet = set.id === autoAddedSetId;
+                        const copyableStrengthSet = isCardioSet(set) ? null : set;
+                        const canCopyFromSet =
+                          canCopyIntoLatestStrengthSet &&
+                          !!copyableStrengthSet &&
+                          set.completed &&
+                          !isLastSet;
+                        const copyableWeight =
+                          copyableStrengthSet && canCopyFromSet && copyableStrengthSet.weight > 0
+                            ? copyableStrengthSet.weight
+                            : null;
+                        const copyableReps =
+                          copyableStrengthSet &&
+                          canCopyFromSet &&
+                          !isExerciseStatic &&
+                          typeof copyableStrengthSet.reps === 'number' &&
+                          copyableStrengthSet.reps > 0
+                            ? copyableStrengthSet.reps
+                            : null;
 
                         return (
                           <SetComponent
@@ -680,19 +776,27 @@ export const WorkoutExerciseView = ({
                             userBodyweight={userBodyweight}
                             isStatic={isExerciseStatic}
                             isActive={firstIncompleteSetIndex === -1 ? index === workoutExercise.sets.length - 1 : index === firstIncompleteSetIndex}
-                            onComplete={onAddSet}
-                            initial={{ opacity: 0, height: 0, y: 16 }}
-                            animate={{ opacity: 1, height: 'auto', y: 0 }}
+                            onComplete={isLastSet ? handleAutoAddSetFromLastCompletion : undefined}
+                            onSwipeCopyWeight={copyableWeight !== null
+                              ? () => onCopyCompletedValueToLatestSet('weight', copyableWeight)
+                              : undefined}
+                            onSwipeCopyReps={copyableReps !== null
+                              ? () => onCopyCompletedValueToLatestSet('reps', copyableReps)
+                              : undefined}
+                            contentInitialY={isAutoAddedSet ? -AUTO_ADDED_SET_DROP_OFFSET : 0}
+                            initial={isAutoAddedSet ? { opacity: 0 } : false}
+                            animate={{ opacity: 1 }}
                             exit={{ opacity: 0, height: 0 }}
-                            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                            layout
+                            transition={{ duration: 0.18, ease: 'easeOut' }}
+                            layout="position"
                           />
                         );
                       })}
                       <motion.tr
                         key="add-set-row"
-                        layout={false}
+                        layout="position"
                         className="stone-seam border-t bg-white/[0.015]"
+                        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                       >
                         <TableCell className="px-2 py-3 text-center align-middle">
                           <div className="flex items-center justify-center">

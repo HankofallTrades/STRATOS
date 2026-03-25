@@ -111,12 +111,37 @@
     user-select: none;
   }
 
+  html.route-lock-scroll,
+  body.route-lock-scroll,
+  #root.route-lock-scroll {
+    overflow: hidden !important;
+    overscroll-behavior: none;
+  }
+
+  body.route-lock-scroll {
+    padding-bottom: 0;
+  }
+
+  #root.route-lock-scroll {
+    height: 100svh;
+  }
+
   * {
     @apply border-border;
   }
 
   body {
     @apply bg-background text-foreground pb-20;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  input,
+  textarea,
+  [contenteditable="true"] {
+    -webkit-user-select: none;
+    user-select: none;
   }
 }
 
@@ -548,6 +573,19 @@
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.04),
       0 0 20px rgba(123, 94, 66, 0.05);
+  }
+}
+
+@layer utilities {
+  .scrollbar-hidden {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hidden::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
   }
 }
 

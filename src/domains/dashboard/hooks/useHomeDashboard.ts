@@ -7,12 +7,17 @@ import {
   fetchCompletedWeightedSetsForPr,
   fetchRecentWorkoutsSummary,
 } from "@/domains/analytics/data/analyticsRepository";
+import { buildExercisesFromSessionTemplate } from "@/domains/fitness/data/workoutScreen";
 import { useTriad, useHabitCompletions } from "@/domains/habits";
 import { getHabitCompletionDates } from "@/domains/habits/data/repository";
 import { usePeriodization } from "@/domains/periodization";
+import type { SessionFocus } from "@/lib/types/workout";
+import { useAppDispatch, useAppSelector } from "@/hooks/redux";
 import { useAuth } from "@/state/auth/AuthProvider";
-import { useAppSelector } from "@/hooks/redux";
-import { selectCurrentWorkout } from "@/state/workout/workoutSlice";
+import {
+  selectCurrentWorkout,
+  startWorkout as startWorkoutAction,
+} from "@/state/workout/workoutSlice";
 import {
   calculateStreak,
   estimateSessionMinutes,
@@ -28,6 +33,7 @@ import {
 
 export const useHomeDashboard = () => {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const { user } = useAuth();
   const currentWorkout = useAppSelector(selectCurrentWorkout);
 
@@ -114,9 +120,15 @@ export const useHomeDashboard = () => {
 
   const nextSession = useMemo(() => {
     if (!activeProgram) return null;
+    const startableSessions = activeProgram.sessions.filter(
+      session => session.exercises.length > 0
+    );
+
     return (
-      activeProgram.sessions.find(session => session.id === activeProgram.next_session_id) ??
-      activeProgram.sessions[0] ??
+      startableSessions.find(
+        session => session.id === activeProgram.next_session_id
+      ) ??
+      startableSessions[0] ??
       null
     );
   }, [activeProgram]);
@@ -261,6 +273,38 @@ export const useHomeDashboard = () => {
     ]
   );
 
+  const goToWorkout = () => {
+    if (currentWorkout) {
+      navigate("/workout");
+      return;
+    }
+
+    if (nextSession && activeProgram) {
+      dispatch(
+        startWorkoutAction({
+          ownerUserId: user?.id ?? null,
+          sessionFocus: (nextSession.session_focus ??
+            activeProgram.mesocycle.goal_focus) as SessionFocus,
+          mesocycleId: activeProgram.mesocycle.id,
+          mesocycleSessionId: nextSession.id,
+          mesocycleWeek: activeProgram.current_week,
+          mesocycleProtocol: activeProgram.mesocycle.protocol,
+          initialExercises: buildExercisesFromSessionTemplate(nextSession),
+        })
+      );
+      navigate("/workout");
+      return;
+    }
+
+    dispatch(
+      startWorkoutAction({
+        ownerUserId: user?.id ?? null,
+        sessionFocus: activeProgram?.mesocycle.goal_focus,
+      })
+    );
+    navigate("/workout");
+  };
+
   return {
     isLoadingLastSession: isLoadingRecentWorkouts,
     isLoadingRecentPr: isLoadingPrRows,
@@ -275,6 +319,6 @@ export const useHomeDashboard = () => {
     recentPr,
     habitItems,
     handleToggleHabit,
-    goToWorkout: () => navigate("/workout"),
+    goToWorkout,
   };
 };

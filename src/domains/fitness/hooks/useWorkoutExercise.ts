@@ -210,6 +210,36 @@ export const useWorkoutExercise = (workoutExercise: WorkoutExercise) => {
         }
     }, [dispatch, workoutExercise, historicalSetPerformances]);
 
+    const copyCompletedValueToLatestSet = useCallback((field: 'weight' | 'reps', value: number) => {
+        if (value <= 0) return;
+
+        const latestSet = workoutExercise.sets.at(-1);
+        if (!latestSet || latestSet.completed || !isStrengthSet(latestSet)) {
+            return;
+        }
+
+        const nextWeight = field === 'weight' ? value : latestSet.weight;
+
+        if (workoutExercise.exercise.is_static ?? false) {
+            dispatch(updateSetAction({
+                workoutExerciseId: workoutExercise.id,
+                setId: latestSet.id,
+                weight: nextWeight,
+                reps: null,
+                time: latestSet.time ?? null,
+            }));
+            return;
+        }
+
+        dispatch(updateSetAction({
+            workoutExerciseId: workoutExercise.id,
+            setId: latestSet.id,
+            weight: nextWeight,
+            reps: field === 'reps' ? value : latestSet.reps,
+            time: null,
+        }));
+    }, [dispatch, workoutExercise]);
+
     const handleSaveNewVariation = useCallback(() => {
         if (newVariationName.trim()) {
             addVariationMutation.mutate(newVariationName.trim());
@@ -233,6 +263,7 @@ export const useWorkoutExercise = (workoutExercise: WorkoutExercise) => {
         updateVariation,
         deleteExercise,
         updateLastSetField,
+        copyCompletedValueToLatestSet,
         handleSaveNewVariation,
     };
 };

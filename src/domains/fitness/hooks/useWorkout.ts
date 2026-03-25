@@ -74,14 +74,13 @@ export const useWorkoutPersistence = () => {
                 )
             );
             dispatch(clearWorkout());
+            navigate('/', { replace: true });
             await queryClient.invalidateQueries();
 
             toast({
                 title: "Workout Saved",
                 description: "Your workout has been successfully saved to your profile.",
             });
-
-            navigate('/');
             return { success: true };
 
         } catch (error: unknown) {
@@ -99,13 +98,12 @@ export const useWorkoutPersistence = () => {
 
                 dispatch(addWorkoutToHistory(completedWorkoutForState));
                 dispatch(clearWorkout());
+                navigate('/', { replace: true });
 
                 toast({
                     title: "Saved Offline",
                     description: "Your workout is saved locally and will sync when you're back online.",
                 });
-
-                navigate('/');
                 return { success: true, offline: true };
             }
 
@@ -121,7 +119,7 @@ export const useWorkoutPersistence = () => {
 
     const discardWorkout = () => {
         dispatch(clearWorkout());
-        navigate('/');
+        navigate('/', { replace: true });
     };
 
     return {

@@ -26,6 +26,7 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
     updateVariation,
     deleteExercise,
     updateLastSetField,
+    copyCompletedValueToLatestSet,
     handleSaveNewVariation,
   } = useWorkoutExercise(workoutExercise);
 
@@ -54,6 +55,7 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
       onSaveNewVariation={handleSaveNewVariation}
       onCancelAddVariation={handleCancelAddVariation}
       onUpdateLastSet={updateLastSetField}
+      onCopyCompletedValueToLatestSet={copyCompletedValueToLatestSet}
       restStartTime={restStartTime ?? null}
     />
   );

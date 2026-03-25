@@ -55,6 +55,25 @@ const getAdjustedLoad = (
   return roundToNearestLoadIncrement(nextWeight);
 };
 
+const getStrengthRecommendationActionForSet = (
+  repRange: ProgressionRepRange | null,
+  referenceSet: HistoricalStrengthSetPerformance | null | undefined
+): StrengthRecommendationAction => {
+  if (!repRange || !referenceSet || referenceSet.reps === null) {
+    return "none";
+  }
+
+  if (referenceSet.reps > repRange.max) {
+    return "increase_load";
+  }
+
+  if (referenceSet.reps < repRange.min) {
+    return "decrease_load";
+  }
+
+  return "increase_reps";
+};
+
 export const getStrengthRecommendationAction = (
   focus: SessionFocus | null | undefined,
   historicalSets: HistoricalStrengthSetPerformance[] | null | undefined
@@ -105,6 +124,7 @@ export const buildRecommendedStrengthSetPerformances = ({
     const referenceSet =
       orderedHistoricalSets.find(set => set.set_number === setNumber) ??
       orderedHistoricalSets[orderedHistoricalSets.length - 1];
+    const action = getStrengthRecommendationActionForSet(repRange, referenceSet);
 
     if (!referenceSet) {
       recommendations[setNumber] = null;
