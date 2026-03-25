@@ -121,27 +121,23 @@ const HomeDashboard = () => {
           </Card>
         </div>
 
-        <Card className="home-habit-strip">
-          <CardContent className="py-3.5 md:px-5">
-            <div className="home-habit-grid">
-              {habitItems.map(item => (
-                <button
-                  key={item.label}
-                  type="button"
-                  className="home-habit-option app-inline-action inline-flex items-center gap-2 text-sm disabled:cursor-not-allowed"
-                  data-done={item.done ? "true" : "false"}
-                  disabled={item.disabled}
-                  onClick={() => handleToggleHabit(item.id, item.done)}
-                >
-                  <span className={item.done ? "verdigris-text" : "text-muted-foreground"}>
-                    {item.done ? "◉" : "○"}
-                  </span>
-                  <span className={item.done ? "text-foreground" : ""}>{item.label}</span>
-                </button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <section className="home-habit-grid" aria-label="Daily habits">
+          {habitItems.map(item => (
+            <button
+              key={item.label}
+              type="button"
+              className="home-habit-option app-inline-action inline-flex items-center gap-2 text-sm disabled:cursor-not-allowed"
+              data-done={item.done ? "true" : "false"}
+              disabled={item.disabled}
+              onClick={() => handleToggleHabit(item.id, item.done)}
+            >
+              <span className={item.done ? "verdigris-text" : "text-muted-foreground"}>
+                {item.done ? "◉" : "○"}
+              </span>
+              <span className={item.done ? "text-foreground" : ""}>{item.label}</span>
+            </button>
+          ))}
+        </section>
       </main>
     </div>
   );
