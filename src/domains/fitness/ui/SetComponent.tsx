@@ -24,6 +24,7 @@ interface SetComponentProps extends MotionProps {
   userBodyweight?: number | null;
   isStatic: boolean;
   isActive?: boolean;
+  onComplete?: () => void;
 }
 
 const SetComponent: React.FC<SetComponentProps> = ({
@@ -35,6 +36,7 @@ const SetComponent: React.FC<SetComponentProps> = ({
   userBodyweight,
   isStatic,
   isActive = false,
+  onComplete,
   ...motionProps
 }) => {
   const {
@@ -63,7 +65,8 @@ const SetComponent: React.FC<SetComponentProps> = ({
     userBodyweight,
     isStatic,
     previousPerformance,
-    recommendedPerformance
+    recommendedPerformance,
+    onComplete,
   });
   const weightIndicatorDirection =
     recommendedPerformance?.action === 'increase_load'

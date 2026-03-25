@@ -639,7 +639,7 @@ export const WorkoutExerciseView = ({
               <CardioZoneIndicator sessionFocus={sessionFocus} />
             )}
 
-            <div className="relative">
+            <div>
               <div className="stone-surface overflow-hidden rounded-[18px]">
                 <Table className="w-full">
                   <TableHeader className="stone-table-head">
@@ -680,10 +680,11 @@ export const WorkoutExerciseView = ({
                             userBodyweight={userBodyweight}
                             isStatic={isExerciseStatic}
                             isActive={firstIncompleteSetIndex === -1 ? index === workoutExercise.sets.length - 1 : index === firstIncompleteSetIndex}
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
+                            onComplete={onAddSet}
+                            initial={{ opacity: 0, height: 0, y: 16 }}
+                            animate={{ opacity: 1, height: 'auto', y: 0 }}
                             exit={{ opacity: 0, height: 0 }}
-                            transition={{ type: 'tween', duration: 0.5 }}
+                            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                             layout
                           />
                         );
@@ -791,18 +792,18 @@ export const WorkoutExerciseView = ({
                           </>
                         )}
 
-                        <TableCell className="px-0 py-3 align-middle"></TableCell>
+                        <TableCell className="px-0 py-3 align-middle">
+                          {restStartTime && (
+                            <div className="flex items-center justify-center">
+                              <RestTimer startTime={restStartTime} />
+                            </div>
+                          )}
+                        </TableCell>
                       </motion.tr>
                     </AnimatePresence>
                   </TableBody>
                 </Table>
               </div>
-              {restStartTime && (
-                <RestTimer
-                  startTime={restStartTime}
-                  className="absolute bottom-2.5 right-3 pointer-events-none"
-                />
-              )}
             </div>
           </div>
         </div>
