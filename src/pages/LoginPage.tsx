@@ -1,11 +1,7 @@
 import { AuthForm } from "@/domains/account/ui/AuthForm";
 
 const LoginPage = () => {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <AuthForm />
-    </div>
-  );
+  return <AuthForm />;
 };
 
-export default LoginPage; 
+export default LoginPage;
