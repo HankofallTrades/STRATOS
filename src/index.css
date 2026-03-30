@@ -313,6 +313,78 @@
     box-shadow: none;
   }
 
+  .stratos-auth-container {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .stratos-auth-button {
+    width: 100% !important;
+    min-height: 3rem !important;
+    border: 0 !important;
+    border-radius: 1rem !important;
+    background: var(--stone-accent) !important;
+    color: #eef7f4 !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      0 14px 30px rgba(0, 0, 0, 0.18) !important;
+    font-weight: 600 !important;
+    letter-spacing: -0.01em;
+    transition:
+      background-color 160ms ease,
+      transform 160ms ease;
+  }
+
+  .stratos-auth-button:hover {
+    background: var(--stone-accent-hover) !important;
+  }
+
+  .stratos-auth-button:active {
+    transform: translateY(1px);
+  }
+
+  .stratos-auth-input {
+    min-height: 3rem !important;
+    border-radius: 1rem !important;
+    background: rgba(9, 13, 16, 0.96) !important;
+    box-shadow:
+      inset 0 3px 10px rgba(0, 0, 0, 0.58),
+      inset 0 1px 0 rgba(78, 92, 85, 0.06) !important;
+  }
+
+  .stratos-auth-input::placeholder {
+    color: rgba(214, 223, 218, 0.55) !important;
+  }
+
+  .stratos-auth-label {
+    color: rgba(214, 223, 218, 0.58) !important;
+    font-size: 0.72rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .stratos-auth-anchor {
+    color: var(--stone-accent-text) !important;
+    font-size: 0.9rem !important;
+    font-weight: 500 !important;
+    transition: color 160ms ease;
+  }
+
+  .stratos-auth-anchor:hover {
+    color: #dff3ec !important;
+  }
+
+  .stratos-auth-message {
+    border-radius: 1rem !important;
+    padding: 0.875rem 1rem !important;
+    line-height: 1.5 !important;
+  }
+
+  .stratos-auth-divider {
+    opacity: 0.8;
+  }
+
   .app-nav-shell {
     border-right: 1px solid rgba(255, 255, 255, 0.07);
     background: rgba(9, 14, 18, 0.94);

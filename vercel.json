@@ -6,7 +6,7 @@
       "destination": "/api/:path*"
     },
     {
-      "source": "/(.*)",
+      "source": "/:path((?!@vite/|@react-refresh$|@id/|@fs/|src/|node_modules/|api/).*)",
       "destination": "/index.html"
     }
   ]
