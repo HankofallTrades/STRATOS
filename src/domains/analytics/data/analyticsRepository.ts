@@ -309,6 +309,36 @@ export const fetchLatestMaxE1RMForExercises = async (userId: string, exerciseIds
 };
 
 /**
+ * Fetches the all-time peak e1RM for a list of exercises by reusing the daily history RPC.
+ * Benchmarks should compare against a user's best demonstrated performance, not only the latest workout.
+ */
+export const fetchPeakMaxE1RMForExercises = async (userId: string, exerciseIds: string[]): Promise<LatestMaxE1RM[]> => {
+    const histories = await Promise.all(
+        exerciseIds.map(async (exerciseId) => {
+            const history = await fetchMaxE1RMHistory(userId, exerciseId);
+            const peakEntry = history.reduce<DailyMaxE1RM | null>((best, item) => {
+                if (!best || item.max_e1rm > best.max_e1rm) {
+                    return item;
+                }
+                return best;
+            }, null);
+
+            if (!peakEntry) {
+                return null;
+            }
+
+            return {
+                exercise_id: exerciseId,
+                max_e1rm: Number(peakEntry.max_e1rm),
+                equipment_type: peakEntry.equipment_type,
+            } satisfies LatestMaxE1RM;
+        })
+    );
+
+    return histories.filter((item): item is LatestMaxE1RM => item !== null);
+};
+
+/**
  * Fetches the latest recorded max reps for a list of specified exercises.
  */
 export const fetchLatestMaxRepsForExercises = async (userId: string, exerciseIds: string[]): Promise<LatestMaxReps[]> => {
