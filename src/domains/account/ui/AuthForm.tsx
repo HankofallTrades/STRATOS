@@ -19,20 +19,17 @@ export const AuthForm = () => {
 
   const productPillars = [
     {
-      description:
-        "Start the day’s session or build one from your current block without leaving the system.",
+      description: "Log sessions and track your training block.",
       icon: Dumbbell,
       label: "Training",
     },
     {
-      description:
-        "Keep PRs, volume, and recovery markers in the same quiet surface.",
+      description: "PRs, volume, and recovery in one place.",
       icon: BarChart3,
       label: "Analytics",
     },
     {
-      description:
-        "Ask Coach for adjustments without re-explaining your recent work and constraints.",
+      description: "AI coaching with full context of your training.",
       icon: Bot,
       label: "Coach",
     },
@@ -84,9 +81,7 @@ export const AuthForm = () => {
                 <div className="flex max-w-xl items-start gap-3 text-sm text-muted-foreground">
                   <ShieldCheck className="mt-0.5 h-4 w-4 warm-metal-text" />
                   <p className="leading-6">
-                    Coach provider keys are optional and configured after login
-                    in Settings. When you save one, STRATOS stores it encrypted
-                    server-side.
+                    Coach is optional — configure a provider key in Settings after signing in.
                   </p>
                 </div>
               </div>
@@ -100,8 +95,7 @@ export const AuthForm = () => {
                 Continue into STRATOS
               </h2>
               <p className="text-sm leading-6 text-muted-foreground">
-                Use email and password to sign in or create an account. New
-                accounts move straight into onboarding.
+                Sign in or create an account.
               </p>
             </div>
 
@@ -197,9 +191,6 @@ export const AuthForm = () => {
               />
             </div>
 
-            <p className="mt-5 text-sm leading-6 text-muted-foreground">
-              Coach provider preferences live under Settings once you are in.
-            </p>
           </section>
         </div>
       </div>

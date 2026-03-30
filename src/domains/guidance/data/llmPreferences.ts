@@ -265,6 +265,5 @@ export const buildMissingProviderConfigurationMessage = (
     return null;
   }
 
-  const providerOption = getLlmProviderOption(provider);
-  return `Save your own ${providerOption.apiKeyLabel} in Settings before using Coach.`;
+  return "Add an API key in Settings to use Coach.";
 };
