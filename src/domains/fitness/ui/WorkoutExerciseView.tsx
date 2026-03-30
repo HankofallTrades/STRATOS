@@ -507,7 +507,7 @@ export const WorkoutExerciseView = ({
             style={{ transform: `translate3d(${cardSwipeOffset}px, 0, 0)` }}
             onDragStart={(event) => event.preventDefault()}
           >
-            <div className="mb-4 flex items-start justify-between gap-3">
+            <div className="mb-4 flex items-start justify-between gap-3 pt-1">
               <div className="min-w-0 flex-1">
                 {canReplaceExercise ? (
                   <ExerciseSelector
