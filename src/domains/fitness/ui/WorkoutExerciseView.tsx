@@ -468,7 +468,7 @@ export const WorkoutExerciseView = ({
     Math.abs(cardSwipeOffset) / SWIPE_REVEAL_WIDTH
   );
   const chipButtonClassName =
-    "h-8 rounded-[10px] border-0 bg-white/[0.03] px-2.5 text-[13px] font-medium text-foreground/76 shadow-none hover:bg-white/[0.05] hover:text-foreground";
+    "h-8 rounded-[10px] border-0 bg-transparent px-2.5 text-[13px] font-medium text-foreground/76 shadow-none hover:bg-transparent hover:text-foreground";
 
   return (
     <Fragment>
