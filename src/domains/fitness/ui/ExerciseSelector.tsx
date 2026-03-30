@@ -172,7 +172,7 @@ const ExerciseSelector = ({
           )}
         </DialogTrigger>
         <DialogContent
-          className={workoutDialogClassName}
+          className={cn(workoutDialogClassName, "!top-4 !translate-y-0 sm:!top-[50%] sm:!translate-y-[-50%]")}
           onOpenAutoFocus={(e) => e.preventDefault()}
           onInteractOutside={(e) => {
             if (isConfirmDeleteDialogOpen) e.preventDefault();
@@ -223,7 +223,7 @@ const ExerciseSelector = ({
               />
             </div>
 
-            <div className="stone-surface max-h-72 space-y-1 overflow-y-auto rounded-[18px] p-2">
+            <div className="stone-surface max-h-40 space-y-1 overflow-y-auto rounded-[18px] p-2 sm:max-h-72">
               {isLoading ? (
                 <p className="py-4 text-center text-sm text-muted-foreground">Loading exercises...</p>
               ) : exercises.length > 0 ? (

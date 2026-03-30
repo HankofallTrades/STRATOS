@@ -468,7 +468,7 @@ export const WorkoutExerciseView = ({
     Math.abs(cardSwipeOffset) / SWIPE_REVEAL_WIDTH
   );
   const chipButtonClassName =
-    "h-8 rounded-[10px] border-0 bg-white/[0.03] px-2.5 text-[13px] font-medium text-foreground/76 shadow-none hover:bg-white/[0.05] hover:text-foreground";
+    "h-8 rounded-[10px] border-0 bg-transparent px-2.5 text-[13px] font-medium text-foreground/76 shadow-none hover:bg-transparent hover:text-foreground";
 
   return (
     <Fragment>
@@ -507,7 +507,7 @@ export const WorkoutExerciseView = ({
             style={{ transform: `translate3d(${cardSwipeOffset}px, 0, 0)` }}
             onDragStart={(event) => event.preventDefault()}
           >
-            <div className="mb-4 flex items-start justify-between gap-3">
+            <div className="mb-4 flex items-start justify-between gap-3 pt-1">
               <div className="min-w-0 flex-1">
                 {canReplaceExercise ? (
                   <ExerciseSelector
@@ -720,7 +720,7 @@ export const WorkoutExerciseView = ({
                 <Table className="w-full">
                   <TableHeader className="stone-table-head">
                     <TableRow className="stone-seam border-b hover:bg-transparent">
-                      <TableHead className="w-[42px] px-2 py-3 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Set</TableHead>
+                      <TableHead className="w-[42px] px-2 py-3 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground"></TableHead>
 
                       {isCardioExercise(workoutExercise.exercise) ? (
                         <>

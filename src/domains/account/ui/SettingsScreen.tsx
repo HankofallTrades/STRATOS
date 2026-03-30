@@ -250,10 +250,7 @@ const SettingsScreen = () => {
                       : "No saved key is on file for this provider yet."}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    API keys are sent to the server once when you save them, then
-                    stored encrypted in Supabase. STRATOS does not keep the
-                    plaintext key in browser storage and never shows it back to
-                    the client after save.
+                    Keys are encrypted server-side and never stored in your browser.
                   </p>
 
                   <Label htmlFor="llm-model">Model</Label>
