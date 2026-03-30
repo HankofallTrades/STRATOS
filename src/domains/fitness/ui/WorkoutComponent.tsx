@@ -39,8 +39,8 @@ const WorkoutComponent = () => {
   }
 
   return (
-    <div className="flex h-full flex-col [overflow-x:clip]">
-      <div className="scrollbar-hidden flex-1 [overflow-x:clip] overflow-y-auto overscroll-x-none [overflow-anchor:none]">
+    <div className="[overflow-x:clip]">
+      <div className="[overflow-x:clip]">
         {currentWorkout.exercises.length > 0 ? (
           <div className="space-y-8 [overflow-x:clip] pb-8">
             <AnimatePresence initial={false}>
