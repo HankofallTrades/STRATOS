@@ -47,11 +47,13 @@ npm run supabase:status
 ```
 
 Copy the `API_URL` value into `VITE_SUPABASE_URL` and the `ANON_KEY` value into `VITE_SUPABASE_ANON_KEY`.
+Copy the `SERVICE_ROLE_KEY` value into `SUPABASE_SERVICE_ROLE_KEY`.
+Set `USER_SECRET_ENCRYPTION_KEY` to a long random secret used only by the server.
 
 Important:
 
 - `VITE_*` variables are shipped to the browser. Only put public values there.
-- `OPENROUTER_API_KEY`, service-role keys, personal access tokens, and similar credentials must stay server-side and must not use the `VITE_` prefix.
+- Service-role keys, personal access tokens, and similar shared secrets must stay server-side and must not use the `VITE_` prefix.
 
 ### 4. Apply migrations
 
@@ -69,7 +71,7 @@ npm run dev
 
 The app runs at [http://localhost:8080](http://localhost:8080).
 
-In local `vite dev`, self-signup is enabled automatically on the login screen so you can create an account without any external backend.
+The login screen exposes email signup by default so you can create an account directly.
 
 ## Coach Setup
 
@@ -77,10 +79,10 @@ The app runs without a hosted AI provider, but the Coach screen needs one of the
 
 - Local model runtime:
   Set `VITE_LLM_PROVIDER=local` and `LOCAL_LLM_URL=http://127.0.0.1:11434/v1/chat/completions`
-- OpenRouter:
-  Set `VITE_LLM_PROVIDER=openrouter` and `OPENROUTER_API_KEY=...`
+- Hosted BYOK providers:
+  Set `VITE_LLM_PROVIDER` to `openrouter`, `openai`, `anthropic`, or `google`, then paste your own provider API key into Settings after you log in.
 
-`OPENROUTER_API_KEY` is server-only. Do not move it behind a `VITE_` prefix.
+Hosted-provider keys are user-provided for Coach, sent to the server once on save, encrypted at rest in Supabase, and decrypted only inside the Coach server runtime when a request needs them.
 
 ## Project Structure
 
@@ -118,7 +120,10 @@ The codebase is currently migrating from older `view/controller/model` naming to
 ## Security Notes
 
 - The current app only needs `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` on the client.
-- Any private provider key must stay server-side.
+- Shared private keys must stay server-side.
+- Coach BYOK keys are stored encrypted in Supabase and accessed only through server-side code using the service-role key.
+- The browser only receives credential status metadata such as whether a key exists and its last four characters.
+- The plaintext provider key is not stored in browser storage and is not returned to the client after save.
 - Before making the repo public, rotate any secret that was ever committed and rewrite git history to remove it.
 
 ## License

@@ -1,3 +1,6 @@
+import { createAnthropic } from "@ai-sdk/anthropic";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { LanguageModel } from "ai";
 
@@ -6,12 +9,17 @@ export type ChatMessage = {
   content: string;
 };
 
-export type LlmProvider = "local" | "openrouter";
+export type LlmProvider =
+  | "anthropic"
+  | "google"
+  | "local"
+  | "openai"
+  | "openrouter";
 
 export interface LlmModelConfig {
+  apiKey?: string;
   localLlmUrl?: string;
   model?: string;
-  openRouterApiKey?: string;
   openRouterApiUrl: string;
   openRouterAppName: string;
   openRouterReferer: string;
@@ -29,18 +37,65 @@ const trimProviderBaseUrl = (url: string) => {
 };
 
 export const createLlmModel = ({
+  apiKey,
   localLlmUrl,
   model,
-  openRouterApiKey,
   openRouterApiUrl,
   openRouterAppName,
   openRouterReferer,
   provider,
 }: LlmModelConfig): LanguageModel => {
   switch (provider) {
+    case "anthropic": {
+      if (!apiKey) {
+        throw new Error(
+          "An Anthropic API key is required. Add your own key in Settings before using Coach."
+        );
+      }
+
+      if (!model) {
+        throw new Error("An Anthropic model is required for the coach agent.");
+      }
+
+      return createAnthropic({
+        apiKey,
+      })(model);
+    }
+    case "google": {
+      if (!apiKey) {
+        throw new Error(
+          "A Google AI API key is required. Add your own key in Settings before using Coach."
+        );
+      }
+
+      if (!model) {
+        throw new Error("A Google model is required for the coach agent.");
+      }
+
+      return createGoogleGenerativeAI({
+        apiKey,
+      })(model);
+    }
+    case "openai": {
+      if (!apiKey) {
+        throw new Error(
+          "An OpenAI API key is required. Add your own key in Settings before using Coach."
+        );
+      }
+
+      if (!model) {
+        throw new Error("An OpenAI model is required for the coach agent.");
+      }
+
+      return createOpenAI({
+        apiKey,
+      })(model);
+    }
     case "openrouter": {
-      if (!openRouterApiKey) {
-        throw new Error("OPENROUTER_API_KEY environment variable is not set.");
+      if (!apiKey) {
+        throw new Error(
+          "An OpenRouter API key is required. Add your own key in Settings before using Coach."
+        );
       }
 
       if (!model) {
@@ -48,7 +103,7 @@ export const createLlmModel = ({
       }
 
       return createOpenAICompatible({
-        apiKey: openRouterApiKey,
+        apiKey,
         baseURL: trimProviderBaseUrl(openRouterApiUrl),
         headers: {
           "HTTP-Referer": openRouterReferer,

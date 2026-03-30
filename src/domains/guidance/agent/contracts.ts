@@ -68,9 +68,19 @@ export type CoachAgentResponseStatus =
   | "client_tool_required"
   | "error";
 
+const coachLlmProviders = [
+  "anthropic",
+  "google",
+  "local",
+  "openai",
+  "openrouter",
+] as const;
+
+export type CoachLlmProvider = (typeof coachLlmProviders)[number];
+
 export interface CoachAgentRequest {
   messages: CoachConversationMessage[];
-  provider: "local" | "openrouter";
+  provider: CoachLlmProvider;
   model?: string;
   auth?: CoachAgentAuthContext;
 }
@@ -142,7 +152,7 @@ export const coachAgentRequestSchema = z.object({
     .optional(),
   messages: z.array(coachConversationMessageSchema),
   model: z.string().optional(),
-  provider: z.enum(["local", "openrouter"]),
+  provider: z.enum(coachLlmProviders),
 });
 
 export const coachAgentResponseSchema = z.object({

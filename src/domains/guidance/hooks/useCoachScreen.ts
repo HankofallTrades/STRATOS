@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 import {
   createCoachErrorMessage,
@@ -16,7 +17,12 @@ import {
   getCoachToolLabel,
 } from "@/domains/guidance/agent/tools";
 import { useVolumeChart } from "@/domains/analytics/hooks/useVolumeChart";
-import { readLlmPreferences } from "@/domains/guidance/data/llmPreferences";
+import {
+  buildMissingProviderConfigurationMessage,
+  providerRequiresApiKey,
+  readLlmPreferences,
+} from "@/domains/guidance/data/llmPreferences";
+import { fetchProviderCredentialStatus } from "@/domains/guidance/data/providerCredentialRepository";
 import { useGuidanceWorkoutCatalog } from "@/domains/guidance/hooks/useGuidanceWorkoutCatalog";
 import { useWorkoutGenerator } from "@/domains/guidance/hooks/useWorkoutGenerator";
 import { usePeriodization } from "@/domains/periodization";
@@ -45,6 +51,66 @@ export const useCoachScreen = () => {
       volumeProgress: progressDisplayData,
     }
   );
+  const llmPreferences = readLlmPreferences();
+  const [hasStoredProviderCredential, setHasStoredProviderCredential] =
+    useState(!providerRequiresApiKey(llmPreferences.provider));
+  const [isProviderCredentialLoading, setIsProviderCredentialLoading] =
+    useState(providerRequiresApiKey(llmPreferences.provider));
+  const configurationMessage =
+    !providerRequiresApiKey(llmPreferences.provider) ||
+    isProviderCredentialLoading ||
+    hasStoredProviderCredential
+      ? null
+      : buildMissingProviderConfigurationMessage(llmPreferences.provider);
+  const isCoachConfigured =
+    !providerRequiresApiKey(llmPreferences.provider) || hasStoredProviderCredential;
+  const hasShownConfigurationToastRef = useRef(false);
+
+  useEffect(() => {
+    hasShownConfigurationToastRef.current = false;
+  }, [configurationMessage]);
+
+  useEffect(() => {
+    if (!providerRequiresApiKey(llmPreferences.provider)) {
+      setHasStoredProviderCredential(true);
+      setIsProviderCredentialLoading(false);
+      return;
+    }
+
+    if (!session?.access_token) {
+      setHasStoredProviderCredential(false);
+      setIsProviderCredentialLoading(false);
+      return;
+    }
+
+    setIsProviderCredentialLoading(true);
+    let isCancelled = false;
+
+    void fetchProviderCredentialStatus({
+      accessToken: session.access_token,
+      provider: llmPreferences.provider,
+    })
+      .then(status => {
+        if (!isCancelled) {
+          setHasStoredProviderCredential(status.hasStoredCredential);
+        }
+      })
+      .catch(error => {
+        console.error("Error fetching provider credential status:", error);
+        if (!isCancelled) {
+          setHasStoredProviderCredential(false);
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setIsProviderCredentialLoading(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [llmPreferences.provider, session?.access_token]);
 
   const handleSend = async (textOrEvent?: string | FormEvent<HTMLFormElement>) => {
     let messageToSend = "";
@@ -64,6 +130,25 @@ export const useCoachScreen = () => {
       return;
     }
 
+    const { model, provider } = readLlmPreferences();
+
+    if (providerRequiresApiKey(provider) && isProviderCredentialLoading) {
+      toast.error("Checking your saved Coach provider key. Try again in a moment.");
+      return;
+    }
+
+    const missingConfigurationMessage =
+      providerRequiresApiKey(provider) && !hasStoredProviderCredential
+        ? buildMissingProviderConfigurationMessage(provider)
+        : null;
+
+    if (missingConfigurationMessage) {
+      const errorMessage = createCoachErrorMessage(missingConfigurationMessage);
+      toast.error(missingConfigurationMessage);
+      setConversation(previousMessages => [...previousMessages, errorMessage]);
+      return;
+    }
+
     const userMessage = createCoachUserMessage(messageToSend);
     let nextConversation = [...conversation, userMessage];
     let pendingNavigation: string | undefined;
@@ -74,8 +159,6 @@ export const useCoachScreen = () => {
     setStatusMessage("Coach is reviewing your training context...");
 
     try {
-      const { provider, model } = readLlmPreferences();
-
       for (let step = 0; step < 4; step += 1) {
         const agentResponse = await sendCoachMessage({
           auth: {
@@ -169,6 +252,15 @@ export const useCoachScreen = () => {
     setInput(event.target.value);
   };
 
+  const handleInputFocus = () => {
+    if (!configurationMessage || hasShownConfigurationToastRef.current) {
+      return;
+    }
+
+    toast.error(configurationMessage);
+    hasShownConfigurationToastRef.current = true;
+  };
+
   const messages: ChatMessage[] = conversation.reduce<ChatMessage[]>(
     (visibleMessages, message) => {
       switch (message.kind) {
@@ -205,25 +297,31 @@ export const useCoachScreen = () => {
       disabled:
         isLoading ||
         isLoadingWorkoutCatalog ||
-        !isWorkoutGeneratorReady,
+        !isWorkoutGeneratorReady ||
+        !isCoachConfigured ||
+        isProviderCredentialLoading,
     },
     {
       label: "How can I get max swol?",
       onClick: () => {
         void handleSend("How can I get max swol?");
       },
+      disabled: isLoading || !isCoachConfigured || isProviderCredentialLoading,
     },
     {
       label: "What can I do for post-workout recovery?",
       onClick: () => {
         void handleSend("What can I do for post-workout recovery?");
       },
+      disabled: isLoading || !isCoachConfigured || isProviderCredentialLoading,
     },
   ];
 
   return {
+    configurationMessage,
     conversation,
     handleInputChange,
+    handleInputFocus,
     handleSend,
     input,
     isLoading,

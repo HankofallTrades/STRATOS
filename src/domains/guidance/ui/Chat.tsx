@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef } from "react";
 import { AlertCircle, CheckCircle2, LoaderCircle, Send, Wrench } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { Link } from "react-router-dom";
 
 import { Button } from "@/components/core/button";
 import { Input } from "@/components/core/input";
@@ -14,11 +15,13 @@ import type { PrimerButton } from "./ChatPrimers";
 
 interface ChatProps {
   className?: string;
+  configurationMessage?: string | null;
   conversation?: CoachConversationMessage[];
   input: string;
   isLoading: boolean;
   messages: ChatMessage[];
   onInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onInputFocus?: () => void;
   onSendMessage: (
     textOrEvent?: string | React.FormEvent<HTMLFormElement>
   ) => void;
@@ -70,10 +73,12 @@ const extractWorkoutToolPreview = (value: unknown): WorkoutToolPreview | null =>
 
 const Chat: React.FC<ChatProps> = ({
   conversation = [],
+  configurationMessage,
   input,
   isLoading,
   messages,
   onInputChange,
+  onInputFocus,
   onSendMessage,
   primerButtons = [],
   showPrimers = false,
@@ -229,6 +234,14 @@ const Chat: React.FC<ChatProps> = ({
       </div>
 
       <div className="px-4 pb-4">
+        {configurationMessage ? (
+          <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">
+            <p>{configurationMessage}</p>
+            <Link to="/settings" className="mt-2 inline-block font-medium underline">
+              Open Coach Settings
+            </Link>
+          </div>
+        ) : null}
         {showPrimers && primerButtons.length > 0 && (
           <div className="mb-2">
             <ChatPrimers buttons={primerButtons} />
@@ -239,7 +252,10 @@ const Chat: React.FC<ChatProps> = ({
             type="text"
             value={input}
             onChange={onInputChange}
-            placeholder="Ask your coach anything..."
+            onFocus={onInputFocus}
+            placeholder={
+              configurationMessage || "Ask your coach anything..."
+            }
             className="flex-grow"
             disabled={isLoading}
           />

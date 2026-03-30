@@ -24,41 +24,44 @@ import {
   sessionFocusOptions,
 } from "@/domains/fitness/data/workoutScreen";
 import {
-  OPENROUTER_MODEL_OPTIONS,
-  type LlmProviderPreference,
+  getLlmModelOptions,
+  getLlmProviderOption,
+  llmProviderOptions,
+  providerRequiresApiKey,
 } from "@/domains/guidance/data/llmPreferences";
 import type { MesocycleProtocol } from "@/domains/periodization";
-
-const providerDescriptions: Record<LlmProviderPreference, string> = {
-  local: "Local (LM Studio/Ollama)",
-  openrouter: "OpenRouter",
-};
 
 const SettingsScreen = () => {
   const {
     activeProgram,
-    availableThemes,
     bodyweight,
+    hasStoredProviderCredential,
+    handleClearProviderApiKey,
     handleLlmModelChange,
     handleOpenPeriodDialog,
+    handleProviderApiKeyChange,
+    handleSaveProviderApiKey,
     handleLlmProviderChange,
     handleSavePeriod,
     handleSignOut,
-    handleThemeChange,
     handleUnitChange,
     handleUpdateBodyweight,
     isLoadingActiveProgram,
     isPeriodDialogOpen,
     isPeriodUpdating,
     isPeriodWorkoutInProgress,
+    isProviderCredentialBusy,
+    isProviderCredentialLoading,
+    isProviderCredentialSaving,
     isProfileBusy,
     isSigningOut,
     llmModelPref,
     llmProviderPref,
+    providerApiKeyDraft,
+    providerCredentialLastFour,
     periodDurationWeeks,
     periodGoalFocus,
     periodProtocol,
-    selectedThemeId,
     setBodyweight,
     setIsPeriodDialogOpen,
     setPeriodDurationWeeks,
@@ -69,6 +72,10 @@ const SettingsScreen = () => {
     userEmail,
   } = useSettingsScreen();
 
+  const selectedProvider = getLlmProviderOption(llmProviderPref);
+  const providerModelOptions = getLlmModelOptions(llmProviderPref);
+  const shouldShowApiKeyInput = providerRequiresApiKey(llmProviderPref);
+
   return (
     <div className="app-page max-w-3xl">
       <header className="mb-8 space-y-2">
@@ -78,37 +85,6 @@ const SettingsScreen = () => {
       </header>
 
       <div className="space-y-5">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl">App Theme</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="theme-select">Theme</Label>
-              <Select value={selectedThemeId} onValueChange={handleThemeChange}>
-                <SelectTrigger id="theme-select" className="app-form-select">
-                  <SelectValue placeholder="Select Theme" />
-                </SelectTrigger>
-                <SelectContent className="stone-surface border-white/8 text-foreground">
-                  {availableThemes.map(theme => (
-                    <SelectItem key={theme.id} value={theme.id}>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{theme.name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {theme.description}
-                        </span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Choose your preferred app theme. Changes apply immediately.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
         <Card>
           <CardHeader>
             <CardTitle className="text-xl">Profile Information</CardTitle>
@@ -207,7 +183,7 @@ const SettingsScreen = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-xl">Developer Settings</CardTitle>
+            <CardTitle className="text-xl">Coach Settings</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -217,23 +193,76 @@ const SettingsScreen = () => {
                   <SelectValue placeholder="Select LLM Provider" />
                 </SelectTrigger>
                 <SelectContent className="stone-surface border-white/8 text-foreground">
-                  {Object.entries(providerDescriptions).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
+                  {llmProviderOptions.map(provider => (
+                    <SelectItem key={provider.value} value={provider.value}>
+                      {provider.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">
+                {selectedProvider.description}
+              </p>
 
-              {llmProviderPref === "openrouter" && (
+              {shouldShowApiKeyInput ? (
                 <div className="space-y-2 pt-4">
-                  <Label htmlFor="llm-model">Model (OpenRouter)</Label>
+                  <Label htmlFor="provider-api-key">
+                    {selectedProvider.apiKeyLabel}
+                  </Label>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Input
+                      id="provider-api-key"
+                      type="password"
+                      value={providerApiKeyDraft}
+                      onChange={event => handleProviderApiKeyChange(event.target.value)}
+                      placeholder={selectedProvider.apiKeyPlaceholder}
+                      disabled={isProviderCredentialBusy}
+                      autoComplete="off"
+                      className="app-form-input"
+                    />
+                    <Button
+                      type="button"
+                      onClick={handleSaveProviderApiKey}
+                      disabled={isProviderCredentialBusy || !providerApiKeyDraft.trim()}
+                      className="rounded-[16px]"
+                    >
+                      {isProviderCredentialSaving ? "Saving..." : "Save Key"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleClearProviderApiKey}
+                      disabled={isProviderCredentialBusy || !hasStoredProviderCredential}
+                      className="rounded-[16px]"
+                    >
+                      Delete Saved Key
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {isProviderCredentialLoading
+                      ? "Checking whether this provider already has a saved key..."
+                      : hasStoredProviderCredential
+                      ? `A saved key is on file${
+                          providerCredentialLastFour
+                            ? ` and ends in ${providerCredentialLastFour}.`
+                            : "."
+                        }`
+                      : "No saved key is on file for this provider yet."}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    API keys are sent to the server once when you save them, then
+                    stored encrypted in Supabase. STRATOS does not keep the
+                    plaintext key in browser storage and never shows it back to
+                    the client after save.
+                  </p>
+
+                  <Label htmlFor="llm-model">Model</Label>
                   <Select value={llmModelPref} onValueChange={handleLlmModelChange}>
                     <SelectTrigger id="llm-model" className="app-form-select">
                       <SelectValue placeholder="Select Model" />
                     </SelectTrigger>
                     <SelectContent className="stone-surface border-white/8 text-foreground">
-                      {OPENROUTER_MODEL_OPTIONS.map(model => (
+                      {providerModelOptions.map(model => (
                         <SelectItem key={model.value} value={model.value}>
                           {model.label}
                         </SelectItem>
@@ -241,13 +270,12 @@ const SettingsScreen = () => {
                     </SelectContent>
                   </Select>
                 </div>
-              )}
+              ) : null}
 
               <p className="pt-2 text-xs text-muted-foreground">
-                Select the LLM provider and model for the AI Coach feature.
-                Changes take effect immediately. Ensure necessary API keys and URLs
-                are still configured in{" "}
-                <code className="font-mono text-xs">.env.local</code>.
+                Local mode expects an OpenAI-compatible runtime URL configured in{" "}
+                <code className="font-mono text-xs">.env.local</code>. Hosted
+                providers are all BYOK and use your own billing account.
               </p>
             </div>
 

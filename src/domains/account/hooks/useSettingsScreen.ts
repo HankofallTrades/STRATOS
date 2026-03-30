@@ -9,14 +9,17 @@ import {
 } from "@/domains/account/data/accountRepository";
 import { usePeriodization, type MesocycleProtocol } from "@/domains/periodization";
 import {
-  readLlmPreferences,
   resolveStoredModelForProvider,
+  readLlmPreferences,
   writeLlmModelPreference,
   writeLlmProviderPreference,
   type LlmProviderPreference,
 } from "@/domains/guidance/data/llmPreferences";
-import { useTheme } from "@/lib/themes";
-import type { ThemeId } from "@/lib/themes";
+import {
+  deleteProviderCredential,
+  fetchProviderCredentialStatus,
+  upsertProviderCredential,
+} from "@/domains/guidance/data/providerCredentialRepository";
 import type { SessionFocus } from "@/lib/types/workout";
 import { useAuth } from "@/state/auth/AuthProvider";
 import { selectCurrentWorkout } from "@/state/workout/workoutSlice";
@@ -36,10 +39,6 @@ const SESSION_FOCUS_LABELS: Record<SessionFocus, string> = {
   speed: "Speed",
   recovery: "Recovery",
   mixed: "Mixed",
-};
-
-const isThemeId = (value: string): value is ThemeId => {
-  return value === "fantasy" || value === "modern" || value === "cyberpunk";
 };
 
 const isWeightUnit = (value: string | null | undefined): value is WeightUnit => {
@@ -73,8 +72,7 @@ const buildPeriodName = (
 };
 
 export const useSettingsScreen = () => {
-  const { signOut, user, triggerOnboarding } = useAuth();
-  const { themeId, setTheme, availableThemes } = useTheme();
+  const { session, signOut, user, triggerOnboarding } = useAuth();
   const currentWorkout = useAppSelector(selectCurrentWorkout);
   const {
     activeProgram,
@@ -96,6 +94,16 @@ export const useSettingsScreen = () => {
     initialLlmPreferences.provider
   );
   const [llmModelPref, setLlmModelPref] = useState(initialLlmPreferences.model);
+  const [providerApiKeyDraft, setProviderApiKeyDraft] = useState("");
+  const [hasStoredProviderCredential, setHasStoredProviderCredential] =
+    useState(false);
+  const [providerCredentialLastFour, setProviderCredentialLastFour] = useState<
+    string | null
+  >(null);
+  const [isProviderCredentialLoading, setIsProviderCredentialLoading] =
+    useState(false);
+  const [isProviderCredentialSaving, setIsProviderCredentialSaving] =
+    useState(false);
   const [isPeriodDialogOpen, setIsPeriodDialogOpen] = useState(false);
   const [periodDurationWeeks, setPeriodDurationWeeks] = useState(
     DEFAULT_PERIOD_DURATION_WEEKS
@@ -139,19 +147,68 @@ export const useSettingsScreen = () => {
     void loadProfile();
   }, [loadProfile]);
 
-  const handleThemeChange = (value: string) => {
-    if (isThemeId(value)) {
-      setTheme(value);
+  useEffect(() => {
+    if (llmProviderPref === "local" || !session?.access_token) {
+      setHasStoredProviderCredential(false);
+      setIsProviderCredentialLoading(false);
+      setProviderCredentialLastFour(null);
+      setProviderApiKeyDraft("");
+      return;
     }
-  };
+
+    let isCancelled = false;
+    setIsProviderCredentialLoading(true);
+
+    void fetchProviderCredentialStatus({
+      accessToken: session.access_token,
+      provider: llmProviderPref,
+    })
+      .then(status => {
+        if (isCancelled) {
+          return;
+        }
+
+        setHasStoredProviderCredential(status.hasStoredCredential);
+        setProviderCredentialLastFour(status.last4);
+        setProviderApiKeyDraft("");
+      })
+      .catch(error => {
+        if (isCancelled) {
+          return;
+        }
+
+        console.error("Error fetching provider credential status:", error);
+        toast.error("Failed to load your saved Coach provider key.");
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setIsProviderCredentialLoading(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [llmProviderPref, session?.access_token]);
 
   const handleLlmProviderChange = (value: string) => {
     const provider: LlmProviderPreference =
-      value === "openrouter" ? "openrouter" : "local";
+      value === "anthropic" ||
+      value === "google" ||
+      value === "openai" ||
+      value === "openrouter"
+        ? value
+        : "local";
     const nextModel = resolveStoredModelForProvider(provider);
 
     setLlmProviderPref(provider);
     setLlmModelPref(nextModel);
+    setProviderApiKeyDraft("");
+    setHasStoredProviderCredential(false);
+    setProviderCredentialLastFour(null);
+    setIsProviderCredentialLoading(
+      provider !== "local" && Boolean(session?.access_token)
+    );
     writeLlmProviderPreference(provider);
     writeLlmModelPreference(provider, nextModel);
   };
@@ -159,6 +216,83 @@ export const useSettingsScreen = () => {
   const handleLlmModelChange = (value: string) => {
     setLlmModelPref(value);
     writeLlmModelPreference(llmProviderPref, value);
+  };
+
+  const handleProviderApiKeyChange = (value: string) => {
+    setProviderApiKeyDraft(value);
+  };
+
+  const handleSaveProviderApiKey = async () => {
+    if (llmProviderPref === "local") {
+      toast.error("Local mode does not use a hosted provider API key.");
+      return;
+    }
+
+    if (!session?.access_token) {
+      toast.error("You must be logged in to save a Coach provider key.");
+      return;
+    }
+
+    if (!providerApiKeyDraft.trim()) {
+      toast.error("Enter an API key before saving.");
+      return;
+    }
+
+    setIsProviderCredentialSaving(true);
+
+    try {
+      const status = await upsertProviderCredential({
+        accessToken: session.access_token,
+        apiKey: providerApiKeyDraft,
+        provider: llmProviderPref,
+      });
+      setHasStoredProviderCredential(status.hasStoredCredential);
+      setProviderCredentialLastFour(status.last4);
+      setProviderApiKeyDraft("");
+      toast.success("Coach provider key saved.");
+    } catch (error) {
+      console.error("Error saving provider credential:", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to save your Coach provider key."
+      );
+    } finally {
+      setIsProviderCredentialSaving(false);
+    }
+  };
+
+  const handleClearProviderApiKey = async () => {
+    if (llmProviderPref === "local") {
+      return;
+    }
+
+    if (!session?.access_token) {
+      toast.error("You must be logged in to delete a Coach provider key.");
+      return;
+    }
+
+    setIsProviderCredentialSaving(true);
+
+    try {
+      await deleteProviderCredential({
+        accessToken: session.access_token,
+        provider: llmProviderPref,
+      });
+      setHasStoredProviderCredential(false);
+      setProviderCredentialLastFour(null);
+      setProviderApiKeyDraft("");
+      toast.success("Coach provider key deleted.");
+    } catch (error) {
+      console.error("Error deleting provider credential:", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to delete your Coach provider key."
+      );
+    } finally {
+      setIsProviderCredentialSaving(false);
+    }
   };
 
   const handleUnitChange = (newUnit: WeightUnit) => {
@@ -305,28 +439,35 @@ export const useSettingsScreen = () => {
 
   return {
     activeProgram,
-    availableThemes,
     bodyweight,
+    hasStoredProviderCredential,
     handleLlmModelChange,
     handleOpenPeriodDialog,
+    handleProviderApiKeyChange,
+    handleSaveProviderApiKey,
     handleLlmProviderChange,
     handleSavePeriod,
     handleSignOut,
-    handleThemeChange,
     handleUnitChange,
     handleUpdateBodyweight,
+    handleClearProviderApiKey,
     isLoadingActiveProgram,
     isPeriodDialogOpen,
     isPeriodUpdating: isCreatingMesocycle || isResettingMesocycle,
     isPeriodWorkoutInProgress,
+    isProviderCredentialBusy:
+      isProviderCredentialLoading || isProviderCredentialSaving,
+    isProviderCredentialLoading,
+    isProviderCredentialSaving,
     isProfileBusy: isLoadingProfile || isSavingProfile,
     isSigningOut,
     llmModelPref,
     llmProviderPref,
+    providerApiKeyDraft,
+    providerCredentialLastFour,
     periodDurationWeeks,
     periodGoalFocus,
     periodProtocol,
-    selectedThemeId: themeId,
     setBodyweight,
     setIsPeriodDialogOpen,
     setPeriodDurationWeeks,

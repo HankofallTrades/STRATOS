@@ -31,7 +31,7 @@ This file is the fast operational map for agents and future sessions. It is not 
   - Wraps the app in `QueryClientProvider` and `AuthProvider`.
 - `src/App.tsx`
   - Owns the provider stack for Redux, persistence, theme, toasts, router.
-  - Splits public routes (`/login`, `/waitlist`) from protected app routes.
+  - Splits public routes (`/login`, legacy `/waitlist` redirect) from protected app routes.
 - `src/components/layout/ProtectedRoute.tsx`
   - Gates protected routes on Supabase session state from `AuthProvider`.
 - `src/components/layout/MainAppLayout.tsx`
@@ -42,6 +42,9 @@ This file is the fast operational map for agents and future sessions. It is not 
 - `api/coach.ts`
   - Vercel server function for Coach.
   - Validates requests with the guidance agent contracts and delegates to the agent runtime.
+- `api/coach-credentials.ts`
+  - Vercel server function for hosted Coach credential save/load/delete status.
+  - Verifies the caller with Supabase auth, encrypts provider keys server-side, and stores only ciphertext plus metadata.
 
 ## Route Map
 
@@ -50,7 +53,7 @@ This file is the fast operational map for agents and future sessions. It is not 
   - Screen: `src/domains/account/ui/AuthForm.tsx`
 - `/waitlist`
   - Page: `src/pages/WaitlistPage.tsx`
-  - Still placeholder UI.
+  - Legacy alias that redirects to `/login`.
 - `/`
   - Page: `src/pages/Home.tsx`
   - Screen: `src/domains/dashboard/ui/HomeDashboard.tsx`
@@ -85,7 +88,7 @@ Pages should stay thin wrappers around domain screens.
   - Also owns onboarding completeness checks and renders `OnboardingDialog`.
 - `src/domains/account/ui/AuthForm.tsx`
   - Still imports Supabase directly only for the Supabase Auth widget.
-  - Enables self-signup in local dev, or when `VITE_ENABLE_SELF_SIGNUP=true`.
+  - Exposes email self-signup by default for public account creation.
   - Should not create its own auth state source.
 
 ### Server State
@@ -114,7 +117,7 @@ The workout flow is the main Redux-heavy area. Most other features should prefer
 - Hooks:
   - `hooks/useOnboarding.ts`
   - `hooks/useSettingsScreen.ts`
-    - Owns theme/profile preferences plus active training-period reset/create from Settings.
+    - Owns profile preferences, coach provider preferences, and active training-period reset/create from Settings.
 - UI:
   - `ui/AuthForm.tsx`
   - `ui/OnboardingDialog.tsx`
@@ -208,7 +211,11 @@ This is still the most complex domain and the main place where UI, Redux, and Re
 
 Current Coach architecture:
 - Uses `/api/coach`.
+- Uses `/api/coach-credentials` for hosted BYOK credential save/delete/status.
 - Supports both server-executable and client-executable tools.
+- Supports BYOK hosted providers through `data/llmPreferences.ts`: OpenRouter, OpenAI, Anthropic, and Google.
+- Stores user-supplied provider keys encrypted server-side in Supabase via service-role access and a server-only master encryption key.
+- The browser only sees provider preference, model preference, and saved-key status metadata such as `last4`.
 - Current tools:
   - `generate_strength_workout` (client)
   - `get_user_profile_summary` (server)

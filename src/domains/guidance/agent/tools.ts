@@ -6,7 +6,7 @@ import type {
   CoachToolName,
   CoachToolResultPayload,
 } from "./contracts.js";
-import type { GeneratedWorkoutSummary } from "@/domains/guidance/hooks/useWorkoutGenerator";
+import type { GeneratedWorkoutSummary } from "../hooks/useWorkoutGenerator.js";
 
 export interface CoachToolContext {
   generateWorkout: () => GeneratedWorkoutSummary;

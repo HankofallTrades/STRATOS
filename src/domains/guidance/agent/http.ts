@@ -1,8 +1,12 @@
 import {
   coachAgentRequestSchema,
   createCoachErrorResponse,
+  type CoachAgentRequest,
   type CoachAgentResponse,
 } from "./contracts.js";
+import {
+  resolveProviderCredentialEnvironment,
+} from "../data/providerCredentialStore.js";
 import {
   runCoachAgentTurn,
   type CoachAgentRuntimeEnvironment,
@@ -29,7 +33,6 @@ export const resolveCoachAgentEnvironment = (
   envSource: EnvironmentSource
 ): CoachAgentRuntimeEnvironment => ({
   localLlmUrl: envSource.LOCAL_LLM_URL || envSource.VITE_LOCAL_LLM_URL,
-  openRouterApiKey: envSource.OPENROUTER_API_KEY,
   openRouterApiUrl:
     envSource.OPENROUTER_API_URL ||
     envSource.VITE_OPENROUTER_API_URL ||
@@ -37,9 +40,7 @@ export const resolveCoachAgentEnvironment = (
   openRouterAppName: envSource.VITE_APP_NAME || envSource.APP_NAME || "STRATOS",
   openRouterReferer:
     envSource.VITE_APP_URL || envSource.APP_URL || "http://localhost:5173",
-  supabaseAnonKey:
-    envSource.SUPABASE_ANON_KEY || envSource.VITE_SUPABASE_ANON_KEY,
-  supabaseUrl: envSource.SUPABASE_URL || envSource.VITE_SUPABASE_URL,
+  ...resolveProviderCredentialEnvironment(envSource),
 });
 
 export const handleCoachAgentRequest = async ({
@@ -58,9 +59,13 @@ export const handleCoachAgentRequest = async ({
       };
     }
 
+    const request: CoachAgentRequest = parsedRequest.data;
     const agentResponse = await runCoachAgentTurn({
-      ...parsedRequest.data,
+      auth: request.auth,
       env,
+      messages: request.messages,
+      model: request.model,
+      provider: request.provider,
     });
 
     return {
