@@ -720,7 +720,7 @@ export const WorkoutExerciseView = ({
                 <Table className="w-full">
                   <TableHeader className="stone-table-head">
                     <TableRow className="stone-seam border-b hover:bg-transparent">
-                      <TableHead className="w-[42px] px-2 py-3 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Set</TableHead>
+                      <TableHead className="w-[42px] px-2 py-3 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground"></TableHead>
 
                       {isCardioExercise(workoutExercise.exercise) ? (
                         <>
