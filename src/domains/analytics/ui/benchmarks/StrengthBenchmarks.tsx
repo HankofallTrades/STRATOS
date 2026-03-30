@@ -183,7 +183,7 @@ const StrengthBenchmarksView: React.FC<StrengthBenchmarksProps> = ({
                                     </Button>
                                 </TooltipTrigger>
                                 <TooltipContent side="bottom" className="stone-panel max-w-xs border-white/10">
-                                    <p>See how your estimated one-rep max compares to <span className='lowercase font-medium'>{selectedLevel}</span> strength standards.</p>
+                                    <p>See how your best estimated one-rep max compares to <span className='lowercase font-medium'>{selectedLevel}</span> strength standards.</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>

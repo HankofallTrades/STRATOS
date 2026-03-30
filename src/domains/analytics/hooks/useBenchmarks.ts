@@ -75,9 +75,9 @@ export const useBenchmarks = (userId: string | undefined, exercises: Exercise[])
         STRENGTH_BENCHMARK_NAMES.map(name => exercises.find(ex => ex.name.trim().toLowerCase() === name.toLowerCase())?.id).filter((id): id is string => !!id)
         , [exercises]);
 
-    const { data: latestMaxE1RMs = [], isLoading: isLoadingStrength, error: errorStrength } = useQuery({
-        queryKey: ['latestMaxE1RMs', userId, strengthExerciseIds],
-        queryFn: () => userId ? analyticsRepo.fetchLatestMaxE1RMForExercises(userId, strengthExerciseIds) : Promise.resolve([]),
+    const { data: benchmarkMaxE1RMs = [], isLoading: isLoadingStrength, error: errorStrength } = useQuery({
+        queryKey: ['benchmarkMaxE1RMs', userId, strengthExerciseIds],
+        queryFn: () => userId ? analyticsRepo.fetchPeakMaxE1RMForExercises(userId, strengthExerciseIds) : Promise.resolve([]),
         enabled: !!userId && strengthExerciseIds.length > 0,
         staleTime: 15 * 60 * 1000,
     });
@@ -89,7 +89,7 @@ export const useBenchmarks = (userId: string | undefined, exercises: Exercise[])
         const multipliers = BENCHMARK_MULTIPLIERS[selectedLevel];
         return STRENGTH_BENCHMARK_NAMES.map(name => {
             const exercise = exercises.find(ex => ex.name.trim().toLowerCase() === name.toLowerCase());
-            const e1rm = exercise ? latestMaxE1RMs.find(d => d.exercise_id === exercise.id)?.max_e1rm ?? null : null;
+            const e1rm = exercise ? benchmarkMaxE1RMs.find(d => d.exercise_id === exercise.id)?.max_e1rm ?? null : null;
             const goal = weight * multipliers[name];
             return {
                 name,
@@ -98,7 +98,7 @@ export const useBenchmarks = (userId: string | undefined, exercises: Exercise[])
                 progress: e1rm ? Math.min(100, (e1rm / goal) * 100) : 0
             };
         });
-    }, [exercises, latestMaxE1RMs, userProfile, selectedLevel]);
+    }, [exercises, benchmarkMaxE1RMs, userProfile, selectedLevel]);
 
     // Calisthenic Benchmarks
     const calisthenicExerciseIds = useMemo(() =>
