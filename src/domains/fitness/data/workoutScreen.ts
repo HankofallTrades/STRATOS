@@ -8,6 +8,7 @@ import type {
   WorkoutExercise,
 } from "@/lib/types/workout";
 import { isCardioExercise, secondsToTime } from "@/lib/types/workout";
+import { fetchLastConfigForExercise } from "./fitnessRepository";
 
 export const sessionFocusOptions: SessionFocus[] = [
   "hypertrophy",
@@ -76,25 +77,40 @@ const getTemplateExercisePresentationPreset = (
   }
 };
 
-export const buildExercisesFromSessionTemplate = (
-  sessionTemplate: MesocycleSessionTemplate
-): WorkoutExercise[] => {
-  return sessionTemplate.exercises
-    .filter(row => !!row.exercise)
-    .map(row => {
+export const buildExercisesFromSessionTemplate = async (
+  sessionTemplate: MesocycleSessionTemplate,
+  userId: string
+): Promise<WorkoutExercise[]> => {
+  const rows = sessionTemplate.exercises.filter(row => !!row.exercise);
+
+  return Promise.all(
+    rows.map(async row => {
       const exercise = row.exercise!;
       const setCount = row.target_sets ?? sessionTemplate.sets_per_exercise ?? 2;
       const occamsPrescription = getOccamsExercisePrescription(exercise.name);
       const templatePresentationPreset = getTemplateExercisePresentationPreset(
         row.notes
       );
+
+      // Fetch last-used config from history unless the template explicitly specifies both fields
+      let lastConfig: { equipmentType: string | null; variation: string | null } | null = null;
+      if (!isCardioExercise(exercise) && (!templatePresentationPreset?.equipmentType || !templatePresentationPreset?.variation)) {
+        try {
+          lastConfig = await fetchLastConfigForExercise(userId, exercise.id);
+        } catch {
+          // ignore — fall through to other defaults
+        }
+      }
+
       const targetEquipmentType =
         templatePresentationPreset?.equipmentType ??
+        lastConfig?.equipmentType ??
         occamsPrescription?.equipmentType ??
         exercise.default_equipment_type ??
         "Machine";
       const targetVariation =
         templatePresentationPreset?.variation ??
+        lastConfig?.variation ??
         occamsPrescription?.variation ??
         "Standard";
 
@@ -136,7 +152,8 @@ export const buildExercisesFromSessionTemplate = (
         variation: targetVariation,
         sets: strengthSets,
       };
-    });
+    })
+  );
 };
 
 export const getFocusDisplayInfo = (focus: SessionFocus) => {

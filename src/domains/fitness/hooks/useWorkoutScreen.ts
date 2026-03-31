@@ -115,7 +115,7 @@ export const useWorkoutScreen = () => {
     }
   };
 
-  const handleStartProtocolSession = (
+  const handleStartProtocolSession = async (
     sessionTemplate: MesocycleSessionTemplate
   ) => {
     if (!activeProgram) return;
@@ -129,7 +129,7 @@ export const useWorkoutScreen = () => {
         mesocycleSessionId: sessionTemplate.id,
         mesocycleWeek: activeProgram.current_week,
         mesocycleProtocol: activeProgram.mesocycle.protocol,
-        initialExercises: buildExercisesFromSessionTemplate(sessionTemplate),
+        initialExercises: await buildExercisesFromSessionTemplate(sessionTemplate, user?.id ?? ""),
       })
     );
   };

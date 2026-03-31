@@ -9,7 +9,7 @@ import type {
 import type { GeneratedWorkoutSummary } from "../hooks/useWorkoutGenerator.js";
 
 export interface CoachToolContext {
-  generateWorkout: () => GeneratedWorkoutSummary;
+  generateWorkout: () => Promise<GeneratedWorkoutSummary>;
 }
 
 interface CoachToolDefinition<TInput extends Record<string, unknown>> {
@@ -54,13 +54,13 @@ export const coachToolDefinitions = {
 export const getCoachToolLabel = (toolName: CoachToolName) =>
   coachToolDefinitions[toolName].label;
 
-export const executeCoachTool = (
+export const executeCoachTool = async (
   toolCall: Pick<CoachToolCallMessage, "input" | "toolName">,
   context: CoachToolContext
-): CoachToolResultPayload => {
+): Promise<CoachToolResultPayload> => {
   switch (toolCall.toolName) {
     case "generate_strength_workout": {
-      const summary = context.generateWorkout();
+      const summary = await context.generateWorkout();
       return {
         data: summary,
         message: summary.message,

@@ -470,7 +470,7 @@ export const useWorkoutGenerator = (
     [exercisesWithArchetypes]
   );
 
-  const generateWorkout = (): GeneratedWorkoutSummary => {
+  const generateWorkout = async (): Promise<GeneratedWorkoutSummary> => {
     if (exercisesWithArchetypes.length === 0) {
       throw new Error("Exercise data with archetypes is not available.");
     }
@@ -497,7 +497,7 @@ export const useWorkoutGenerator = (
           sessionExercise.exercise &&
           sessionExercise.exercise.exercise_type !== "cardio"
       )
-        ? buildExercisesFromSessionTemplate(nextSession).filter(
+        ? (await buildExercisesFromSessionTemplate(nextSession, user?.id ?? "")).filter(
             exercise => exercise.exercise.exercise_type !== "cardio"
           )
         : [];

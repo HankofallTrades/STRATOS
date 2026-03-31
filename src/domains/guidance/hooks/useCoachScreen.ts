@@ -193,9 +193,9 @@ export const useCoachScreen = () => {
           `Running ${getCoachToolLabel(clientToolCalls[0].toolName)}...`
         );
 
-        const toolResults = clientToolCalls.map(toolCall => {
+        const toolResults = await Promise.all(clientToolCalls.map(async toolCall => {
           try {
-            const result = executeCoachTool(toolCall, {
+            const result = await executeCoachTool(toolCall, {
               generateWorkout,
             });
 
@@ -223,7 +223,7 @@ export const useCoachScreen = () => {
               toolName: toolCall.toolName,
             });
           }
-        });
+        }));
 
         nextConversation = [...nextConversation, ...toolResults];
         setConversation(nextConversation);

@@ -273,7 +273,7 @@ export const useHomeDashboard = () => {
     ]
   );
 
-  const goToWorkout = () => {
+  const goToWorkout = async () => {
     if (currentWorkout) {
       navigate("/workout");
       return;
@@ -289,7 +289,7 @@ export const useHomeDashboard = () => {
           mesocycleSessionId: nextSession.id,
           mesocycleWeek: activeProgram.current_week,
           mesocycleProtocol: activeProgram.mesocycle.protocol,
-          initialExercises: buildExercisesFromSessionTemplate(nextSession),
+          initialExercises: await buildExercisesFromSessionTemplate(nextSession, userId ?? ""),
         })
       );
       navigate("/workout");
