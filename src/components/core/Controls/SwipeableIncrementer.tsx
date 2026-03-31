@@ -48,29 +48,37 @@ export const SwipeableIncrementer: React.FC<SwipeableIncrementerProps> = ({
   const visualOffsetX = useMotionValue(0);
   const visualOffsetY = useMotionValue(0);
   const [isPanning, setIsPanning] = React.useState(false);
+  // Tracks whether a pan gesture is active or just ended, to suppress
+  // button clicks synthesized by the browser at the touchend position.
+  const panActive = React.useRef(false);
+  const panClearTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleDecrementClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation(); // Prevent pan event from firing on the parent
-    if (!disabled) {
-      onAdjust(smallStepNegative);
-    }
+    event.stopPropagation();
+    if (panActive.current || disabled) return;
+    onAdjust(smallStepNegative);
   };
 
   const handleIncrementClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation(); // Prevent pan event from firing on the parent
-    if (!disabled) {
-      onAdjust(smallStepPositive);
-    }
+    event.stopPropagation();
+    if (panActive.current || disabled) return;
+    onAdjust(smallStepPositive);
   };
 
   const handlePanEnd = (
     event: MouseEvent | TouchEvent | PointerEvent,
     info: PanInfo
   ) => {
-    initialPanPoint.current = null; // Reset initial pan point
+    initialPanPoint.current = null;
     setIsPanning(false);
     animate(visualOffsetX, 0, { type: "spring", stiffness: 380, damping: 28 });
     animate(visualOffsetY, 0, { type: "spring", stiffness: 380, damping: 28 });
+    // Keep panActive set for a short window after pan ends so that any
+    // synthetic click the browser fires at the touchend position is ignored.
+    if (panClearTimeout.current) clearTimeout(panClearTimeout.current);
+    panClearTimeout.current = setTimeout(() => {
+      panActive.current = false;
+    }, 300);
     if (disabled) return;
 
     const { offset, velocity } = info;
@@ -98,6 +106,12 @@ export const SwipeableIncrementer: React.FC<SwipeableIncrementerProps> = ({
   };
 
   React.useEffect(() => {
+    return () => {
+      if (panClearTimeout.current) clearTimeout(panClearTimeout.current);
+    };
+  }, []);
+
+  React.useEffect(() => {
     const root = document.documentElement;
     const body = document.body;
 
@@ -122,9 +136,9 @@ export const SwipeableIncrementer: React.FC<SwipeableIncrementerProps> = ({
       data-card-swipe-block="true"
       style={{ x: visualOffsetX, y: visualOffsetY }}
       onPanStart={(event, info) => {
-        // Store the initial pointer position.
-        // The 'point' object in PanInfo contains x and y coordinates.
         initialPanPoint.current = { x: info.point.x, y: info.point.y };
+        panActive.current = true;
+        if (panClearTimeout.current) clearTimeout(panClearTimeout.current);
         setIsPanning(true);
         visualOffsetX.set(0);
         visualOffsetY.set(0);

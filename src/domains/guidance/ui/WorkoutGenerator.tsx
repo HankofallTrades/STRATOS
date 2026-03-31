@@ -13,10 +13,10 @@ export const WorkoutGenerator: React.FC = () => {
 
     const { generateWorkout } = useWorkoutGenerator(baseExercises, movementArchetypes);
 
-    const handleGenerateWorkout = () => {
+    const handleGenerateWorkout = async () => {
         setGenerationStatusMessage(null);
         try {
-            generateWorkout();
+            await generateWorkout();
         } catch (error: unknown) {
             setGenerationStatusMessage(
                 error instanceof Error ? error.message : 'Failed to generate workout.'
