@@ -313,14 +313,95 @@
     box-shadow: none;
   }
 
+  .settings-action-primary {
+    border: 1px solid rgba(var(--stone-accent-rgb), 0.2) !important;
+    background: linear-gradient(
+      180deg,
+      rgba(var(--stone-accent-rgb), 0.2) 0%,
+      rgba(var(--stone-accent-rgb), 0.12) 100%
+    ) !important;
+    color: #eef7f4 !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.03),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.22) !important;
+  }
+
+  .settings-action-primary:hover {
+    background: linear-gradient(
+      180deg,
+      rgba(var(--stone-accent-rgb), 0.24) 0%,
+      rgba(var(--stone-accent-rgb), 0.15) 100%
+    ) !important;
+  }
+
+  .settings-action-secondary {
+    border: 1px solid rgba(91, 105, 97, 0.14) !important;
+    background: rgba(255, 255, 255, 0.028) !important;
+    color: rgba(243, 247, 244, 0.82) !important;
+    box-shadow: none !important;
+  }
+
+  .settings-action-secondary:hover {
+    border-color: rgba(104, 120, 110, 0.2) !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    color: #f3f7f4 !important;
+  }
+
+  .settings-action-danger {
+    border: 1px solid rgba(169, 71, 71, 0.18) !important;
+    background: rgba(101, 37, 37, 0.18) !important;
+    color: rgba(255, 220, 220, 0.9) !important;
+    box-shadow: none !important;
+  }
+
+  .settings-action-danger:hover {
+    border-color: rgba(184, 82, 82, 0.24) !important;
+    background: rgba(118, 42, 42, 0.24) !important;
+    color: #ffe1e1 !important;
+  }
+
+  .settings-segmented {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 0.25rem !important;
+    border: 1px solid rgba(91, 105, 97, 0.14);
+    border-radius: 999px;
+    padding: 0.25rem;
+    background: rgba(17, 22, 27, 0.88);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.025),
+      0 10px 24px rgba(0, 0, 0, 0.12);
+  }
+
+  .settings-segment {
+    flex: 0 0 auto;
+    min-width: 4rem;
+    border-radius: 999px;
+    padding: 0.45rem 0.95rem;
+    text-align: center;
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1;
+    color: rgba(214, 223, 218, 0.62);
+    cursor: pointer;
+    transition:
+      background-color 160ms ease,
+      color 160ms ease;
+  }
+
+  .settings-segment[data-active="true"] {
+    background: rgba(var(--stone-accent-rgb), 0.16);
+    color: #f3f7f4;
+  }
+
   .stratos-auth-container {
     display: grid;
-    gap: 1rem;
+    gap: 0.875rem;
   }
 
   .stratos-auth-button {
     width: 100% !important;
-    min-height: 3rem !important;
+    min-height: 3.125rem !important;
     border: 0 !important;
     border-radius: 1rem !important;
     background: var(--stone-accent) !important;
@@ -344,12 +425,11 @@
   }
 
   .stratos-auth-input {
-    min-height: 3rem !important;
+    min-height: 3.125rem !important;
+    border: 0 !important;
     border-radius: 1rem !important;
-    background: rgba(9, 13, 16, 0.96) !important;
-    box-shadow:
-      inset 0 3px 10px rgba(0, 0, 0, 0.58),
-      inset 0 1px 0 rgba(78, 92, 85, 0.06) !important;
+    background: rgba(255, 255, 255, 0.03) !important;
+    box-shadow: none !important;
   }
 
   .stratos-auth-input::placeholder {
@@ -376,6 +456,7 @@
   }
 
   .stratos-auth-message {
+    border: 1px solid rgba(200, 160, 108, 0.16) !important;
     border-radius: 1rem !important;
     padding: 0.875rem 1rem !important;
     line-height: 1.5 !important;

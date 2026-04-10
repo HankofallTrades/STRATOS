@@ -1,5 +1,4 @@
 import { Button } from "@/components/core/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/core/card";
 import {
   Dialog,
   DialogContent,
@@ -30,6 +29,16 @@ import {
   providerRequiresApiKey,
 } from "@/domains/guidance/data/llmPreferences";
 import type { MesocycleProtocol } from "@/domains/periodization";
+import { cn } from "@/lib/utils/cn";
+
+const FIELD_LABEL_CLASS =
+  "text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground";
+const SECTION_CLASS = "stone-surface rounded-[24px] p-5 md:p-6";
+
+const unitOptions = [
+  { label: "kg", value: "kg" },
+  { label: "lb", value: "lb" },
+] as const;
 
 const SettingsScreen = () => {
   const {
@@ -57,11 +66,11 @@ const SettingsScreen = () => {
     isSigningOut,
     llmModelPref,
     llmProviderPref,
-    providerApiKeyDraft,
-    providerCredentialLastFour,
     periodDurationWeeks,
     periodGoalFocus,
     periodProtocol,
+    providerApiKeyDraft,
+    providerCredentialLastFour,
     setBodyweight,
     setIsPeriodDialogOpen,
     setPeriodDurationWeeks,
@@ -75,260 +84,321 @@ const SettingsScreen = () => {
   const selectedProvider = getLlmProviderOption(llmProviderPref);
   const providerModelOptions = getLlmModelOptions(llmProviderPref);
   const shouldShowApiKeyInput = providerRequiresApiKey(llmProviderPref);
+  const selectedModelLabel =
+    providerModelOptions.find(model => model.value === llmModelPref)?.label ??
+    llmModelPref;
+
+  const periodSummary = isLoadingActiveProgram
+    ? "Loading..."
+    : activeProgram
+      ? `Week ${activeProgram.current_week} of ${
+          activeProgram.mesocycle.duration_weeks
+        } · ${formatSessionFocusLabel(activeProgram.mesocycle.goal_focus)} · ${
+          activeProgram.mesocycle.protocol === "occams" ? "Occam's" : "Custom"
+        }`
+      : "No active period";
+
+  const coachSummary = shouldShowApiKeyInput
+    ? `${selectedProvider.label}${selectedModelLabel ? ` · ${selectedModelLabel}` : ""}`
+    : "Local runtime";
+  const credentialStatus = shouldShowApiKeyInput
+    ? isProviderCredentialLoading
+      ? "Checking key"
+      : hasStoredProviderCredential
+        ? providerCredentialLastFour
+          ? `Saved ••••${providerCredentialLastFour}`
+          : "Saved"
+        : "No saved key"
+    : null;
 
   return (
-    <div className="app-page max-w-3xl">
-      <header className="mb-8 space-y-2">
-        <div className="app-kicker">Settings</div>
-        <h1 className="app-page-title">Tune the environment.</h1>
-        {userEmail && <p className="app-page-subtitle">Logged in as {userEmail}</p>}
-      </header>
+    <div className="app-page max-w-5xl">
+      <section className="stone-panel stone-panel-hero relative overflow-hidden rounded-[30px] px-5 py-6 md:px-6 md:py-7">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-[linear-gradient(180deg,rgba(var(--stone-accent-rgb),0.12),rgba(var(--stone-accent-rgb),0))]"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute right-0 top-0 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(var(--stone-accent-rgb),0.14)_0%,rgba(var(--stone-accent-rgb),0)_72%)]"
+        />
 
-      <div className="space-y-5">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl">Profile Information</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleUpdateBodyweight} className="space-y-4">
-              <div className="space-y-2">
-                <Label>Preferred Unit</Label>
+        <div className="relative flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+          <h1 className="app-page-title">Settings</h1>
+
+          {userEmail ? (
+            <p className="text-sm text-muted-foreground md:text-right">{userEmail}</p>
+          ) : null}
+        </div>
+      </section>
+
+      <div className="mt-6 grid gap-4 xl:grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)]">
+        <div className="space-y-4">
+          <section className={SECTION_CLASS}>
+            <div className="flex flex-col gap-5">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <h2 className="text-xl font-semibold tracking-tight text-foreground">
+                  Profile
+                </h2>
+
                 <RadioGroup
                   value={unitPref}
                   onValueChange={value => handleUnitChange(value as "kg" | "lb")}
-                  className="flex space-x-4"
+                  className="settings-segmented"
                 >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="kg" id="weight-unit-kg" />
-                    <Label htmlFor="weight-unit-kg">kg</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="lb" id="weight-unit-lb" />
-                    <Label htmlFor="weight-unit-lb">lb</Label>
-                  </div>
+                  {unitOptions.map(option => {
+                    const isActive = unitPref === option.value;
+
+                    return (
+                      <label
+                        key={option.value}
+                        htmlFor={`weight-unit-${option.value}`}
+                        className="settings-segment"
+                        data-active={isActive ? "true" : "false"}
+                      >
+                        <RadioGroupItem
+                          value={option.value}
+                          id={`weight-unit-${option.value}`}
+                          className="sr-only"
+                        />
+                        <span>{option.label}</span>
+                      </label>
+                    );
+                  })}
                 </RadioGroup>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="bodyweight">Weight ({unitPref})</Label>
-                <Input
-                  id="bodyweight"
-                  type="number"
-                  value={bodyweight}
-                  onChange={event => setBodyweight(event.target.value)}
-                  placeholder={`Enter your weight in ${unitPref}`}
-                  disabled={isProfileBusy}
-                  step="0.1"
-                  className="app-form-input"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Used for calculating strength benchmarks.
-                </p>
-              </div>
-              <Button
-                type="submit"
-                disabled={isProfileBusy}
-                className="app-primary-action rounded-[16px]"
+
+              <form
+                onSubmit={handleUpdateBodyweight}
+                className="flex flex-col gap-3 sm:flex-row sm:items-end"
               >
-                {isProfileBusy ? "Saving..." : "Save Weight"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+                <div className="w-full max-w-xs space-y-2">
+                  <Label htmlFor="bodyweight" className={FIELD_LABEL_CLASS}>
+                    Weight ({unitPref})
+                  </Label>
+                  <Input
+                    id="bodyweight"
+                    type="number"
+                    value={bodyweight}
+                    onChange={event => setBodyweight(event.target.value)}
+                    placeholder={unitPref}
+                    disabled={isProfileBusy}
+                    step="0.1"
+                    className="app-form-input h-12 rounded-[16px]"
+                  />
+                </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl">Training Period</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {isLoadingActiveProgram ? (
-              <p className="text-sm text-muted-foreground">
-                Loading your active period...
-              </p>
-            ) : activeProgram ? (
-              <div className="space-y-2">
-                <p className="font-medium text-foreground">
-                  {activeProgram.mesocycle.name}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Week {activeProgram.current_week} of{" "}
-                  {activeProgram.mesocycle.duration_weeks}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {`${formatSessionFocusLabel(activeProgram.mesocycle.goal_focus)} focus · ${
-                    activeProgram.mesocycle.protocol === "occams" ? "Occam's" : "Custom"
-                  }`}
-                </p>
+                <Button
+                  type="submit"
+                  disabled={isProfileBusy}
+                  className="settings-action-primary h-11 rounded-[16px] px-5 text-sm font-semibold sm:min-w-[7.5rem]"
+                >
+                  {isProfileBusy ? "Saving..." : "Save"}
+                </Button>
+              </form>
+            </div>
+          </section>
+
+          <section className={SECTION_CLASS}>
+            <div className="space-y-4">
+              <h2 className="text-xl font-semibold tracking-tight text-foreground">
+                Session
+              </h2>
+
+              <div className="flex flex-col gap-3">
+                <Button
+                  variant="ghost"
+                  onClick={triggerOnboarding}
+                  className="settings-action-secondary h-11 justify-start rounded-[16px] px-4 text-sm font-semibold"
+                >
+                  Re-run onboarding
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  onClick={handleSignOut}
+                  disabled={isSigningOut}
+                  className="settings-action-danger h-11 justify-start rounded-[16px] px-4 text-sm font-semibold"
+                >
+                  {isSigningOut ? "Logging out..." : "Log out"}
+                </Button>
               </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                No active period. Start one here if you want block-based progression.
-              </p>
-            )}
+            </div>
+          </section>
+        </div>
 
-            <Button
-              onClick={handleOpenPeriodDialog}
-              disabled={isLoadingActiveProgram || isPeriodWorkoutInProgress}
-              className="app-primary-action rounded-[16px]"
-            >
-              {activeProgram ? "Reset / Change Period" : "Start Period"}
-            </Button>
+        <div className="space-y-4">
+          <section className={SECTION_CLASS}>
+            <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+              <div className="space-y-1.5">
+                <h2 className="text-xl font-semibold tracking-tight text-foreground">
+                  Training period
+                </h2>
+                {activeProgram ? (
+                  <>
+                    <p className="text-lg font-semibold text-foreground">
+                      {activeProgram.mesocycle.name}
+                    </p>
+                    <p className="text-sm text-muted-foreground">{periodSummary}</p>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">{periodSummary}</p>
+                )}
+              </div>
+
+              <Button
+                onClick={handleOpenPeriodDialog}
+                disabled={isLoadingActiveProgram || isPeriodWorkoutInProgress}
+                variant="ghost"
+                className={cn(
+                  "h-11 rounded-[16px] px-5 text-sm font-semibold",
+                  activeProgram
+                    ? "settings-action-secondary"
+                    : "settings-action-primary"
+                )}
+              >
+                {activeProgram ? "Reset period" : "Start period"}
+              </Button>
+            </div>
 
             {isPeriodWorkoutInProgress ? (
-              <p className="text-xs text-muted-foreground">
-                Finish or discard the active block workout before resetting your period.
+              <p className="mt-4 text-xs text-muted-foreground">
+                Finish or discard the active block workout first.
               </p>
             ) : null}
-          </CardContent>
-        </Card>
+          </section>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl">Coach Settings</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="llm-provider">LLM Provider</Label>
-              <Select value={llmProviderPref} onValueChange={handleLlmProviderChange}>
-                <SelectTrigger id="llm-provider" className="app-form-select">
-                  <SelectValue placeholder="Select LLM Provider" />
-                </SelectTrigger>
-                <SelectContent className="stone-surface border-white/8 text-foreground">
-                  {llmProviderOptions.map(provider => (
-                    <SelectItem key={provider.value} value={provider.value}>
-                      {provider.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                {selectedProvider.description}
+          <section className={SECTION_CLASS}>
+            <div className="flex flex-col gap-1.5 md:flex-row md:items-end md:justify-between">
+              <h2 className="text-xl font-semibold tracking-tight text-foreground">
+                Coach
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                {credentialStatus ? `${coachSummary} · ${credentialStatus}` : coachSummary}
               </p>
+            </div>
 
-              {shouldShowApiKeyInput ? (
-                <div className="space-y-2 pt-4">
-                  <Label htmlFor="provider-api-key">
-                    {selectedProvider.apiKeyLabel}
+            <div className="mt-5 space-y-4">
+              <div className={cn("grid gap-4", shouldShowApiKeyInput && "sm:grid-cols-2")}>
+                <div className="space-y-2">
+                  <Label htmlFor="llm-provider" className={FIELD_LABEL_CLASS}>
+                    Provider
                   </Label>
-                  <div className="flex flex-col gap-2 sm:flex-row">
-                    <Input
-                      id="provider-api-key"
-                      type="password"
-                      value={providerApiKeyDraft}
-                      onChange={event => handleProviderApiKeyChange(event.target.value)}
-                      placeholder={selectedProvider.apiKeyPlaceholder}
-                      disabled={isProviderCredentialBusy}
-                      autoComplete="off"
-                      className="app-form-input"
-                    />
-                    <Button
-                      type="button"
-                      onClick={handleSaveProviderApiKey}
-                      disabled={isProviderCredentialBusy || !providerApiKeyDraft.trim()}
-                      className="rounded-[16px]"
+                  <Select value={llmProviderPref} onValueChange={handleLlmProviderChange}>
+                    <SelectTrigger
+                      id="llm-provider"
+                      className="app-form-select h-12 rounded-[16px]"
                     >
-                      {isProviderCredentialSaving ? "Saving..." : "Save Key"}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleClearProviderApiKey}
-                      disabled={isProviderCredentialBusy || !hasStoredProviderCredential}
-                      className="rounded-[16px]"
-                    >
-                      Delete Saved Key
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {isProviderCredentialLoading
-                      ? "Checking whether this provider already has a saved key..."
-                      : hasStoredProviderCredential
-                      ? `A saved key is on file${
-                          providerCredentialLastFour
-                            ? ` and ends in ${providerCredentialLastFour}.`
-                            : "."
-                        }`
-                      : "No saved key is on file for this provider yet."}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Keys are encrypted server-side and never stored in your browser.
-                  </p>
-
-                  <Label htmlFor="llm-model">Model</Label>
-                  <Select value={llmModelPref} onValueChange={handleLlmModelChange}>
-                    <SelectTrigger id="llm-model" className="app-form-select">
-                      <SelectValue placeholder="Select Model" />
+                      <SelectValue placeholder="Provider" />
                     </SelectTrigger>
                     <SelectContent className="stone-surface border-white/8 text-foreground">
-                      {providerModelOptions.map(model => (
-                        <SelectItem key={model.value} value={model.value}>
-                          {model.label}
+                      {llmProviderOptions.map(provider => (
+                        <SelectItem key={provider.value} value={provider.value}>
+                          {provider.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
+
+                {shouldShowApiKeyInput ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="llm-model" className={FIELD_LABEL_CLASS}>
+                      Model
+                    </Label>
+                    <Select value={llmModelPref} onValueChange={handleLlmModelChange}>
+                      <SelectTrigger
+                        id="llm-model"
+                        className="app-form-select h-12 rounded-[16px]"
+                      >
+                        <SelectValue placeholder="Model" />
+                      </SelectTrigger>
+                      <SelectContent className="stone-surface border-white/8 text-foreground">
+                        {providerModelOptions.map(model => (
+                          <SelectItem key={model.value} value={model.value}>
+                            {model.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : null}
+              </div>
+
+              {shouldShowApiKeyInput ? (
+                <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto] md:items-end">
+                  <div className="space-y-2">
+                    <Label htmlFor="provider-api-key" className={FIELD_LABEL_CLASS}>
+                      API key
+                    </Label>
+                    <Input
+                      id="provider-api-key"
+                      type="password"
+                      value={providerApiKeyDraft}
+                      onChange={event =>
+                        handleProviderApiKeyChange(event.target.value)
+                      }
+                      placeholder={selectedProvider.apiKeyPlaceholder}
+                      disabled={isProviderCredentialBusy}
+                      autoComplete="off"
+                      className="app-form-input h-12 rounded-[16px]"
+                    />
+                  </div>
+
+                  <Button
+                    type="button"
+                    onClick={handleSaveProviderApiKey}
+                    disabled={isProviderCredentialBusy || !providerApiKeyDraft.trim()}
+                    className="settings-action-primary h-11 rounded-[16px] px-5 text-sm font-semibold"
+                  >
+                    {isProviderCredentialSaving ? "Saving..." : "Save key"}
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={handleClearProviderApiKey}
+                    disabled={isProviderCredentialBusy || !hasStoredProviderCredential}
+                    className="settings-action-secondary h-11 rounded-[16px] px-5 text-sm font-semibold"
+                  >
+                    Delete
+                  </Button>
+                </div>
               ) : null}
-
-              <p className="pt-2 text-xs text-muted-foreground">
-                Local mode expects an OpenAI-compatible runtime URL configured in{" "}
-                <code className="font-mono text-xs">.env.local</code>. Hosted
-                providers are all BYOK and use your own billing account.
-              </p>
             </div>
-
-            <div className="pt-2">
-              <Button
-                variant="ghost"
-                onClick={triggerOnboarding}
-                className="app-tonal-control rounded-[16px] px-4"
-              >
-                Re-Trigger Onboarding Flow
-              </Button>
-              <p className="pt-1 text-xs text-muted-foreground">
-                Test the onboarding dialog even if already completed.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl">Account</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Button
-              onClick={handleSignOut}
-              disabled={isSigningOut}
-              variant="destructive"
-              className="rounded-[16px]"
-            >
-              {isSigningOut ? "Logging out..." : "Log Out"}
-            </Button>
-          </CardContent>
-        </Card>
+          </section>
+        </div>
       </div>
 
       <Dialog open={isPeriodDialogOpen} onOpenChange={setIsPeriodDialogOpen}>
         <DialogContent className="stone-panel rounded-[24px] border-white/10">
           <DialogHeader>
             <DialogTitle>
-              {activeProgram ? "Reset Training Period" : "Start Training Period"}
+              {activeProgram ? "Reset period" : "Start period"}
             </DialogTitle>
             <DialogDescription>
-              {activeProgram
-                ? "Start a fresh block from week 1 today. Your current active block will be marked as cancelled."
-                : "Create a new active training period."}
+              {activeProgram ? "Starts again at week 1." : "Creates a new block."}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="settings-period-focus">Focus</Label>
+              <Label
+                htmlFor="settings-period-focus"
+                className={FIELD_LABEL_CLASS}
+              >
+                Focus
+              </Label>
               <Select
                 value={periodGoalFocus}
-                onValueChange={value => setPeriodGoalFocus(value as typeof periodGoalFocus)}
+                onValueChange={value =>
+                  setPeriodGoalFocus(value as typeof periodGoalFocus)
+                }
               >
-                <SelectTrigger id="settings-period-focus" className="app-form-select">
+                <SelectTrigger
+                  id="settings-period-focus"
+                  className="app-form-select h-12 rounded-[16px]"
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="stone-surface border-white/8 text-foreground">
@@ -342,12 +412,20 @@ const SettingsScreen = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="settings-period-protocol">Protocol</Label>
+              <Label
+                htmlFor="settings-period-protocol"
+                className={FIELD_LABEL_CLASS}
+              >
+                Protocol
+              </Label>
               <Select
                 value={periodProtocol}
                 onValueChange={value => setPeriodProtocol(value as MesocycleProtocol)}
               >
-                <SelectTrigger id="settings-period-protocol" className="app-form-select">
+                <SelectTrigger
+                  id="settings-period-protocol"
+                  className="app-form-select h-12 rounded-[16px]"
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="stone-surface border-white/8 text-foreground">
@@ -358,7 +436,12 @@ const SettingsScreen = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="settings-period-duration">Duration (weeks)</Label>
+              <Label
+                htmlFor="settings-period-duration"
+                className={FIELD_LABEL_CLASS}
+              >
+                Duration
+              </Label>
               <Input
                 id="settings-period-duration"
                 type="number"
@@ -366,11 +449,9 @@ const SettingsScreen = () => {
                 max={12}
                 value={periodDurationWeeks}
                 onChange={event => setPeriodDurationWeeks(Number(event.target.value))}
-                className="app-form-input"
+                className="app-form-input h-12 rounded-[16px]"
               />
-              <p className="text-xs text-muted-foreground">
-                Choose a value between 4 and 12 weeks.
-              </p>
+              <p className="text-xs text-muted-foreground">4-12 weeks</p>
             </div>
           </div>
 
@@ -378,22 +459,22 @@ const SettingsScreen = () => {
             <Button
               variant="ghost"
               onClick={() => setIsPeriodDialogOpen(false)}
-              className="stone-chip rounded-[16px] px-4 hover:bg-white/[0.05]"
+              className="settings-action-secondary rounded-[16px] px-4"
             >
               Cancel
             </Button>
             <Button
               onClick={handleSavePeriod}
               disabled={isPeriodUpdating}
-              className="app-primary-action rounded-[16px]"
+              className="settings-action-primary rounded-[16px]"
             >
               {isPeriodUpdating
                 ? activeProgram
                   ? "Resetting..."
                   : "Creating..."
                 : activeProgram
-                  ? "Reset Period"
-                  : "Create Period"}
+                  ? "Reset period"
+                  : "Create period"}
             </Button>
           </DialogFooter>
         </DialogContent>

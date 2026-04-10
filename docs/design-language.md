@@ -8,6 +8,8 @@ This is the active interface language for the current app shell and core fitness
 - Main accent: pthalo green.
 - Secondary accent: warm metal for reward, emphasis, and rare contrast.
 - Mood: focused and calm, not glossy, playful, or high-saturation.
+- STRATOS is gracefully minimal by nature. Beauty should come from restraint, proportion, and material quality, not extra explanation or decoration.
+- Everything must earn its place. Every word, icon, border, and gap should have a job.
 
 ## Surface Hierarchy
 
@@ -18,6 +20,8 @@ This is the active interface language for the current app shell and core fitness
 - `stone-inset`: a recessed treatment for inputs, logs, and areas that should feel embedded rather than elevated.
 
 Rule: do not stack shells just to make every item feel designed. A `stone-surface` should not usually contain another full `stone-surface`, and a large card should not be filled with mini-cards for simple metadata or basic choices.
+
+Anti-pattern: `stone-panel` -> `stone-surface` -> bordered inner card for the same job. Auth and entry flows should usually have one dominant shell only. If the form itself is the focus, keep the outer layout quiet and let the form card be the only real boundary.
 
 ## Accent Rules
 
@@ -36,6 +40,8 @@ Rule: do not invent a new heading treatment for each module. Pages should feel a
 
 ## Copy Density
 
+- Default to omission. If the control is self-explanatory, do not add copy around it.
+- Every word matters. Cut filler, throat-clearing, and labels that only restate the obvious.
 - Do not default to a kicker, title, and subtitle at the top of every page.
 - If the lead surface already tells the user where they are and what to do, skip the extra page header.
 - Avoid stacked explanation layers. If the title, module label, helper text, and button all say the same thing, cut at least one of them.
@@ -64,6 +70,7 @@ Rule: side-by-side modules should usually align at the top and size to their con
 - Hover states should brighten subtly. They should not change the overall mood of the surface.
 - Compact selectors must show full option labels without truncation. If the labels do not fit, reduce the column count or simplify the control content.
 - Icons should usually sit directly in the layout. Do not put them in generic circles, pills, or badges unless the container itself communicates state.
+- If an icon does not clarify state or action, remove it.
 
 ## Do / Avoid
 
@@ -74,9 +81,12 @@ Rule: side-by-side modules should usually align at the top and size to their con
 - Avoid rainbow chart palettes and semantically meaningless color variation.
 - Avoid redundant labels where the container title already names the content.
 - Avoid descriptive filler copy inside compact controls and side rails.
+- Avoid explanatory text blocks that only narrate what the controls already say.
 - Avoid dead air created by equal-height cards when one panel has much less content.
 - Avoid decorative icon containers that add shape but no meaning.
+- Avoid borders or surface breaks that do not create real hierarchy.
 - Avoid turning metadata rows or option grids into card farms.
+- Avoid card-within-card-within-card composition for a single task. If one module already frames the action, remove the extra shell.
 
 ## Source Files
 
