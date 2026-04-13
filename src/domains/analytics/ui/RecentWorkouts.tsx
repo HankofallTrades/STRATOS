@@ -28,6 +28,16 @@ const formatDate = (dateInput: string): string => {
     }
 };
 
+const formatVariation = (variation: string | null): string => {
+    if (!variation) return 'Unspecified';
+    return variation.toLowerCase() === 'standard' ? 'Standard' : variation;
+};
+
+const formatEquipment = (equipmentType: string | null): string => {
+    if (!equipmentType) return 'Unspecified';
+    return equipmentType;
+};
+
 const RecentWorkoutsView: React.FC<{ userId: string | undefined }> = ({ userId }) => {
     const {
         recentWorkouts,
@@ -140,8 +150,14 @@ const RecentWorkoutsView: React.FC<{ userId: string | undefined }> = ({ userId }
                     {!isLoadingDetailedWorkout && !errorDetailedWorkout && detailedWorkout && (
                         <div className="mt-4 space-y-4">
                             {detailedWorkout.exercises.length > 0 ? detailedWorkout.exercises.map(exercise => (
-                                <div key={exercise.exercise_id} className="stone-surface rounded-[18px] p-4">
+                                <div
+                                    key={`${exercise.exercise_id}-${exercise.order}-${exercise.variation ?? 'unspecified'}-${exercise.equipment_type ?? 'unspecified'}`}
+                                    className="stone-surface rounded-[18px] p-4"
+                                >
                                     <h4 className="mb-1.5 text-base font-semibold text-foreground">{exercise.exercise_name}</h4>
+                                    <p className="mb-1 text-xs text-muted-foreground">
+                                        Variation Type: {formatVariation(exercise.variation)} · Equipment Type: {formatEquipment(exercise.equipment_type)}
+                                    </p>
                                     <p className="mb-2 text-xs text-muted-foreground">
                                         {exercise.completed_sets_count} completed set{exercise.completed_sets_count !== 1 ? 's' : ''}
                                     </p>
