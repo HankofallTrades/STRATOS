@@ -298,9 +298,11 @@ export const fetchLastConfigForExercise = async (
     const { data, error } = await supabase
         .from('exercise_sets')
         .select('equipment_type, variation, workout_exercises!inner(exercise_id, workout_id, workouts!inner(user_id, created_at))')
+        .eq('completed', true)
         .eq('workout_exercises.workouts.user_id', userId)
         .eq('workout_exercises.exercise_id', exerciseId)
         .order('created_at', { foreignTable: 'workout_exercises.workouts', ascending: false })
+        .order('set_number', { ascending: false })
         .limit(1)
         .maybeSingle();
 

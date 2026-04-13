@@ -91,10 +91,14 @@ export const buildExercisesFromSessionTemplate = async (
       const templatePresentationPreset = getTemplateExercisePresentationPreset(
         row.notes
       );
+      const hasExplicitTemplateConfig = Boolean(
+        templatePresentationPreset?.equipmentType &&
+          templatePresentationPreset?.variation
+      );
 
-      // Fetch last-used config from history unless the template explicitly specifies both fields
+      // History should be the default unless the template explicitly pins both fields.
       let lastConfig: { equipmentType: string | null; variation: string | null } | null = null;
-      if (!isCardioExercise(exercise) && (!templatePresentationPreset?.equipmentType || !templatePresentationPreset?.variation)) {
+      if (!isCardioExercise(exercise) && !hasExplicitTemplateConfig) {
         try {
           lastConfig = await fetchLastConfigForExercise(userId, exercise.id);
         } catch {
@@ -103,14 +107,20 @@ export const buildExercisesFromSessionTemplate = async (
       }
 
       const targetEquipmentType =
-        templatePresentationPreset?.equipmentType ??
+        (hasExplicitTemplateConfig
+          ? templatePresentationPreset?.equipmentType
+          : undefined) ??
         lastConfig?.equipmentType ??
+        templatePresentationPreset?.equipmentType ??
         occamsPrescription?.equipmentType ??
         exercise.default_equipment_type ??
         "Machine";
       const targetVariation =
-        templatePresentationPreset?.variation ??
+        (hasExplicitTemplateConfig
+          ? templatePresentationPreset?.variation
+          : undefined) ??
         lastConfig?.variation ??
+        templatePresentationPreset?.variation ??
         occamsPrescription?.variation ??
         "Standard";
 
