@@ -295,13 +295,37 @@ export const fetchLastConfigForExercise = async (
     userId: string,
     exerciseId: string
 ): Promise<{ equipmentType: string | null; variation: string | null } | null> => {
+    // Anchor on the latest completed workout first so we do not rely on ordering
+    // exercise_sets through a nested workout join, which can surface an older config.
+    const { data: lastWorkout, error: workoutError } = await supabase
+        .from('workouts')
+        .select('id, workout_exercises!inner(id)')
+        .eq('user_id', userId)
+        .eq('completed', true)
+        .eq('workout_exercises.exercise_id', exerciseId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    if (workoutError) throw workoutError;
+    if (!lastWorkout) return null;
+
+    const { data: workoutExercise, error: workoutExerciseError } = await supabase
+        .from('workout_exercises')
+        .select('id')
+        .eq('workout_id', lastWorkout.id)
+        .eq('exercise_id', exerciseId)
+        .limit(1)
+        .maybeSingle();
+
+    if (workoutExerciseError) throw workoutExerciseError;
+    if (!workoutExercise) return null;
+
     const { data, error } = await supabase
         .from('exercise_sets')
-        .select('equipment_type, variation, workout_exercises!inner(exercise_id, workout_id, workouts!inner(user_id, created_at))')
+        .select('equipment_type, variation')
+        .eq('workout_exercise_id', workoutExercise.id)
         .eq('completed', true)
-        .eq('workout_exercises.workouts.user_id', userId)
-        .eq('workout_exercises.exercise_id', exerciseId)
-        .order('created_at', { foreignTable: 'workout_exercises.workouts', ascending: false })
         .order('set_number', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -310,8 +334,8 @@ export const fetchLastConfigForExercise = async (
     if (!data) return null;
 
     return {
-        equipmentType: data.equipment_type as string | null,
-        variation: data.variation as string | null,
+        equipmentType: (data.equipment_type as string | null) || null,
+        variation: (data.variation as string | null) || null,
     };
 };
 
