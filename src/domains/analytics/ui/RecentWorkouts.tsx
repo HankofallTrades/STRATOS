@@ -28,6 +28,16 @@ const formatDate = (dateInput: string): string => {
     }
 };
 
+const formatVariation = (variation: string | null): string => {
+    if (!variation) return 'Standard';
+    return variation;
+};
+
+const formatEquipment = (equipmentType: string | null): string => {
+    if (!equipmentType) return 'Bodyweight';
+    return equipmentType;
+};
+
 const RecentWorkoutsView: React.FC<{ userId: string | undefined }> = ({ userId }) => {
     const {
         recentWorkouts,
@@ -142,6 +152,9 @@ const RecentWorkoutsView: React.FC<{ userId: string | undefined }> = ({ userId }
                             {detailedWorkout.exercises.length > 0 ? detailedWorkout.exercises.map(exercise => (
                                 <div key={exercise.exercise_id} className="stone-surface rounded-[18px] p-4">
                                     <h4 className="mb-1.5 text-base font-semibold text-foreground">{exercise.exercise_name}</h4>
+                                    <p className="mb-1 text-xs text-muted-foreground">
+                                        Variation: {formatVariation(exercise.variation)} · Equipment: {formatEquipment(exercise.equipment_type)}
+                                    </p>
                                     <p className="mb-2 text-xs text-muted-foreground">
                                         {exercise.completed_sets_count} completed set{exercise.completed_sets_count !== 1 ? 's' : ''}
                                     </p>
