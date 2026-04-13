@@ -107,13 +107,16 @@ interface LatestMaxRepsRow {
     max_reps: number;
 }
 
+interface DetailedWorkoutSetRow extends WorkoutSet {
+    variation: string | null;
+    equipment_type: string | null;
+}
+
 type DetailedWorkoutExerciseRow = {
     exercise_id: string;
     order: number;
-    variation: string | null;
-    equipment_type: string | null;
     exercises: NestedRelationship<{ name: string | null }>;
-    exercise_sets: WorkoutSet[] | null;
+    exercise_sets: DetailedWorkoutSetRow[] | null;
 };
 
 // --- Analytics Data ---
@@ -381,10 +384,8 @@ export const fetchDetailedWorkoutById = async (userId: string, workoutId: string
         .select(`
         exercise_id,
         order,
-        variation,
-        equipment_type,
         exercises ( name ),
-        exercise_sets ( set_number, reps, weight, time_seconds, completed )
+        exercise_sets ( set_number, reps, weight, time_seconds, completed, variation, equipment_type )
       `)
         .eq('workout_id', workoutId)
         .order('order', { ascending: true })
@@ -400,13 +401,17 @@ export const fetchDetailedWorkoutById = async (userId: string, workoutId: string
             time_seconds: s.time_seconds,
             completed: s.completed,
         }));
+        const representativeSet =
+            we.exercise_sets?.find((set) => set.variation !== null || set.equipment_type !== null) ??
+            we.exercise_sets?.[0] ??
+            null;
         const exercise = firstOrSelf(we.exercises);
 
         return {
             exercise_id: we.exercise_id,
             exercise_name: exercise?.name || 'Unknown Exercise',
-            variation: we.variation ?? null,
-            equipment_type: we.equipment_type ?? null,
+            variation: representativeSet?.variation ?? null,
+            equipment_type: representativeSet?.equipment_type ?? null,
             order: we.order,
             sets: sets,
             completed_sets_count: sets.filter((s: WorkoutSet) => s.completed).length,
