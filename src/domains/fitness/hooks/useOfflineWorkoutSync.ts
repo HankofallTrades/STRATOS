@@ -17,6 +17,7 @@ import {
   buildCompletedWorkoutForHistory,
   isLikelyNetworkError,
 } from "../data/workoutPersistence";
+import { invalidateWorkoutDependentQueries } from "../data/queryInvalidation";
 
 export const useOfflineWorkoutSync = () => {
   const dispatch = useAppDispatch();
@@ -97,7 +98,7 @@ export const useOfflineWorkoutSync = () => {
       }
 
       if (syncedCount > 0) {
-        await queryClient.invalidateQueries();
+        await invalidateWorkoutDependentQueries(queryClient, user.id);
         toast({
           title: `Synced ${syncedCount} offline workout${syncedCount === 1 ? "" : "s"}`,
           description: "Your locally saved workouts are now on your profile.",

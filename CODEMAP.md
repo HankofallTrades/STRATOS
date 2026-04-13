@@ -9,6 +9,7 @@ This file is the fast operational map for agents and future sessions. It is not 
 - `npm run lint` currently reports 8 warnings and 0 errors.
 - There is no test script in `package.json`.
 - Do not run `npm run build` and `npm run lint` at the same time. Vite can create transient `vite.config.ts.timestamp-*.mjs` files that make ESLint fail with `ENOENT`.
+- Protected app routes and heavy quick-action dialogs are lazy-loaded from `MainAppLayout` to keep non-active screens out of the initial protected-shell bundle.
 
 ## Read Order
 
@@ -103,7 +104,7 @@ Pages should stay thin wrappers around domain screens.
 - Slices:
   - `workout`: active in-progress workout, persisted with the owning user id so workouts can survive refreshes without leaking across accounts
   - `exercise`: persisted exercise metadata/helpers
-  - `history`: persisted workout history
+  - `history`: persisted workout history, capped during serialization so local-storage hydration cost does not grow without bound
 
 The workout flow is the main Redux-heavy area. Most other features should prefer React Query plus local component state.
 
@@ -159,7 +160,7 @@ The workout flow is the main Redux-heavy area. Most other features should prefer
   - `ui/WorkoutScreen.tsx`
   - `hooks/useWorkoutScreen.ts`
 - Other important hooks:
-  - `hooks/useWorkout.ts` for save/discard persistence
+- `hooks/useWorkout.ts` for save/discard persistence
   - `hooks/useOfflineWorkoutSync.ts` for replaying queued offline workout saves
   - `hooks/useWorkoutExercise.ts`
   - `hooks/useSet.ts`
@@ -168,6 +169,7 @@ The workout flow is the main Redux-heavy area. Most other features should prefer
   - `hooks/useQuickActions.ts`
 - Persistence helpers:
   - `data/offlineQueue.ts` stores queued workout saves in local storage
+  - `data/queryInvalidation.ts` scopes post-save cache invalidation to workout-dependent queries instead of invalidating the entire React Query cache
   - `data/workoutPersistence.ts` finalizes completed workout snapshots and history shaping
 - Important UI:
   - `ui/AddSingleExerciseDialog.tsx`

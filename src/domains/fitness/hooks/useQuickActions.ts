@@ -22,7 +22,7 @@ export const useQuickActions = () => {
       if (!user?.id) return null;
       return fetchLatestSingleExerciseLog(user.id);
     },
-    enabled: !!user?.id,
+    enabled: !!user?.id && isAddExerciseDialogOpen,
     staleTime: 5 * 60 * 1000,
   });
 

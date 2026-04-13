@@ -1,3 +1,4 @@
+import { Suspense, lazy } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 import { Plus } from "lucide-react";
 
@@ -11,17 +12,28 @@ import {
   DropdownMenuTrigger,
 } from "@/components/core/dropdown-menu";
 import { SidebarInset, SidebarProvider } from "@/components/core/sidebar";
-import AddSingleExerciseDialog from "@/domains/fitness/ui/AddSingleExerciseDialog";
-import ProteinLogging from "@/domains/fitness/ui/ProteinLogging";
-import SunExposureLogging from "@/domains/fitness/ui/SunExposureLogging";
 import { useOfflineWorkoutSync } from "@/domains/fitness/hooks/useOfflineWorkoutSync";
 import { useQuickActions } from "@/domains/fitness/hooks/useQuickActions";
-import Home from "@/pages/Home";
-import Workout from "@/pages/Workout";
-import Analytics from "@/pages/Analytics";
-import Coach from "@/pages/Coach";
-import Settings from "@/pages/Settings";
-import NotFound from "@/pages/NotFound";
+
+const AddSingleExerciseDialog = lazy(
+  () => import("@/domains/fitness/ui/AddSingleExerciseDialog")
+);
+const ProteinLogging = lazy(() => import("@/domains/fitness/ui/ProteinLogging"));
+const SunExposureLogging = lazy(
+  () => import("@/domains/fitness/ui/SunExposureLogging")
+);
+const Home = lazy(() => import("@/pages/Home"));
+const Workout = lazy(() => import("@/pages/Workout"));
+const Analytics = lazy(() => import("@/pages/Analytics"));
+const Coach = lazy(() => import("@/pages/Coach"));
+const Settings = lazy(() => import("@/pages/Settings"));
+const NotFound = lazy(() => import("@/pages/NotFound"));
+
+const RouteFallback = () => (
+  <div className="app-page">
+    <div className="stone-surface min-h-[16rem] animate-pulse rounded-[26px]" />
+  </div>
+);
 
 const MainAppLayout = () => {
   useOfflineWorkoutSync();
@@ -52,14 +64,16 @@ const MainAppLayout = () => {
         <NavBar />
       </div>
       <SidebarInset className="app-shell">
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/workout" element={<Workout />} />
-          <Route path="/analytics" element={<Analytics />} />
-          <Route path="/coach" element={<Coach />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <Suspense fallback={<RouteFallback />}>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/workout" element={<Workout />} />
+            <Route path="/analytics" element={<Analytics />} />
+            <Route path="/coach" element={<Coach />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
 
         {shouldShowGlobalFab && (
           <div className="fixed bottom-20 right-6 z-20">
@@ -91,23 +105,35 @@ const MainAppLayout = () => {
           </div>
         )}
 
-        <ProteinLogging
-          isOpen={isProteinModalOpen}
-          onClose={() => setIsProteinModalOpen(false)}
-          userId={userId}
-        />
+        {isProteinModalOpen ? (
+          <Suspense fallback={null}>
+            <ProteinLogging
+              isOpen={isProteinModalOpen}
+              onClose={() => setIsProteinModalOpen(false)}
+              userId={userId}
+            />
+          </Suspense>
+        ) : null}
 
-        <SunExposureLogging
-          isOpen={isSunExposureModalOpen}
-          onClose={() => setIsSunExposureModalOpen(false)}
-          userId={userId}
-        />
+        {isSunExposureModalOpen ? (
+          <Suspense fallback={null}>
+            <SunExposureLogging
+              isOpen={isSunExposureModalOpen}
+              onClose={() => setIsSunExposureModalOpen(false)}
+              userId={userId}
+            />
+          </Suspense>
+        ) : null}
 
-        <AddSingleExerciseDialog
-          open={isAddExerciseDialogOpen}
-          onOpenChange={setIsAddExerciseDialogOpen}
-          defaultLogData={latestSingleLogData}
-        />
+        {isAddExerciseDialogOpen ? (
+          <Suspense fallback={null}>
+            <AddSingleExerciseDialog
+              open={isAddExerciseDialogOpen}
+              onOpenChange={setIsAddExerciseDialogOpen}
+              defaultLogData={latestSingleLogData}
+            />
+          </Suspense>
+        ) : null}
       </SidebarInset>
       <BottomNav />
     </SidebarProvider>

@@ -1,11 +1,24 @@
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
-import { persistStore, persistReducer, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from 'redux-persist';
+import { persistStore, persistReducer, createTransform, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from 'redux-persist';
 import storage from 'redux-persist/lib/storage'; // defaults to localStorage for web
 
 // Import slice reducers here
 import workoutReducer from './workout/workoutSlice';
 import exerciseReducer from './exercise/exerciseSlice';
 import historyReducer from './history/historySlice';
+
+const MAX_PERSISTED_WORKOUT_HISTORY = 24;
+
+const historyTransform = createTransform(
+  (inboundState: { workoutHistory?: unknown[] }) => ({
+    ...inboundState,
+    workoutHistory: Array.isArray(inboundState.workoutHistory)
+      ? inboundState.workoutHistory.slice(0, MAX_PERSISTED_WORKOUT_HISTORY)
+      : [],
+  }),
+  outboundState => outboundState,
+  { whitelist: ['history'] }
+);
 
 // Placeholder reducers until slices are created
 // const workoutReducer = (state = { currentWorkout: null, workoutTime: 0 }, action: any) => state;
@@ -23,6 +36,7 @@ const historyPersistConfig = {
   key: 'history',
   storage,
   whitelist: ['workoutHistory'], // Persist workout history
+  transforms: [historyTransform],
 };
 
 const workoutPersistConfig = {
