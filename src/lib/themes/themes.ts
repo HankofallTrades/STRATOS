@@ -26,8 +26,8 @@ export const fantasyTheme: AppTheme = {
     popover: '140 30% 12%',
     popoverForeground: '140 20% 90%',
 
-    // Primary: Vibrant Moss Green
-    primary: '140 50% 45%', // #39AD69
+    // Primary: Deep phthalo green
+    primary: '172 58% 20%', // #154F47
     primaryForeground: '140 20% 98%',
 
     // Secondary: Deep Moss
@@ -45,17 +45,17 @@ export const fantasyTheme: AppTheme = {
 
     border: '215 20% 20%', // Subtle border, slightly lighter than background (Was '215 25% 8%')
     input: '140 30% 20%',
-    ring: '140 50% 45%',
+    ring: '172 54% 25%',
 
     // Sidebar (Matches background for seamless look)
     sidebarBackground: '215 25% 8%', // #0F131A
     sidebarForeground: '140 20% 95%',
-    sidebarPrimary: '140 50% 45%',
+    sidebarPrimary: '172 58% 20%',
     sidebarPrimaryForeground: '140 20% 98%',
     sidebarAccent: '140 30% 20%',
     sidebarAccentForeground: '140 20% 95%',
     sidebarBorder: '215 25% 8%', // Matches background
-    sidebarRing: '140 50% 45%',
+    sidebarRing: '172 54% 25%',
   },
 
   components: {
