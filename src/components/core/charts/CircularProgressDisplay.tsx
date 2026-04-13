@@ -31,8 +31,8 @@ const CircularProgressDisplay: React.FC<CircularProgressDisplayProps> = ({
   unit = '',
   size = 160, // Default size
   barSize = 12, // Default bar thickness
-  defaultColor = '#1e5c52',
-  highlightColor = '#7cad9d',
+  defaultColor = 'var(--stone-accent)',
+  highlightColor = 'var(--stone-accent-text)',
   backgroundColor = 'rgba(255, 255, 255, 0.05)',
   className,
   textClassName,

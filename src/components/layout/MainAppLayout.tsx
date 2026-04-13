@@ -53,10 +53,13 @@ const MainAppLayout = () => {
     handleLogSunExposure,
   } = useQuickActions();
 
-  const shouldShowGlobalFab =
-    location.pathname !== "/coach" &&
-    location.pathname !== "/" &&
-    location.pathname !== "/workout";
+  const shouldShowGlobalFab = ![
+    "/",
+    "/workout",
+    "/analytics",
+    "/coach",
+    "/settings",
+  ].includes(location.pathname);
 
   return (
     <SidebarProvider defaultOpen={false}>

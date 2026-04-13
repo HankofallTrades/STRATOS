@@ -1,8 +1,8 @@
 export type BenchmarkType = "Strength" | "Calisthenics";
 export type AnalysisType = "E1RM" | "Volume" | "Benchmarks";
 
-export const ANALYTICS_ACCENT = "#1e5c52";
-export const ANALYTICS_ACCENT_HIGHLIGHT = "#7cad9d";
+export const ANALYTICS_ACCENT = "var(--stone-accent)";
+export const ANALYTICS_ACCENT_HIGHLIGHT = "var(--stone-accent-text)";
 
 const ANALYTICS_VIEW_STORAGE_KEY = "selectedAnalyticsView_v2";
 

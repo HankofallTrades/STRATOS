@@ -50,11 +50,11 @@
 
     --sidebar-ring: 217.2 91.2% 59.8%;
 
-    --stone-accent-rgb: 30, 92, 82;
-    --stone-accent: #1e5c52;
-    --stone-accent-hover: #286b60;
-    --stone-accent-text: #7cad9d;
-    --stone-accent-strong: #95bfae;
+    --stone-accent-rgb: 21, 79, 71;
+    --stone-accent: #154f47;
+    --stone-accent-hover: #1d6259;
+    --stone-accent-text: #7ea99c;
+    --stone-accent-strong: #98c0b4;
   }
 
   .dark {
@@ -314,24 +314,16 @@
   }
 
   .settings-action-primary {
-    border: 1px solid rgba(var(--stone-accent-rgb), 0.2) !important;
-    background: linear-gradient(
-      180deg,
-      rgba(var(--stone-accent-rgb), 0.2) 0%,
-      rgba(var(--stone-accent-rgb), 0.12) 100%
-    ) !important;
+    border: 0 !important;
+    background: var(--stone-accent) !important;
     color: #eef7f4 !important;
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.03),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.22) !important;
+      0 14px 30px rgba(0, 0, 0, 0.18) !important;
   }
 
   .settings-action-primary:hover {
-    background: linear-gradient(
-      180deg,
-      rgba(var(--stone-accent-rgb), 0.24) 0%,
-      rgba(var(--stone-accent-rgb), 0.15) 100%
-    ) !important;
+    background: var(--stone-accent-hover) !important;
   }
 
   .settings-action-secondary {
@@ -363,14 +355,12 @@
   .settings-segmented {
     display: inline-flex !important;
     align-items: center;
-    gap: 0.25rem !important;
-    border: 1px solid rgba(91, 105, 97, 0.14);
+    gap: 0.35rem !important;
+    border: 0;
     border-radius: 999px;
-    padding: 0.25rem;
-    background: rgba(17, 22, 27, 0.88);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.025),
-      0 10px 24px rgba(0, 0, 0, 0.12);
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
   }
 
   .settings-segment {
@@ -390,7 +380,7 @@
   }
 
   .settings-segment[data-active="true"] {
-    background: rgba(var(--stone-accent-rgb), 0.16);
+    background: rgba(var(--stone-accent-rgb), 0.22);
     color: #f3f7f4;
   }
 

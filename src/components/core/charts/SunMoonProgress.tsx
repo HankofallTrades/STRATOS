@@ -11,10 +11,10 @@ interface SunMoonProgressProps {
 
 const STONE_COLORS = {
   track: 'rgba(255, 255, 255, 0.05)',
-  pthaloDeep: '#1e5c52',
+  pthaloDeep: 'var(--stone-accent)',
   pthaloMid: '#4d8072',
-  pthaloSoft: '#7cad9d',
-  pthaloGlow: '#95bfae',
+  pthaloSoft: 'var(--stone-accent-text)',
+  pthaloGlow: 'var(--stone-accent-strong)',
   warmMetal: '#c8a06c',
   warmMetalSoft: '#dbc39c',
   moon: '#6c8b82',

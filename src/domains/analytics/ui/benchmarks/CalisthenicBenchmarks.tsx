@@ -112,7 +112,7 @@ const CalisthenicBenchmarksView: React.FC<CalisthenicBenchmarksProps> = ({
                         <AnimatedLinearProgress
                             value={bench.progress}
                             className="h-2"
-                            barClassName="bg-[#1e5c52]"
+                            barClassName="bg-[var(--stone-accent)]"
                         />
                         {bench.progress >= 100 && (
                             <p className="verdigris-text mt-1 flex items-center text-xs font-medium">
