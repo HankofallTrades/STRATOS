@@ -17,6 +17,7 @@ import {
     finalizeWorkout,
     isLikelyNetworkError,
 } from '../data/workoutPersistence';
+import { invalidateWorkoutDependentQueries } from '../data/queryInvalidation';
 
 export const useWorkoutPersistence = () => {
     const navigate = useNavigate();
@@ -75,7 +76,7 @@ export const useWorkoutPersistence = () => {
             );
             dispatch(clearWorkout());
             navigate('/', { replace: true });
-            await queryClient.invalidateQueries();
+            await invalidateWorkoutDependentQueries(queryClient, user.id);
 
             toast({
                 title: "Workout Saved",
