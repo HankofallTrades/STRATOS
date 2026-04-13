@@ -34,6 +34,7 @@ lerna-debug.log*
 .agents/
 .claude/
 .codex/
+skills-lock.json
 .DS_Store
 *.suo
 *.ntvs*
