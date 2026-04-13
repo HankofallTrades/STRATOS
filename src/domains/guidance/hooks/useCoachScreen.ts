@@ -12,7 +12,6 @@ import {
 } from "@/domains/guidance/agent/contracts";
 import { sendCoachMessage } from "@/domains/guidance/agent/transport";
 import {
-  coachToolDefinitions,
   executeCoachTool,
   getCoachToolLabel,
 } from "@/domains/guidance/agent/tools";
@@ -288,7 +287,7 @@ export const useCoachScreen = () => {
 
   const primerButtons: PrimerButton[] = [
     {
-      label: coachToolDefinitions.generate_strength_workout.label,
+      label: "Next workout",
       onClick: () => {
         void handleSend(
           "Create a workout based on my current period and movement archetype volume."
@@ -302,16 +301,18 @@ export const useCoachScreen = () => {
         isProviderCredentialLoading,
     },
     {
-      label: "How can I get max swol?",
+      label: "Hypertrophy",
       onClick: () => {
-        void handleSend("How can I get max swol?");
+        void handleSend(
+          "How can I improve hypertrophy with my current training setup?"
+        );
       },
       disabled: isLoading || !isCoachConfigured || isProviderCredentialLoading,
     },
     {
-      label: "What can I do for post-workout recovery?",
+      label: "Recovery",
       onClick: () => {
-        void handleSend("What can I do for post-workout recovery?");
+        void handleSend("What should I do for post-workout recovery?");
       },
       disabled: isLoading || !isCoachConfigured || isProviderCredentialLoading,
     },

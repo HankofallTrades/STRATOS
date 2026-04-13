@@ -30,6 +30,8 @@ import {
 } from "@/domains/guidance/data/llmPreferences";
 import type { MesocycleProtocol } from "@/domains/periodization";
 import { cn } from "@/lib/utils/cn";
+import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 
 const FIELD_LABEL_CLASS =
   "text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground";
@@ -41,6 +43,7 @@ const unitOptions = [
 ] as const;
 
 const SettingsScreen = () => {
+  const location = useLocation();
   const {
     activeProgram,
     bodyweight,
@@ -80,6 +83,21 @@ const SettingsScreen = () => {
     unitPref,
     userEmail,
   } = useSettingsScreen();
+
+  useEffect(() => {
+    if (!location.hash) {
+      return;
+    }
+
+    const elementId = location.hash.slice(1);
+
+    requestAnimationFrame(() => {
+      document.getElementById(elementId)?.scrollIntoView({
+        block: "start",
+        behavior: "smooth",
+      });
+    });
+  }, [location.hash]);
 
   const selectedProvider = getLlmProviderOption(llmProviderPref);
   const providerModelOptions = getLlmModelOptions(llmProviderPref);
@@ -268,7 +286,10 @@ const SettingsScreen = () => {
             ) : null}
           </section>
 
-          <section className={SECTION_CLASS}>
+          <section
+            id="coach-settings"
+            className={cn(SECTION_CLASS, "scroll-mt-24")}
+          >
             <div className="flex flex-col gap-1.5 md:flex-row md:items-end md:justify-between">
               <h2 className="text-xl font-semibold tracking-tight text-foreground">
                 Coach

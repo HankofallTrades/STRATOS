@@ -1,13 +1,10 @@
 import React, { useEffect, useMemo, useRef } from "react";
 import {
   AlertCircle,
-  ArrowUpRight,
-  BrainCircuit,
   CheckCircle2,
-  Dumbbell,
+  Key,
   LoaderCircle,
   Send,
-  Sparkles,
   Wrench,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -83,24 +80,6 @@ const extractWorkoutToolPreview = (value: unknown): WorkoutToolPreview | null =>
 const bubbleClassName =
   "max-w-[85%] rounded-[22px] px-4 py-3 text-sm shadow-[0_16px_36px_rgba(0,0,0,0.16)] md:max-w-[72%]";
 
-const welcomeItems = [
-  {
-    body: "Generate a session from your current block and recent movement volume.",
-    icon: Dumbbell,
-    title: "Programming",
-  },
-  {
-    body: "Pressure-test recovery, pain points, or exercise substitutions before the next lift.",
-    icon: BrainCircuit,
-    title: "Decision support",
-  },
-  {
-    body: "Use prompt starters or ask in plain language. Coach will pull tools when needed.",
-    icon: Sparkles,
-    title: "Low-friction",
-  },
-];
-
 const Chat: React.FC<ChatProps> = ({
   conversation = [],
   configurationMessage,
@@ -151,10 +130,11 @@ const Chat: React.FC<ChatProps> = ({
     : configurationMessage
       ? "border-[rgba(200,160,108,0.22)] bg-[rgba(123,94,66,0.14)] text-[#f1dec0]"
       : "border-[rgba(var(--stone-accent-rgb),0.2)] bg-[rgba(var(--stone-accent-rgb),0.12)] text-[#dff3ec]";
+  const coachSettingsHref = "/settings#coach-settings";
 
   const inputPlaceholder = configurationMessage
     ? "Save a provider key in Settings to start coaching."
-    : "Ask Coach about programming, recovery, or your next session...";
+    : "Ask for a workout, adjustment, or recovery check.";
 
   return (
     <div
@@ -164,29 +144,29 @@ const Chat: React.FC<ChatProps> = ({
       )}
     >
       <div className="border-b border-white/8 px-5 py-4 md:px-6">
-        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <div className="space-y-1">
-            <div className="app-kicker">Coach Console</div>
-            <h2 className="text-xl font-semibold tracking-tight text-foreground">
-              Conversation
-            </h2>
-          </div>
-
-          <div
-            className={cn(
-              "inline-flex items-center gap-2 self-start rounded-full border px-3 py-1.5 text-xs font-medium",
-              consoleStatusClassName
-            )}
-          >
-            {isLoading ? (
+        <div className="flex justify-end">
+          {isLoading ? (
+            <div
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium",
+                consoleStatusClassName
+              )}
+            >
               <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
-            ) : configurationMessage ? (
-              <AlertCircle className="h-3.5 w-3.5" />
-            ) : (
-              <CheckCircle2 className="h-3.5 w-3.5" />
-            )}
-            <span>{consoleStatus}</span>
-          </div>
+              <span>{consoleStatus}</span>
+            </div>
+          ) : configurationMessage ? (
+            <Link
+              to={coachSettingsHref}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition hover:text-white",
+                consoleStatusClassName
+              )}
+            >
+              <Key className="h-3.5 w-3.5" />
+              <span>Add API key</span>
+            </Link>
+          ) : null}
         </div>
       </div>
 
@@ -196,38 +176,6 @@ const Chat: React.FC<ChatProps> = ({
         role="log"
         className="min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6"
       >
-        {renderItems.length === 0 ? (
-          <section className="mb-6 border-b border-white/6 pb-6">
-            <div className="max-w-2xl space-y-3">
-              <div className="app-kicker">Start Here</div>
-              <h3 className="text-2xl font-semibold tracking-tight text-foreground">
-                Use Coach like a planning console.
-              </h3>
-              <p className="text-sm leading-6 text-muted-foreground md:text-base">
-                Ask for a session, a training adjustment, or help interpreting
-                recovery and recent lifts. Coach can use your current STRATOS
-                context when it needs more signal.
-              </p>
-            </div>
-
-            <div className="mt-5 grid gap-4 md:grid-cols-3">
-              {welcomeItems.map(({ body, icon: Icon, title }) => (
-                <div key={title} className="flex items-start gap-3">
-                  <Icon className="mt-0.5 h-4 w-4 verdigris-text" />
-                  <div className="space-y-1">
-                    <p className="text-sm font-semibold text-foreground">
-                      {title}
-                    </p>
-                    <p className="text-sm leading-6 text-muted-foreground">
-                      {body}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
         <div className="space-y-4">
           {renderItems.map(message => {
             if (message.kind === "user") {
@@ -374,22 +322,8 @@ const Chat: React.FC<ChatProps> = ({
       </div>
 
       <div className="border-t border-white/8 px-4 py-4 md:px-6 md:py-5">
-        {configurationMessage ? (
-          <div className="mb-4 rounded-[20px] border border-[rgba(200,160,108,0.22)] bg-[rgba(123,94,66,0.14)] px-4 py-3 text-sm text-[#f1dec0]">
-            <p className="leading-6">{configurationMessage}</p>
-            <Link
-              to="/settings"
-              className="mt-2 inline-flex items-center gap-1.5 font-medium text-[#f6e4c6] transition hover:text-white"
-            >
-              <span>Open Coach Settings</span>
-              <ArrowUpRight className="h-3.5 w-3.5" />
-            </Link>
-          </div>
-        ) : null}
-
         {showPrimers && primerButtons.length > 0 ? (
           <div className="mb-4">
-            <div className="mb-2 app-kicker">Prompt Starters</div>
             <ChatPrimers buttons={primerButtons} />
           </div>
         ) : null}
@@ -410,9 +344,9 @@ const Chat: React.FC<ChatProps> = ({
             aria-label="Send message"
             disabled={isLoading || !input.trim()}
             size="icon"
-            className="app-primary-action h-12 w-12 rounded-[18px]"
+            className="h-12 w-12 rounded-full border-0 bg-transparent p-0 text-[var(--stone-accent)] shadow-none transition hover:bg-[rgba(var(--stone-accent-rgb),0.08)] hover:text-[var(--stone-accent-text)] focus-visible:ring-0 focus-visible:ring-offset-0 disabled:bg-transparent disabled:text-[rgba(214,223,218,0.28)]"
           >
-            <Send className="h-4 w-4" />
+            <Send className="h-4.5 w-4.5" />
           </Button>
         </form>
       </div>

@@ -46,6 +46,7 @@ Rule: do not invent a new heading treatment for each module. Pages should feel a
 - If the lead surface already tells the user where they are and what to do, skip the extra page header.
 - Avoid stacked explanation layers. If the title, module label, helper text, and button all say the same thing, cut at least one of them.
 - In side rails and compact modules, prefer labels of one to three words. Add supporting copy only when the choice would otherwise be unclear.
+- Conversation surfaces should not explain themselves three times. Use one clear status cue, one optional setup cue, and let the input or starters carry the rest.
 
 Rule: if a screen still reads clearly after removing a sentence, remove it.
 
