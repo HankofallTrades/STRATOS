@@ -28,7 +28,7 @@ const lazyWithRetry = <TModule extends { default: React.ComponentType<unknown> }
   });
 
 class RouteErrorBoundary extends Component<
-  { children: ReactNode },
+  { children: ReactNode; resetKey: string },
   { hasError: boolean }
 > {
   state = { hasError: false };
@@ -37,12 +37,25 @@ class RouteErrorBoundary extends Component<
     return { hasError: true };
   }
 
+  componentDidUpdate(prevProps: Readonly<{ children: ReactNode; resetKey: string }>) {
+    if (this.state.hasError && prevProps.resetKey !== this.props.resetKey) {
+      this.setState({ hasError: false });
+    }
+  }
+
+  private handleRetry = () => {
+    this.setState({ hasError: false });
+  };
+
   render() {
     if (this.state.hasError) {
       return (
         <div className="app-page">
-          <div className="stone-surface rounded-[26px] p-6 text-sm text-muted-foreground">
-            We couldn&apos;t load this screen yet. Please try again.
+          <div className="stone-surface rounded-[26px] p-6 text-sm text-muted-foreground space-y-3">
+            <p>We couldn&apos;t load this screen yet. Please try again.</p>
+            <Button onClick={this.handleRetry} size="sm" variant="outline">
+              Retry loading
+            </Button>
           </div>
         </div>
       );
@@ -106,7 +119,7 @@ const MainAppLayout = () => {
         <NavBar />
       </div>
       <SidebarInset className="app-shell">
-        <RouteErrorBoundary>
+        <RouteErrorBoundary resetKey={location.key}>
           <Suspense fallback={<RouteFallback />}>
             <Routes>
               <Route path="/" element={<Home />} />
