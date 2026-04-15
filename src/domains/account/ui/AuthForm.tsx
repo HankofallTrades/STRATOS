@@ -24,7 +24,8 @@ export const AuthForm = () => {
             supabaseClient={supabase}
             view="sign_in"
             showLinks={true}
-            providers={[]}
+            providers={["google"]}
+            redirectTo={window.location.origin}
             dark={true}
             localization={{
               variables: {
