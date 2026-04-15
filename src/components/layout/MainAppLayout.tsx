@@ -1,4 +1,4 @@
-import { Suspense, lazy } from "react";
+import { Component, Suspense, lazy, type ReactNode } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 import { Plus } from "lucide-react";
 
@@ -15,19 +15,58 @@ import { SidebarInset, SidebarProvider } from "@/components/core/sidebar";
 import { useOfflineWorkoutSync } from "@/domains/fitness/hooks/useOfflineWorkoutSync";
 import { useQuickActions } from "@/domains/fitness/hooks/useQuickActions";
 
-const AddSingleExerciseDialog = lazy(
+const lazyWithRetry = <TModule extends { default: React.ComponentType<unknown> }>(
+  importFn: () => Promise<TModule>
+) =>
+  lazy(async () => {
+    try {
+      return await importFn();
+    } catch (error) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      return importFn();
+    }
+  });
+
+class RouteErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="app-page">
+          <div className="stone-surface rounded-[26px] p-6 text-sm text-muted-foreground">
+            We couldn&apos;t load this screen yet. Please try again.
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+const AddSingleExerciseDialog = lazyWithRetry(
   () => import("@/domains/fitness/ui/AddSingleExerciseDialog")
 );
-const ProteinLogging = lazy(() => import("@/domains/fitness/ui/ProteinLogging"));
-const SunExposureLogging = lazy(
+const ProteinLogging = lazyWithRetry(
+  () => import("@/domains/fitness/ui/ProteinLogging")
+);
+const SunExposureLogging = lazyWithRetry(
   () => import("@/domains/fitness/ui/SunExposureLogging")
 );
-const Home = lazy(() => import("@/pages/Home"));
-const Workout = lazy(() => import("@/pages/Workout"));
-const Analytics = lazy(() => import("@/pages/Analytics"));
-const Coach = lazy(() => import("@/pages/Coach"));
-const Settings = lazy(() => import("@/pages/Settings"));
-const NotFound = lazy(() => import("@/pages/NotFound"));
+const Home = lazyWithRetry(() => import("@/pages/Home"));
+const Workout = lazyWithRetry(() => import("@/pages/Workout"));
+const Analytics = lazyWithRetry(() => import("@/pages/Analytics"));
+const Coach = lazyWithRetry(() => import("@/pages/Coach"));
+const Settings = lazyWithRetry(() => import("@/pages/Settings"));
+const NotFound = lazyWithRetry(() => import("@/pages/NotFound"));
 
 const RouteFallback = () => (
   <div className="app-page">
@@ -67,16 +106,18 @@ const MainAppLayout = () => {
         <NavBar />
       </div>
       <SidebarInset className="app-shell">
-        <Suspense fallback={<RouteFallback />}>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/workout" element={<Workout />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/coach" element={<Coach />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Suspense>
+        <RouteErrorBoundary>
+          <Suspense fallback={<RouteFallback />}>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/workout" element={<Workout />} />
+              <Route path="/analytics" element={<Analytics />} />
+              <Route path="/coach" element={<Coach />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
+        </RouteErrorBoundary>
 
         {shouldShowGlobalFab && (
           <div className="fixed bottom-20 right-6 z-20">
