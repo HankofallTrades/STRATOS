@@ -406,6 +406,17 @@
       transform 160ms ease;
   }
 
+  .stratos-google-button {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.75rem !important;
+  }
+
+  .stratos-google-button svg {
+    display: block;
+  }
+
   .stratos-auth-button:hover {
     background: var(--stone-accent-hover) !important;
   }

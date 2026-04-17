@@ -1,14 +1,43 @@
 import { supabase } from "@/lib/integrations/supabase/client";
 import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "@/state/auth/AuthProvider";
 
+const GOOGLE_PROVIDER_DISABLED_ERROR = "Unsupported provider";
+
+const GoogleLogo = () => (
+  <svg
+    aria-hidden="true"
+    className="h-5 w-5 shrink-0"
+    viewBox="0 0 24 24"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M21.805 12.23c0-.72-.065-1.41-.186-2.07H12v3.92h5.498a4.703 4.703 0 0 1-2.037 3.084v2.56h3.298c1.93-1.777 3.046-4.398 3.046-7.494Z"
+      fill="#4285F4"
+    />
+    <path
+      d="M12 22c2.755 0 5.065-.913 6.753-2.476l-3.298-2.56c-.913.613-2.082.976-3.455.976-2.655 0-4.905-1.792-5.71-4.201H2.88v2.641A9.997 9.997 0 0 0 12 22Z"
+      fill="#34A853"
+    />
+    <path
+      d="M6.29 13.74A5.993 5.993 0 0 1 5.971 12c0-.604.108-1.19.318-1.74V7.619H2.88A9.997 9.997 0 0 0 2 12c0 1.61.385 3.135 1.08 4.38l3.21-2.64Z"
+      fill="#FBBC05"
+    />
+    <path
+      d="M12 6.06c1.499 0 2.844.516 3.904 1.53l2.927-2.927C17.06 3.013 14.75 2 12 2a9.997 9.997 0 0 0-9.12 5.619l3.41 2.641C7.095 7.852 9.345 6.06 12 6.06Z"
+      fill="#EA4335"
+    />
+  </svg>
+);
+
 export const AuthForm = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [googleError, setGoogleError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -16,10 +45,34 @@ export const AuthForm = () => {
     }
   }, [navigate, user]);
 
+  const handleGoogleSignIn = async () => {
+    setGoogleError(null);
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: window.location.origin,
+      },
+    });
+
+    if (!error) {
+      return;
+    }
+
+    if (error.message.includes(GOOGLE_PROVIDER_DISABLED_ERROR)) {
+      setGoogleError(
+        "Google sign-in is not enabled yet. In Supabase, enable Google under Authentication → Providers and add this app URL as a redirect.",
+      );
+      return;
+    }
+
+    setGoogleError(error.message);
+  };
+
   return (
     <div className="app-shell min-h-screen">
       <div className="mx-auto flex min-h-screen w-full max-w-5xl items-center px-4 py-10 sm:px-8 lg:px-10">
-        <div className="w-full">
+        <div className="w-full space-y-4">
           <Auth
             supabaseClient={supabase}
             view="sign_in"
@@ -110,6 +163,19 @@ export const AuthForm = () => {
               },
             }}
           />
+
+          <button
+            type="button"
+            className="stratos-auth-button stratos-google-button"
+            onClick={handleGoogleSignIn}
+          >
+            <GoogleLogo />
+            <span>Continue with Google</span>
+          </button>
+
+          {googleError ? (
+            <p className="stratos-auth-message text-sm">{googleError}</p>
+          ) : null}
         </div>
       </div>
     </div>
