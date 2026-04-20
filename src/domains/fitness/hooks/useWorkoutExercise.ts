@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+
 import { useAppDispatch, useAppSelector } from "@/hooks/redux";
-import { useAuth } from '@/state/auth/AuthProvider';
 import * as fitnessRepo from '../data/fitnessRepository';
 import { buildRecommendedStrengthSetPerformances } from '../data/recommendations';
 import {
@@ -22,58 +22,40 @@ import {
     secondsToTime,
     timeToSeconds
 } from "@/lib/types/workout";
+import type { LastWorkoutExerciseInstanceSet } from '../data/fitnessRepository';
 
 const DEFAULT_VARIATION = 'Standard';
 
-export const useWorkoutExercise = (workoutExercise: WorkoutExercise) => {
+interface WorkoutExerciseLookups {
+    historicalSets: LastWorkoutExerciseInstanceSet[] | null;
+    isLoading: boolean;
+    userWeight: number | null;
+    variations: string[];
+}
+
+export const useWorkoutExercise = (
+    workoutExercise: WorkoutExercise,
+    lookups: WorkoutExerciseLookups
+) => {
     const dispatch = useAppDispatch();
     const sessionFocus = useAppSelector(selectSessionFocus);
     const queryClient = useQueryClient();
-    const { user } = useAuth();
-    const userId = user?.id;
     const exerciseId = workoutExercise.exercise.id;
 
     const [isAddingVariation, setIsAddingVariation] = useState(false);
     const [newVariationName, setNewVariationName] = useState('');
-
-    // Queries
-    const { data: variations = [DEFAULT_VARIATION], isLoading: isLoadingVariations } = useQuery({
-        queryKey: ['exerciseVariations', exerciseId],
-        queryFn: () => fitnessRepo.fetchVariations(exerciseId),
-        enabled: !!exerciseId,
-        select: (data) => [DEFAULT_VARIATION, ...data.map(v => v.variation_name).filter(v => v !== DEFAULT_VARIATION)],
-    });
-
-    const { data: historicalSets, isLoading: isLoadingHistory } = useQuery({
-        queryKey: [
-            'lastPerformance',
-            userId,
-            exerciseId,
-            workoutExercise.equipmentType,
-            workoutExercise.variation ?? DEFAULT_VARIATION
-        ],
-        queryFn: () => fitnessRepo.fetchLastWorkoutExerciseInstance(
-            userId!,
-            exerciseId,
-            workoutExercise.equipmentType,
-            workoutExercise.variation ?? DEFAULT_VARIATION
-        ),
-        enabled: !!userId && !!exerciseId,
-        staleTime: 5 * 60 * 1000,
-    });
-
-    const { data: userWeight } = useQuery({
-        queryKey: ['userWeight', userId],
-        queryFn: () => fitnessRepo.getUserWeight(userId!),
-        enabled: !!userId,
-        staleTime: 15 * 60 * 1000,
-    });
+    const variations = useMemo(
+        () => (lookups.variations.length > 0 ? lookups.variations : [DEFAULT_VARIATION]),
+        [lookups.variations]
+    );
+    const historicalSets = lookups.historicalSets;
+    const userWeight = lookups.userWeight;
 
     // Mutations
     const addVariationMutation = useMutation({
         mutationFn: (name: string) => fitnessRepo.createVariation(exerciseId, name),
         onSuccess: (newVar) => {
-            queryClient.invalidateQueries({ queryKey: ['exerciseVariations', exerciseId] });
+            queryClient.invalidateQueries({ queryKey: ['workoutExerciseVariations'] });
             setNewVariationName('');
             setIsAddingVariation(false);
             dispatch(updateVariationAction({
@@ -136,7 +118,7 @@ export const useWorkoutExercise = (workoutExercise: WorkoutExercise) => {
                 workoutExerciseId: workoutExercise.id,
                 exerciseId: workoutExercise.exercise.id,
                 isStatic: workoutExercise.exercise.is_static ?? false,
-                userBodyweight: userWeight?.weight_kg ?? null,
+                userBodyweight: userWeight,
             }));
         }
     }, [dispatch, workoutExercise, userWeight]);
@@ -251,10 +233,10 @@ export const useWorkoutExercise = (workoutExercise: WorkoutExercise) => {
         historicalSetPerformances,
         recommendedSetPerformances,
         overallLastPerformance,
-        userWeight: userWeight?.weight_kg ?? null,
+        userWeight,
         isAddingVariation,
         newVariationName,
-        isLoading: isLoadingVariations || isLoadingHistory,
+        isLoading: lookups.isLoading,
         addVariationMutationStatus: addVariationMutation.status,
         setNewVariationName,
         setIsAddingVariation,

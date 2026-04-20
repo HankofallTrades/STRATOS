@@ -1,49 +1,48 @@
+import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/core/Toast/toaster";
 import { Toaster as Sonner } from "@/components/core/sonner";
 import { TooltipProvider } from "@/components/core/tooltip";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { Provider } from 'react-redux';
-import { PersistGate } from 'redux-persist/integration/react';
-import { store, persistor } from './state/store';
 import { ThemeProvider as NextThemeProvider } from "next-themes";
+
 import { ThemeProvider } from "@/lib/themes";
-import ProtectedRoute from "@/components/layout/ProtectedRoute";
-import MainAppLayout from "@/components/layout/MainAppLayout";
+
 import LoginPage from "./pages/LoginPage";
 import WaitlistPage from "./pages/WaitlistPage";
+
+const ProtectedAppShell = lazy(
+  () => import("@/components/layout/ProtectedAppShell")
+);
+
+const ProtectedShellFallback = () => (
+  <div className="min-h-screen bg-background" />
+);
 
 // App component sets up providers and routes
 const App = () => {
   return (
-    <Provider store={store}>
-      <PersistGate loading={null} persistor={persistor}>
-        <NextThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
-          <ThemeProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <Router>
-                <Routes>
-                  {/* Public Routes */}
-                  <Route path="/login" element={<LoginPage />} />
-                  <Route path="/waitlist" element={<WaitlistPage />} />
-
-                  {/* Protected Routes */}
-                  <Route
-                    path="/*"
-                    element={
-                      <ProtectedRoute>
-                        <MainAppLayout />
-                      </ProtectedRoute>
-                    }
-                  />
-                </Routes>
-              </Router>
-            </TooltipProvider>
-          </ThemeProvider>
-        </NextThemeProvider>
-      </PersistGate>
-    </Provider>
+    <NextThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+      <ThemeProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <Router>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/waitlist" element={<WaitlistPage />} />
+              <Route
+                path="/*"
+                element={
+                  <Suspense fallback={<ProtectedShellFallback />}>
+                    <ProtectedAppShell />
+                  </Suspense>
+                }
+              />
+            </Routes>
+          </Router>
+        </TooltipProvider>
+      </ThemeProvider>
+    </NextThemeProvider>
   );
 };
 

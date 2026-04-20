@@ -1,20 +1,32 @@
 import React from 'react';
+
 import { WorkoutExercise } from "@/lib/types/workout";
+import type { LastWorkoutExerciseInstanceSet } from "@/domains/fitness/data/fitnessRepository";
+
 import { useWorkoutExercise } from '../hooks/useWorkoutExercise';
 import { WorkoutExerciseView } from './WorkoutExerciseView';
 
 interface WorkoutExerciseContainerProps {
-  workoutExercise: WorkoutExercise;
+  historicalSets: LastWorkoutExerciseInstanceSet[] | null;
+  isLookupsLoading: boolean;
   restStartTime?: number | null;
+  userWeight: number | null;
+  variations: string[];
+  workoutExercise: WorkoutExercise;
 }
 
-export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> = ({ workoutExercise, restStartTime }) => {
+export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> = ({
+  historicalSets,
+  isLookupsLoading,
+  restStartTime,
+  userWeight,
+  variations,
+  workoutExercise,
+}) => {
   const DEFAULT_VARIATION = 'Standard';
   const {
-    variations,
     historicalSetPerformances,
     recommendedSetPerformances,
-    userWeight,
     isAddingVariation,
     newVariationName,
     isLoading,
@@ -28,7 +40,12 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
     updateLastSetField,
     copyCompletedValueToLatestSet,
     handleSaveNewVariation,
-  } = useWorkoutExercise(workoutExercise);
+  } = useWorkoutExercise(workoutExercise, {
+    historicalSets,
+    isLoading: isLookupsLoading,
+    userWeight,
+    variations,
+  });
 
   const handleCancelAddVariation = () => {
     setIsAddingVariation(false);

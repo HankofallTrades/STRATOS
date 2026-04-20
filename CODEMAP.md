@@ -9,6 +9,7 @@ This file is the fast operational map for agents and future sessions. It is not 
 - `npm run lint` currently reports 8 warnings and 0 errors.
 - There is no test script in `package.json`.
 - Do not run `npm run build` and `npm run lint` at the same time. Vite can create transient `vite.config.ts.timestamp-*.mjs` files that make ESLint fail with `ENOENT`.
+- Public routes do not load Redux persistence or the protected shell up front; `App.tsx` lazy-loads the protected app shell after route match.
 - Protected app routes and heavy quick-action dialogs are lazy-loaded from `MainAppLayout` to keep non-active screens out of the initial protected-shell bundle.
 
 ## Read Order
@@ -31,8 +32,11 @@ This file is the fast operational map for agents and future sessions. It is not 
   - Creates the React app.
   - Wraps the app in `QueryClientProvider` and `AuthProvider`.
 - `src/App.tsx`
-  - Owns the provider stack for Redux, persistence, theme, toasts, router.
-  - Splits public routes (`/login`, legacy `/waitlist` redirect) from protected app routes.
+  - Owns the theme, toast, and router providers.
+  - Splits public routes (`/login`, legacy `/waitlist` redirect) from the lazy protected app shell.
+- `src/components/layout/ProtectedAppShell.tsx`
+  - Owns Redux provider + persistence gate for protected routes only.
+  - Mounts `ProtectedRoute` and `MainAppLayout` after the protected shell chunk loads.
 - `src/components/layout/ProtectedRoute.tsx`
   - Gates protected routes on Supabase session state from `AuthProvider`.
 - `src/components/layout/MainAppLayout.tsx`
@@ -161,6 +165,7 @@ The workout flow is the main Redux-heavy area. Most other features should prefer
   - `hooks/useWorkoutScreen.ts`
 - Other important hooks:
 - `hooks/useWorkout.ts` for save/discard persistence
+  - `ui/WorkoutComponent.tsx` batches workout-row variation/history/user-weight lookups at the screen level so each row does not spin up its own query lifecycle
   - `hooks/useOfflineWorkoutSync.ts` for replaying queued offline workout saves
   - `hooks/useWorkoutExercise.ts`
   - `hooks/useSet.ts`

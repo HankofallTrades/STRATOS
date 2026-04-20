@@ -9,6 +9,21 @@ export type ExerciseVariationRow = Tables<'exercise_variations'>;
 export type ExerciseSetRow = Tables<'exercise_sets'>;
 export type EquipmentTypeRow = Tables<'equipment_types'>;
 export type ExerciseMuscleGroupMapping = Record<string, string[]>;
+export type LastWorkoutExerciseInstanceSet = {
+    weight: number;
+    reps: number | null;
+    time_seconds: number | null;
+    set_number: number;
+};
+
+export interface WorkoutExerciseHistoryLookup {
+    exerciseId: string;
+    equipmentType: string | null | undefined;
+    variation: string | null | undefined;
+}
+
+export type WorkoutExerciseHistoryMap = Record<string, LastWorkoutExerciseInstanceSet[]>;
+export type ExerciseVariationMap = Record<string, ExerciseVariationRow[]>;
 
 export interface LatestSingleExerciseLogData extends ExerciseSetRow {
     exercise_id: string;
@@ -22,6 +37,25 @@ export interface SingleLogData {
     equipmentType: string | null;
     variation: string | null;
 }
+
+const DEFAULT_VARIATION = 'Standard';
+
+const normalizeWorkoutExerciseVariation = (variation: string | null | undefined) =>
+    variation && variation.trim().length > 0 ? variation : DEFAULT_VARIATION;
+
+const normalizeWorkoutExerciseEquipmentType = (equipmentType: string | null | undefined) =>
+    equipmentType ?? null;
+
+export const buildWorkoutExerciseHistoryKey = ({
+    exerciseId,
+    equipmentType,
+    variation,
+}: WorkoutExerciseHistoryLookup) =>
+    [
+        exerciseId,
+        normalizeWorkoutExerciseEquipmentType(equipmentType) ?? '__none__',
+        normalizeWorkoutExerciseVariation(variation),
+    ].join('::');
 
 // --- Exercises ---
 
@@ -59,6 +93,38 @@ export const fetchVariations = async (exerciseId: string): Promise<ExerciseVaria
 
     if (error) throw error;
     return data || [];
+};
+
+export const fetchVariationsForExercises = async (
+    exerciseIds: string[]
+): Promise<ExerciseVariationMap> => {
+    const uniqueExerciseIds = [...new Set(exerciseIds)].filter(Boolean);
+
+    if (uniqueExerciseIds.length === 0) {
+        return {};
+    }
+
+    const { data, error } = await supabase
+        .from('exercise_variations')
+        .select('*')
+        .in('exercise_id', uniqueExerciseIds)
+        .order('variation_name', { ascending: true });
+
+    if (error) throw error;
+
+    const variationsByExerciseId = uniqueExerciseIds.reduce<ExerciseVariationMap>((acc, exerciseId) => {
+        acc[exerciseId] = [];
+        return acc;
+    }, {});
+
+    for (const variation of data || []) {
+        if (!variationsByExerciseId[variation.exercise_id]) {
+            variationsByExerciseId[variation.exercise_id] = [];
+        }
+        variationsByExerciseId[variation.exercise_id].push(variation);
+    }
+
+    return variationsByExerciseId;
 };
 
 /**
@@ -347,9 +413,9 @@ export const fetchLastWorkoutExerciseInstance = async (
     exerciseId: string,
     equipmentType: string | null | undefined,
     variation: string | null | undefined
-): Promise<{ weight: number; reps: number | null; time_seconds: number | null; set_number: number }[] | null> => {
-    const targetVariation = variation || 'Standard';
-    const targetEquipmentType = equipmentType ?? null;
+): Promise<LastWorkoutExerciseInstanceSet[] | null> => {
+    const targetVariation = normalizeWorkoutExerciseVariation(variation);
+    const targetEquipmentType = normalizeWorkoutExerciseEquipmentType(equipmentType);
 
     // 1. Find most recent workout
     const { data: lastWorkout, error: workoutError } = await supabase
@@ -394,6 +460,125 @@ export const fetchLastWorkoutExerciseInstance = async (
         time_seconds: set.time_seconds,
         set_number: set.set_number,
     }));
+};
+
+type BatchedWorkoutExerciseSetRow = {
+    weight: number;
+    reps: number | null;
+    time_seconds: number | null;
+    set_number: number;
+    variation: string | null;
+    equipment_type: string | null;
+    workout_exercises: {
+        exercise_id: string;
+        workout_id: string;
+        workouts: {
+            created_at: string;
+            user_id: string;
+        } | null;
+    } | null;
+};
+
+export const fetchLastWorkoutExerciseInstances = async (
+    userId: string,
+    lookups: WorkoutExerciseHistoryLookup[]
+): Promise<WorkoutExerciseHistoryMap> => {
+    const uniqueLookups = [...new Map(
+        lookups
+            .filter(({ exerciseId }) => Boolean(exerciseId))
+            .map(lookup => [buildWorkoutExerciseHistoryKey(lookup), lookup])
+    ).values()];
+
+    if (uniqueLookups.length === 0) {
+        return {};
+    }
+
+    const requestedKeys = new Set(
+        uniqueLookups.map(lookup => buildWorkoutExerciseHistoryKey(lookup))
+    );
+    const exerciseIds = [...new Set(uniqueLookups.map(lookup => lookup.exerciseId))];
+
+    const { data, error } = await supabase
+        .from('exercise_sets')
+        .select(`
+            weight,
+            reps,
+            time_seconds,
+            set_number,
+            variation,
+            equipment_type,
+            workout_exercises!inner(
+                exercise_id,
+                workout_id,
+                workouts!inner(
+                    user_id,
+                    created_at
+                )
+            )
+        `)
+        .eq('completed', true)
+        .eq('workout_exercises.workouts.user_id', userId)
+        .in('workout_exercises.exercise_id', exerciseIds)
+        .returns<BatchedWorkoutExerciseSetRow[]>();
+
+    if (error) throw error;
+
+    const orderedRows = (data || []).slice().sort((left, right) => {
+        const leftCreatedAt = left.workout_exercises?.workouts?.created_at ?? '';
+        const rightCreatedAt = right.workout_exercises?.workouts?.created_at ?? '';
+
+        if (leftCreatedAt !== rightCreatedAt) {
+            return leftCreatedAt < rightCreatedAt ? 1 : -1;
+        }
+
+        if (left.workout_exercises?.workout_id !== right.workout_exercises?.workout_id) {
+            return (left.workout_exercises?.workout_id ?? '').localeCompare(
+                right.workout_exercises?.workout_id ?? ''
+            );
+        }
+
+        return left.set_number - right.set_number;
+    });
+
+    const latestWorkoutIdByLookupKey = new Map<string, string>();
+    const setsByLookupKey: WorkoutExerciseHistoryMap = {};
+
+    for (const row of orderedRows) {
+        if (!row.workout_exercises) {
+            continue;
+        }
+
+        const lookupKey = buildWorkoutExerciseHistoryKey({
+            exerciseId: row.workout_exercises.exercise_id,
+            equipmentType: row.equipment_type,
+            variation: row.variation,
+        });
+
+        if (!requestedKeys.has(lookupKey)) {
+            continue;
+        }
+
+        const workoutId = row.workout_exercises.workout_id;
+        const recordedWorkoutId = latestWorkoutIdByLookupKey.get(lookupKey);
+
+        if (!recordedWorkoutId) {
+            latestWorkoutIdByLookupKey.set(lookupKey, workoutId);
+            setsByLookupKey[lookupKey] = [];
+        }
+
+        if (latestWorkoutIdByLookupKey.get(lookupKey) !== workoutId) {
+            continue;
+        }
+
+        setsByLookupKey[lookupKey].push({
+            weight: row.weight,
+            reps: row.reps,
+            time_seconds: row.time_seconds,
+            set_number: row.set_number,
+        });
+    }
+
+    return setsByLookupKey;
 };
 
 // --- Workout Sessions ---
