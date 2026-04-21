@@ -27,6 +27,14 @@ const lazyWithRetry = <TModule extends { default: React.ComponentType<unknown> }
     }
   });
 
+const CHUNK_RELOAD_GUARD_KEY = "stratos:chunk-reload-attempted";
+
+const RouteFallback = () => (
+  <div className="app-page">
+    <div className="stone-surface min-h-[16rem] animate-pulse rounded-[26px]" />
+  </div>
+);
+
 class RouteErrorBoundary extends Component<
   { children: ReactNode; resetKey: string },
   { hasError: boolean }
@@ -37,28 +45,23 @@ class RouteErrorBoundary extends Component<
     return { hasError: true };
   }
 
+  componentDidCatch(error: Error) {
+    if (!isRecoverableChunkLoadError(error)) {
+      return;
+    }
+
+    const hasReloaded = sessionStorage.getItem(CHUNK_RELOAD_GUARD_KEY) === "1";
+    if (!hasReloaded) {
+      sessionStorage.setItem(CHUNK_RELOAD_GUARD_KEY, "1");
+  }
+
   componentDidUpdate(prevProps: Readonly<{ children: ReactNode; resetKey: string }>) {
     if (this.state.hasError && prevProps.resetKey !== this.props.resetKey) {
+      sessionStorage.removeItem(CHUNK_RELOAD_GUARD_KEY);
       this.setState({ hasError: false });
     }
   }
-
-  private handleRetry = () => {
-    this.setState({ hasError: false });
-  };
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="app-page">
-          <div className="stone-surface rounded-[26px] p-6 text-sm text-muted-foreground space-y-3">
-            <p>We couldn&apos;t load this screen yet. Please try again.</p>
-            <Button onClick={this.handleRetry} size="sm" variant="outline">
-              Retry loading
-            </Button>
-          </div>
-        </div>
-      );
+      return <RouteFallback />;
     }
 
     return this.props.children;
@@ -80,12 +83,6 @@ const Analytics = lazyWithRetry(() => import("@/pages/Analytics"));
 const Coach = lazyWithRetry(() => import("@/pages/Coach"));
 const Settings = lazyWithRetry(() => import("@/pages/Settings"));
 const NotFound = lazyWithRetry(() => import("@/pages/NotFound"));
-
-const RouteFallback = () => (
-  <div className="app-page">
-    <div className="stone-surface min-h-[16rem] animate-pulse rounded-[26px]" />
-  </div>
-);
 
 const MainAppLayout = () => {
   useOfflineWorkoutSync();
