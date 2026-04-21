@@ -1,14 +1,12 @@
 import React from 'react';
 
 import { WorkoutExercise } from "@/lib/types/workout";
-import type { LastWorkoutExerciseInstanceSet } from "@/domains/fitness/data/fitnessRepository";
 
 import { useWorkoutExercise } from '../hooks/useWorkoutExercise';
 import { WorkoutExerciseView } from './WorkoutExerciseView';
 
 interface WorkoutExerciseContainerProps {
-  historicalSets: LastWorkoutExerciseInstanceSet[] | null;
-  isLookupsLoading: boolean;
+  isVariationLoading: boolean;
   restStartTime?: number | null;
   userWeight: number | null;
   variations: string[];
@@ -16,8 +14,7 @@ interface WorkoutExerciseContainerProps {
 }
 
 export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> = ({
-  historicalSets,
-  isLookupsLoading,
+  isVariationLoading,
   restStartTime,
   userWeight,
   variations,
@@ -41,8 +38,7 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
     copyCompletedValueToLatestSet,
     handleSaveNewVariation,
   } = useWorkoutExercise(workoutExercise, {
-    historicalSets,
-    isLoading: isLookupsLoading,
+    isVariationLoading,
     userWeight,
     variations,
   });
