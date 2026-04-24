@@ -73,6 +73,7 @@ const ExerciseSelector = ({
   const [open, setOpen] = useState(openOnMount);
   const [isConfirmDeleteDialogOpen, setIsConfirmDeleteDialogOpen] = useState(false);
   const [exerciseToDelete, setExerciseToDelete] = useState<Exercise | null>(null);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const {
@@ -142,6 +143,7 @@ const ExerciseSelector = ({
       setSelectedArchetypeId(null);
       setCategoryFilter(null);
       setNewExerciseCategory(null);
+      setIsSearchFocused(false);
       clearLongPressTimer();
       setExerciseToDelete(null);
     }
@@ -172,7 +174,12 @@ const ExerciseSelector = ({
           )}
         </DialogTrigger>
         <DialogContent
-          className={cn(workoutDialogClassName, "!top-4 !translate-y-0 sm:!top-[50%] sm:!translate-y-[-50%]")}
+          className={cn(
+            workoutDialogClassName,
+            isSearchFocused
+              ? "!top-4 !translate-y-0 sm:!top-[50%] sm:!translate-y-[-50%]"
+              : "!left-0 !top-0 !h-[100dvh] !w-screen !max-w-none !translate-x-0 !translate-y-0 rounded-none p-4 sm:!left-[50%] sm:!top-[50%] sm:!h-auto sm:!w-full sm:!max-w-md sm:!translate-x-[-50%] sm:!translate-y-[-50%] sm:rounded-[28px] sm:p-5"
+          )}
           onOpenAutoFocus={(e) => e.preventDefault()}
           onInteractOutside={(e) => {
             if (isConfirmDeleteDialogOpen) e.preventDefault();
@@ -183,7 +190,7 @@ const ExerciseSelector = ({
               {mode === 'replace' ? 'Change Exercise' : 'Select Exercise'}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 pt-4">
+          <div className={cn("space-y-4 pt-4", !isSearchFocused && "flex min-h-0 flex-1 flex-col")}>
             {/* Category filter chips */}
             <div className="flex flex-wrap gap-1.5">
               <button
@@ -219,11 +226,18 @@ const ExerciseSelector = ({
                 placeholder="Search exercises..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setIsSearchFocused(false)}
                 className={`${workoutMenuInputClassName} pl-11`}
               />
             </div>
 
-            <div className="stone-surface max-h-40 space-y-1 overflow-y-auto rounded-[18px] p-2 sm:max-h-72">
+            <div
+              className={cn(
+                "stone-surface space-y-1 overflow-y-auto rounded-[18px] p-2 sm:max-h-72",
+                isSearchFocused ? "max-h-40" : "min-h-0 flex-1"
+              )}
+            >
               {isLoading ? (
                 <p className="py-4 text-center text-sm text-muted-foreground">Loading exercises...</p>
               ) : exercises.length > 0 ? (
