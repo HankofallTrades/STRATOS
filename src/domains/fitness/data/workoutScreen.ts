@@ -3,12 +3,13 @@ import { v4 as uuidv4 } from "uuid";
 import type { MesocycleProtocol, MesocycleSessionTemplate } from "@/domains/periodization";
 import type {
   CardioSet,
+  Exercise,
   SessionFocus,
   StrengthSet,
   WorkoutExercise,
 } from "@/lib/types/workout";
 import { isCardioExercise, secondsToTime } from "@/lib/types/workout";
-import { fetchLastConfigForExercise } from "./fitnessRepository";
+import { fetchLastConfigsForExercises } from "./fitnessRepository";
 
 export const sessionFocusOptions: SessionFocus[] = [
   "hypertrophy",
@@ -82,6 +83,24 @@ export const buildExercisesFromSessionTemplate = async (
   userId: string
 ): Promise<WorkoutExercise[]> => {
   const rows = sessionTemplate.exercises.filter(row => !!row.exercise);
+  const exercisesNeedingHistory = rows
+    .map(row => {
+      const exercise = row.exercise as Exercise;
+      const templatePresentationPreset = getTemplateExercisePresentationPreset(row.notes);
+      const hasExplicitTemplateConfig = Boolean(
+        templatePresentationPreset?.equipmentType &&
+          templatePresentationPreset?.variation
+      );
+
+      return !isCardioExercise(exercise) && !hasExplicitTemplateConfig
+        ? exercise.id
+        : null;
+    })
+    .filter((exerciseId): exerciseId is string => Boolean(exerciseId));
+  const lastConfigByExerciseId =
+    userId && exercisesNeedingHistory.length > 0
+      ? await fetchLastConfigsForExercises(userId, exercisesNeedingHistory)
+      : {};
 
   return Promise.all(
     rows.map(async row => {
@@ -97,14 +116,10 @@ export const buildExercisesFromSessionTemplate = async (
       );
 
       // History should be the default unless the template explicitly pins both fields.
-      let lastConfig: { equipmentType: string | null; variation: string | null } | null = null;
-      if (!isCardioExercise(exercise) && !hasExplicitTemplateConfig) {
-        try {
-          lastConfig = await fetchLastConfigForExercise(userId, exercise.id);
-        } catch {
-          // ignore — fall through to other defaults
-        }
-      }
+      const lastConfig =
+        !isCardioExercise(exercise) && !hasExplicitTemplateConfig
+          ? lastConfigByExerciseId[exercise.id] ?? null
+          : null;
 
       const targetEquipmentType =
         (hasExplicitTemplateConfig

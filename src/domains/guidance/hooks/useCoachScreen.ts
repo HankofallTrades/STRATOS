@@ -1,8 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
+import {
+  fetchWeeklyArchetypeSets,
+  type WeeklyArchetypeSetData,
+} from "@/domains/analytics/data/analyticsRepository";
+import {
+  buildVolumeProgressDisplayData,
+  getCurrentWeekRange,
+} from "@/domains/analytics/hooks/useVolumeChart";
 import {
   createCoachErrorMessage,
   createCoachToolResultMessage,
@@ -15,41 +24,36 @@ import {
   executeCoachTool,
   getCoachToolLabel,
 } from "@/domains/guidance/agent/tools";
-import { useVolumeChart } from "@/domains/analytics/hooks/useVolumeChart";
+import {
+  fetchGuidanceExercises,
+  fetchMovementArchetypes,
+} from "@/domains/guidance/data/guidanceRepository";
 import {
   buildMissingProviderConfigurationMessage,
   providerRequiresApiKey,
   readLlmPreferences,
 } from "@/domains/guidance/data/llmPreferences";
 import { fetchProviderCredentialStatus } from "@/domains/guidance/data/providerCredentialRepository";
-import { useGuidanceWorkoutCatalog } from "@/domains/guidance/hooks/useGuidanceWorkoutCatalog";
-import { useWorkoutGenerator } from "@/domains/guidance/hooks/useWorkoutGenerator";
-import { usePeriodization } from "@/domains/periodization";
+import { generateStrengthWorkout } from "@/domains/guidance/hooks/useWorkoutGenerator";
+import { getActiveMesocycleProgram } from "@/domains/periodization/data/repository";
+import { useAppDispatch, useAppSelector } from "@/hooks/redux";
 import type { PrimerButton } from "@/domains/guidance/ui/ChatPrimers";
 import type { ChatMessage } from "@/lib/llm/llmClient";
 import { useAuth } from "@/state/auth/AuthProvider";
+import { selectWorkoutHistory } from "@/state/history/historySlice";
 
 export const useCoachScreen = () => {
+  const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { session, user } = useAuth();
+  const workoutHistory = useAppSelector(selectWorkoutHistory);
   const [conversation, setConversation] = useState<CoachConversationMessage[]>(
     []
   );
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const { baseExercises, movementArchetypes, isLoading: isLoadingWorkoutCatalog } =
-    useGuidanceWorkoutCatalog();
-  const { activeProgram } = usePeriodization(user?.id);
-  const { progressDisplayData } = useVolumeChart(user?.id);
-  const { generateWorkout, isReady: isWorkoutGeneratorReady } = useWorkoutGenerator(
-    baseExercises,
-    movementArchetypes,
-    {
-      activeProgram,
-      volumeProgress: progressDisplayData,
-    }
-  );
   const llmPreferences = readLlmPreferences();
   const [hasStoredProviderCredential, setHasStoredProviderCredential] =
     useState(!providerRequiresApiKey(llmPreferences.provider));
@@ -110,6 +114,57 @@ export const useCoachScreen = () => {
       isCancelled = true;
     };
   }, [llmPreferences.provider, session?.access_token]);
+
+  const generateWorkoutOnDemand = async () => {
+    const userId = user?.id ?? null;
+    const weekRange = getCurrentWeekRange();
+
+    const [baseExercises, movementArchetypes, activeProgram, weeklyArchetypeSets] =
+      await Promise.all([
+        queryClient.ensureQueryData({
+          queryKey: ["exercises"],
+          queryFn: fetchGuidanceExercises,
+          staleTime: Infinity,
+        }),
+        queryClient.ensureQueryData({
+          queryKey: ["movementArchetypes"],
+          queryFn: fetchMovementArchetypes,
+          staleTime: Infinity,
+        }),
+        userId
+          ? queryClient.ensureQueryData({
+              queryKey: ["activeMesocycleProgram", userId],
+              queryFn: () => getActiveMesocycleProgram(userId),
+              staleTime: 60 * 1000,
+            })
+          : Promise.resolve(null),
+        userId
+          ? queryClient.ensureQueryData({
+              queryKey: [
+                "weeklyArchetypeSets_v2",
+                userId,
+                weekRange.start,
+                weekRange.end,
+              ],
+              queryFn: () =>
+                fetchWeeklyArchetypeSets(userId, weekRange.start, weekRange.end),
+              staleTime: 5 * 60 * 1000,
+            })
+          : Promise.resolve([] as WeeklyArchetypeSetData[]),
+      ]);
+
+    return generateStrengthWorkout({
+      baseExercises,
+      dispatch,
+      movementArchetypes,
+      planningContext: {
+        activeProgram,
+        volumeProgress: buildVolumeProgressDisplayData(weeklyArchetypeSets),
+      },
+      userId,
+      workoutHistory,
+    });
+  };
 
   const handleSend = async (textOrEvent?: string | FormEvent<HTMLFormElement>) => {
     let messageToSend = "";
@@ -195,7 +250,7 @@ export const useCoachScreen = () => {
         const toolResults = await Promise.all(clientToolCalls.map(async toolCall => {
           try {
             const result = await executeCoachTool(toolCall, {
-              generateWorkout,
+              generateWorkout: generateWorkoutOnDemand,
             });
 
             if (result.nextRoute) {
@@ -295,8 +350,6 @@ export const useCoachScreen = () => {
       },
       disabled:
         isLoading ||
-        isLoadingWorkoutCatalog ||
-        !isWorkoutGeneratorReady ||
         !isCoachConfigured ||
         isProviderCredentialLoading,
     },

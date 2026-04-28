@@ -24,6 +24,10 @@ export interface WorkoutExerciseHistoryLookup {
 
 export type WorkoutExerciseHistoryMap = Record<string, LastWorkoutExerciseInstanceSet[]>;
 export type ExerciseVariationMap = Record<string, ExerciseVariationRow[]>;
+export type LastExerciseConfigMap = Record<
+    string,
+    { equipmentType: string | null; variation: string | null }
+>;
 
 export interface LatestSingleExerciseLogData extends ExerciseSetRow {
     exercise_id: string;
@@ -403,6 +407,83 @@ export const fetchLastConfigForExercise = async (
         equipmentType: (data.equipment_type as string | null) || null,
         variation: (data.variation as string | null) || null,
     };
+};
+
+type RecentWorkoutExerciseConfigRow = {
+    exercise_id: string;
+    exercise_sets: Array<{
+        completed: boolean | null;
+        equipment_type: string | null;
+        set_number: number | null;
+        variation: string | null;
+    }> | null;
+    workouts: {
+        created_at: string;
+    } | null;
+};
+
+export const fetchLastConfigsForExercises = async (
+    userId: string,
+    exerciseIds: string[]
+): Promise<LastExerciseConfigMap> => {
+    const uniqueExerciseIds = [...new Set(exerciseIds)].filter(Boolean);
+
+    if (!userId || uniqueExerciseIds.length === 0) {
+        return {};
+    }
+
+    const { data, error } = await supabase
+        .from("workout_exercises")
+        .select(`
+            exercise_id,
+            workouts!inner(created_at, user_id, completed),
+            exercise_sets(set_number, completed, equipment_type, variation)
+        `)
+        .eq("workouts.user_id", userId)
+        .eq("workouts.completed", true)
+        .in("exercise_id", uniqueExerciseIds);
+
+    if (error) throw error;
+
+    const latestConfigByExerciseId = uniqueExerciseIds.reduce<LastExerciseConfigMap>(
+        (acc, exerciseId) => {
+            acc[exerciseId] = { equipmentType: null, variation: null };
+            return acc;
+        },
+        {}
+    );
+    const latestWorkoutTimestampByExerciseId = new Map<string, number>();
+
+    for (const row of (data ?? []) as RecentWorkoutExerciseConfigRow[]) {
+        const workoutCreatedAt = row.workouts?.created_at;
+        if (!workoutCreatedAt) {
+            continue;
+        }
+
+        const latestCompletedSet = (row.exercise_sets ?? [])
+            .filter(setRow => setRow.completed)
+            .sort((left, right) => (right.set_number ?? 0) - (left.set_number ?? 0))[0];
+
+        if (!latestCompletedSet) {
+            continue;
+        }
+
+        const workoutTimestamp = new Date(workoutCreatedAt).getTime();
+        const previousTimestamp =
+            latestWorkoutTimestampByExerciseId.get(row.exercise_id) ?? Number.NEGATIVE_INFINITY;
+
+        if (workoutTimestamp < previousTimestamp) {
+            continue;
+        }
+
+        latestWorkoutTimestampByExerciseId.set(row.exercise_id, workoutTimestamp);
+        latestConfigByExerciseId[row.exercise_id] = {
+            equipmentType: latestCompletedSet.equipment_type ?? null,
+            variation: latestCompletedSet.variation ?? null,
+        };
+    }
+
+    return latestConfigByExerciseId;
 };
 
 /**

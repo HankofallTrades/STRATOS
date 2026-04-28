@@ -51,6 +51,68 @@ function getCurrentWeekRange() {
     };
 }
 
+export { getCurrentWeekRange };
+
+export const buildVolumeProgressDisplayData = (
+    rawData: WeeklyArchetypeSetData[]
+): DisplayArchetypeData[] => {
+    const initialData: Record<ProgressArchetypeName, Omit<DisplayArchetypeData, 'displayColor' | 'displayVerticalColor' | 'displayHorizontalColor'>> = {
+        'Squat': { name: 'Squat', totalSets: 0, verticalSets: 0, horizontalSets: 0, goal: GOAL_SETS['Squat'] },
+        'Lunge': { name: 'Lunge', totalSets: 0, verticalSets: 0, horizontalSets: 0, goal: GOAL_SETS['Lunge'] },
+        'Push': { name: 'Push', totalSets: 0, verticalSets: 0, horizontalSets: 0, goal: GOAL_SETS['Push'] },
+        'Pull': { name: 'Pull', totalSets: 0, verticalSets: 0, horizontalSets: 0, goal: GOAL_SETS['Pull'] },
+        'Bend': { name: 'Bend', totalSets: 0, verticalSets: 0, horizontalSets: 0, goal: GOAL_SETS['Bend'] },
+        'Twist': { name: 'Twist', totalSets: 0, verticalSets: 0, horizontalSets: 0, goal: GOAL_SETS['Twist'] },
+    };
+
+    rawData.forEach(item => {
+        const baseName = item.base_archetype_name as ProgressArchetypeName;
+        if (progressArchetypes.includes(baseName)) {
+            const archetype = initialData[baseName];
+            if (baseName === 'Push' || baseName === 'Pull') {
+                const subType = item.archetype_subtype_name?.toLowerCase();
+                if (subType === 'vertical') {
+                    archetype.verticalSets += item.total_sets;
+                } else if (subType === 'horizontal') {
+                    archetype.horizontalSets += item.total_sets;
+                }
+            } else {
+                archetype.totalSets += item.total_sets;
+            }
+        }
+    });
+
+    initialData['Push'].totalSets = initialData['Push'].verticalSets + initialData['Push'].horizontalSets;
+    initialData['Pull'].totalSets = initialData['Pull'].verticalSets + initialData['Pull'].horizontalSets;
+
+    return progressArchetypes.map(name => {
+        const archSetup = initialData[name];
+        const colors = archetypeColors[name] || archetypeColors['Default'];
+        const isGoalMet = archSetup.totalSets >= archSetup.goal;
+
+        const displayColor = isGoalMet ? colors.highlight : colors.default;
+        let displayVerticalColor: string | undefined = undefined;
+        let displayHorizontalColor: string | undefined = undefined;
+
+        if (name === 'Push' || name === 'Pull') {
+            if (isGoalMet) {
+                displayVerticalColor = colors.highlight;
+                displayHorizontalColor = colors.highlight;
+            } else {
+                displayVerticalColor = colors.vertical || colors.default;
+                displayHorizontalColor = colors.horizontal || colors.default;
+            }
+        }
+
+        return {
+            ...archSetup,
+            displayColor,
+            displayVerticalColor,
+            displayHorizontalColor,
+        };
+    });
+};
+
 export const useVolumeChart = (userId: string | undefined) => {
     const weekRange = useMemo(() => getCurrentWeekRange(), []);
 
@@ -64,63 +126,10 @@ export const useVolumeChart = (userId: string | undefined) => {
         staleTime: 5 * 60 * 1000,
     });
 
-    const progressDisplayData = useMemo((): DisplayArchetypeData[] => {
-        const initialData: Record<ProgressArchetypeName, Omit<DisplayArchetypeData, 'displayColor' | 'displayVerticalColor' | 'displayHorizontalColor'>> = {
-            'Squat': { name: 'Squat', totalSets: 0, verticalSets: 0, horizontalSets: 0, goal: GOAL_SETS['Squat'] },
-            'Lunge': { name: 'Lunge', totalSets: 0, verticalSets: 0, horizontalSets: 0, goal: GOAL_SETS['Lunge'] },
-            'Push': { name: 'Push', totalSets: 0, verticalSets: 0, horizontalSets: 0, goal: GOAL_SETS['Push'] },
-            'Pull': { name: 'Pull', totalSets: 0, verticalSets: 0, horizontalSets: 0, goal: GOAL_SETS['Pull'] },
-            'Bend': { name: 'Bend', totalSets: 0, verticalSets: 0, horizontalSets: 0, goal: GOAL_SETS['Bend'] },
-            'Twist': { name: 'Twist', totalSets: 0, verticalSets: 0, horizontalSets: 0, goal: GOAL_SETS['Twist'] },
-        };
-
-        rawData.forEach(item => {
-            const baseName = item.base_archetype_name as ProgressArchetypeName;
-            if (progressArchetypes.includes(baseName)) {
-                const archetype = initialData[baseName];
-                if (baseName === 'Push' || baseName === 'Pull') {
-                    const subType = item.archetype_subtype_name?.toLowerCase();
-                    if (subType === 'vertical') {
-                        archetype.verticalSets += item.total_sets;
-                    } else if (subType === 'horizontal') {
-                        archetype.horizontalSets += item.total_sets;
-                    }
-                } else {
-                    archetype.totalSets += item.total_sets;
-                }
-            }
-        });
-
-        initialData['Push'].totalSets = initialData['Push'].verticalSets + initialData['Push'].horizontalSets;
-        initialData['Pull'].totalSets = initialData['Pull'].verticalSets + initialData['Pull'].horizontalSets;
-
-        return progressArchetypes.map(name => {
-            const archSetup = initialData[name];
-            const colors = archetypeColors[name] || archetypeColors['Default'];
-            const isGoalMet = archSetup.totalSets >= archSetup.goal;
-
-            const displayColor = isGoalMet ? colors.highlight : colors.default;
-            let displayVerticalColor: string | undefined = undefined;
-            let displayHorizontalColor: string | undefined = undefined;
-
-            if (name === 'Push' || name === 'Pull') {
-                if (isGoalMet) {
-                    displayVerticalColor = colors.highlight;
-                    displayHorizontalColor = colors.highlight;
-                } else {
-                    displayVerticalColor = colors.vertical || colors.default;
-                    displayHorizontalColor = colors.horizontal || colors.default;
-                }
-            }
-
-            return {
-                ...archSetup,
-                displayColor,
-                displayVerticalColor,
-                displayHorizontalColor,
-            };
-        });
-    }, [rawData]);
+    const progressDisplayData = useMemo(
+        () => buildVolumeProgressDisplayData(rawData),
+        [rawData]
+    );
 
     return {
         progressDisplayData,

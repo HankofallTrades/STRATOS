@@ -18,6 +18,7 @@ import type {
 } from "@/lib/types/workout";
 import { useAuth } from "@/state/auth/AuthProvider";
 import { selectWorkoutHistory } from "@/state/history/historySlice";
+import type { AppDispatch } from "@/state/store";
 import { startWorkout } from "@/state/workout/workoutSlice";
 
 const ARCHETYPE_TARGETS: Record<string, number> = {
@@ -65,6 +66,11 @@ interface WorkoutGeneratorPlanningContext {
   volumeProgress?: DisplayArchetypeData[];
 }
 
+export interface MovementArchetypeOption {
+  id: string;
+  name: string;
+}
+
 export interface GeneratedWorkoutSummary {
   message: string;
   mesocycle?: {
@@ -83,6 +89,15 @@ export interface GeneratedWorkoutSummary {
     deficit: number;
     goalSets: number;
   }>;
+}
+
+interface GenerateStrengthWorkoutParams {
+  baseExercises: Exercise[];
+  dispatch: AppDispatch;
+  movementArchetypes: MovementArchetypeOption[];
+  planningContext?: WorkoutGeneratorPlanningContext;
+  userId: string | null;
+  workoutHistory: Workout[];
 }
 
 const getArchetypeName = (
@@ -439,7 +454,7 @@ const buildGeneratorMessage = ({
 
 export const useWorkoutGenerator = (
   baseExercises: Exercise[] | undefined,
-  movementArchetypes: { id: string; name: string }[] | undefined,
+  movementArchetypes: MovementArchetypeOption[] | undefined,
   planningContext?: WorkoutGeneratorPlanningContext
 ) => {
   const dispatch = useAppDispatch();
@@ -470,149 +485,176 @@ export const useWorkoutGenerator = (
     [exercisesWithArchetypes]
   );
 
-  const generateWorkout = async (): Promise<GeneratedWorkoutSummary> => {
-    if (exercisesWithArchetypes.length === 0) {
-      throw new Error("Exercise data with archetypes is not available.");
-    }
-
-    const activeProgram = planningContext?.activeProgram ?? null;
-    const nextSession = getNextSession(activeProgram);
-    const sessionFocus = normalizeStrengthSessionFocus(
-      nextSession?.session_focus ?? activeProgram?.mesocycle.goal_focus
-    );
-    const recencyConstraints = resolveRecencyConstraints(workoutHistory);
-    const weeklySets = calculateWeeklySetsPerArchetype(
+  const generateWorkout = async (): Promise<GeneratedWorkoutSummary> =>
+    generateStrengthWorkout({
+      baseExercises: exercisesWithArchetypes,
+      dispatch,
+      movementArchetypes: movementArchetypes ?? [],
+      planningContext,
+      userId: user?.id ?? null,
       workoutHistory,
-      exerciseMap,
-      archetypeMap
-    );
-    const priorityTargets =
-      planningContext?.volumeProgress && planningContext.volumeProgress.length > 0
-        ? buildDeficitsFromProgressData(planningContext.volumeProgress)
-        : buildDeficitsFromWeeklySets(weeklySets);
-
-    const templateExercises =
-      nextSession?.exercises.some(
-        sessionExercise =>
-          sessionExercise.exercise &&
-          sessionExercise.exercise.exercise_type !== "cardio"
-      )
-        ? (await buildExercisesFromSessionTemplate(nextSession, user?.id ?? "")).filter(
-            exercise => exercise.exercise.exercise_type !== "cardio"
-          )
-        : [];
-
-    const defaultExerciseCount =
-      DEFAULT_EXERCISE_COUNT_BY_FOCUS[sessionFocus] ?? DEFAULT_EXERCISE_COUNT_BY_FOCUS.strength;
-    const templateExerciseCount = templateExercises.length;
-
-    const targetExerciseCount =
-      activeProgram?.mesocycle.protocol === "occams" && templateExerciseCount > 0
-        ? templateExerciseCount
-        : Math.min(
-            Math.max(
-              templateExerciseCount,
-              defaultExerciseCount
-            ),
-            Math.max(
-              templateExerciseCount,
-              Number.isFinite(recencyConstraints.recommendedMaxExercises)
-                ? recencyConstraints.recommendedMaxExercises
-                : defaultExerciseCount
-            )
-          );
-
-    const selectedExerciseIds = new Set(
-      templateExercises.map(exercise => exercise.exerciseId)
-    );
-    const coveredArchetypes = new Set(
-      templateExercises
-        .map(exercise => getArchetypeName(exercise.exercise, archetypeMap))
-        .filter((value): value is string => Boolean(value))
-    );
-
-    const generatedExercises = selectExercisesForWorkout({
-      alreadyCoveredArchetypes: coveredArchetypes,
-      alreadySelectedExerciseIds: selectedExerciseIds,
-      archetypeMap,
-      availableExercises: exercisesWithArchetypes,
-      excludeExerciseIds: recencyConstraints.excludeExerciseIds,
-      priorityTargets,
-      targetExerciseCount: Math.max(0, targetExerciseCount - templateExerciseCount),
-    }).map(buildExerciseDraft);
-
-    const initialExercises = [...templateExercises, ...generatedExercises];
-
-    if (initialExercises.length === 0) {
-      throw new Error("Failed to select any exercises for the workout.");
-    }
-
-    dispatch(
-      startWorkout({
-        initialExercises,
-        mesocycleId: activeProgram?.mesocycle.id,
-        mesocycleProtocol: activeProgram?.mesocycle.protocol,
-        mesocycleSessionId: templateExerciseCount > 0 ? nextSession?.id : undefined,
-        mesocycleWeek: activeProgram?.current_week,
-        ownerUserId: user?.id ?? null,
-        sessionFocus,
-      })
-    );
-
-    const targetedArchetypes = uniqueStrings(
-      initialExercises.map(exercise =>
-        getArchetypeName(exercise.exercise, archetypeMap)
-      )
-    ).map(archetypeName => ARCHETYPE_LABELS[archetypeName] ?? archetypeName);
-
-    const source: GeneratedWorkoutSummary["source"] =
-      templateExerciseCount > 0 && generatedExercises.length === 0
-        ? "periodized_template"
-        : templateExerciseCount > 0
-          ? "hybrid"
-          : "volume_deficit";
-
-    const selectedExerciseNames = initialExercises.map(
-      exercise => exercise.exercise.name
-    );
-
-    return {
-      message: buildGeneratorMessage({
-        activeProgram,
-        nextSession,
-        selectedExercises: selectedExerciseNames,
-        sessionFocus,
-        source,
-        targetedArchetypes,
-      }),
-      ...(activeProgram
-        ? {
-            mesocycle: {
-              currentWeek: activeProgram.current_week,
-              name: activeProgram.mesocycle.name,
-              protocol: activeProgram.mesocycle.protocol,
-              ...(nextSession?.name ? { sessionName: nextSession.name } : {}),
-            },
-          }
-        : {}),
-      selectedExercises: selectedExerciseNames,
-      sessionFocus,
-      source,
-      targetedArchetypes:
-        targetedArchetypes.length > 0
-          ? targetedArchetypes
-          : priorityTargets.slice(0, 3).map(target => target.label),
-      volumeFocus: priorityTargets.slice(0, 4).map(target => ({
-        archetype: target.label,
-        currentSets: target.currentSets,
-        deficit: target.deficit,
-        goalSets: target.goalSets,
-      })),
-    };
-  };
+    });
 
   return {
     generateWorkout,
     isReady: exercisesWithArchetypes.length > 0 && !!movementArchetypes,
+  };
+};
+
+export const generateStrengthWorkout = async ({
+  baseExercises,
+  dispatch,
+  movementArchetypes,
+  planningContext,
+  userId,
+  workoutHistory,
+}: GenerateStrengthWorkoutParams): Promise<GeneratedWorkoutSummary> => {
+  const archetypeMap = new Map(
+    movementArchetypes.map(archetype => [archetype.id, archetype.name])
+  );
+  const exercisesWithArchetypes = baseExercises.filter(
+    exercise => exercise.archetype_id && archetypeMap.has(exercise.archetype_id)
+  );
+
+  if (exercisesWithArchetypes.length === 0) {
+    throw new Error("Exercise data with archetypes is not available.");
+  }
+
+  const exerciseMap = new Map(
+    exercisesWithArchetypes.map(exercise => [exercise.id, exercise])
+  );
+  const activeProgram = planningContext?.activeProgram ?? null;
+  const nextSession = getNextSession(activeProgram);
+  const sessionFocus = normalizeStrengthSessionFocus(
+    nextSession?.session_focus ?? activeProgram?.mesocycle.goal_focus
+  );
+  const recencyConstraints = resolveRecencyConstraints(workoutHistory);
+  const weeklySets = calculateWeeklySetsPerArchetype(
+    workoutHistory,
+    exerciseMap,
+    archetypeMap
+  );
+  const priorityTargets =
+    planningContext?.volumeProgress && planningContext.volumeProgress.length > 0
+      ? buildDeficitsFromProgressData(planningContext.volumeProgress)
+      : buildDeficitsFromWeeklySets(weeklySets);
+
+  const templateExercises =
+    nextSession?.exercises.some(
+      sessionExercise =>
+        sessionExercise.exercise &&
+        sessionExercise.exercise.exercise_type !== "cardio"
+    )
+      ? (await buildExercisesFromSessionTemplate(nextSession, userId ?? "")).filter(
+          exercise => exercise.exercise.exercise_type !== "cardio"
+        )
+      : [];
+
+  const defaultExerciseCount =
+    DEFAULT_EXERCISE_COUNT_BY_FOCUS[sessionFocus] ?? DEFAULT_EXERCISE_COUNT_BY_FOCUS.strength;
+  const templateExerciseCount = templateExercises.length;
+
+  const targetExerciseCount =
+    activeProgram?.mesocycle.protocol === "occams" && templateExerciseCount > 0
+      ? templateExerciseCount
+      : Math.min(
+          Math.max(
+            templateExerciseCount,
+            defaultExerciseCount
+          ),
+          Math.max(
+            templateExerciseCount,
+            Number.isFinite(recencyConstraints.recommendedMaxExercises)
+              ? recencyConstraints.recommendedMaxExercises
+              : defaultExerciseCount
+          )
+        );
+
+  const selectedExerciseIds = new Set(
+    templateExercises.map(exercise => exercise.exerciseId)
+  );
+  const coveredArchetypes = new Set(
+    templateExercises
+      .map(exercise => getArchetypeName(exercise.exercise, archetypeMap))
+      .filter((value): value is string => Boolean(value))
+  );
+
+  const generatedExercises = selectExercisesForWorkout({
+    alreadyCoveredArchetypes: coveredArchetypes,
+    alreadySelectedExerciseIds: selectedExerciseIds,
+    archetypeMap,
+    availableExercises: exercisesWithArchetypes,
+    excludeExerciseIds: recencyConstraints.excludeExerciseIds,
+    priorityTargets,
+    targetExerciseCount: Math.max(0, targetExerciseCount - templateExerciseCount),
+  }).map(buildExerciseDraft);
+
+  const initialExercises = [...templateExercises, ...generatedExercises];
+
+  if (initialExercises.length === 0) {
+    throw new Error("Failed to select any exercises for the workout.");
+  }
+
+  dispatch(
+    startWorkout({
+      initialExercises,
+      mesocycleId: activeProgram?.mesocycle.id,
+      mesocycleProtocol: activeProgram?.mesocycle.protocol,
+      mesocycleSessionId: templateExerciseCount > 0 ? nextSession?.id : undefined,
+      mesocycleWeek: activeProgram?.current_week,
+      ownerUserId: userId,
+      sessionFocus,
+    })
+  );
+
+  const targetedArchetypes = uniqueStrings(
+    initialExercises.map(exercise =>
+      getArchetypeName(exercise.exercise, archetypeMap)
+    )
+  ).map(archetypeName => ARCHETYPE_LABELS[archetypeName] ?? archetypeName);
+
+  const source: GeneratedWorkoutSummary["source"] =
+    templateExerciseCount > 0 && generatedExercises.length === 0
+      ? "periodized_template"
+      : templateExerciseCount > 0
+        ? "hybrid"
+        : "volume_deficit";
+
+  const selectedExerciseNames = initialExercises.map(
+    exercise => exercise.exercise.name
+  );
+
+  return {
+    message: buildGeneratorMessage({
+      activeProgram,
+      nextSession,
+      selectedExercises: selectedExerciseNames,
+      sessionFocus,
+      source,
+      targetedArchetypes,
+    }),
+    ...(activeProgram
+      ? {
+          mesocycle: {
+            currentWeek: activeProgram.current_week,
+            name: activeProgram.mesocycle.name,
+            protocol: activeProgram.mesocycle.protocol,
+            ...(nextSession?.name ? { sessionName: nextSession.name } : {}),
+          },
+        }
+      : {}),
+    selectedExercises: selectedExerciseNames,
+    sessionFocus,
+    source,
+    targetedArchetypes:
+      targetedArchetypes.length > 0
+        ? targetedArchetypes
+        : priorityTargets.slice(0, 3).map(target => target.label),
+    volumeFocus: priorityTargets.slice(0, 4).map(target => ({
+      archetype: target.label,
+      currentSets: target.currentSets,
+      deficit: target.deficit,
+      goalSets: target.goalSets,
+    })),
   };
 };

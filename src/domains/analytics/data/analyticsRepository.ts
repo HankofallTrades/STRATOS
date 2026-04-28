@@ -119,6 +119,17 @@ type DetailedWorkoutExerciseRow = {
     exercise_sets: DetailedWorkoutSetRow[] | null;
 };
 
+type RecentPrWorkoutExerciseRow = {
+    workout_id: string;
+    exercise_id: string;
+    exercise_sets: Array<{
+        completed: boolean | null;
+        reps: number | null;
+        weight: number | null;
+    }> | null;
+    exercises: NestedRelationship<{ name: string | null }>;
+};
+
 // --- Analytics Data ---
 
 export const fetchAnalyticsExercises = async (): Promise<Exercise[]> => {
@@ -289,6 +300,63 @@ export const fetchCompletedWeightedSetsForPr = async (
     }
 
     return setRows;
+};
+
+export const fetchRecentCompletedWeightedSetsForPr = async (
+    userId: string,
+    workoutLimit: number = 12
+): Promise<CompletedWeightedSetForPr[]> => {
+    const recentWorkouts = await fetchRecentWorkoutsSummary(userId, workoutLimit);
+    const workoutIds = recentWorkouts
+        .map(workout => workout.workout_id)
+        .filter(workoutId => workoutId !== "unknown-id");
+
+    if (workoutIds.length === 0) {
+        return [];
+    }
+
+    const workoutCreatedAtById = new Map(
+        recentWorkouts.map(workout => [workout.workout_id, workout.workout_created_at])
+    );
+
+    const { data, error } = await supabase
+        .from("workout_exercises")
+        .select(`
+            workout_id,
+            exercise_id,
+            exercises(name),
+            exercise_sets(weight, reps, completed)
+        `)
+        .in("workout_id", workoutIds);
+
+    if (error) {
+        console.error("Error fetching recent weighted sets for PR analysis:", error);
+        throw error;
+    }
+
+    return ((data ?? []) as RecentPrWorkoutExerciseRow[]).flatMap(row => {
+        const exercise = firstOrSelf(row.exercises);
+        const workoutCreatedAt = workoutCreatedAtById.get(row.workout_id);
+
+        if (!exercise?.name || !workoutCreatedAt) {
+            return [];
+        }
+
+        return (row.exercise_sets ?? []).flatMap(setRow => {
+            if (!setRow.completed) {
+                return [];
+            }
+
+            return [{
+                weight: setRow.weight,
+                reps: setRow.reps,
+                workoutId: row.workout_id,
+                exerciseId: row.exercise_id,
+                exerciseName: exercise.name,
+                workoutCreatedAt,
+            }];
+        });
+    });
 };
 
 // --- Benchmarks Data ---

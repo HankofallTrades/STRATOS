@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { fetchUserProfile } from "@/domains/account/data/accountRepository";
 import {
-  fetchCompletedWeightedSetsForPr,
+  fetchRecentCompletedWeightedSetsForPr,
   fetchRecentWorkoutsSummary,
 } from "@/domains/analytics/data/analyticsRepository";
 import { buildExercisesFromSessionTemplate } from "@/domains/fitness/data/workoutScreen";
@@ -87,7 +87,7 @@ export const useHomeDashboard = () => {
     queryKey: ["homeRecentPrRows", userId],
     queryFn: async () => {
       if (!userId) return [];
-      return fetchCompletedWeightedSetsForPr(userId);
+      return fetchRecentCompletedWeightedSetsForPr(userId);
     },
     enabled: !!userId,
     staleTime: 60 * 1000,
