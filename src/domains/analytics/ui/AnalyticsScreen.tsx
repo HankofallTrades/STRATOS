@@ -1,28 +1,41 @@
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, type ComponentType } from "react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/core/tabs";
 import { Skeleton } from "@/components/core/skeleton";
 import { useAnalyticsScreen } from "@/domains/analytics/hooks/useAnalyticsScreen";
 import { isAnalysisType } from "@/domains/analytics/data/analyticsScreen";
 
-const StrengthBenchmarks = lazy(
+
+const lazyWithRetry = <TProps extends object>(
+  importFn: () => Promise<{ default: ComponentType<TProps> }>
+) =>
+  lazy(async () => {
+    try {
+      return await importFn();
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      return importFn();
+    }
+  });
+
+const StrengthBenchmarks = lazyWithRetry(
   () => import("@/domains/analytics/ui/benchmarks/StrengthBenchmarks")
 );
-const CalisthenicBenchmarks = lazy(
+const CalisthenicBenchmarks = lazyWithRetry(
   () => import("@/domains/analytics/ui/benchmarks/CalisthenicBenchmarks")
 );
-const OneRepMax = lazy(() => import("@/domains/analytics/ui/OneRepMax"));
-const RecentWorkouts = lazy(
+const OneRepMax = lazyWithRetry(() => import("@/domains/analytics/ui/OneRepMax"));
+const RecentWorkouts = lazyWithRetry(
   () => import("@/domains/analytics/ui/RecentWorkouts")
 );
-const Volume = lazy(() => import("@/domains/analytics/ui/Volume"));
-const PerformanceOverview = lazy(
+const Volume = lazyWithRetry(() => import("@/domains/analytics/ui/Volume"));
+const PerformanceOverview = lazyWithRetry(
   () => import("@/domains/analytics/ui/PerformanceOverview")
 );
-const CircularProgressDisplay = lazy(
+const CircularProgressDisplay = lazyWithRetry(
   () => import("@/components/core/charts/CircularProgressDisplay")
 );
-const SunMoonProgress = lazy(
+const SunMoonProgress = lazyWithRetry(
   () => import("@/components/core/charts/SunMoonProgress")
 );
 

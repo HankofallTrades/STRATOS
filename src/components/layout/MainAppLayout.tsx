@@ -29,9 +29,9 @@ const lazyWithRetry = <TModule extends { default: React.ComponentType<unknown> }
 
 class RouteErrorBoundary extends Component<
   { children: ReactNode; resetKey: string },
-  { hasError: boolean }
+  { hasError: boolean; retryNonce: number; autoRetryAttempted: boolean }
 > {
-  state = { hasError: false };
+  state = { hasError: false, retryNonce: 0, autoRetryAttempted: false };
 
   static getDerivedStateFromError() {
     return { hasError: true };
@@ -39,12 +39,24 @@ class RouteErrorBoundary extends Component<
 
   componentDidUpdate(prevProps: Readonly<{ children: ReactNode; resetKey: string }>) {
     if (this.state.hasError && prevProps.resetKey !== this.props.resetKey) {
-      this.setState({ hasError: false });
+      this.setState({ hasError: false, autoRetryAttempted: false });
+    }
+  }
+
+  componentDidCatch() {
+    if (!this.state.autoRetryAttempted) {
+      window.setTimeout(() => {
+        this.setState((state) => ({
+          hasError: false,
+          retryNonce: state.retryNonce + 1,
+          autoRetryAttempted: true,
+        }));
+      }, 250);
     }
   }
 
   private handleRetry = () => {
-    this.setState({ hasError: false });
+    window.location.reload();
   };
 
   render() {
@@ -52,9 +64,9 @@ class RouteErrorBoundary extends Component<
       return (
         <div className="app-page">
           <div className="stone-surface rounded-[26px] p-6 text-sm text-muted-foreground space-y-3">
-            <p>We couldn&apos;t load this screen yet. Please try again.</p>
+            <p>We couldn&apos;t load this screen. Please refresh to reload the latest app files.</p>
             <Button onClick={this.handleRetry} size="sm" variant="outline">
-              Retry loading
+              Refresh app
             </Button>
           </div>
         </div>
