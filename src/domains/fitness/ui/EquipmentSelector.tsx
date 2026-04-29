@@ -2,7 +2,13 @@ import React, { useState } from 'react';
 import { Button } from "@/components/core/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/core/popover";
 import { Input } from "@/components/core/input";
-import { Check, X, Plus } from 'lucide-react';
+import { Check, ChevronDown, X, Plus } from 'lucide-react';
+import { cn } from '@/lib/utils/cn';
+import {
+  workoutMenuInputClassName,
+  workoutMenuOptionClassName,
+  workoutPopoverClassName,
+} from './workoutSelectionStyles';
 
 interface EquipmentSelectorProps {
   selectedEquipment: string | null;
@@ -48,22 +54,23 @@ const EquipmentSelector: React.FC<EquipmentSelectorProps> = ({
     }}>
       <PopoverTrigger asChild>
         <Button
-          variant="outline"
+          variant="ghost"
           size="sm"
-          className="rounded-full h-7 px-2.5 text-xs w-auto border-border"
+          className="stone-chip h-10 min-w-[124px] justify-between rounded-[14px] px-3 text-xs text-foreground/88 hover:bg-white/[0.05] hover:text-foreground"
           disabled={disabled}
         >
-          {selectedEquipment ?? "Equipment"}
+          <span className="truncate">{selectedEquipment ?? "Equipment"}</span>
+          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-1">
+      <PopoverContent className={workoutPopoverClassName}>
         <div className="flex flex-col gap-1">
           {equipmentTypes.map((type) => (
             <Button
               key={type}
               variant="ghost"
               size="sm"
-              className="w-full justify-start h-8 px-2 text-xs"
+              className={workoutMenuOptionClassName}
               onClick={() => {
                 onSelectEquipment(type);
                 setShowNewEquipmentInput(false);
@@ -74,8 +81,7 @@ const EquipmentSelector: React.FC<EquipmentSelectorProps> = ({
               {type}
             </Button>
           ))}
-          {/* Add New Equipment Button / Input */} 
-          <div className="mt-1 pt-1 border-t border-border">
+          <div className="mt-2 border-t border-white/8 pt-2">
             {showNewEquipmentInput ? (
               <div className="flex items-center gap-1">
                 <Input
@@ -83,17 +89,17 @@ const EquipmentSelector: React.FC<EquipmentSelectorProps> = ({
                   placeholder="New Equipment"
                   value={newEquipmentName}
                   onChange={(e) => setNewEquipmentName(e.target.value)}
-                  className="h-8 px-2 text-xs flex-grow"
+                  className={cn(workoutMenuInputClassName, "h-10 flex-grow px-3 text-xs")}
                   autoFocus
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleAddNewEquipment();
                     if (e.key === 'Escape') handleCancelAddNew();
                   }}
                 />
-                <Button variant="ghost" size="icon" className="h-8 w-8 p-0" onClick={handleAddNewEquipment} disabled={!newEquipmentName.trim()}>
+                <Button variant="ghost" size="icon" className="verdigris-emblem h-10 w-10 rounded-[14px] p-0 hover:bg-white/[0.04]" onClick={handleAddNewEquipment} disabled={!newEquipmentName.trim()}>
                   <Check size={16} />
                 </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8 p-0" onClick={handleCancelAddNew}>
+                <Button variant="ghost" size="icon" className="stone-chip h-10 w-10 rounded-[14px] p-0 text-muted-foreground hover:bg-white/[0.05] hover:text-foreground" onClick={handleCancelAddNew}>
                   <X size={16} />
                 </Button>
               </div>
@@ -101,7 +107,7 @@ const EquipmentSelector: React.FC<EquipmentSelectorProps> = ({
               <Button
                 variant="ghost"
                 size="sm"
-                className="w-full justify-start h-8 px-2 text-xs text-blue-600 dark:text-blue-400"
+                className={`${workoutMenuOptionClassName} verdigris-text hover:text-foreground`}
                 onClick={() => {
                   setShowNewEquipmentInput(true);
                   setNewEquipmentName("");

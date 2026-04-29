@@ -11,11 +11,17 @@ import { Button } from "@/components/core/button";
 import { Loader2, Check, X as XIcon } from 'lucide-react';
 import { Input } from "@/components/core/input";
 import { Label } from "@/components/core/label";
+import { cn } from '@/lib/utils/cn';
 import EquipmentSelector from './EquipmentSelector';
 import VariationSelector from './VariationSelector';
 import SwipeableIncrementer from '@/components/core/Controls/SwipeableIncrementer';
 import { useSingleExerciseLog } from '../hooks/useSingleExerciseLog';
 import type { LatestSingleExerciseLogData } from '../data/fitnessRepository';
+import {
+  workoutMenuInputClassName,
+  workoutMenuSelectTriggerClassName,
+  workoutPanelClassName,
+} from './workoutSelectionStyles';
 
 // --- Constants ---
 const DEFAULT_VARIATION = 'Standard';
@@ -84,7 +90,7 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent className={cn(workoutPanelClassName, "rounded-[24px] border-white/10 sm:max-w-[480px]")}>
         <DialogHeader>
           <DialogTitle>Add Single Exercise</DialogTitle>
           <DialogDescription>
@@ -104,7 +110,7 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
                   id="exercise-select"
                   value={form.exerciseId}
                   onChange={(e) => updateField('exerciseId', e.target.value)}
-                  className="block w-full min-w-[150px] p-2 h-9 border border-input bg-background rounded-md shadow-sm focus:outline-none focus:ring-ring focus:border-ring text-sm"
+                  className={cn(workoutMenuSelectTriggerClassName, "h-10 w-full min-w-[150px] appearance-none px-3 text-sm")}
                   disabled={isPending}
                 >
                   <option value="" disabled>Select Exercise...</option>
@@ -127,13 +133,13 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
                 setPopoverOpen={setEquipmentPopoverOpen}
               />
               {isAddingVariation ? (
-                <div className="flex items-center gap-1 flex-shrink-0 h-8">
+                <div className="flex h-10 flex-shrink-0 items-center gap-1">
                   <Input
                     type="text"
                     placeholder="New Variation Name"
                     value={newVariationName}
                     onChange={(e) => setNewVariationName(e.target.value)}
-                    className="h-full w-[120px] sm:w-[150px] text-xs"
+                    className={cn(workoutMenuInputClassName, "h-full w-[120px] text-xs sm:w-[150px]")}
                     disabled={isPending}
                     autoFocus
                     onKeyDown={(e) => { if (e.key === 'Enter') handleSaveNewVariation(); if (e.key === 'Escape') handleCancelAddNewVariation(); }}
@@ -141,7 +147,7 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="h-full w-8 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/50 flex-shrink-0"
+                    className="verdigris-emblem h-full w-10 flex-shrink-0 rounded-[14px] hover:bg-white/[0.04]"
                     onClick={handleSaveNewVariation}
                     disabled={!newVariationName.trim() || isPending}
                     aria-label="Save new variation"
@@ -151,7 +157,7 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="h-full w-8 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50 flex-shrink-0"
+                    className="stone-chip h-full w-10 flex-shrink-0 rounded-[14px] text-muted-foreground hover:bg-white/[0.05] hover:text-foreground"
                     onClick={handleCancelAddNewVariation}
                     disabled={isPending}
                     aria-label="Cancel adding variation"
@@ -189,7 +195,7 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
                   step="0.5"
                   min="0"
                   inputMode="decimal"
-                  className="block w-full p-2 border border-input bg-background rounded-md shadow-sm focus:outline-none focus:ring-ring focus:border-ring sm:text-sm text-center"
+                  className={cn(workoutMenuInputClassName, "block w-full px-3 text-center sm:text-sm")}
                   placeholder="0"
                   disabled={isPending}
                 />
@@ -225,7 +231,7 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
                     min="1"
                     inputMode="numeric"
                     pattern="[0-9]*"
-                    className="block w-full p-2 border border-input bg-background rounded-md shadow-sm focus:outline-none focus:ring-ring focus:border-ring sm:text-sm text-center"
+                    className={cn(workoutMenuInputClassName, "block w-full px-3 text-center sm:text-sm")}
                     placeholder="Enter time"
                     disabled={isPending || !form.exerciseId}
                   />
@@ -259,7 +265,7 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
                     min="1"
                     inputMode="numeric"
                     pattern="[0-9]*"
-                    className="block w-full p-2 border border-input bg-background rounded-md shadow-sm focus:outline-none focus:ring-ring focus:border-ring sm:text-sm text-center"
+                    className={cn(workoutMenuInputClassName, "block w-full px-3 text-center sm:text-sm")}
                     placeholder="Enter reps"
                     disabled={isPending || !form.exerciseId}
                   />
