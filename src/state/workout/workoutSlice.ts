@@ -236,6 +236,10 @@ const workoutSlice = createSlice({
         const set = workoutExercise.sets.find((s) => s.id === action.payload.setId);
         if (set) {
             set.completed = action.payload.completed;
+            if (action.payload.completed && state.warmupStartTime) {
+                state.currentWorkout.warmup_seconds = Math.round((Date.now() - state.warmupStartTime) / 1000);
+                state.warmupStartTime = null;
+            }
         }
     },
     updateWorkoutExerciseEquipment(state, action: PayloadAction<{ workoutExerciseId: string; equipmentType: string }>) {
