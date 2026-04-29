@@ -467,7 +467,7 @@ const WorkoutScreen = () => {
       </div>
 
       <Dialog open={isDiscardConfirmOpen} onOpenChange={setIsDiscardConfirmOpen}>
-        <DialogContent className="stone-panel rounded-[24px] border-white/10">
+        <DialogContent className="stone-panel w-[calc(100vw-2rem)] max-w-lg rounded-[24px] border-white/10">
           <DialogHeader>
             <DialogTitle>Discard Workout?</DialogTitle>
             <DialogDescription>
