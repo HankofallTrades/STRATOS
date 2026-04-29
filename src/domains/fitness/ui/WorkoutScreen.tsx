@@ -485,9 +485,9 @@ const WorkoutScreen = () => {
             </Button>
             <DialogClose asChild>
               <Button
-                variant="destructive"
+                variant="ghost"
                 onClick={handleConfirmDiscard}
-                className="rounded-[16px]"
+                className="h-10 rounded-[16px] border border-rose-500/30 bg-rose-500/12 px-4 text-rose-200 hover:bg-rose-500/18 hover:text-rose-100"
               >
                 Discard
               </Button>

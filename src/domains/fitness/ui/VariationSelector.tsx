@@ -1,8 +1,12 @@
 import React from 'react';
 import { Button } from "@/components/core/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/core/popover";
-import { Loader2, Plus } from 'lucide-react';
+import { ChevronDown, Loader2, Plus } from 'lucide-react';
 import type { ExerciseVariationRow } from '../data/fitnessRepository';
+import {
+  workoutMenuOptionClassName,
+  workoutPopoverClassName,
+} from './workoutSelectionStyles';
 
 interface VariationSelectorProps {
   selectedVariation: string | null;
@@ -31,38 +35,37 @@ const VariationSelector: React.FC<VariationSelectorProps> = ({
     <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
       <PopoverTrigger asChild>
         <Button
-          variant="outline"
+          variant="ghost"
           size="sm"
-          className="rounded-full h-7 px-2.5 text-xs w-auto border-border min-w-[90px] justify-center"
+          className="stone-chip h-10 min-w-[124px] justify-between rounded-[14px] px-3 text-xs text-foreground/88 hover:bg-white/[0.05] hover:text-foreground"
           disabled={disabled || isLoading}
         >
-          {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : (selectedVariation ?? defaultVariationText)}
+          <span className="truncate">{isLoading ? "Loading..." : (selectedVariation ?? defaultVariationText)}</span>
+          {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-1">
+      <PopoverContent className={workoutPopoverClassName}>
         <div className="flex flex-col gap-1">
-          {/* Default/Standard Option - only if defaultVariationText is meaningful */}
           {defaultVariationText && (
             <Button
               variant="ghost"
               size="sm"
-              className="w-full justify-start h-8 px-2 text-xs italic"
+              className={workoutMenuOptionClassName}
               onClick={() => {
-                onSelectVariation(null); // Represents selecting the default
+                onSelectVariation(null);
                 setPopoverOpen(false);
               }}
-              disabled={selectedVariation === null} // Disabled if already on default
+              disabled={selectedVariation === null}
             >
               {defaultVariationText}
             </Button>
           )}
-          {/* Database fetched variations */}
           {variations.map((variation) => (
             <Button
-              key={variation.id} // Use the unique ID from the database object
+              key={variation.id}
               variant="ghost"
               size="sm"
-              className="w-full justify-start h-8 px-2 text-xs"
+              className={workoutMenuOptionClassName}
               onClick={() => {
                 onSelectVariation(variation.variation_name);
                 setPopoverOpen(false);
@@ -72,19 +75,20 @@ const VariationSelector: React.FC<VariationSelectorProps> = ({
               {variation.variation_name}
             </Button>
           ))}
-          {/* Add New Variation Button */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start h-8 px-2 text-xs text-blue-600 dark:text-blue-400 mt-1 pt-1 border-t border-border"
-            onClick={() => {
-              onTriggerAddNewVariation();
-              setPopoverOpen(false);
-            }}
-            disabled={isLoading}
-          >
-            <Plus size={14} className="mr-1" /> Add New
-          </Button>
+          <div className="mt-2 border-t border-white/8 pt-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`${workoutMenuOptionClassName} verdigris-text hover:text-foreground`}
+              onClick={() => {
+                onTriggerAddNewVariation();
+                setPopoverOpen(false);
+              }}
+              disabled={isLoading}
+            >
+              <Plus size={14} className="mr-1" /> Add New
+            </Button>
+          </div>
         </div>
       </PopoverContent>
     </Popover>
