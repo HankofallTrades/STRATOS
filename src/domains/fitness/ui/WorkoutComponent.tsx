@@ -6,8 +6,6 @@ import { useAppSelector } from "@/hooks/redux";
 import { useAuth } from "@/state/auth/AuthProvider";
 import { selectCurrentWorkout } from "@/state/workout/workoutSlice";
 import {
-  buildWorkoutExerciseHistoryKey,
-  fetchLastWorkoutExerciseInstances,
   fetchVariationsForExercises,
   getUserWeight,
 } from "@/domains/fitness/data/fitnessRepository";
@@ -32,35 +30,10 @@ const WorkoutComponent = () => {
     () => [...new Set(workoutExercises.map(exercise => exercise.exercise.id))].sort(),
     [workoutExercises]
   );
-  const historyLookups = useMemo(
-    () => [...new Map(
-      workoutExercises.map(exercise => {
-        const lookup = {
-          exerciseId: exercise.exercise.id,
-          equipmentType: exercise.equipmentType ?? null,
-          variation: exercise.variation ?? null,
-        };
-        return [buildWorkoutExerciseHistoryKey(lookup), lookup];
-      })
-    ).values()],
-    [workoutExercises]
-  );
-  const historyLookupSignature = useMemo(
-    () => historyLookups.map(buildWorkoutExerciseHistoryKey).sort(),
-    [historyLookups]
-  );
-
   const { data: variationsByExerciseId = {}, isLoading: isLoadingVariations } = useQuery({
     queryKey: ['workoutExerciseVariations', variationExerciseIds],
     queryFn: () => fetchVariationsForExercises(variationExerciseIds),
     enabled: variationExerciseIds.length > 0,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const { data: historyByLookupKey = {}, isLoading: isLoadingHistory } = useQuery({
-    queryKey: ['workoutExerciseHistory', userId, historyLookupSignature],
-    queryFn: () => fetchLastWorkoutExerciseInstances(userId!, historyLookups),
-    enabled: !!userId && historyLookups.length > 0,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -71,8 +44,7 @@ const WorkoutComponent = () => {
     staleTime: 15 * 60 * 1000,
   });
 
-  const isLookupDataLoading =
-    isLoadingVariations || isLoadingHistory || isLoadingUserWeight;
+  const isLookupDataLoading = isLoadingVariations || isLoadingUserWeight;
 
   useEffect(() => {
     if (!currentWorkout) return;
@@ -117,14 +89,7 @@ const WorkoutComponent = () => {
                   transition={{ type: "spring", stiffness: 250, damping: 30 }}
                 >
                   <WorkoutExerciseContainer
-                    historicalSets={
-                      historyByLookupKey[buildWorkoutExerciseHistoryKey({
-                        exerciseId: exercise.exercise.id,
-                        equipmentType: exercise.equipmentType ?? null,
-                        variation: exercise.variation ?? null,
-                      })] ?? null
-                    }
-                    isLookupsLoading={isLookupDataLoading}
+                    isVariationLoading={isLookupDataLoading}
                     workoutExercise={exercise}
                     restStartTime={restTimerState?.exerciseId === exercise.id ? restTimerState.startTime : null}
                     userWeight={userWeight?.weight_kg ?? null}

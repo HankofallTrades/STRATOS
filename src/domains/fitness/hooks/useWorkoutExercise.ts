@@ -1,7 +1,8 @@
 import { useState, useCallback, useMemo } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAppDispatch, useAppSelector } from "@/hooks/redux";
+import { useAuth } from '@/state/auth/AuthProvider';
 import * as fitnessRepo from '../data/fitnessRepository';
 import { buildRecommendedStrengthSetPerformances } from '../data/recommendations';
 import {
@@ -22,13 +23,11 @@ import {
     secondsToTime,
     timeToSeconds
 } from "@/lib/types/workout";
-import type { LastWorkoutExerciseInstanceSet } from '../data/fitnessRepository';
 
 const DEFAULT_VARIATION = 'Standard';
 
 interface WorkoutExerciseLookups {
-    historicalSets: LastWorkoutExerciseInstanceSet[] | null;
-    isLoading: boolean;
+    isVariationLoading: boolean;
     userWeight: number | null;
     variations: string[];
 }
@@ -40,6 +39,8 @@ export const useWorkoutExercise = (
     const dispatch = useAppDispatch();
     const sessionFocus = useAppSelector(selectSessionFocus);
     const queryClient = useQueryClient();
+    const { user } = useAuth();
+    const userId = user?.id;
     const exerciseId = workoutExercise.exercise.id;
 
     const [isAddingVariation, setIsAddingVariation] = useState(false);
@@ -48,7 +49,25 @@ export const useWorkoutExercise = (
         () => (lookups.variations.length > 0 ? lookups.variations : [DEFAULT_VARIATION]),
         [lookups.variations]
     );
-    const historicalSets = lookups.historicalSets;
+
+    const { data: historicalSets, isLoading: isLoadingHistory } = useQuery({
+        queryKey: [
+            'lastPerformance',
+            userId,
+            exerciseId,
+            workoutExercise.equipmentType,
+            workoutExercise.variation ?? DEFAULT_VARIATION,
+        ],
+        queryFn: () => fitnessRepo.fetchLastWorkoutExerciseInstance(
+            userId!,
+            exerciseId,
+            workoutExercise.equipmentType,
+            workoutExercise.variation ?? DEFAULT_VARIATION
+        ),
+        enabled: !!userId && !!exerciseId,
+        staleTime: 5 * 60 * 1000,
+    });
+
     const userWeight = lookups.userWeight;
 
     // Mutations
@@ -236,7 +255,7 @@ export const useWorkoutExercise = (
         userWeight,
         isAddingVariation,
         newVariationName,
-        isLoading: lookups.isLoading,
+        isLoading: lookups.isVariationLoading || isLoadingHistory,
         addVariationMutationStatus: addVariationMutation.status,
         setNewVariationName,
         setIsAddingVariation,
