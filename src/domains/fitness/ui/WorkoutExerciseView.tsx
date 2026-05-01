@@ -585,7 +585,7 @@ export const WorkoutExerciseView = ({
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="verdigris-emblem h-10 w-10 rounded-[14px] p-0 hover:bg-white/[0.04]"
+                            className="stone-chip h-10 w-10 rounded-[14px] p-0 text-foreground/88 hover:bg-white/[0.05] hover:text-foreground"
                             onClick={() => {
                               if (newEquipmentName.trim()) {
                                 onEquipmentChange(newEquipmentName.trim());
@@ -616,7 +616,7 @@ export const WorkoutExerciseView = ({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className={cn(workoutMenuOptionClassName, "verdigris-text hover:text-foreground")}
+                          className={cn(workoutMenuOptionClassName, "text-muted-foreground hover:text-foreground")}
                           onClick={() => {
                             setShowNewEquipmentInput(true);
                             setNewEquipmentName("");
@@ -664,7 +664,7 @@ export const WorkoutExerciseView = ({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className={cn(workoutMenuOptionClassName, "verdigris-text hover:text-foreground")}
+                          className={cn(workoutMenuOptionClassName, "text-muted-foreground hover:text-foreground")}
                           onClick={() => {
                             onVariationChange('add_new');
                             setVariationOpen(false);
@@ -690,7 +690,7 @@ export const WorkoutExerciseView = ({
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="verdigris-emblem h-10 w-10 flex-shrink-0 rounded-[14px] hover:bg-white/[0.04]"
+                    className="stone-chip h-10 w-10 flex-shrink-0 rounded-[14px] text-foreground/88 hover:bg-white/[0.05] hover:text-foreground"
                     onClick={onSaveNewVariation}
                     disabled={!newVariationName.trim() || newVariationName.trim().toLowerCase() === DEFAULT_VARIATION.toLowerCase() || isSavingVariation}
                     aria-label="Save new variation"

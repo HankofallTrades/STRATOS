@@ -79,7 +79,7 @@ const VariationSelector: React.FC<VariationSelectorProps> = ({
             <Button
               variant="ghost"
               size="sm"
-              className={`${workoutMenuOptionClassName} verdigris-text hover:text-foreground`}
+              className={`${workoutMenuOptionClassName} text-muted-foreground hover:text-foreground`}
               onClick={() => {
                 onTriggerAddNewVariation();
                 setPopoverOpen(false);

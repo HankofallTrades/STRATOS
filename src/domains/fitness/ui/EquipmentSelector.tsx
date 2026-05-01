@@ -96,7 +96,7 @@ const EquipmentSelector: React.FC<EquipmentSelectorProps> = ({
                     if (e.key === 'Escape') handleCancelAddNew();
                   }}
                 />
-                <Button variant="ghost" size="icon" className="verdigris-emblem h-10 w-10 rounded-[14px] p-0 hover:bg-white/[0.04]" onClick={handleAddNewEquipment} disabled={!newEquipmentName.trim()}>
+                <Button variant="ghost" size="icon" className="stone-chip h-10 w-10 rounded-[14px] p-0 text-foreground/88 hover:bg-white/[0.05] hover:text-foreground" onClick={handleAddNewEquipment} disabled={!newEquipmentName.trim()}>
                   <Check size={16} />
                 </Button>
                 <Button variant="ghost" size="icon" className="stone-chip h-10 w-10 rounded-[14px] p-0 text-muted-foreground hover:bg-white/[0.05] hover:text-foreground" onClick={handleCancelAddNew}>
@@ -107,7 +107,7 @@ const EquipmentSelector: React.FC<EquipmentSelectorProps> = ({
               <Button
                 variant="ghost"
                 size="sm"
-                className={`${workoutMenuOptionClassName} verdigris-text hover:text-foreground`}
+                className={`${workoutMenuOptionClassName} text-muted-foreground hover:text-foreground`}
                 onClick={() => {
                   setShowNewEquipmentInput(true);
                   setNewEquipmentName("");
