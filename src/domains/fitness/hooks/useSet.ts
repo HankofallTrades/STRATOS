@@ -348,6 +348,25 @@ export const useSet = ({
         }
     }, [dispatch, workoutExerciseId, set, isStatic, isCompleted, localWeight, localReps, localTime, localDuration, localDistance]);
 
+
+    const applyRecommendedWeight = useCallback(() => {
+        if (!isStrengthSet(set) || isCompleted || !recommendedPerformance) return;
+        if (recommendedPerformance.action !== 'increase_load' && recommendedPerformance.action !== 'decrease_load') return;
+
+        const recommendedWeight = recommendedPerformance.weight;
+        setLocalWeight(String(recommendedWeight));
+        setWeightTouched(true);
+
+        dispatch(updateSetAction({
+            workoutExerciseId,
+            setId: set.id,
+            weight: recommendedWeight,
+            reps: set.reps,
+            time: set.time ?? null,
+            variation: set.variation ?? undefined,
+            equipmentType: set.equipmentType ?? undefined,
+        }));
+    }, [dispatch, workoutExerciseId, set, isCompleted, recommendedPerformance]);
     // Derived values for indicators
     const showWeightIndicator = !!(
         recommendedPerformance &&
@@ -389,6 +408,7 @@ export const useSet = ({
         handleStopCardioTimer,
         showWeightIndicator,
         showRepsIndicator,
-        showTimeIndicator
+        showTimeIndicator,
+        applyRecommendedWeight
     };
 };
