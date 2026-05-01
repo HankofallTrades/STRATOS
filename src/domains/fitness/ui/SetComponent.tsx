@@ -67,7 +67,8 @@ const SetComponent: React.FC<SetComponentProps> = ({
     handleStopCardioTimer,
     showWeightIndicator,
     showRepsIndicator,
-    showTimeIndicator
+    showTimeIndicator,
+    applyRecommendedWeight
   } = useSet({
     workoutExerciseId,
     set,
@@ -293,7 +294,8 @@ const SetComponent: React.FC<SetComponentProps> = ({
             <PerformanceIndicator
               direction={weightIndicatorDirection}
               visible={showWeightIndicator && !isCompleted}
-              description={weightIndicatorDirection === 'up' ? 'Increase load.' : 'Reduce load.'}
+              description={weightIndicatorDirection === 'up' ? 'Apply recommended load increase.' : 'Apply recommended load reduction.'}
+              onClick={applyRecommendedWeight}
             />
           </>,
           isCompleted ? onSwipeCopyWeight : undefined

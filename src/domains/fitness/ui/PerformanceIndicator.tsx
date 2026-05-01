@@ -6,12 +6,14 @@ interface PerformanceIndicatorProps {
   direction: 'up' | 'down' | null;
   visible: boolean;
   description?: string;
+  onClick?: () => void;
 }
 
 const PerformanceIndicator: React.FC<PerformanceIndicatorProps> = ({
   direction,
   visible,
-  description
+  description,
+  onClick
 }) => {
   if (!visible || !direction) {
     return null;
@@ -21,15 +23,20 @@ const PerformanceIndicator: React.FC<PerformanceIndicatorProps> = ({
   const colorClass = direction === 'up' ? "verdigris-text" : "warm-metal-text";
 
   return (
-    <IconComponent
-      size={16}
-      className={cn(
-        "absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none",
-        colorClass
-      )}
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={!onClick}
+      className="absolute right-2 top-1/2 -translate-y-1/2"
+      aria-label={description ?? "Apply performance recommendation"}
       title={description}
-      aria-hidden="true"
-    />
+    >
+      <IconComponent
+        size={16}
+        className={cn("transition-opacity", colorClass)}
+        aria-hidden="true"
+      />
+    </button>
   );
 };
 
