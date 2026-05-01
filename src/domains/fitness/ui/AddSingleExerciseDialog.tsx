@@ -147,7 +147,7 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="verdigris-emblem h-full w-10 flex-shrink-0 rounded-[14px] hover:bg-white/[0.04]"
+                    className="stone-chip h-full w-10 flex-shrink-0 rounded-[14px] text-foreground/88 hover:bg-white/[0.05] hover:text-foreground"
                     onClick={handleSaveNewVariation}
                     disabled={!newVariationName.trim() || isPending}
                     aria-label="Save new variation"
