@@ -9,7 +9,7 @@ export const workoutMenuInputClassName =
   "stone-inset h-11 rounded-[16px] text-sm text-foreground shadow-none placeholder:text-muted-foreground/80 focus-visible:ring-0 focus-visible:ring-offset-0";
 
 export const workoutMenuOptionClassName =
-  "h-10 w-full justify-start rounded-[12px] border border-transparent px-3 text-[13px] font-medium text-foreground/88 hover:bg-white/[0.03] hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-foreground/88";
+  "h-10 w-full justify-start rounded-[12px] border border-transparent bg-transparent px-3 text-[13px] font-medium text-foreground/88 hover:bg-white/[0.03] hover:text-foreground focus-visible:bg-white/[0.03] focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 data-[state=open]:bg-transparent data-[state=open]:text-foreground disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-foreground/88";
 
 export const workoutMenuSectionClassName =
   "stone-surface rounded-[20px] p-3";
