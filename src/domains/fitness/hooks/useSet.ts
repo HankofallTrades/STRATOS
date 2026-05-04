@@ -317,9 +317,14 @@ export const useSet = ({
                     dispatch(updateSetAction(updatePayload));
                 }
             } else {
+                const parsedRepsVal = parseInt(localReps);
+                const nextRepsValue =
+                    field === 'reps'
+                        ? (Number.isNaN(parsedRepsVal) ? null : parsedRepsVal)
+                        : set.reps;
                 const updatePayload: StrengthSetUpdatePayload = {
                     ...baseUpdatePayload,
-                    reps: repsVal,
+                    reps: nextRepsValue,
                     time: null,
                 };
                 if (field === 'weight' && weightVal >= 0 && weightVal !== set.weight) shouldUpdate = true;
