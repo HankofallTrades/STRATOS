@@ -24,7 +24,6 @@ import {
 } from "@/components/core/select";
 import { Textarea } from "@/components/core/textarea";
 import { useWorkoutScreen } from "@/domains/fitness/hooks/useWorkoutScreen";
-import type { MesocycleProtocol } from "@/domains/periodization";
 import SessionFocusSelector from "@/domains/fitness/ui/SessionFocusSelector";
 import WorkoutComponent from "@/domains/fitness/ui/WorkoutComponent";
 import {
@@ -60,7 +59,6 @@ const WorkoutScreen = () => {
     mesocycleName,
     mesocycleDurationWeeks,
     mesocycleGoalFocus,
-    mesocycleProtocol,
     mesocycleNotes,
     showBlockBuilder,
     isDiscardConfirmOpen,
@@ -76,7 +74,6 @@ const WorkoutScreen = () => {
     setMesocycleName,
     setMesocycleDurationWeeks,
     setMesocycleGoalFocus,
-    setMesocycleProtocol,
     setMesocycleNotes,
     setShowBlockBuilder,
     setIsDiscardConfirmOpen,
@@ -294,38 +291,7 @@ const WorkoutScreen = () => {
                         />
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="mesocycle-protocol" className={builderLabelClassName}>
-                          Protocol
-                        </Label>
-                        <Select
-                          value={mesocycleProtocol}
-                          onValueChange={value =>
-                            setMesocycleProtocol(value as MesocycleProtocol)
-                          }
-                        >
-                          <SelectTrigger
-                            id="mesocycle-protocol"
-                            className={builderSelectTriggerClassName}
-                          >
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className={builderSelectContentClassName}>
-                            <SelectItem
-                              value="occams"
-                              className={builderSelectItemClassName}
-                            >
-                              Occam&apos;s Protocol
-                            </SelectItem>
-                            <SelectItem
-                              value="custom"
-                              className={builderSelectItemClassName}
-                            >
-                              Custom
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                      
                     </div>
 
                     <div className="space-y-2">

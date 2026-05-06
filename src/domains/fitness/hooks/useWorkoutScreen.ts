@@ -4,7 +4,7 @@ import { useAppDispatch, useAppSelector } from "@/hooks/redux";
 import { useElapsedTime } from "@/hooks/useElapsedTime";
 import { toast } from "@/hooks/use-toast";
 import { usePeriodization } from "@/domains/periodization";
-import type { MesocycleProtocol, MesocycleSessionTemplate } from "@/domains/periodization";
+import type { MesocycleSessionTemplate } from "@/domains/periodization";
 import {
   selectCurrentWorkout,
   selectSessionFocus,
@@ -40,8 +40,6 @@ export const useWorkoutScreen = () => {
   const [mesocycleDurationWeeks, setMesocycleDurationWeeks] = useState(6);
   const [mesocycleGoalFocus, setMesocycleGoalFocus] =
     useState<SessionFocus>("hypertrophy");
-  const [mesocycleProtocol, setMesocycleProtocol] =
-    useState<MesocycleProtocol>("occams");
   const [mesocycleNotes, setMesocycleNotes] = useState("");
   const [showBlockBuilder, setShowBlockBuilder] = useState(false);
   const [isDiscardConfirmOpen, setIsDiscardConfirmOpen] = useState(false);
@@ -95,7 +93,7 @@ export const useWorkoutScreen = () => {
       await createMesocycle({
         name: mesocycleName.trim() || "Mesocycle",
         goal_focus: mesocycleGoalFocus,
-        protocol: mesocycleProtocol,
+        protocol: "custom",
         start_date: new Date().toISOString().split("T")[0],
         duration_weeks: duration,
         notes: mesocycleNotes.trim() || undefined,
@@ -204,7 +202,6 @@ export const useWorkoutScreen = () => {
     mesocycleName,
     mesocycleDurationWeeks,
     mesocycleGoalFocus,
-    mesocycleProtocol,
     mesocycleNotes,
     showBlockBuilder,
     isDiscardConfirmOpen,
@@ -220,7 +217,6 @@ export const useWorkoutScreen = () => {
     setMesocycleName,
     setMesocycleDurationWeeks,
     setMesocycleGoalFocus,
-    setMesocycleProtocol,
     setMesocycleNotes,
     setShowBlockBuilder,
     setIsDiscardConfirmOpen,

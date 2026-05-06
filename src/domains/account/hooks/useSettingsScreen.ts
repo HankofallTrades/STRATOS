@@ -7,7 +7,7 @@ import {
   fetchUserProfile,
   updateUserProfile,
 } from "@/domains/account/data/accountRepository";
-import { usePeriodization, type MesocycleProtocol } from "@/domains/periodization";
+import { usePeriodization } from "@/domains/periodization";
 import {
   resolveStoredModelForProvider,
   readLlmPreferences,
@@ -29,7 +29,6 @@ type WeightUnit = "kg" | "lb";
 const KG_TO_LB = 2.20462;
 const DEFAULT_PERIOD_DURATION_WEEKS = 6;
 const DEFAULT_PERIOD_GOAL_FOCUS: SessionFocus = "hypertrophy";
-const DEFAULT_PERIOD_PROTOCOL: MesocycleProtocol = "custom";
 
 const SESSION_FOCUS_LABELS: Record<SessionFocus, string> = {
   hypertrophy: "Hypertrophy",
@@ -62,13 +61,10 @@ const toKilograms = (weight: number, unit: WeightUnit): number => {
 };
 
 const buildPeriodName = (
-  focus: SessionFocus,
-  protocol: MesocycleProtocol
+  focus: SessionFocus
 ) => {
   const focusLabel = SESSION_FOCUS_LABELS[focus];
-  return protocol === "occams"
-    ? `Occam ${focusLabel} Block`
-    : `${focusLabel} Block`;
+  return `${focusLabel} Block`;
 };
 
 export const useSettingsScreen = () => {
@@ -111,8 +107,6 @@ export const useSettingsScreen = () => {
   const [periodGoalFocus, setPeriodGoalFocus] = useState<SessionFocus>(
     DEFAULT_PERIOD_GOAL_FOCUS
   );
-  const [periodProtocol, setPeriodProtocol] =
-    useState<MesocycleProtocol>(DEFAULT_PERIOD_PROTOCOL);
 
   const loadProfile = useCallback(async () => {
     if (!user) {
@@ -371,7 +365,6 @@ export const useSettingsScreen = () => {
     setPeriodGoalFocus(
       activeMesocycle?.goal_focus ?? DEFAULT_PERIOD_GOAL_FOCUS
     );
-    setPeriodProtocol(activeMesocycle?.protocol ?? DEFAULT_PERIOD_PROTOCOL);
   }, [activeProgram]);
 
   const handleOpenPeriodDialog = useCallback(() => {
@@ -398,9 +391,9 @@ export const useSettingsScreen = () => {
 
     try {
       const input = {
-        name: buildPeriodName(periodGoalFocus, periodProtocol),
+        name: buildPeriodName(periodGoalFocus),
         goal_focus: periodGoalFocus,
-        protocol: periodProtocol,
+        protocol: "custom",
         start_date: new Date().toISOString().split("T")[0],
         duration_weeks: duration,
       };
@@ -428,7 +421,6 @@ export const useSettingsScreen = () => {
     currentWorkout,
     periodDurationWeeks,
     periodGoalFocus,
-    periodProtocol,
     resetMesocycle,
     user,
   ]);
@@ -467,12 +459,10 @@ export const useSettingsScreen = () => {
     providerCredentialLastFour,
     periodDurationWeeks,
     periodGoalFocus,
-    periodProtocol,
     setBodyweight,
     setIsPeriodDialogOpen,
     setPeriodDurationWeeks,
     setPeriodGoalFocus,
-    setPeriodProtocol,
     triggerOnboarding,
     unitPref,
     userEmail: user?.email ?? null,
