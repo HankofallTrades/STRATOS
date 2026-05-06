@@ -249,9 +249,6 @@ const ExerciseSelector = ({
                     onPointerDown={() => handlePointerDown(exercise)}
                     onPointerUp={clearLongPressTimer}
                     onPointerLeave={clearLongPressTimer}
-                    onTouchStart={() => handlePointerDown(exercise)}
-                    onTouchEnd={clearLongPressTimer}
-                    onTouchCancel={clearLongPressTimer}
                     onContextMenu={(e) => {
                       e.preventDefault();
                       setExerciseToDelete(exercise);
