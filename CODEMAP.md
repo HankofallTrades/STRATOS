@@ -233,7 +233,7 @@ Current Coach architecture:
 - Purpose: mesocycles, session templates, progression blocks.
 - Data:
   - `data/repository.ts`
-    - Seeds default `Workout A/B/C` session templates for otherwise-empty custom mesocycles and keeps Occam templates synced.
+    - Seeds focus-aware `Workout A/B/C` session templates for custom mesocycles (hypertrophy + strength blueprints) and keeps Occam templates synced when present.
   - `data/types.ts`
 - Hooks:
   - `hooks/usePeriodization.ts`

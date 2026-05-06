@@ -106,7 +106,7 @@ const OCCAMS_TEMPLATE: OccamsSessionTemplateDefinition[] = [
   },
 ];
 
-const CUSTOM_TEMPLATE: CustomSessionTemplateDefinition[] = [
+const HYPERTROPHY_TEMPLATE: CustomSessionTemplateDefinition[] = [
   {
     name: 'Workout A',
     sessionFocus: null,
@@ -213,6 +213,46 @@ const CUSTOM_TEMPLATE: CustomSessionTemplateDefinition[] = [
         loadIncrementKg: null,
         notes: null,
       },
+    ],
+  },
+];
+
+
+const STRENGTH_TEMPLATE: CustomSessionTemplateDefinition[] = [
+  {
+    name: 'Workout A',
+    sessionFocus: 'strength',
+    setsPerExercise: 3,
+    repRange: '3-5',
+    progressionRule: 'Add load when all sets hit 5 reps with clean technique and bar speed.',
+    exercises: [
+      { candidateNames: ['Squat', 'Back Squat'], targetSets: 3, targetReps: '3-5', loadIncrementKg: 2.5, notes: 'Primary lower-body strength lift.', presetEquipmentType: null, presetVariation: null },
+      { candidateNames: ['Bench Press'], targetSets: 3, targetReps: '3-5', loadIncrementKg: 2.5, notes: 'Primary horizontal press.', presetEquipmentType: null, presetVariation: null },
+      { candidateNames: ['Row'], targetSets: 3, targetReps: '5-8', loadIncrementKg: 2.5, notes: 'Heavy pull assistance.', presetEquipmentType: null, presetVariation: null },
+    ],
+  },
+  {
+    name: 'Workout B',
+    sessionFocus: 'strength',
+    setsPerExercise: 3,
+    repRange: '3-5',
+    progressionRule: 'Hold load until all primary sets reach top reps, then increase next exposure.',
+    exercises: [
+      { candidateNames: ['Deadlift', 'Romanian Deadlift'], targetSets: 3, targetReps: '3-5', loadIncrementKg: 5, notes: 'Primary hinge strength lift.', presetEquipmentType: null, presetVariation: null },
+      { candidateNames: ['Overhead Press'], targetSets: 3, targetReps: '3-5', loadIncrementKg: 2.5, notes: 'Primary vertical press.', presetEquipmentType: null, presetVariation: null },
+      { candidateNames: ['Pull-up', 'Pull Up', 'Pullups', 'Pull-Ups'], targetSets: 3, targetReps: '3-6', loadIncrementKg: 2.5, notes: 'Weighted if possible.', presetEquipmentType: null, presetVariation: null },
+    ],
+  },
+  {
+    name: 'Workout C',
+    sessionFocus: 'strength',
+    setsPerExercise: 3,
+    repRange: '3-5',
+    progressionRule: 'Use this day to reinforce weak points while keeping heavy intent.',
+    exercises: [
+      { candidateNames: ['Split Squat', 'Bulgarian Split Squat'], targetSets: 3, targetReps: '5-8', loadIncrementKg: 2.5, notes: 'Single-leg strength assistance.', presetEquipmentType: null, presetVariation: null },
+      { candidateNames: ['Bench Press'], targetSets: 3, targetReps: '3-5', loadIncrementKg: 2.5, notes: 'Secondary bench exposure.', presetEquipmentType: 'Barbell', presetVariation: 'Incline' },
+      { candidateNames: ['Wood Chop', 'Cable Wood Chop'], targetSets: 3, targetReps: '6-10', loadIncrementKg: 2.5, notes: 'Core strength and bracing.', presetEquipmentType: null, presetVariation: null },
     ],
   },
 ];
@@ -674,13 +714,15 @@ const ensureOccamsProtocolSessions = async (
 
 const ensureCustomProtocolSessions = async (
   mesocycleId: string,
+  goalFocus: SessionFocus,
   existingSessions: MesocycleSession[]
 ): Promise<void> => {
   const exercises = await fetchExerciseCatalog();
   const existingByName = new Map(existingSessions.map(session => [normalizeName(session.name), session]));
+  const template = goalFocus === "strength" ? STRENGTH_TEMPLATE : HYPERTROPHY_TEMPLATE;
 
-  for (let index = 0; index < CUSTOM_TEMPLATE.length; index += 1) {
-    const definition = CUSTOM_TEMPLATE[index];
+  for (let index = 0; index < template.length; index += 1) {
+    const definition = template[index];
     await upsertCustomProtocolSession(
       mesocycleId,
       index + 1,
@@ -714,7 +756,7 @@ export const getActiveMesocycleProgram = async (userId: string): Promise<ActiveM
     await ensureOccamsProtocolSessions(userId, mesocycle.id, sessions);
     sessions = await fetchSessionsForMesocycle(mesocycle.id);
   } else if (mesocycle.protocol === 'custom') {
-    await ensureCustomProtocolSessions(mesocycle.id, sessions);
+    await ensureCustomProtocolSessions(mesocycle.id, mesocycle.goal_focus, sessions);
     sessions = await fetchSessionsForMesocycle(mesocycle.id);
   }
 
@@ -800,7 +842,7 @@ const createMesocycleWithPreviousStatus = async (
   if (input.protocol === 'occams') {
     await ensureOccamsProtocolSessions(userId, createdMesocycle.id, []);
   } else if (input.protocol === 'custom') {
-    await ensureCustomProtocolSessions(createdMesocycle.id, []);
+    await ensureCustomProtocolSessions(createdMesocycle.id, createdMesocycle.goal_focus, []);
   }
 
   return createdMesocycle;

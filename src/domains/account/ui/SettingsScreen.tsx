@@ -28,7 +28,6 @@ import {
   llmProviderOptions,
   providerRequiresApiKey,
 } from "@/domains/guidance/data/llmPreferences";
-import type { MesocycleProtocol } from "@/domains/periodization";
 import { cn } from "@/lib/utils/cn";
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
@@ -71,14 +70,12 @@ const SettingsScreen = () => {
     llmProviderPref,
     periodDurationWeeks,
     periodGoalFocus,
-    periodProtocol,
     providerApiKeyDraft,
     providerCredentialLastFour,
     setBodyweight,
     setIsPeriodDialogOpen,
     setPeriodDurationWeeks,
     setPeriodGoalFocus,
-    setPeriodProtocol,
     triggerOnboarding,
     unitPref,
     userEmail,
@@ -112,7 +109,7 @@ const SettingsScreen = () => {
       ? `Week ${activeProgram.current_week} of ${
           activeProgram.mesocycle.duration_weeks
         } · ${formatSessionFocusLabel(activeProgram.mesocycle.goal_focus)} · ${
-          activeProgram.mesocycle.protocol === "occams" ? "Occam's" : "Custom"
+          "Focus Blueprint"
         }`
       : "No active period";
 
@@ -432,29 +429,7 @@ const SettingsScreen = () => {
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label
-                htmlFor="settings-period-protocol"
-                className={FIELD_LABEL_CLASS}
-              >
-                Protocol
-              </Label>
-              <Select
-                value={periodProtocol}
-                onValueChange={value => setPeriodProtocol(value as MesocycleProtocol)}
-              >
-                <SelectTrigger
-                  id="settings-period-protocol"
-                  className="app-form-select h-12 rounded-[16px]"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="stone-surface border-white/8 text-foreground">
-                  <SelectItem value="custom">Custom</SelectItem>
-                  <SelectItem value="occams">Occam&apos;s</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            
 
             <div className="space-y-2">
               <Label
