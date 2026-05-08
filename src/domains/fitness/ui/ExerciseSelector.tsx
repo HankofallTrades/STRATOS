@@ -23,6 +23,12 @@ import {
 
 const LONG_PRESS_DURATION = 500;
 
+const isEditableElement = (element: Element | null) =>
+  element instanceof HTMLInputElement ||
+  element instanceof HTMLTextAreaElement ||
+  element instanceof HTMLSelectElement ||
+  element?.getAttribute("contenteditable") === "true";
+
 interface ExerciseSelectorProps {
   openOnMount?: boolean;
   iconOnly?: boolean;
@@ -75,6 +81,9 @@ const ExerciseSelector = ({
   const [exerciseToDelete, setExerciseToDelete] = useState<Exercise | null>(null);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const longPressTriggeredRef = useRef(false);
+  const pressStartedWithEditableFocusRef = useRef(false);
+  const selectionHandledFromPointerRef = useRef(false);
 
   const {
     exercises,
@@ -105,20 +114,52 @@ const ExerciseSelector = ({
     setCount,
   });
 
-  const handlePointerDown = (exercise: Exercise) => {
+  const handlePointerDown = (event: React.PointerEvent<HTMLButtonElement>, exercise: Exercise) => {
     if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    longPressTriggeredRef.current = false;
+    pressStartedWithEditableFocusRef.current = isEditableElement(document.activeElement);
+
+    if (pressStartedWithEditableFocusRef.current) {
+      event.preventDefault();
+    }
+
     longPressTimerRef.current = setTimeout(() => {
+      longPressTriggeredRef.current = true;
       setExerciseToDelete(exercise);
       setIsConfirmDeleteDialogOpen(true);
       longPressTimerRef.current = null;
     }, LONG_PRESS_DURATION);
   };
 
-  const clearLongPressTimer = () => {
+  const clearLongPressTimer = (resetPressState = true) => {
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
+    if (resetPressState) {
+      pressStartedWithEditableFocusRef.current = false;
+      longPressTriggeredRef.current = false;
+    }
+  };
+
+  const handlePointerUp = (event: React.PointerEvent<HTMLButtonElement>, exercise: Exercise) => {
+    const shouldSelectFromPointer =
+      pressStartedWithEditableFocusRef.current || event.pointerType !== "mouse";
+    clearLongPressTimer(false);
+
+    if (longPressTriggeredRef.current) {
+      pressStartedWithEditableFocusRef.current = false;
+      longPressTriggeredRef.current = false;
+      return;
+    }
+
+    if (shouldSelectFromPointer) {
+      selectionHandledFromPointerRef.current = true;
+      void handleSelect(exercise);
+    }
+
+    pressStartedWithEditableFocusRef.current = false;
+    longPressTriggeredRef.current = false;
   };
 
   const handleSelect = async (exercise: Exercise) => {
@@ -245,10 +286,17 @@ const ExerciseSelector = ({
                   <Button
                     key={exercise.id}
                     variant="ghost"
-                    onClick={() => handleSelect(exercise)}
-                    onPointerDown={() => handlePointerDown(exercise)}
-                    onPointerUp={clearLongPressTimer}
-                    onPointerLeave={clearLongPressTimer}
+                    onClick={() => {
+                      if (selectionHandledFromPointerRef.current) {
+                        selectionHandledFromPointerRef.current = false;
+                        return;
+                      }
+                      void handleSelect(exercise);
+                    }}
+                    onPointerDown={(event) => handlePointerDown(event, exercise)}
+                    onPointerUp={(event) => handlePointerUp(event, exercise)}
+                    onPointerLeave={() => clearLongPressTimer()}
+                    onPointerCancel={() => clearLongPressTimer()}
                     onContextMenu={(e) => {
                       e.preventDefault();
                       setExerciseToDelete(exercise);

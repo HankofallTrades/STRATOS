@@ -23,7 +23,7 @@ export const fantasyTheme: AppTheme = {
     card: '215 25% 8%', // #0F131A (Was #15261A)
     cardForeground: '140 20% 90%', // #DDECDF
 
-    popover: '140 30% 12%',
+    popover: '210 20% 8%',
     popoverForeground: '140 20% 90%',
 
     // Primary: Deep phthalo green
