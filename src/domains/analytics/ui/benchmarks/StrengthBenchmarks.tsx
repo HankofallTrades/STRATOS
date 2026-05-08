@@ -15,9 +15,14 @@ import { Button } from "@/components/core/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/core/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/core/popover";
 import { Skeleton } from "@/components/core/skeleton";
+import { cn } from "@/lib/utils/cn";
 import { useAnimatedValue } from '@/hooks/useAnimatedValue';
 import AnimatedLinearProgress from '@/components/core/AnimatedLinearProgress';
 import { useBenchmarks, BenchmarkLevel, BenchmarkTypeOption } from '../../hooks/useBenchmarks';
+import {
+    workoutMenuOptionClassName,
+    workoutPopoverClassName,
+} from "@/domains/fitness/ui/workoutSelectionStyles";
 
 interface StrengthBenchmarksProps {
     userId: string | undefined;
@@ -30,6 +35,10 @@ interface StrengthBenchmarksProps {
 
 const ALL_LEVELS: BenchmarkLevel[] = ['Solid', 'Strong', 'Elite'];
 const ALL_BENCHMARK_TYPES: BenchmarkTypeOption[] = ['Strength', 'Calisthenics'];
+const benchmarkTriggerClassName =
+    "h-auto rounded-none border-0 bg-transparent p-0 text-lg font-bold text-foreground shadow-none hover:bg-transparent hover:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0";
+const benchmarkLevelTriggerClassName =
+    "h-auto rounded-none border-0 bg-transparent p-0 text-sm font-semibold text-foreground shadow-none hover:bg-transparent hover:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0";
 
 const StrengthBenchmarksView: React.FC<StrengthBenchmarksProps> = ({
     userId,
@@ -153,32 +162,35 @@ const StrengthBenchmarksView: React.FC<StrengthBenchmarksProps> = ({
     return (
         <div className={embedded ? "relative" : "stone-surface relative rounded-[26px] p-5 md:p-6"}>
             <CardHeader className="p-0 mb-4 md:pb-0">
-                <div className="flex items-center justify-between mb-4">
-                    <Barbell className="mr-2 h-5 w-5 verdigris-text flex-shrink-0" />
-                    <CardTitle className="flex items-center flex-grow mr-2">
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="mr-1 h-auto p-0 text-lg font-bold hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0">
-                                    {currentType}
-                                    <ChevronDown className="ml-1 h-4 w-4 text-muted-foreground" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" className="stone-surface border-white/8 text-foreground">
-                                {ALL_BENCHMARK_TYPES.map((option) => (
-                                    <DropdownMenuItem
-                                        key={option}
-                                        onSelect={() => onTypeChange(option)}
-                                        disabled={currentType === option}
-                                    >
-                                        {option}
-                                    </DropdownMenuItem>
-                                ))}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex min-w-0 flex-1 items-center gap-2">
+                        <Barbell className="h-5 w-5 flex-shrink-0 verdigris-text" />
+                        <CardTitle className="flex min-w-0 items-center gap-1">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" className={benchmarkTriggerClassName}>
+                                        <span className="truncate">{currentType}</span>
+                                        <ChevronDown className="ml-1 h-4 w-4 shrink-0 text-muted-foreground" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start" className={cn(workoutPopoverClassName, "w-44 p-1")}>
+                                    {ALL_BENCHMARK_TYPES.map((option) => (
+                                        <DropdownMenuItem
+                                            key={option}
+                                            onSelect={() => onTypeChange(option)}
+                                            disabled={currentType === option}
+                                            className={workoutMenuOptionClassName}
+                                        >
+                                            {option}
+                                        </DropdownMenuItem>
+                                    ))}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </CardTitle>
                         <TooltipProvider delayDuration={100}>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="ml-1 h-5 w-5 p-0 text-muted-foreground hover:bg-transparent">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 rounded-[10px] p-0 text-muted-foreground hover:bg-white/[0.03] hover:text-foreground">
                                         <Info className="h-4 w-4" />
                                     </Button>
                                 </TooltipTrigger>
@@ -187,7 +199,7 @@ const StrengthBenchmarksView: React.FC<StrengthBenchmarksProps> = ({
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
-                    </CardTitle>
+                    </div>
 
                     <div className="flex-shrink-0">
                         <Popover open={levelPopoverOpen} onOpenChange={setLevelPopoverOpen}>
@@ -195,22 +207,24 @@ const StrengthBenchmarksView: React.FC<StrengthBenchmarksProps> = ({
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="app-tonal-control h-8 w-[84px] justify-center rounded-[12px] px-2.5 text-xs font-medium"
+                                    className={benchmarkLevelTriggerClassName}
                                 >
-                                    {selectedLevel}
+                                    <span>{selectedLevel}</span>
+                                    <ChevronDown className="ml-1 h-3.5 w-3.5 text-muted-foreground" />
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="stone-surface w-auto border-white/8 p-1">
+                            <PopoverContent align="end" className={cn(workoutPopoverClassName, "w-32 p-1")}>
                                 <div className="flex flex-col gap-1">
                                     {ALL_LEVELS.map((level) => (
                                         <Button
                                             key={level}
                                             variant="ghost"
                                             size="sm"
-                                            className={selectedLevel === level
-                                                ? "app-tonal-control h-8 w-full justify-start rounded-[12px] px-2 text-xs text-foreground"
-                                                : "h-8 w-full justify-start rounded-[12px] px-2 text-xs text-foreground/72 hover:bg-white/[0.03] hover:text-foreground"
-                                            }
+                                            className={cn(
+                                                workoutMenuOptionClassName,
+                                                "h-9 text-xs",
+                                                selectedLevel === level && "app-tonal-control text-foreground"
+                                            )}
                                             onClick={() => {
                                                 setSelectedLevel(level);
                                                 setLevelPopoverOpen(false);

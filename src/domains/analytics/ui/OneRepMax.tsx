@@ -1,13 +1,21 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from 'recharts';
 import type { NameType, Payload, ValueType } from 'recharts/types/component/DefaultTooltipContent';
 import type { TooltipProps } from 'recharts/types/component/Tooltip';
 import { CardContent, CardHeader } from "@/components/core/card";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Search } from "lucide-react";
 import { Exercise } from '@/lib/types/workout';
 import { Button } from "@/components/core/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/core/Dialog";
+import { Input } from "@/components/core/input";
 import { Skeleton } from "@/components/core/skeleton";
+import { cn } from "@/lib/utils/cn";
 import { useOneRepMax, TimeRange, UnifiedDataPoint } from '../hooks/useOneRepMax';
+import {
+    workoutDialogClassName,
+    workoutMenuInputClassName,
+    workoutMenuOptionClassName,
+} from "@/domains/fitness/ui/workoutSelectionStyles";
 
 interface OneRepMaxProps {
     userId: string | undefined;
@@ -41,6 +49,16 @@ type ChartTooltipProps = TooltipProps<ValueType, NameType> & {
     label?: number;
     payload?: ChartTooltipEntry[];
 };
+
+interface LockedTooltipState {
+    label?: number;
+    payload?: ChartTooltipEntry[];
+}
+
+interface ChartPointerState {
+    activeLabel?: unknown;
+    activePayload?: unknown;
+}
 
 interface CombinationLegendEntry {
     id?: string;
@@ -124,6 +142,123 @@ const CustomTooltip = ({ active, payload, label }: ChartTooltipProps) => {
     return null;
 };
 
+interface AnalyticsExerciseSelectorProps {
+    exercises: Exercise[];
+    selectedExercise: Exercise | null;
+    onSelectExercise: (exercise: Exercise) => void;
+    disabled?: boolean;
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+    weights: "Weights",
+    calisthenics: "Calisthenics",
+    cardio: "Cardio",
+    mobility: "Mobility",
+    stability: "Stability",
+};
+
+const CATEGORY_BADGE_STYLES: Record<string, string> = {
+    weights: 'bg-white/[0.06] text-foreground/50',
+    calisthenics: 'bg-amber-500/10 text-amber-400/70',
+    cardio: 'bg-sky-500/10 text-sky-400/70',
+    mobility: 'bg-emerald-500/10 text-emerald-400/70',
+    stability: 'bg-violet-500/10 text-violet-400/70',
+};
+
+const AnalyticsExerciseSelector = ({
+    exercises,
+    selectedExercise,
+    onSelectExercise,
+    disabled = false,
+}: AnalyticsExerciseSelectorProps) => {
+    const [open, setOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
+
+    const filteredExercises = useMemo(() => {
+        const query = searchQuery.trim().toLowerCase();
+        if (!query) return exercises;
+        return exercises.filter((exercise) => exercise.name.toLowerCase().includes(query));
+    }, [exercises, searchQuery]);
+
+    const handleOpenChange = (nextOpen: boolean) => {
+        setOpen(nextOpen);
+        if (!nextOpen) {
+            setSearchQuery("");
+        }
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={handleOpenChange}>
+            <DialogTrigger asChild>
+                <Button
+                    variant="ghost"
+                    disabled={disabled}
+                    className="h-auto max-w-full justify-start gap-1.5 rounded-[14px] px-0 py-0 text-left text-2xl font-semibold text-foreground hover:bg-transparent hover:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                >
+                    <span className="truncate" title={selectedExercise?.name || "Exercise"}>
+                        {selectedExercise ? selectedExercise.name : "Exercise"}
+                    </span>
+                    <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                </Button>
+            </DialogTrigger>
+            <DialogContent
+                className={cn(
+                    workoutDialogClassName,
+                    "!left-0 !top-0 !h-[100dvh] !w-screen !max-w-none !translate-x-0 !translate-y-0 rounded-none p-4 sm:!left-[50%] sm:!top-[50%] sm:!h-auto sm:!w-full sm:!max-w-md sm:!translate-x-[-50%] sm:!translate-y-[-50%] sm:rounded-[28px] sm:p-5"
+                )}
+                onOpenAutoFocus={(event) => event.preventDefault()}
+            >
+                <DialogHeader>
+                    <DialogTitle className="text-xl text-foreground">Select Exercise</DialogTitle>
+                </DialogHeader>
+                <div className="flex min-h-0 flex-1 flex-col space-y-4 pt-4">
+                    <div className="relative">
+                        <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/75" />
+                        <Input
+                            placeholder="Search exercises..."
+                            value={searchQuery}
+                            onChange={(event) => setSearchQuery(event.target.value)}
+                            className={`${workoutMenuInputClassName} pl-11`}
+                        />
+                    </div>
+
+                    <div className="stone-surface min-h-0 flex-1 space-y-1 overflow-y-auto rounded-[18px] p-2 sm:max-h-80">
+                        {filteredExercises.length > 0 ? (
+                            filteredExercises.map((exercise) => (
+                                <Button
+                                    key={exercise.id}
+                                    variant="ghost"
+                                    onClick={() => {
+                                        onSelectExercise(exercise);
+                                        setOpen(false);
+                                        setSearchQuery("");
+                                    }}
+                                    disabled={exercise.id === selectedExercise?.id}
+                                    className={`${workoutMenuOptionClassName} h-11 select-none justify-start px-4 text-sm ${
+                                        exercise.id === selectedExercise?.id ? "bg-white/[0.03]" : ""
+                                    }`}
+                                >
+                                    <span className="truncate">{exercise.name}</span>
+                                    {exercise.exercise_category && exercise.exercise_category !== "weights" && (
+                                        <span className={cn(
+                                            "ml-auto shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium",
+                                            CATEGORY_BADGE_STYLES[exercise.exercise_category] ?? "bg-white/[0.06] text-foreground/50"
+                                        )}>
+                                            {CATEGORY_LABELS[exercise.exercise_category] ?? exercise.exercise_category}
+                                        </span>
+                                    )}
+                                </Button>
+                            ))
+                        ) : (
+                            <p className="py-4 text-center text-sm text-muted-foreground">No matching exercises found</p>
+                        )}
+                    </div>
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
 const OneRepMaxView: React.FC<OneRepMaxProps> = ({
     userId,
     exercises,
@@ -131,6 +266,7 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
     errorExercises,
     embedded = false,
 }) => {
+    const [lockedTooltip, setLockedTooltip] = useState<LockedTooltipState | null>(null);
     const {
         selectedExercise,
         setSelectedExercise,
@@ -145,6 +281,19 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
         domain,
         ticks
     } = useOneRepMax(userId, exercises);
+
+    const handleSelectExercise = (exercise: Exercise) => {
+        setSelectedExercise(exercise);
+        setLockedTooltip(null);
+    };
+
+    const captureTooltip = (state: ChartPointerState | null | undefined) => {
+        const label = typeof state?.activeLabel === "number" ? state.activeLabel : undefined;
+        const payload = state?.activePayload as ChartTooltipEntry[] | undefined;
+
+        if (label == null || !payload?.length) return;
+        setLockedTooltip({ label, payload });
+    };
 
     const legendPayload = useMemo(() => {
         return allCombinationKeys.map((key, index) => {
@@ -193,30 +342,12 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
                 <div className={embedded ? "" : "stone-surface rounded-[26px] p-5 md:p-6"}>
                     <CardHeader className="mb-4 p-0 md:pb-0">
                         <div className="mb-4 flex items-center">
-                            <div className="relative inline-flex items-center cursor-pointer min-w-0">
-                                <span className="text-2xl font-semibold truncate" title={selectedExercise?.name || 'Exercise'}>
-                                    {selectedExercise ? selectedExercise.name : "Exercise"}
-                                </span>
-                                <div className="flex items-center ml-1">
-                                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                                </div>
-                                <select
-                                    className="absolute inset-0 w-full h-full opacity-0 appearance-none cursor-pointer"
-                                    value={selectedExercise?.id || ""}
-                                    onChange={(e) => {
-                                        const selected = exercises.find(ex => ex.id === e.target.value);
-                                        setSelectedExercise(selected || null);
-                                    }}
-                                    disabled={isLoadingExercises}
-                                >
-                                    <option value="" disabled={!!selectedExercise}>-- Select an Exercise --</option>
-                                    {exercises.map((exercise) => (
-                                        <option key={exercise.id} value={exercise.id}>
-                                            {exercise.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
+                            <AnalyticsExerciseSelector
+                                exercises={exercises}
+                                selectedExercise={selectedExercise}
+                                onSelectExercise={handleSelectExercise}
+                                disabled={isLoadingExercises}
+                            />
                         </div>
 
                         {selectedExercise && (
@@ -252,7 +383,9 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
                                     <ResponsiveContainer width="100%" height={400}>
                                         <LineChart
                                             data={chartData}
-                                            margin={{ top: 5, right: -15, left: 20, bottom: 5 }}
+                                            margin={{ top: 10, right: 4, left: 8, bottom: 5 }}
+                                            onClick={captureTooltip}
+                                            onTouchEnd={captureTooltip}
                                         >
                                             <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.06)" />
                                             <XAxis
@@ -273,7 +406,13 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
                                                 axisLine={false}
                                                 tickLine={false}
                                             />
-                                            <Tooltip content={<CustomTooltip />} cursor={false} />
+                                            <Tooltip
+                                                content={<CustomTooltip />}
+                                                cursor={{ stroke: 'rgba(214, 223, 218, 0.18)', strokeWidth: 1 }}
+                                                active={lockedTooltip ? true : undefined}
+                                                label={lockedTooltip?.label}
+                                                payload={lockedTooltip?.payload}
+                                            />
                                             <Legend
                                                 onClick={(data) => {
                                                     if (data.id) {
@@ -305,9 +444,9 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
                                                         dataKey={key}
                                                         name={displayName}
                                                         stroke={lineColors[index % lineColors.length]}
-                                                        strokeWidth={2.2}
-                                                        dot={{ r: 2.75, fill: lineColors[index % lineColors.length], strokeWidth: 0 }}
-                                                        activeDot={{ r: 7, fill: lineColors[index % lineColors.length] }}
+                                                        strokeWidth={2.6}
+                                                        dot={{ r: 4, fill: lineColors[index % lineColors.length], strokeWidth: 0 }}
+                                                        activeDot={{ r: 9, fill: lineColors[index % lineColors.length], stroke: 'rgba(214, 223, 218, 0.22)', strokeWidth: 10 }}
                                                         connectNulls={true}
                                                     />
                                                 );
