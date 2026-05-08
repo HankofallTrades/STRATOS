@@ -177,8 +177,8 @@ const ExerciseSelector = ({
           className={cn(
             workoutDialogClassName,
             isSearchFocused
-              ? "!top-4 !translate-y-0 sm:!top-[50%] sm:!translate-y-[-50%]"
-              : "!left-0 !top-0 !h-[100dvh] !w-screen !max-w-none !translate-x-0 !translate-y-0 rounded-none p-4 sm:!left-[50%] sm:!top-[50%] sm:!h-auto sm:!w-full sm:!max-w-md sm:!translate-x-[-50%] sm:!translate-y-[-50%] sm:rounded-[28px] sm:p-5"
+              ? "!left-0 !top-0 !h-[100dvh] !w-screen !max-w-none !translate-x-0 !translate-y-0 rounded-none p-4 sm:!left-[50%] sm:!top-[50%] sm:!h-auto sm:!w-full sm:!max-w-md sm:!translate-x-[-50%] sm:!translate-y-[-50%] sm:rounded-[28px] sm:p-5"
+              : "!top-4 !translate-y-0 sm:!top-[50%] sm:!translate-y-[-50%]"
           )}
           onOpenAutoFocus={(e) => e.preventDefault()}
           onInteractOutside={(e) => {
@@ -255,7 +255,7 @@ const ExerciseSelector = ({
                       setIsConfirmDeleteDialogOpen(true);
                     }}
                     disabled={exercise.id === disabledExerciseId}
-                    className={`${workoutMenuOptionClassName} h-11 select-none justify-start px-4 text-sm ${
+                    className={`${workoutMenuOptionClassName} !bg-[var(--stone-surface)] h-11 select-none justify-start px-4 text-sm ${
                       exercise.id === disabledExerciseId ? "bg-white/[0.03]" : ""
                     }`}
                     style={{ WebkitTouchCallout: 'none' }}
