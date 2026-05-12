@@ -13,6 +13,7 @@ export const useNutrition = (userId: string | null) => {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['dailyProteinIntake', userId, today] });
+            queryClient.invalidateQueries({ queryKey: ['analyticsRecoverySnapshot', userId, today] });
             toast.success('Protein logged successfully!');
         },
         onError: (error: unknown) => {

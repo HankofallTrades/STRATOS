@@ -1,5 +1,5 @@
 import { Barbell } from "@phosphor-icons/react";
-import { ChevronDown, Clock, Play, Square } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 
 import { Button } from "@/components/core/button";
 import { Skeleton } from "@/components/core/skeleton";
@@ -26,12 +26,12 @@ import { Textarea } from "@/components/core/textarea";
 import { useWorkoutScreen } from "@/domains/fitness/hooks/useWorkoutScreen";
 import SessionFocusSelector from "@/domains/fitness/ui/SessionFocusSelector";
 import WorkoutComponent from "@/domains/fitness/ui/WorkoutComponent";
+import WorkoutSessionStatus from "@/domains/fitness/ui/WorkoutSessionStatus";
 import {
   formatProtocolLabel,
   formatSessionFocusLabel,
   sessionFocusOptions,
 } from "@/domains/fitness/data/workoutScreen";
-import { formatTime } from "@/lib/utils/timeUtils";
 import { cn } from "@/lib/utils/cn";
 
 const builderLabelClassName =
@@ -50,10 +50,6 @@ const builderSelectItemClassName =
 const WorkoutScreen = () => {
   const {
     currentWorkout,
-    displayTime,
-    warmupStartTime,
-    warmupElapsed,
-    warmupSeconds,
     selectedFocus,
     customSessionFocus,
     mesocycleName,
@@ -68,7 +64,6 @@ const WorkoutScreen = () => {
     isCreatingCustomSession,
     nextProgramSession,
     periodProgressValue,
-    focusInfo,
     setSelectedFocus,
     setCustomSessionFocus,
     setMesocycleName,
@@ -362,60 +357,10 @@ const WorkoutScreen = () => {
   return (
     <div className="stone-workout-page w-full">
       <div className="mx-auto flex w-full max-w-[72rem] flex-col px-4 pb-24 pt-4 sm:px-6 md:pb-6 lg:px-8">
-        <div className="stone-panel stone-panel-hero mb-6 flex shrink-0 items-center justify-between gap-3 rounded-[20px] px-5 py-4">
-          <div className="flex min-w-0 items-center gap-3">
-            <Clock className="h-5 w-5 shrink-0 verdigris-text" />
-            <div className="min-w-0">
-              <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-                Session
-              </div>
-              <span className="text-[clamp(1.75rem,5vw,2.25rem)] font-medium leading-none text-foreground">
-                {formatTime(currentWorkout.completed ? currentWorkout.duration : displayTime)}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {focusInfo && (
-              <div className={cn("text-sm font-medium", focusInfo.color)}>
-                {focusInfo.title}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Warmup Timer */}
-        <div className="mb-4 flex items-center gap-3 rounded-[16px] stone-surface px-4 py-3">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-            Warmup
-          </div>
-          {warmupStartTime ? (
-            <>
-              <span className="text-lg font-medium tabular-nums text-foreground">
-                {formatTime(warmupElapsed)}
-              </span>
-              <button
-                onClick={handleStopWarmup}
-                className="ml-auto flex h-8 w-8 items-center justify-center rounded-[10px] bg-rose-500/12 text-rose-400 transition-colors hover:bg-rose-500/20"
-                aria-label="Stop warmup"
-              >
-                <Square size={14} className="fill-current" />
-              </button>
-            </>
-          ) : warmupSeconds ? (
-            <span className="text-sm font-medium text-foreground/60">
-              {formatTime(warmupSeconds)}
-            </span>
-          ) : (
-            <button
-              onClick={handleStartWarmup}
-              className="ml-auto flex h-8 w-8 items-center justify-center rounded-[10px] bg-white/[0.04] text-foreground/60 transition-colors hover:bg-white/[0.08] hover:text-foreground"
-              aria-label="Start warmup"
-            >
-              <Play size={14} className="fill-current" />
-            </button>
-          )}
-        </div>
+        <WorkoutSessionStatus
+          onStartWarmup={handleStartWarmup}
+          onStopWarmup={handleStopWarmup}
+        />
 
         <div>
           <WorkoutComponent />

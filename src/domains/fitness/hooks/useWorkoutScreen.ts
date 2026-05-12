@@ -1,16 +1,11 @@
 import { useState } from "react";
 
 import { useAppDispatch, useAppSelector } from "@/hooks/redux";
-import { useElapsedTime } from "@/hooks/useElapsedTime";
 import { toast } from "@/hooks/use-toast";
 import { usePeriodization } from "@/domains/periodization";
 import type { MesocycleSessionTemplate } from "@/domains/periodization";
 import {
   selectCurrentWorkout,
-  selectSessionFocus,
-  selectWorkoutStartTime,
-  selectWarmupStartTime,
-  selectWarmupSeconds,
   startWorkout as startWorkoutAction,
   startWarmup,
   stopWarmup,
@@ -18,20 +13,11 @@ import {
 import { useAuth } from "@/state/auth/AuthProvider";
 import { useWorkoutPersistence } from "@/domains/fitness/hooks/useWorkout";
 import type { SessionFocus } from "@/lib/types/workout";
-import {
-  buildExercisesFromSessionTemplate,
-  getFocusDisplayInfo,
-} from "@/domains/fitness/data/workoutScreen";
+import { buildExercisesFromSessionTemplate } from "@/domains/fitness/data/workoutScreen";
 
 export const useWorkoutScreen = () => {
   const dispatch = useAppDispatch();
   const currentWorkout = useAppSelector(selectCurrentWorkout);
-  const workoutStartTime = useAppSelector(selectWorkoutStartTime);
-  const sessionFocus = useAppSelector(selectSessionFocus);
-  const warmupStartTime = useAppSelector(selectWarmupStartTime);
-  const warmupSeconds = useAppSelector(selectWarmupSeconds);
-  const displayTime = useElapsedTime(workoutStartTime);
-  const warmupElapsed = useElapsedTime(warmupStartTime);
   const { user } = useAuth();
 
   const [selectedFocus, setSelectedFocus] = useState<SessionFocus | null>(null);
@@ -67,7 +53,6 @@ export const useWorkoutScreen = () => {
         (activeProgram.current_week / activeProgram.mesocycle.duration_weeks) * 100
       )
     : 0;
-  const focusInfo = sessionFocus ? getFocusDisplayInfo(sessionFocus) : null;
 
   const handleStartWorkout = () => {
     dispatch(
@@ -192,11 +177,6 @@ export const useWorkoutScreen = () => {
 
   return {
     currentWorkout,
-    displayTime,
-    warmupStartTime,
-    warmupElapsed,
-    warmupSeconds,
-    sessionFocus,
     selectedFocus,
     customSessionFocus,
     mesocycleName,
@@ -211,7 +191,6 @@ export const useWorkoutScreen = () => {
     isCreatingCustomSession,
     nextProgramSession,
     periodProgressValue,
-    focusInfo,
     setSelectedFocus,
     setCustomSessionFocus,
     setMesocycleName,

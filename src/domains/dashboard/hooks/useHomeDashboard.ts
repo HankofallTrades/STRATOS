@@ -2,14 +2,8 @@ import { useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
-import { fetchUserProfile } from "@/domains/account/data/accountRepository";
-import {
-  fetchRecentCompletedWeightedSetsForPr,
-  fetchRecentWorkoutsSummary,
-} from "@/domains/analytics/data/analyticsRepository";
 import { buildExercisesFromSessionTemplate } from "@/domains/fitness/data/workoutScreen";
 import { useTriad, useHabitCompletions } from "@/domains/habits";
-import { getHabitCompletionDates } from "@/domains/habits/data/repository";
 import { usePeriodization } from "@/domains/periodization";
 import type { SessionFocus } from "@/lib/types/workout";
 import { useAppDispatch, useAppSelector } from "@/hooks/redux";
@@ -21,6 +15,7 @@ import {
 import {
   calculateStreak,
   estimateSessionMinutes,
+  fetchHomeDashboardSnapshot,
   formatEstimatedSessionLabel,
   formatLocalIsoDate,
   formatSessionFocusLabel,
@@ -63,35 +58,29 @@ export const useHomeDashboard = () => {
     [habits]
   );
 
-  const { data: profile } = useQuery({
-    queryKey: ["homeProfile", userId],
+  const { data: dashboardSnapshot, isLoading: isLoadingDashboardSnapshot } = useQuery({
+    queryKey: ["homeDashboardSnapshot", userId, movementHabit?.id ?? null],
     queryFn: async () => {
       if (!userId) return null;
-      return fetchUserProfile(userId);
-    },
-    enabled: !!userId,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const { data: recentWorkouts = [], isLoading: isLoadingRecentWorkouts } = useQuery({
-    queryKey: ["homeRecentWorkouts", userId],
-    queryFn: async () => {
-      if (!userId) return [];
-      return fetchRecentWorkoutsSummary(userId, 5);
+      return fetchHomeDashboardSnapshot(userId, movementHabit?.id ?? null);
     },
     enabled: !!userId,
     staleTime: 60 * 1000,
   });
 
-  const { data: recentPrRows = [], isLoading: isLoadingPrRows } = useQuery({
-    queryKey: ["homeRecentPrRows", userId],
-    queryFn: async () => {
-      if (!userId) return [];
-      return fetchRecentCompletedWeightedSetsForPr(userId);
-    },
-    enabled: !!userId,
-    staleTime: 60 * 1000,
-  });
+  const profile = dashboardSnapshot?.profile ?? null;
+  const recentWorkouts = useMemo(
+    () => dashboardSnapshot?.recentWorkouts ?? [],
+    [dashboardSnapshot?.recentWorkouts]
+  );
+  const recentPrRows = useMemo(
+    () => dashboardSnapshot?.recentPrRows ?? [],
+    [dashboardSnapshot?.recentPrRows]
+  );
+  const movementCompletionDates = useMemo(
+    () => dashboardSnapshot?.movementCompletionDates ?? [],
+    [dashboardSnapshot?.movementCompletionDates]
+  );
 
   const lastSession = recentWorkouts[0] ?? null;
   const workoutLoggedToday = Boolean(
@@ -100,23 +89,19 @@ export const useHomeDashboard = () => {
   const workoutStartedToday = !!currentWorkout && currentWorkout.date.slice(0, 10) === todayIso;
   const workoutMovementDone = workoutStartedToday || workoutLoggedToday;
 
-  const { data: movementStreak = 0 } = useQuery({
-    queryKey: [
-      "movementStreak",
-      userId,
-      movementHabit?.id,
-      todayIso,
-      currentWorkout?.id,
-      lastSession?.workout_created_at,
-    ],
-    queryFn: async () => {
-      if (!userId || !movementHabit?.id) return 0;
-      const completionDates = await getHabitCompletionDates(userId, movementHabit.id, 365);
-      return calculateStreak(completionDates, todayIso, workoutMovementDone);
-    },
-    enabled: !!userId && !!movementHabit?.id,
-    staleTime: 60 * 1000,
-  });
+  const movementStreak = useMemo(() => {
+    if (!movementHabit?.id || !userId) {
+      return 0;
+    }
+
+    return calculateStreak(movementCompletionDates, todayIso, workoutMovementDone);
+  }, [
+    movementCompletionDates,
+    movementHabit?.id,
+    todayIso,
+    userId,
+    workoutMovementDone,
+  ]);
 
   const nextSession = useMemo(() => {
     if (!activeProgram) return null;
@@ -306,8 +291,8 @@ export const useHomeDashboard = () => {
   };
 
   return {
-    isLoadingLastSession: isLoadingRecentWorkouts,
-    isLoadingRecentPr: isLoadingPrRows,
+    isLoadingLastSession: isLoadingDashboardSnapshot,
+    isLoadingRecentPr: isLoadingDashboardSnapshot,
     displayName,
     greeting: greetingFromHour(now.getHours()),
     movementStreakLabel:

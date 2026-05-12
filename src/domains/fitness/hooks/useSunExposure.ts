@@ -13,6 +13,7 @@ export const useSunExposure = (userId: string | null) => {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['dailySunExposure', userId, today] });
+            queryClient.invalidateQueries({ queryKey: ['analyticsRecoverySnapshot', userId, today] });
             toast.success('Sun exposure logged successfully!');
         },
         onError: (error: unknown) => {

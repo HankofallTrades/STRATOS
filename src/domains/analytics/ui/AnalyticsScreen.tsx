@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/core/tabs
 import { Skeleton } from "@/components/core/skeleton";
 import { useAnalyticsScreen } from "@/domains/analytics/hooks/useAnalyticsScreen";
 import { isAnalysisType } from "@/domains/analytics/data/analyticsScreen";
+import { useDeferredMount } from "@/domains/fitness/ui/useDeferredMount";
 
 
 const lazyWithRetry = <TProps extends object>(
@@ -126,6 +127,7 @@ const RecoveryMarkerFallback = () => (
 );
 
 const AnalyticsScreen = () => {
+  const shouldMountRecentWorkouts = useDeferredMount();
   const {
     accentColor,
     accentHighlightColor,
@@ -302,9 +304,13 @@ const AnalyticsScreen = () => {
         </section>
 
         <div>
-          <Suspense fallback={<RecentWorkoutsFallback />}>
-            <RecentWorkouts userId={userId} />
-          </Suspense>
+          {shouldMountRecentWorkouts ? (
+            <Suspense fallback={<RecentWorkoutsFallback />}>
+              <RecentWorkouts userId={userId} />
+            </Suspense>
+          ) : (
+            <RecentWorkoutsFallback />
+          )}
         </div>
       </main>
     </div>

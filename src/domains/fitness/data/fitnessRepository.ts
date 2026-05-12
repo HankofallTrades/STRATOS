@@ -923,6 +923,13 @@ export interface WeeklyZone2CardioData {
     total_minutes: number;
 }
 
+export interface RecoverySnapshot {
+    dailyProtein: DailyProteinIntake | null;
+    dailySunExposure: { total_hours: number } | null;
+    userWeight: UserWeight | null;
+    weeklyZone2Cardio: WeeklyZone2CardioData | null;
+}
+
 /**
  * Gets the total weekly zone 2 cardio minutes for a user.
  */
@@ -946,4 +953,24 @@ export const getWeeklyZone2CardioMinutes = async (userId: string): Promise<Weekl
     }
 
     return { total_minutes: (data as number) || 0 };
+};
+
+export const getRecoverySnapshot = async (
+    userId: string,
+    date: string
+): Promise<RecoverySnapshot> => {
+    const [userWeight, dailyProtein, dailySunExposure, weeklyZone2Cardio] =
+        await Promise.all([
+            getUserWeight(userId),
+            getDailyProteinIntake(userId, date),
+            getDailySunExposure(userId, date),
+            getWeeklyZone2CardioMinutes(userId).catch(() => ({ total_minutes: 0 })),
+        ]);
+
+    return {
+        dailyProtein,
+        dailySunExposure,
+        userWeight,
+        weeklyZone2Cardio,
+    };
 };

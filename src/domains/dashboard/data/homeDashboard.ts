@@ -1,4 +1,11 @@
-import type { RecentWorkoutSummary, CompletedWeightedSetForPr } from "@/domains/analytics/data/analyticsRepository";
+import { fetchUserProfile, type ProfileRow } from "@/domains/account/data/accountRepository";
+import {
+  fetchRecentCompletedWeightedSetsForPr,
+  fetchRecentWorkoutsSummary,
+  type CompletedWeightedSetForPr,
+  type RecentWorkoutSummary,
+} from "@/domains/analytics/data/analyticsRepository";
+import { getHabitCompletionDates } from "@/domains/habits/data/repository";
 import type { SessionFocus } from "@/lib/types/workout";
 import { calculateOneRepMax } from "@/lib/utils/workoutUtils";
 
@@ -19,11 +26,40 @@ export interface RecentWorkoutCardSummary {
   subtitle: string;
 }
 
+export interface HomeDashboardSnapshot {
+  movementCompletionDates: string[];
+  profile: ProfileRow | null;
+  recentPrRows: CompletedWeightedSetForPr[];
+  recentWorkouts: RecentWorkoutSummary[];
+}
+
 export const formatLocalIsoDate = (date: Date): string => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+};
+
+export const fetchHomeDashboardSnapshot = async (
+  userId: string,
+  movementHabitId: string | null
+): Promise<HomeDashboardSnapshot> => {
+  const [profile, recentWorkouts, recentPrRows, movementCompletionDates] =
+    await Promise.all([
+      fetchUserProfile(userId),
+      fetchRecentWorkoutsSummary(userId, 5),
+      fetchRecentCompletedWeightedSetsForPr(userId),
+      movementHabitId
+        ? getHabitCompletionDates(userId, movementHabitId, 365)
+        : Promise.resolve([]),
+    ]);
+
+  return {
+    movementCompletionDates,
+    profile,
+    recentPrRows,
+    recentWorkouts,
+  };
 };
 
 export const daysAgoLabel = (isoDateTime: string): string => {
