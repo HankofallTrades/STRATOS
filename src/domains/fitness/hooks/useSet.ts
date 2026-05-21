@@ -318,10 +318,11 @@ export const useSet = ({
                 }
             } else {
                 const parsedRepsVal = parseInt(localReps);
+                const isRepsInputEmpty = localReps.trim() === '';
                 const nextRepsValue =
                     field === 'reps'
                         ? (Number.isNaN(parsedRepsVal) ? null : parsedRepsVal)
-                        : set.reps;
+                        : (isRepsInputEmpty ? null : set.reps);
                 const updatePayload: StrengthSetUpdatePayload = {
                     ...baseUpdatePayload,
                     reps: nextRepsValue,
