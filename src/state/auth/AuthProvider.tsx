@@ -4,14 +4,11 @@ import React, {
   useEffect,
   useState,
   ReactNode,
-} from "react";
-import { Session, User } from "@supabase/supabase-js";
-import { supabase } from "@/lib/integrations/supabase/client";
-import { OnboardingDialog } from "@/domains/account/ui/OnboardingDialog";
-import { fetchUserProfile, type ProfileRow } from "@/domains/account/data/accountRepository";
-import type { Database } from '@/lib/integrations/supabase/types';
-
-
+} from 'react';
+import { Session, User } from '@supabase/supabase-js';
+import { supabase } from '@/lib/integrations/supabase/client';
+import { OnboardingDialog } from '@/domains/account/ui/OnboardingDialog';
+import { useOnboardingPrompt } from '@/state/auth/hooks/useOnboardingPrompt';
 
 type AuthContextType = {
   session: Session | null;
@@ -30,165 +27,72 @@ type AuthProviderProps = {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true); // Start as true until initial check is done
-  const [showOnboarding, setShowOnboarding] = useState(false);
-  const [profileChecked, setProfileChecked] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const {
+    showOnboarding,
+    setShowOnboarding,
+    triggerOnboarding,
+    markOnboardingComplete,
+  } = useOnboardingPrompt(user, loading);
 
   useEffect(() => {
-    // Attempt to get the session initially
     supabase.auth
       .getSession()
-      .then(({ data: { session } }) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false); // Initial check complete
+      .then(({ data: { session: initialSession } }) => {
+        setSession(initialSession);
+        setUser(initialSession?.user ?? null);
+        setLoading(false);
       })
-      .catch((error) => {
-        // console.error("Error getting initial session:", error);
-        setLoading(false); // Still finish loading even if there's an error
+      .catch(() => {
+        setLoading(false);
       });
 
-    // Listen for auth state changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      // console.log("Auth state changed:", _event, session);
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (_event !== 'INITIAL_SESSION') {
-        setLoading(false); // Ensure loading is false after subsequent changes
+    } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+      if (event !== 'INITIAL_SESSION') {
+        setLoading(false);
       }
     });
 
-    // Cleanup subscription on unmount
     return () => {
       subscription?.unsubscribe();
     };
   }, []);
 
-  // Effect to check profile and trigger onboarding if needed
-  useEffect(() => {
-    // Only run if we have a user, initial auth loading is done, and we haven't checked the profile yet
-    if (user && !loading && !profileChecked) {
-      const checkProfile = async () => {
-        console.log("Checking user profile for onboarding completion...");
-        try {
-          const profileData = await fetchUserProfile(user.id);
-
-          // Check if any required fields are missing (null or undefined)
-          const needsOnboarding =
-            !profileData || // No profile row exists
-            profileData.age === null ||
-            profileData.height === null ||
-            profileData.weight === null ||
-            profileData.focus === null ||
-            profileData.preferred_weight_unit === null ||
-            profileData.preferred_height_unit === null ||
-            profileData.preferred_distance_unit === null;
-
-          if (needsOnboarding) {
-            console.log("User needs onboarding.");
-            setShowOnboarding(true);
-          } else {
-            console.log("User has completed onboarding.");
-          }
-        } catch (err) {
-          console.error("Unexpected error during profile check:", err);
-        }
-        setProfileChecked(true); // Mark profile as checked, even if there was an error
-      };
-
-      checkProfile();
-    }
-
-    // Reset profile check if user logs out
-    if (!user) {
-      setProfileChecked(false);
-      setShowOnboarding(false); // Ensure dialog is closed on logout
-    }
-
-  }, [user, loading, profileChecked]);
-
-  // Function to manually trigger the onboarding dialog
-  const triggerOnboarding = () => {
-    console.log("Manually triggering onboarding flow...");
-    setProfileChecked(false); // Reset check to allow dialog to show even if profile was previously complete
-    setShowOnboarding(true);
-  };
-
   const signOut = async () => {
     setLoading(true);
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      // console.error("Error signing out:", error);
-      // Optionally handle sign-out error (e.g., show a toast)
-    }
-    // State will be updated by onAuthStateChange listener
+    await supabase.auth.signOut();
     setLoading(false);
   };
 
-  const value = {
-    session,
-    user,
-    loading,
-    signOut,
-    triggerOnboarding,
-  };
-
-  // Don't render children until the initial session check is complete
   return (
-    <AuthContext.Provider value={value}>
-      {/* {!loading && children}  // Option 1: Render children only when not loading */}
-      {children}             {/* Option 2: Render children always, handle loading state in components */}
-
-      {/* Render Onboarding Dialog conditionally */}
+    <AuthContext.Provider
+      value={{
+        session,
+        user,
+        loading,
+        signOut,
+        triggerOnboarding,
+      }}
+    >
+      {children}
       <OnboardingDialog
         open={showOnboarding}
-        onOpenChange={setShowOnboarding} // Allow closing via overlay click etc.
-        onComplete={() => {
-          setShowOnboarding(false); // Close dialog on successful completion
-          setProfileChecked(true); // Mark as checked since they just completed it
-          // Optionally: re-fetch profile data if needed elsewhere immediately
-        }}
+        onOpenChange={setShowOnboarding}
+        onComplete={markOnboardingComplete}
       />
     </AuthContext.Provider>
   );
 };
 
-// Custom hook to use the Auth context
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 };
-
-// Optional: Helper component to require authentication
-type ProtectedRouteProps = {
-  children: ReactNode;
-  // You might add roles or permissions here later
-};
-
-// export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-//   const { session, loading } = useAuth();
-//   const navigate = useNavigate(); // Assuming react-router-dom
-
-//   useEffect(() => {
-//     if (!loading && !session) {
-//       navigate('/login'); // Redirect to login if not authenticated after loading
-//     }
-//   }, [session, loading, navigate]);
-
-//   if (loading) {
-//     // Optional: Render a loading spinner or skeleton screen
-//     return <div>Loading...</div>;
-//   }
-
-//   if (!session) {
-//     // Should be redirected by useEffect, but return null as a fallback
-//     return null;
-//   }
-
-//   return <>{children}</>;
-// }; 
