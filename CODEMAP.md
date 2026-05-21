@@ -6,7 +6,7 @@ This file is the fast operational map for agents and future sessions. It is not 
 
 - Architecture rename is complete: use `ui / hooks / data`, not `view / controller / model`.
 - `npm run build` passes.
-- `npm run lint` currently reports 8 warnings and 0 errors.
+- `npm run lint` currently reports warnings but no errors (react-refresh export warnings in shared providers/components).
 - There is no test script in `package.json`.
 - Do not run `npm run build` and `npm run lint` at the same time. Vite can create transient `vite.config.ts.timestamp-*.mjs` files that make ESLint fail with `ENOENT`.
 - Public routes do not load Redux persistence or the protected shell up front; `App.tsx` lazy-loads the protected app shell after route match.
@@ -89,8 +89,8 @@ Pages should stay thin wrappers around domain screens.
 ### Auth
 
 - `src/state/auth/AuthProvider.tsx`
-  - Single source of truth for `session`, `user`, `loading`, and onboarding trigger state.
-  - Also owns onboarding completeness checks and renders `OnboardingDialog`.
+  - Single source of truth for `session`, `user`, and auth identity readiness (`loading`).
+  - Renders `OnboardingDialog`, while onboarding completeness checks are delegated to `src/state/auth/hooks/useOnboardingPrompt.ts`.
 - `src/domains/account/ui/AuthForm.tsx`
   - Still imports Supabase directly only for the Supabase Auth widget.
   - Exposes email self-signup by default for public account creation.
@@ -99,6 +99,8 @@ Pages should stay thin wrappers around domain screens.
 ### Server State
 
 - React Query is the canonical server-state layer.
+- QueryClient defaults are centralized in `src/lib/query/loadingPolicies.ts`.
+- Domain hooks can use `createAppQueryOptions` from `src/lib/query/loadingPolicies.ts` to express loading intent (`static` / `session` / `background`).
 - Query creation mostly lives in domain hooks.
 - Repository functions in `src/domains/*/data` are the fetch/mutation layer.
 
@@ -122,6 +124,7 @@ The workout flow is the main Redux-heavy area. Most other features should prefer
 - Hooks:
   - `hooks/useOnboarding.ts`
   - `hooks/useSettingsScreen.ts`
+  - `src/state/auth/hooks/useOnboardingPrompt.ts` (auth-adjacent onboarding completeness trigger)
     - Owns profile preferences, coach provider preferences, and active training-period reset/create from Settings.
 - UI:
   - `ui/AuthForm.tsx`
