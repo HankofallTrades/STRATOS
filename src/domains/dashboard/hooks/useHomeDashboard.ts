@@ -3,9 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
 import { buildExercisesFromSessionTemplate } from "@/domains/fitness/data/workoutScreen";
+import {
+  createBaseWorkoutStartPayload,
+  createProgramWorkoutStartPayload,
+} from "@/domains/fitness/data/workoutStartPayload";
 import { useTriad, useHabitCompletions } from "@/domains/habits";
 import { usePeriodization } from "@/domains/periodization";
-import type { SessionFocus } from "@/lib/types/workout";
 import { useAppDispatch, useAppSelector } from "@/hooks/redux";
 import { useAuth } from "@/state/auth/AuthProvider";
 import {
@@ -266,26 +269,26 @@ export const useHomeDashboard = () => {
 
     if (nextSession && activeProgram) {
       dispatch(
-        startWorkoutAction({
-          ownerUserId: user?.id ?? null,
-          sessionFocus: (nextSession.session_focus ??
-            activeProgram.mesocycle.goal_focus) as SessionFocus,
-          mesocycleId: activeProgram.mesocycle.id,
-          mesocycleSessionId: nextSession.id,
-          mesocycleWeek: activeProgram.current_week,
-          mesocycleProtocol: activeProgram.mesocycle.protocol,
-          initialExercises: await buildExercisesFromSessionTemplate(nextSession, userId ?? ""),
-        })
+        startWorkoutAction(
+          createProgramWorkoutStartPayload({
+            ownerUserId: user?.id ?? null,
+            activeProgram,
+            sessionTemplate: nextSession,
+            initialExercises: await buildExercisesFromSessionTemplate(nextSession, userId ?? ""),
+          })
+        )
       );
       navigate("/workout");
       return;
     }
 
     dispatch(
-      startWorkoutAction({
-        ownerUserId: user?.id ?? null,
-        sessionFocus: activeProgram?.mesocycle.goal_focus,
-      })
+      startWorkoutAction(
+        createBaseWorkoutStartPayload({
+          ownerUserId: user?.id ?? null,
+          sessionFocus: activeProgram?.mesocycle.goal_focus,
+        })
+      )
     );
     navigate("/workout");
   };
