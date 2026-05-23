@@ -14,6 +14,10 @@ import { useAuth } from "@/state/auth/AuthProvider";
 import { useWorkoutPersistence } from "@/domains/fitness/hooks/useWorkout";
 import type { SessionFocus } from "@/lib/types/workout";
 import { buildExercisesFromSessionTemplate } from "@/domains/fitness/data/workoutScreen";
+import {
+  createBaseWorkoutStartPayload,
+  createProgramWorkoutStartPayload,
+} from "@/domains/fitness/data/workoutStartPayload";
 
 export const useWorkoutScreen = () => {
   const dispatch = useAppDispatch();
@@ -56,10 +60,12 @@ export const useWorkoutScreen = () => {
 
   const handleStartWorkout = () => {
     dispatch(
-      startWorkoutAction({
-        ownerUserId: user?.id ?? null,
-        sessionFocus: selectedFocus || undefined,
-      })
+      startWorkoutAction(
+        createBaseWorkoutStartPayload({
+          ownerUserId: user?.id ?? null,
+          sessionFocus: selectedFocus || undefined,
+        })
+      )
     );
   };
 
@@ -104,16 +110,14 @@ export const useWorkoutScreen = () => {
     if (!activeProgram) return;
 
     dispatch(
-      startWorkoutAction({
-        ownerUserId: user?.id ?? null,
-        sessionFocus: (sessionTemplate.session_focus ??
-          activeProgram.mesocycle.goal_focus) as SessionFocus,
-        mesocycleId: activeProgram.mesocycle.id,
-        mesocycleSessionId: sessionTemplate.id,
-        mesocycleWeek: activeProgram.current_week,
-        mesocycleProtocol: activeProgram.mesocycle.protocol,
-        initialExercises: await buildExercisesFromSessionTemplate(sessionTemplate, user?.id ?? ""),
-      })
+      startWorkoutAction(
+        createProgramWorkoutStartPayload({
+          ownerUserId: user?.id ?? null,
+          activeProgram,
+          sessionTemplate,
+          initialExercises: await buildExercisesFromSessionTemplate(sessionTemplate, user?.id ?? ""),
+        })
+      )
     );
   };
 
