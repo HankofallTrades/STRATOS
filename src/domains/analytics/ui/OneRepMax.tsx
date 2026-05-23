@@ -159,18 +159,30 @@ const SelectableDot = ({ cx, cy, fill, payload, dataKey, name, value, onSelect }
         return null;
     }
 
+    const selectPoint = () => {
+        onSelect?.({
+            label: payload.workout_timestamp,
+            payload: [{
+                dataKey,
+                name,
+                payload,
+                value: numericValue,
+                color: fill,
+            }],
+        });
+    };
+
     return (
         <g>
-            <circle cx={cx} cy={cy} r={14} fill="transparent" onClick={() => onSelect?.({
-                label: payload.workout_timestamp,
-                payload: [{
-                    dataKey,
-                    name,
-                    payload,
-                    value: numericValue,
-                    color: fill,
-                }],
-            })} />
+            <circle
+                cx={cx}
+                cy={cy}
+                r={20}
+                fill="transparent"
+                style={{ cursor: 'pointer' }}
+                onMouseDown={selectPoint}
+                onTouchStart={selectPoint}
+            />
             <circle cx={cx} cy={cy} r={4.5} fill={fill} strokeWidth={0} />
         </g>
     );
@@ -434,10 +446,11 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
                                             />
                                             <Tooltip
                                                 content={<CustomTooltip />}
-                                                cursor={{ stroke: 'rgba(214, 223, 218, 0.18)', strokeWidth: 1 }}
-                                                active={lockedTooltip ? true : undefined}
+                                                cursor={lockedTooltip ? { stroke: 'rgba(214, 223, 218, 0.18)', strokeWidth: 1 } : false}
+                                                active={!!lockedTooltip}
                                                 label={lockedTooltip?.label}
                                                 payload={lockedTooltip?.payload}
+                                                trigger="click"
                                             />
                                             <Legend
                                                 onClick={(data) => {
