@@ -55,9 +55,16 @@ interface LockedTooltipState {
     payload?: ChartTooltipEntry[];
 }
 
-interface ChartPointerState {
-    activeLabel?: unknown;
-    activePayload?: unknown;
+interface SelectableDotProps {
+    cx?: number;
+    cy?: number;
+    stroke?: string;
+    fill?: string;
+    payload?: UnifiedDataPoint;
+    dataKey?: string;
+    name?: string;
+    value?: number | string | null;
+    onSelect?: (state: LockedTooltipState) => void;
 }
 
 interface CombinationLegendEntry {
@@ -140,6 +147,33 @@ const CustomTooltip = ({ active, payload, label }: ChartTooltipProps) => {
         );
     }
     return null;
+};
+
+const SelectableDot = ({ cx, cy, fill, payload, dataKey, name, value, onSelect }: SelectableDotProps) => {
+    if (cx == null || cy == null || value == null || !payload || !dataKey || !name) {
+        return null;
+    }
+
+    const numericValue = typeof value === 'number' ? value : Number(value);
+    if (Number.isNaN(numericValue)) {
+        return null;
+    }
+
+    return (
+        <g>
+            <circle cx={cx} cy={cy} r={14} fill="transparent" onClick={() => onSelect?.({
+                label: payload.workout_timestamp,
+                payload: [{
+                    dataKey,
+                    name,
+                    payload,
+                    value: numericValue,
+                    color: fill,
+                }],
+            })} />
+            <circle cx={cx} cy={cy} r={4.5} fill={fill} strokeWidth={0} />
+        </g>
+    );
 };
 
 interface AnalyticsExerciseSelectorProps {
@@ -287,13 +321,7 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
         setLockedTooltip(null);
     };
 
-    const captureTooltip = (state: ChartPointerState | null | undefined) => {
-        const label = typeof state?.activeLabel === "number" ? state.activeLabel : undefined;
-        const payload = state?.activePayload as ChartTooltipEntry[] | undefined;
-
-        if (label == null || !payload?.length) return;
-        setLockedTooltip({ label, payload });
-    };
+    const captureTooltip = (state: LockedTooltipState) => setLockedTooltip(state);
 
     const legendPayload = useMemo(() => {
         return allCombinationKeys.map((key, index) => {
@@ -384,8 +412,6 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
                                         <LineChart
                                             data={chartData}
                                             margin={{ top: 10, right: 4, left: 8, bottom: 5 }}
-                                            onClick={captureTooltip}
-                                            onTouchEnd={captureTooltip}
                                         >
                                             <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.06)" />
                                             <XAxis
@@ -445,7 +471,13 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
                                                         name={displayName}
                                                         stroke={lineColors[index % lineColors.length]}
                                                         strokeWidth={2.6}
-                                                        dot={{ r: 4, fill: lineColors[index % lineColors.length], strokeWidth: 0 }}
+                                                        dot={(dotProps) => (
+                                                            <SelectableDot
+                                                                {...dotProps}
+                                                                fill={lineColors[index % lineColors.length]}
+                                                                onSelect={captureTooltip}
+                                                            />
+                                                        )}
                                                         activeDot={{ r: 9, fill: lineColors[index % lineColors.length], stroke: 'rgba(214, 223, 218, 0.22)', strokeWidth: 10 }}
                                                         connectNulls={true}
                                                     />

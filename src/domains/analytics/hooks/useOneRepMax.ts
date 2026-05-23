@@ -16,6 +16,8 @@ export interface UnifiedDataPoint {
 }
 
 const SELECTED_EXERCISE_STORAGE_KEY = 'selectedAnalyticsExerciseId';
+const SELECTED_TIME_RANGE_STORAGE_KEY = 'selectedAnalyticsTimeRange';
+const SELECTED_COMBINATION_STORAGE_KEY = 'selectedAnalyticsCombinationByExercise';
 
 const getCombinationKey = (
     variation?: string | null,
@@ -33,7 +35,13 @@ export const useOneRepMax = (userId: string | undefined, exercises: Exercise[]) 
     const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
     const [allCombinationKeys, setAllCombinationKeys] = useState<string[]>([]);
     const [activeCombinationKeys, setActiveCombinationKeys] = useState<string[]>([]);
-    const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>('ALL');
+    const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>(() => {
+        const storedRange = localStorage.getItem(SELECTED_TIME_RANGE_STORAGE_KEY);
+        const validRanges: TimeRange[] = ['1W', '1M', '3M', '6M', '1Y', 'ALL'];
+        return storedRange && validRanges.includes(storedRange as TimeRange)
+            ? (storedRange as TimeRange)
+            : 'ALL';
+    });
 
     // Initialize/Sync selected exercise from storage
     useEffect(() => {
@@ -51,6 +59,10 @@ export const useOneRepMax = (userId: string | undefined, exercises: Exercise[]) 
             localStorage.setItem(SELECTED_EXERCISE_STORAGE_KEY, selectedExercise.id);
         }
     }, [selectedExercise]);
+
+    useEffect(() => {
+        localStorage.setItem(SELECTED_TIME_RANGE_STORAGE_KEY, selectedTimeRange);
+    }, [selectedTimeRange]);
 
     // Fetch history
     const {
@@ -115,11 +127,28 @@ export const useOneRepMax = (userId: string | undefined, exercises: Exercise[]) 
                 }
             });
 
-            const newActiveKeys = mostFrequentKey ? [mostFrequentKey] : (sortedKeys.length > 0 ? [sortedKeys[0]] : []);
+            const storedCombinationsRaw = localStorage.getItem(SELECTED_COMBINATION_STORAGE_KEY);
+            const storedCombinations: Record<string, string> = storedCombinationsRaw ? JSON.parse(storedCombinationsRaw) : {};
+            const storedKeyForExercise = currentExerciseId ? storedCombinations[currentExerciseId] : undefined;
+
+            const preferredKey = storedKeyForExercise && sortedKeys.includes(storedKeyForExercise)
+                ? storedKeyForExercise
+                : mostFrequentKey;
+
+            const newActiveKeys = preferredKey ? [preferredKey] : (sortedKeys.length > 0 ? [sortedKeys[0]] : []);
             setActiveCombinationKeys(newActiveKeys);
             setLastInitializedExerciseId(currentExerciseId);
         }
     }, [maxE1RMHistory, selectedExercise?.id, allCombinationKeys, activeCombinationKeys, lastInitializedExerciseId]);
+
+    useEffect(() => {
+        if (!selectedExercise?.id || activeCombinationKeys.length === 0) return;
+
+        const storedCombinationsRaw = localStorage.getItem(SELECTED_COMBINATION_STORAGE_KEY);
+        const storedCombinations: Record<string, string> = storedCombinationsRaw ? JSON.parse(storedCombinationsRaw) : {};
+        storedCombinations[selectedExercise.id] = activeCombinationKeys[0];
+        localStorage.setItem(SELECTED_COMBINATION_STORAGE_KEY, JSON.stringify(storedCombinations));
+    }, [selectedExercise?.id, activeCombinationKeys]);
 
     // Transformation logic (moved from useMemo for clarity or kept as is)
     const chartContext = useMemo(() => {
