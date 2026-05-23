@@ -72,6 +72,12 @@ interface CombinationLegendEntry {
     color?: string;
 }
 
+interface TrendSummary {
+    latest: number | null;
+    peak: number | null;
+    change: number | null;
+}
+
 const formatDate = (dateInput: Date | string): string => {
     const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
     if (isNaN(date.getTime())) return "Invalid Date";
@@ -335,6 +341,31 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
 
     const captureTooltip = (state: LockedTooltipState) => setLockedTooltip(state);
 
+    const trendSummary = useMemo<TrendSummary>(() => {
+        if (!chartData.length || activeCombinationKeys.length === 0) {
+            return { latest: null, peak: null, change: null };
+        }
+
+        const activeSeriesValues = chartData
+            .map((point) => {
+                const values = activeCombinationKeys
+                    .map((key) => point[key])
+                    .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+                return values.length > 0 ? Math.max(...values) : null;
+            })
+            .filter((value): value is number => value !== null);
+
+        if (activeSeriesValues.length === 0) {
+            return { latest: null, peak: null, change: null };
+        }
+
+        const latest = activeSeriesValues[activeSeriesValues.length - 1];
+        const first = activeSeriesValues[0];
+        const peak = Math.max(...activeSeriesValues);
+
+        return { latest, peak, change: latest - first };
+    }, [activeCombinationKeys, chartData]);
+
     const legendPayload = useMemo(() => {
         return allCombinationKeys.map((key, index) => {
             const parts = key.split('|');
@@ -420,6 +451,24 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
                                 ) : errorHistory ? (
                                     <p className="text-red-500 italic text-center py-10">Error loading history: {errorHistory.message}</p>
                                 ) : chartData.length > 0 ? (
+                                    <>
+                                    <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                                        <div className="stone-panel rounded-[14px] border-white/10 p-3">
+                                            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Latest</p>
+                                            <p className="text-lg font-semibold text-foreground">{trendSummary.latest != null ? `${trendSummary.latest.toFixed(1)} kg` : "—"}</p>
+                                        </div>
+                                        <div className="stone-panel rounded-[14px] border-white/10 p-3">
+                                            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Range Peak</p>
+                                            <p className="text-lg font-semibold text-foreground">{trendSummary.peak != null ? `${trendSummary.peak.toFixed(1)} kg` : "—"}</p>
+                                        </div>
+                                        <div className="stone-panel rounded-[14px] border-white/10 p-3">
+                                            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Range Trend</p>
+                                            <p className={cn("text-lg font-semibold", trendSummary.change == null ? "text-foreground" : trendSummary.change >= 0 ? "text-emerald-400" : "text-rose-400")}>
+                                                {trendSummary.change != null ? `${trendSummary.change >= 0 ? "+" : ""}${trendSummary.change.toFixed(1)} kg` : "—"}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <p className="mb-3 text-xs text-muted-foreground">Tap legend labels to compare variation/equipment lines.</p>
                                     <ResponsiveContainer width="100%" height={400}>
                                         <LineChart
                                             data={chartData}
@@ -498,6 +547,7 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
                                             })}
                                         </LineChart>
                                     </ResponsiveContainer>
+                                    </>
                                 ) : (
                                     <p className="text-muted-foreground italic text-center py-10">
                                         {selectedTimeRange === 'ALL'
