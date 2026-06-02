@@ -634,12 +634,14 @@ export type Database = {
           age: number | null
           avatar_url: string | null
           created_at: string
+          experience_level: string | null
           focus: string | null
           height: number | null
           id: string
           preferred_distance_unit: string | null
           preferred_height_unit: string | null
           preferred_weight_unit: string | null
+          training_age_years: number | null
           updated_at: string
           username: string | null
           weight: number | null
@@ -648,12 +650,14 @@ export type Database = {
           age?: number | null
           avatar_url?: string | null
           created_at?: string
+          experience_level?: string | null
           focus?: string | null
           height?: number | null
           id: string
           preferred_distance_unit?: string | null
           preferred_height_unit?: string | null
           preferred_weight_unit?: string | null
+          training_age_years?: number | null
           updated_at?: string
           username?: string | null
           weight?: number | null
@@ -662,12 +666,14 @@ export type Database = {
           age?: number | null
           avatar_url?: string | null
           created_at?: string
+          experience_level?: string | null
           focus?: string | null
           height?: number | null
           id?: string
           preferred_distance_unit?: string | null
           preferred_height_unit?: string | null
           preferred_weight_unit?: string | null
+          training_age_years?: number | null
           updated_at?: string
           username?: string | null
           weight?: number | null
@@ -883,6 +889,50 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      user_facts: {
+        Row: {
+          category: string
+          content: string
+          created_at: string
+          detail: Json | null
+          id: string
+          source: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          content: string
+          created_at?: string
+          detail?: Json | null
+          id?: string
+          source?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          content?: string
+          created_at?: string
+          detail?: Json | null
+          id?: string
+          source?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_facts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
         ]
       }
       workout_exercises: {
