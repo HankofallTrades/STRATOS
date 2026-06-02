@@ -75,10 +75,15 @@ This file is the fast operational map for agents and future sessions. It is not 
   - Page: `src/pages/Coach.tsx`
   - Screen: `src/domains/guidance/ui/CoachScreen.tsx`
   - Main hook: `src/domains/guidance/hooks/useCoachScreen.ts`
-- `/settings`
+- `/profile`
+  - Page: `src/pages/Profile.tsx`
+  - Screen: `src/domains/account/ui/ProfileScreen.tsx`
+  - Main hook: `src/domains/account/hooks/useProfileModel.ts`
+- `/profile/settings`
   - Page: `src/pages/Settings.tsx`
   - Screen: `src/domains/account/ui/SettingsScreen.tsx`
   - Main hook: `src/domains/account/hooks/useSettingsScreen.ts`
+  - Note: legacy `/settings` redirects here.
 - `*`
   - Page: `src/pages/NotFound.tsx`
 
@@ -117,16 +122,23 @@ The workout flow is the main Redux-heavy area. Most other features should prefer
 ### `src/domains/account`
 
 - Purpose: auth-adjacent profile flows, onboarding, settings.
+- Note: `/profile` is now the primary nav destination for the account domain; `/profile/settings` is nested under it.
 - Data:
   - `data/accountRepository.ts`
+  - `data/userFactsRepository.ts` — CRUD for the `user_facts` table (free-text facts the user teaches the Coach).
 - Hooks:
   - `hooks/useOnboarding.ts`
+  - `hooks/useProfileModel.ts`
+    - Owns profile screen state: user facts, background fields (`experience_level`, `training_age_years`), and the fact/about dialogs.
   - `hooks/useSettingsScreen.ts`
     - Owns profile preferences, coach provider preferences, and active training-period reset/create from Settings.
 - UI:
   - `ui/AuthForm.tsx`
   - `ui/OnboardingDialog.tsx`
   - `ui/OnboardingForm.tsx`
+  - `ui/ProfileScreen.tsx` — top-level profile page; surfaces user facts and background fields.
+  - `ui/ProfileFactDialog.tsx` — dialog for adding/editing individual user facts.
+  - `ui/ProfileAboutDialog.tsx` — dialog for editing background fields (experience level, training age).
   - `ui/SettingsScreen.tsx`
 
 ### `src/domains/dashboard`
@@ -225,7 +237,7 @@ Current Coach architecture:
 - The browser only sees provider preference, model preference, and saved-key status metadata such as `last4`.
 - Current tools:
   - `generate_strength_workout` (client)
-  - `get_user_profile_summary` (server)
+  - `get_user_profile_summary` (server) — now also returns active `user_facts` and the background fields (`experience_level`, `training_age_years`).
   - `get_recent_workout_summary` (server)
 
 ### `src/domains/periodization`
@@ -292,6 +304,7 @@ If you touch any of those, read the full file first. They are coordination seams
   - protein and sun exposure
   - habits and goals
   - periodization mesocycles
+  - living profile: `user_facts` table (free-text Coach context per user); `profiles` extended with `experience_level` and `training_age_years` background columns.
 - Legacy migration copies exist in `supabase/migrations_legacy`.
 
 ## Known Debt / Hotspots
