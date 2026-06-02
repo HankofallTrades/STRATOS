@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Pencil, Plus, Settings as SettingsIcon } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { Button } from '@/components/core/button';
 import { useAuth } from '@/state/auth/AuthProvider';
@@ -19,6 +20,9 @@ const CATEGORIES: { key: UserFactCategory; label: string }[] = [
   { key: 'preference', label: 'Preferences' },
   { key: 'equipment', label: 'Equipment' },
 ];
+
+const SECTION_CLASS = "stone-surface rounded-[24px] p-5 md:p-6";
+const LABEL_CLASS = "text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground";
 
 type FactDialogState =
   | { mode: 'closed' }
@@ -57,12 +61,18 @@ const ProfileScreen = () => {
     if (factDialog.mode === 'add') {
       createFact.mutate(
         { category: factDialog.category, content },
-        { onSuccess: () => setFactDialog({ mode: 'closed' }) }
+        {
+          onSuccess: () => setFactDialog({ mode: 'closed' }),
+          onError: () => toast.error('Failed to save. Please try again.'),
+        }
       );
     } else if (factDialog.mode === 'edit') {
       updateFact.mutate(
         { factId: factDialog.fact.id, content },
-        { onSuccess: () => setFactDialog({ mode: 'closed' }) }
+        {
+          onSuccess: () => setFactDialog({ mode: 'closed' }),
+          onError: () => toast.error('Failed to save. Please try again.'),
+        }
       );
     }
   };
@@ -71,6 +81,7 @@ const ProfileScreen = () => {
     if (factDialog.mode !== 'edit') return;
     removeFact.mutate(factDialog.fact.id, {
       onSuccess: () => setFactDialog({ mode: 'closed' }),
+      onError: () => toast.error('Failed to remove. Please try again.'),
     });
   };
 
@@ -94,17 +105,18 @@ const ProfileScreen = () => {
       </header>
 
       {CATEGORIES.map(({ key, label }) => (
-        <section key={key} className="stone-surface rounded-[24px] p-5 md:p-6">
+        <section key={key} className={SECTION_CLASS}>
           <div className="mb-2 flex items-center justify-between">
-            <span className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+            <span className={LABEL_CLASS}>
               {label}
             </span>
             <button
               type="button"
+              aria-label={`Add ${label}`}
               className="text-sm text-primary"
               onClick={() => setFactDialog({ mode: 'add', category: key, label })}
             >
-              <Plus className="inline h-3.5 w-3.5" /> add
+              <Plus aria-hidden className="inline h-3.5 w-3.5" /> add
             </button>
           </div>
           {(factsByCategory[key] ?? []).length === 0 ? (
@@ -123,7 +135,7 @@ const ProfileScreen = () => {
                     className="text-muted-foreground/60"
                     onClick={() => setFactDialog({ mode: 'edit', fact, label })}
                   >
-                    <Pencil className="h-3.5 w-3.5" />
+                    <Pencil aria-hidden className="h-3.5 w-3.5" />
                   </button>
                 </li>
               ))}
@@ -132,13 +144,13 @@ const ProfileScreen = () => {
         </section>
       ))}
 
-      <section className="stone-surface rounded-[24px] p-5 md:p-6">
+      <section className={SECTION_CLASS}>
         <div className="mb-2 flex items-center justify-between">
-          <span className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+          <span className={LABEL_CLASS}>
             Body
           </span>
-          <button type="button" className="text-sm text-primary" onClick={() => setAboutOpen(true)}>
-            <Pencil className="inline h-3.5 w-3.5" /> edit
+          <button type="button" aria-label="Edit body metrics" className="text-sm text-primary" onClick={() => setAboutOpen(true)}>
+            <Pencil aria-hidden className="inline h-3.5 w-3.5" /> edit
           </button>
         </div>
         <div className="grid grid-cols-3 gap-3 text-center">
@@ -150,7 +162,7 @@ const ProfileScreen = () => {
 
       <Link to="/analytics" className="flex items-center justify-between border-t border-border/40 pt-4 text-sm text-muted-foreground">
         <span>Trends &amp; progression</span>
-        <span className="text-primary">Analytics →</span>
+        <span className="text-primary">Analytics <span aria-hidden>→</span></span>
       </Link>
 
       <ProfileFactDialog
@@ -169,7 +181,10 @@ const ProfileScreen = () => {
         profile={profile}
         isSaving={updateProfile.isPending}
         onSubmit={(data) =>
-          updateProfile.mutate(data, { onSuccess: () => setAboutOpen(false) })
+          updateProfile.mutate(data, {
+            onSuccess: () => setAboutOpen(false),
+            onError: () => toast.error('Failed to save. Please try again.'),
+          })
         }
       />
     </div>
