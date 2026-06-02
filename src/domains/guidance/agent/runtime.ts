@@ -89,6 +89,28 @@ const formatProfileSummary = (profile: Record<string, unknown>) => {
   return parts.join(" ");
 };
 
+const formatProfileFacts = (
+  facts: { category: string; content: string }[]
+): string => {
+  if (facts.length === 0) return "";
+  const labels: Record<string, string> = {
+    goal: "Goals",
+    constraint: "Constraints",
+    schedule: "Schedule",
+    preference: "Preferences",
+    equipment: "Equipment",
+  };
+  const order = ["goal", "constraint", "schedule", "preference", "equipment"];
+  const lines = order
+    .map((category) => {
+      const items = facts.filter((f) => f.category === category);
+      if (items.length === 0) return null;
+      return `${labels[category]}: ${items.map((f) => f.content).join("; ")}`;
+    })
+    .filter(Boolean);
+  return lines.length ? `\nUser model — ${lines.join(". ")}.` : "";
+};
+
 const formatDurationMinutes = (durationSeconds: number | null) => {
   if (!durationSeconds || durationSeconds <= 0) {
     return "duration unknown";
@@ -237,7 +259,7 @@ const createCoachAgentTools = (context: CoachServerDataContext) => ({
       const { data, error } = await context.supabase
         .from("profiles")
         .select(
-          "age, focus, height, preferred_distance_unit, preferred_height_unit, preferred_weight_unit, weight"
+          "age, focus, height, preferred_distance_unit, preferred_height_unit, preferred_weight_unit, weight, experience_level, training_age_years"
         )
         .eq("id", context.user.id)
         .maybeSingle();
@@ -252,9 +274,18 @@ const createCoachAgentTools = (context: CoachServerDataContext) => ({
         return createServerToolPayload("The user has not completed a profile yet.");
       }
 
-      return createServerToolPayload(formatProfileSummary(data), {
-        profile: data,
-      });
+      const { data: factRows } = await context.supabase
+        .from("user_facts")
+        .select("category, content")
+        .eq("user_id", context.user.id)
+        .eq("status", "active");
+
+      const facts = (factRows ?? []) as { category: string; content: string }[];
+
+      return createServerToolPayload(
+        `${formatProfileSummary(data)}${formatProfileFacts(facts)}`,
+        { profile: data, facts }
+      );
     },
   }),
 });
