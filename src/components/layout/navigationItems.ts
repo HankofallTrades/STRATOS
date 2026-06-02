@@ -3,7 +3,7 @@ import {
   Dumbbell,
   Home,
   MessageCircle,
-  Settings,
+  User,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -18,7 +18,7 @@ export const navigationItems: NavigationItem[] = [
   { to: '/workout', label: 'Workout', icon: Dumbbell },
   { to: '/analytics', label: 'Analytics', icon: BarChart2 },
   { to: '/coach', label: 'Coach', icon: MessageCircle },
-  { to: '/settings', label: 'Settings', icon: Settings },
+  { to: '/profile', label: 'Profile', icon: User },
 ];
 
 export const isNavigationItemActive = (pathname: string, to: string): boolean => {

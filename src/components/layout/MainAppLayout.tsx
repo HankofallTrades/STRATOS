@@ -1,5 +1,5 @@
 import { Component, Suspense, lazy, type ReactNode } from "react";
-import { Routes, Route, useLocation } from "react-router-dom";
+import { Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { Plus } from "lucide-react";
 
 import NavBar from "@/components/layout/NavBar";
@@ -90,6 +90,7 @@ const Home = lazyWithRetry(() => import("@/pages/Home"));
 const Workout = lazyWithRetry(() => import("@/pages/Workout"));
 const Analytics = lazyWithRetry(() => import("@/pages/Analytics"));
 const Coach = lazyWithRetry(() => import("@/pages/Coach"));
+const Profile = lazyWithRetry(() => import("@/pages/Profile"));
 const Settings = lazyWithRetry(() => import("@/pages/Settings"));
 const NotFound = lazyWithRetry(() => import("@/pages/NotFound"));
 
@@ -122,7 +123,8 @@ const MainAppLayout = () => {
     "/workout",
     "/analytics",
     "/coach",
-    "/settings",
+    "/profile",
+    "/profile/settings",
   ].includes(location.pathname);
 
   return (
@@ -138,7 +140,9 @@ const MainAppLayout = () => {
               <Route path="/workout" element={<Workout />} />
               <Route path="/analytics" element={<Analytics />} />
               <Route path="/coach" element={<Coach />} />
-              <Route path="/settings" element={<Settings />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/profile/settings" element={<Settings />} />
+              <Route path="/settings" element={<Navigate to="/profile/settings" replace />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
