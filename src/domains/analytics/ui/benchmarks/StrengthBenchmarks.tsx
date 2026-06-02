@@ -118,7 +118,7 @@ const StrengthBenchmarksView: React.FC<StrengthBenchmarksProps> = ({
                     <Target className="h-4 w-4 verdigris-text" />
                     <AlertTitle className="text-foreground">Set Your Weight</AlertTitle>
                     <AlertDescription className="text-muted-foreground">
-                        Go to <Link to="/settings" className="font-medium underline">Settings</Link> to enter your weight and see your strength benchmarks.
+                        Go to <Link to="/profile/settings" className="font-medium underline">Settings</Link> to enter your weight and see your strength benchmarks.
                     </AlertDescription>
                 </Alert>
             );

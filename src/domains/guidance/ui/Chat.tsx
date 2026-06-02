@@ -130,7 +130,7 @@ const Chat: React.FC<ChatProps> = ({
     : configurationMessage
       ? "border-[rgba(200,160,108,0.22)] bg-[rgba(123,94,66,0.14)] text-[#f1dec0]"
       : "border-[rgba(var(--stone-accent-rgb),0.2)] bg-[rgba(var(--stone-accent-rgb),0.12)] text-[#dff3ec]";
-  const coachSettingsHref = "/settings#coach-settings";
+  const coachSettingsHref = "/profile/settings#coach-settings";
 
   const inputPlaceholder = configurationMessage
     ? "Save a provider key in Settings to start coaching."

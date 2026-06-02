@@ -80,6 +80,12 @@ const formatProfileSummary = (profile: Record<string, unknown>) => {
     typeof profile.height === "number"
       ? `Height: ${profile.height}${typeof profile.preferred_height_unit === "string" ? ` ${profile.preferred_height_unit}` : ""}.`
       : null,
+    typeof profile.experience_level === "string"
+      ? `Experience: ${profile.experience_level}.`
+      : null,
+    typeof profile.training_age_years === "number"
+      ? `Training age: ${profile.training_age_years} years.`
+      : null,
   ].filter(Boolean);
 
   if (parts.length === 0) {
