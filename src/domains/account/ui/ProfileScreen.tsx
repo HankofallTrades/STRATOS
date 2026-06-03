@@ -12,6 +12,9 @@ import type {
 } from '@/domains/account/data/userFactsRepository';
 import ProfileFactDialog from '@/domains/account/ui/ProfileFactDialog';
 import ProfileAboutDialog from '@/domains/account/ui/ProfileAboutDialog';
+import ProfileScheduleSection, {
+  type SchedulePayload,
+} from '@/domains/account/ui/ProfileScheduleSection';
 
 const CATEGORIES: { key: UserFactCategory; label: string }[] = [
   { key: 'goal', label: 'Goals' },
@@ -93,6 +96,26 @@ const ProfileScreen = () => {
     });
   };
 
+  const handleSchedulePersist = (payload: SchedulePayload | null) => {
+    const existing = factsByCategory['schedule']?.[0];
+    const onError = () => toast.error('Failed to save schedule. Please try again.');
+    if (!payload) {
+      if (existing) removeFact.mutate(existing.id, { onError });
+      return;
+    }
+    if (existing) {
+      updateFact.mutate(
+        { factId: existing.id, content: payload.content, detail: payload.detail },
+        { onError }
+      );
+    } else if (!createFact.isPending) {
+      createFact.mutate(
+        { category: 'schedule', content: payload.content, detail: payload.detail },
+        { onError }
+      );
+    }
+  };
+
   return (
     <div className="app-page space-y-6">
       <header className="flex items-center gap-3">
@@ -102,7 +125,7 @@ const ProfileScreen = () => {
           {subtitle ? <p className="text-sm text-muted-foreground">{subtitle}</p> : null}
         </div>
         <Button
-          variant="outline"
+          variant="ghost"
           size="icon"
           aria-label="Settings"
           className="ml-auto"
@@ -112,7 +135,18 @@ const ProfileScreen = () => {
         </Button>
       </header>
 
-      {CATEGORIES.map(({ key, label }) => (
+      {CATEGORIES.map(({ key, label }) => {
+        if (key === 'schedule') {
+          return (
+            <ProfileScheduleSection
+              key={key}
+              fact={factsByCategory['schedule']?.[0]}
+              isSaving={isSavingFact}
+              onPersist={handleSchedulePersist}
+            />
+          );
+        }
+        return (
         <section key={key} className={SECTION_CLASS}>
           <div className="mb-2 flex items-center justify-between">
             <span className={LABEL_CLASS}>
@@ -150,7 +184,8 @@ const ProfileScreen = () => {
             </ul>
           )}
         </section>
-      ))}
+        );
+      })}
 
       <section className={SECTION_CLASS}>
         <div className="mb-2 flex items-center justify-between">

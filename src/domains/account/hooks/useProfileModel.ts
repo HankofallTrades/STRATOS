@@ -10,7 +10,7 @@ import {
   createUserFact,
   deleteUserFact,
   listActiveUserFacts,
-  updateUserFactContent,
+  updateUserFact,
   type CreateUserFactInput,
   type UserFactRow,
 } from '@/domains/account/data/userFactsRepository';
@@ -49,8 +49,15 @@ export const useProfileModel = (userId: string | null | undefined) => {
   });
 
   const updateFact = useMutation({
-    mutationFn: ({ factId, content }: { factId: string; content: string }) =>
-      updateUserFactContent(factId, content),
+    mutationFn: ({
+      factId,
+      content,
+      detail,
+    }: {
+      factId: string;
+      content: string;
+      detail?: UserFactRow['detail'];
+    }) => updateUserFact(factId, { content, detail }),
     onSuccess: invalidateFacts,
   });
 

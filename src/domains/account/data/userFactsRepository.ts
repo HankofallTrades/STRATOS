@@ -12,6 +12,14 @@ export type UserFactCategory =
 export interface CreateUserFactInput {
   category: UserFactCategory;
   content: string;
+  /** Optional structured payload (e.g. schedule `{ days, note }`). */
+  detail?: UserFactRow['detail'];
+}
+
+export interface UpdateUserFactInput {
+  content: string;
+  /** When provided, overwrites the structured payload; omit to leave it untouched. */
+  detail?: UserFactRow['detail'];
 }
 
 /** Active facts for a user, oldest first. RLS restricts rows to the caller. */
@@ -41,6 +49,7 @@ export const createUserFact = async (
       user_id: userId,
       category: input.category,
       content: input.content.trim(),
+      detail: input.detail ?? null,
       source: 'user',
       status: 'active',
     })
@@ -51,15 +60,21 @@ export const createUserFact = async (
   return data as UserFactRow;
 };
 
-export const updateUserFactContent = async (
+export const updateUserFact = async (
   factId: string,
-  content: string
+  input: UpdateUserFactInput
 ): Promise<UserFactRow> => {
-  if (!factId) throw new Error('updateUserFactContent requires factId');
+  if (!factId) throw new Error('updateUserFact requires factId');
+
+  const payload: { content: string; updated_at: string; detail?: UserFactRow['detail'] } = {
+    content: input.content.trim(),
+    updated_at: new Date().toISOString(),
+  };
+  if (input.detail !== undefined) payload.detail = input.detail;
 
   const { data, error } = await supabase
     .from('user_facts')
-    .update({ content: content.trim(), updated_at: new Date().toISOString() })
+    .update(payload)
     .eq('id', factId)
     .select()
     .single();
