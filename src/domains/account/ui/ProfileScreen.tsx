@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Pencil, Plus, Settings as SettingsIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -167,11 +167,6 @@ const ProfileScreen = () => {
           <div><div className="text-xs text-muted-foreground">Weight</div><div className="text-lg font-semibold">{profile?.weight ?? '—'}</div></div>
         </div>
       </section>
-
-      <Link to="/analytics" className="flex items-center justify-between border-t border-border/40 pt-4 text-sm text-muted-foreground">
-        <span>Trends &amp; progression</span>
-        <span className="text-primary">Analytics <span aria-hidden>→</span></span>
-      </Link>
 
       <ProfileFactDialog
         open={factDialog.mode !== 'closed'}

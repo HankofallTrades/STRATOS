@@ -45,7 +45,6 @@ const SettingsScreen = () => {
   const location = useLocation();
   const {
     activeProgram,
-    bodyweight,
     hasStoredProviderCredential,
     handleClearProviderApiKey,
     handleLlmModelChange,
@@ -56,7 +55,6 @@ const SettingsScreen = () => {
     handleSavePeriod,
     handleSignOut,
     handleUnitChange,
-    handleUpdateBodyweight,
     isLoadingActiveProgram,
     isPeriodDialogOpen,
     isPeriodUpdating,
@@ -64,7 +62,6 @@ const SettingsScreen = () => {
     isProviderCredentialBusy,
     isProviderCredentialLoading,
     isProviderCredentialSaving,
-    isProfileBusy,
     isSigningOut,
     llmModelPref,
     llmProviderPref,
@@ -72,7 +69,6 @@ const SettingsScreen = () => {
     periodGoalFocus,
     providerApiKeyDraft,
     providerCredentialLastFour,
-    setBodyweight,
     setIsPeriodDialogOpen,
     setPeriodDurationWeeks,
     setPeriodGoalFocus,
@@ -153,7 +149,7 @@ const SettingsScreen = () => {
             <div className="flex flex-col gap-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <h2 className="text-xl font-semibold tracking-tight text-foreground">
-                  Profile
+                  Units
                 </h2>
 
                 <RadioGroup
@@ -182,35 +178,6 @@ const SettingsScreen = () => {
                   })}
                 </RadioGroup>
               </div>
-
-              <form
-                onSubmit={handleUpdateBodyweight}
-                className="flex flex-col gap-3 sm:flex-row sm:items-end"
-              >
-                <div className="w-full max-w-xs space-y-2">
-                  <Label htmlFor="bodyweight" className={FIELD_LABEL_CLASS}>
-                    Weight ({unitPref})
-                  </Label>
-                  <Input
-                    id="bodyweight"
-                    type="number"
-                    value={bodyweight}
-                    onChange={event => setBodyweight(event.target.value)}
-                    placeholder={unitPref}
-                    disabled={isProfileBusy}
-                    step="0.1"
-                    className="app-form-input h-12 rounded-[16px]"
-                  />
-                </div>
-
-                <Button
-                  type="submit"
-                  disabled={isProfileBusy}
-                  className="settings-action-primary h-11 rounded-[16px] px-5 text-sm font-semibold sm:min-w-[7.5rem]"
-                >
-                  {isProfileBusy ? "Saving..." : "Save"}
-                </Button>
-              </form>
             </div>
           </section>
 
