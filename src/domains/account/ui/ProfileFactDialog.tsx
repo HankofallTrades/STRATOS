@@ -15,6 +15,8 @@ interface ProfileFactDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   categoryLabel: string;
+  /** Category-specific example text shown when the field is empty. */
+  placeholder?: string;
   /** Existing content when editing; empty string when adding. */
   initialContent?: string;
   isEditing: boolean;
@@ -27,6 +29,7 @@ export const ProfileFactDialog = ({
   open,
   onOpenChange,
   categoryLabel,
+  placeholder,
   initialContent = '',
   isEditing,
   isSaving,
@@ -53,7 +56,7 @@ export const ProfileFactDialog = ({
             id="fact-content"
             value={content}
             autoFocus
-            placeholder="e.g. Right shoulder — avoid heavy overhead"
+            placeholder={placeholder}
             onChange={(event) => setContent(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === 'Enter' && trimmed) onSubmit(trimmed);

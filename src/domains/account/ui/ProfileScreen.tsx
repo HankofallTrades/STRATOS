@@ -21,6 +21,14 @@ const CATEGORIES: { key: UserFactCategory; label: string }[] = [
   { key: 'equipment', label: 'Equipment' },
 ];
 
+const CATEGORY_PLACEHOLDERS: Record<UserFactCategory, string> = {
+  goal: 'e.g. Squat 140 kg by December',
+  constraint: 'e.g. Right shoulder — avoid heavy overhead',
+  schedule: 'e.g. Train Mon / Wed / Fri, ~60 min',
+  preference: 'e.g. Prefer free weights over machines',
+  equipment: 'e.g. Home gym — barbell, rack, dumbbells',
+};
+
 const SECTION_CLASS = "stone-surface rounded-[24px] p-5 md:p-6";
 const LABEL_CLASS = "text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground";
 
@@ -169,6 +177,13 @@ const ProfileScreen = () => {
         open={factDialog.mode !== 'closed'}
         onOpenChange={(open) => !open && setFactDialog({ mode: 'closed' })}
         categoryLabel={factDialog.mode === 'closed' ? '' : factDialog.label}
+        placeholder={
+          factDialog.mode === 'add'
+            ? CATEGORY_PLACEHOLDERS[factDialog.category]
+            : factDialog.mode === 'edit'
+              ? CATEGORY_PLACEHOLDERS[factDialog.fact.category as UserFactCategory]
+              : undefined
+        }
         isEditing={factDialog.mode === 'edit'}
         initialContent={factDialog.mode === 'edit' ? factDialog.fact.content : ''}
         isSaving={isSavingFact}
