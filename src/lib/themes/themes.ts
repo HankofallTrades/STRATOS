@@ -37,14 +37,14 @@ export const fantasyTheme: AppTheme = {
     muted: '215 20% 15%', // Slate-ish muted
     mutedForeground: '140 10% 60%',
 
-    accent: '140 40% 25%', // Mossy accent
+    accent: '150 8% 18%', // Restrained stone hover (was bright moss '140 40% 25%')
     accentForeground: '140 20% 95%',
 
     destructive: '0 60% 30%',
     destructiveForeground: '0 0% 98%',
 
     border: '215 20% 20%', // Subtle border, slightly lighter than background (Was '215 25% 8%')
-    input: '140 30% 20%',
+    input: '150 8% 22%', // Subtle stone input border (was green '140 30% 20%')
     ring: '172 54% 25%',
 
     // Sidebar (Matches background for seamless look)

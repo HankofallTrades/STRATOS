@@ -138,7 +138,7 @@ const ProfileScheduleSection = ({
       <Input
         value={note}
         placeholder="Add detail (optional) — e.g. ~60 min, mornings"
-        className="mt-3"
+        className="mt-3 border-0 bg-white/[0.03] rounded-[14px]"
         onChange={(event) => setNote(event.target.value)}
         onBlur={() => persistNow(days, note)}
         onKeyDown={(event) => {
