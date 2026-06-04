@@ -24,9 +24,14 @@ import {
   type CoachToolExecutionEnvironment,
   type CoachToolName,
   type CoachToolResultPayload,
+  type CoachArtifact,
 } from "./contracts.js";
 import { formatScreenContextForPrompt } from "./screenContext.js";
 import { coachToolDefinitions } from "./tools.js";
+import {
+  buildVolumeProgressDisplayData,
+  getCurrentWeekRange,
+} from "../../analytics/data/volumeProgress.js";
 
 export interface CoachAgentRuntimeEnvironment {
   localLlmUrl?: string;
@@ -64,6 +69,7 @@ Tool rules:
 - Use \`get_user_profile_summary\` when profile data would materially improve the answer.
 - Use \`get_recent_workout_summary\` when recent training history is relevant.
 - Use \`generate_strength_workout\` when the user explicitly wants you to create, start, or generate a workout in the app, especially when they mention their current block, phase, or archetype volume.
+- Use \`get_training_volume\` when the user asks about volume, stalled lifts, or "what should I change"; it renders a chart inline, so do not re-list every number.
 - Call at most one client tool in a single turn.
 - Never invent tool outputs. If a tool returns limited data, say so plainly.
 - After any tool result, respond with a concise coaching follow-up.`;
@@ -295,6 +301,50 @@ const createCoachAgentTools = (context: CoachServerDataContext) => ({
       );
     },
   }),
+  get_training_volume: tool({
+    description: coachToolDefinitions.get_training_volume.description,
+    inputSchema: coachToolDefinitions.get_training_volume.inputSchema,
+    execute: async () => {
+      if (!context.supabase || !context.user) {
+        return createServerToolPayload(
+          "The user is not authenticated, so training volume is unavailable."
+        );
+      }
+      const range = getCurrentWeekRange();
+      const { data, error } = await context.supabase.rpc(
+        "fetch_weekly_archetype_sets_v2" as never,
+        {
+          p_user_id: context.user.id,
+          p_start_date: range.start,
+          p_end_date: range.end,
+        } as never
+      );
+      if (error) {
+        return createServerToolPayload(
+          `Training volume could not be loaded: ${error.message}`
+        );
+      }
+      const progress = buildVolumeProgressDisplayData(
+        (data ?? []) as never[] as Parameters<typeof buildVolumeProgressDisplayData>[0]
+      );
+      const series = progress.map((point) => ({
+        label: point.name,
+        current: point.totalSets,
+        goal: point.goal,
+      }));
+      const summary =
+        series.length === 0
+          ? "No training volume recorded for the current week yet."
+          : series.map((p) => `${p.label}: ${p.current}/${p.goal} sets`).join("; ");
+      const artifact: CoachArtifact = {
+        type: "volume_chart",
+        title: "Volume · this week",
+        range: { start: range.start, end: range.end },
+        series,
+      };
+      return { message: summary, data: { series }, artifact };
+    },
+  }),
 });
 
 type CoachToolSet = ReturnType<typeof createCoachAgentTools>;
@@ -306,6 +356,7 @@ const coachToolExecutionByName: Record<
   generate_strength_workout: "client",
   get_recent_workout_summary: "server",
   get_user_profile_summary: "server",
+  get_training_volume: "server",
 };
 
 const coachToolResultPayloadToModelOutput = (
@@ -412,6 +463,11 @@ const parseToolResultPayload = (
             nextRoute:
               typeof value.value.nextRoute === "string"
                 ? value.value.nextRoute
+                : undefined,
+            artifact:
+              isRecord(value.value.artifact) &&
+              typeof value.value.artifact.type === "string"
+                ? (value.value.artifact as CoachArtifact)
                 : undefined,
           },
         };

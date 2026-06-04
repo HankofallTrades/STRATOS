@@ -49,6 +49,14 @@ export const coachToolDefinitions = {
     label: "User Profile Summary",
     name: "get_user_profile_summary",
   },
+  get_training_volume: {
+    description:
+      "Read the user's current-week training volume by movement archetype (current vs. goal sets) so you can reason about volume gaps and render a chart.",
+    execution: "server",
+    inputSchema: emptyInputSchema,
+    label: "Training Volume",
+    name: "get_training_volume",
+  },
 } satisfies Record<string, CoachToolDefinition<Record<string, unknown>>>;
 
 export const getCoachToolLabel = (toolName: CoachToolName) =>
@@ -69,6 +77,7 @@ export const executeCoachTool = async (
     }
     case "get_recent_workout_summary":
     case "get_user_profile_summary":
+    case "get_training_volume":
       throw new Error(
         `Coach tool ${toolCall.toolName} is server-executable and cannot run on the client.`
       );
