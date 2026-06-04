@@ -1,58 +1,87 @@
 import { usePresenceAgent } from "@/domains/guidance/hooks/usePresenceAgent";
 import { cn } from "@/lib/utils/cn";
 
-const PresenceMark = () => {
+interface PresenceMarkVisualProps {
+  size?: number;
+  className?: string;
+}
+
+/**
+ * The matte stone mark itself (ring + pthalo core). Calm at rest; the ring/core
+ * light and the body breathes when the agent has a message or action waiting.
+ * Presentational only, so it can sit inside either a standalone button (mobile
+ * nav) or a labelled row button (desktop sidebar).
+ */
+export const PresenceMarkVisual = ({ size = 44, className }: PresenceMarkVisualProps) => {
+  const { hasAttention } = usePresenceAgent();
+  const ringSize = Math.round(size * 0.5);
+  const coreSize = Math.max(5, Math.round(size * 0.16));
+
+  return (
+    <span
+      aria-hidden="true"
+      style={{ width: size, height: size }}
+      className={cn(
+        "relative flex shrink-0 items-center justify-center rounded-full",
+        "bg-[#1a221f] shadow-[0_3px_10px_rgba(0,0,0,0.45)] ring-1 ring-[#2f3a36]",
+        "transition-[box-shadow] duration-200 ease-out group-hover:ring-[#46514d]",
+        className
+      )}
+    >
+      {hasAttention ? (
+        <>
+          <span className="pointer-events-none absolute inset-0 rounded-full border border-[#3f8a78]/70 animate-presence-ping" />
+          <span
+            style={{ animationDelay: "1.6s" }}
+            className="pointer-events-none absolute inset-0 rounded-full border border-[#3f8a78]/70 animate-presence-ping"
+          />
+        </>
+      ) : null}
+
+      <span
+        style={{ width: ringSize, height: ringSize, borderWidth: 1.5 }}
+        className={cn(
+          "flex items-center justify-center rounded-full border transition-colors duration-300",
+          hasAttention ? "border-[#7ea99c]" : "border-[#51605b]"
+        )}
+      >
+        <span
+          style={{ width: coreSize, height: coreSize }}
+          className={cn(
+            "rounded-full transition-colors duration-300",
+            hasAttention
+              ? "bg-[#dff5ed] shadow-[0_0_8px_2px_rgba(120,200,180,0.7)]"
+              : "bg-[#3f8a78]"
+          )}
+        />
+      </span>
+    </span>
+  );
+};
+
+interface PresenceMarkProps {
+  size?: number;
+  className?: string;
+}
+
+/**
+ * Standalone circular presence button for the mobile bottom nav.
+ */
+const PresenceMark = ({ size = 46, className }: PresenceMarkProps) => {
   const { toggle, isOpen, hasAttention } = usePresenceAgent();
 
   return (
     <button
       type="button"
-      aria-label={hasAttention ? "Open coach — new update" : "Open coach"}
+      aria-label={hasAttention ? "Open coach, new update" : "Open coach"}
       aria-expanded={isOpen}
       onClick={toggle}
-      style={{
-        backgroundImage:
-          "radial-gradient(circle at 32% 26%, #2f8f7e 0%, #1d6259 44%, #123f39 100%)",
-      }}
       className={cn(
-        "group fixed bottom-20 right-6 z-[45] flex h-14 w-14 items-center justify-center rounded-full md:bottom-6",
-        "ring-1 ring-white/15 transition-all duration-200 ease-out",
-        "shadow-[0_6px_20px_-2px_rgba(21,79,71,0.6)]",
-        "hover:-translate-y-0.5 hover:ring-white/30 hover:shadow-[0_12px_30px_-2px_rgba(21,79,71,0.9)]",
-        "active:translate-y-0 active:scale-95"
+        "group rounded-full transition-transform duration-200 ease-out active:translate-y-px",
+        className
       )}
     >
-      {/* gem sheen */}
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 rounded-full bg-gradient-to-b from-white/25 to-transparent opacity-70"
-      />
-
-      {/* breathing aura — only when the agent has a message or an action for you */}
-      {hasAttention ? (
-        <>
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 rounded-full border border-[#7ea99c]/60 animate-presence-ping"
-          />
-          <span
-            aria-hidden="true"
-            style={{ animationDelay: "1.6s" }}
-            className="pointer-events-none absolute inset-0 rounded-full border border-[#7ea99c]/60 animate-presence-ping"
-          />
-        </>
-      ) : null}
-
-      {/* core: dim grey at rest, bright + glowing when there's attention */}
-      <span
-        aria-hidden="true"
-        className={cn(
-          "relative h-2.5 w-2.5 rounded-full transition-colors duration-300",
-          hasAttention
-            ? "bg-[#dff5ed] shadow-[0_0_10px_2px_rgba(205,238,226,0.85)]"
-            : "bg-[#5f6764]"
-        )}
-      />
+      <PresenceMarkVisual size={size} />
     </button>
   );
 };

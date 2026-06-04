@@ -13,10 +13,13 @@ import {
 import { useTheme } from '@/lib/themes';
 import { cn } from '@/lib/utils/cn';
 import { isNavigationItemActive, navigationItems } from '@/components/layout/navigationItems';
+import { PresenceMarkVisual } from '@/components/layout/PresenceMark';
+import { usePresenceAgent } from '@/domains/guidance/hooks/usePresenceAgent';
 
 const NavBar = () => {
   const location = useLocation();
   const { currentTheme } = useTheme();
+  const { toggle, isOpen } = usePresenceAgent();
 
   return (
     <Sidebar collapsible="icon" side="left" className="app-nav-shell">
@@ -50,6 +53,21 @@ const NavBar = () => {
                 </SidebarMenuItem>
               );
             })}
+          </SidebarMenu>
+        </SidebarGroup>
+        <SidebarGroup className="mt-auto border-t border-sidebar-border/60 pt-2">
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={toggle}
+                isActive={isOpen}
+                tooltip="Coach"
+                className="group app-nav-item [&>span]:font-medium"
+              >
+                <PresenceMarkVisual size={22} />
+                <span>Coach</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>

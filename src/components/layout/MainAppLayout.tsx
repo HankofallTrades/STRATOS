@@ -4,7 +4,6 @@ import { Routes, Route, useLocation, Navigate } from "react-router-dom";
 import NavBar from "@/components/layout/NavBar";
 import BottomNav from "@/components/layout/BottomNav";
 import { Button } from "@/components/core/button";
-import PresenceMark from "@/components/layout/PresenceMark";
 import SummonSurface from "@/domains/guidance/ui/SummonSurface";
 import { PresenceAgentProvider } from "@/domains/guidance/hooks/PresenceAgentProvider";
 import { SidebarInset, SidebarProvider } from "@/components/core/sidebar";
@@ -130,7 +129,6 @@ const MainAppLayout = () => {
           </Suspense>
         </RouteErrorBoundary>
 
-        <PresenceMark />
         <SummonSurface
             quickActions={{
               onStartWorkout: handleAddWorkout,
