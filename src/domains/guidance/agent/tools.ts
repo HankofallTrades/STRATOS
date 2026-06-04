@@ -6,10 +6,9 @@ import type {
   CoachToolName,
   CoachToolResultPayload,
 } from "./contracts.js";
-import type { GeneratedWorkoutSummary } from "../hooks/useWorkoutGenerator.js";
 
 export interface CoachToolContext {
-  generateWorkout: () => Promise<GeneratedWorkoutSummary>;
+  proposeWorkout: () => Promise<CoachToolResultPayload>;
 }
 
 interface CoachToolDefinition<TInput extends Record<string, unknown>> {
@@ -23,13 +22,13 @@ interface CoachToolDefinition<TInput extends Record<string, unknown>> {
 const emptyInputSchema = z.object({});
 
 export const coachToolDefinitions = {
-  generate_strength_workout: {
+  propose_workout: {
     description:
-      "Create a workout in the app using the user's current block focus and movement-archetype volume gaps, then open the workout screen.",
+      "Build a draft training session honoring the user's block focus, volume gaps, and any stated constraints (time available, sore area), and render it as a reviewable draft. Does NOT save; the user applies it.",
     execution: "client",
     inputSchema: emptyInputSchema,
-    label: "Create Block-Aware Workout",
-    name: "generate_strength_workout",
+    label: "Propose Workout",
+    name: "propose_workout",
   },
   get_recent_workout_summary: {
     description:
@@ -67,13 +66,8 @@ export const executeCoachTool = async (
   context: CoachToolContext
 ): Promise<CoachToolResultPayload> => {
   switch (toolCall.toolName) {
-    case "generate_strength_workout": {
-      const summary = await context.generateWorkout();
-      return {
-        data: summary,
-        message: summary.message,
-        nextRoute: "/workout",
-      };
+    case "propose_workout": {
+      return context.proposeWorkout();
     }
     case "get_recent_workout_summary":
     case "get_user_profile_summary":

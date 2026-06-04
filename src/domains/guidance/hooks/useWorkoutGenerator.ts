@@ -1,13 +1,28 @@
 import { differenceInDays, startOfDay } from "date-fns";
 import { useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { v4 as uuidv4 } from "uuid";
 
+import {
+  fetchWeeklyArchetypeSets,
+  type WeeklyArchetypeSetData,
+} from "@/domains/analytics/data/analyticsRepository";
+import {
+  buildVolumeProgressDisplayData,
+  getCurrentWeekRange,
+} from "@/domains/analytics/hooks/useVolumeChart";
 import type { DisplayArchetypeData } from "@/domains/analytics/hooks/useVolumeChart";
 import { buildExercisesFromSessionTemplate } from "@/domains/fitness/data/workoutScreen";
 import type {
   ActiveMesocycleProgram,
   MesocycleSessionTemplate,
 } from "@/domains/periodization";
+import {
+  fetchGuidanceExercises,
+  fetchMovementArchetypes,
+} from "@/domains/guidance/data/guidanceRepository";
+import type { CoachToolResultPayload } from "@/domains/guidance/agent/contracts";
+import { getActiveMesocycleProgram } from "@/domains/periodization/data/repository";
 import { useAppDispatch, useAppSelector } from "@/hooks/redux";
 import type {
   Exercise,
@@ -501,14 +516,18 @@ export const useWorkoutGenerator = (
   };
 };
 
-export const generateStrengthWorkout = async ({
+export interface WorkoutPlanResult {
+  summary: GeneratedWorkoutSummary;
+  startWorkoutPayload: Parameters<typeof startWorkout>[0];
+}
+
+export const buildWorkoutPlan = async ({
   baseExercises,
-  dispatch,
   movementArchetypes,
   planningContext,
   userId,
   workoutHistory,
-}: GenerateStrengthWorkoutParams): Promise<GeneratedWorkoutSummary> => {
+}: Omit<GenerateStrengthWorkoutParams, "dispatch">): Promise<WorkoutPlanResult> => {
   const archetypeMap = new Map(
     movementArchetypes.map(archetype => [archetype.id, archetype.name])
   );
@@ -595,17 +614,15 @@ export const generateStrengthWorkout = async ({
     throw new Error("Failed to select any exercises for the workout.");
   }
 
-  dispatch(
-    startWorkout({
-      initialExercises,
-      mesocycleId: activeProgram?.mesocycle.id,
-      mesocycleProtocol: activeProgram?.mesocycle.protocol,
-      mesocycleSessionId: templateExerciseCount > 0 ? nextSession?.id : undefined,
-      mesocycleWeek: activeProgram?.current_week,
-      ownerUserId: userId,
-      sessionFocus,
-    })
-  );
+  const startWorkoutPayload = {
+    initialExercises,
+    mesocycleId: activeProgram?.mesocycle.id,
+    mesocycleProtocol: activeProgram?.mesocycle.protocol,
+    mesocycleSessionId: templateExerciseCount > 0 ? nextSession?.id : undefined,
+    mesocycleWeek: activeProgram?.current_week,
+    ownerUserId: userId,
+    sessionFocus,
+  };
 
   const targetedArchetypes = uniqueStrings(
     initialExercises.map(exercise =>
@@ -624,7 +641,7 @@ export const generateStrengthWorkout = async ({
     exercise => exercise.exercise.name
   );
 
-  return {
+  const summary: GeneratedWorkoutSummary = {
     message: buildGeneratorMessage({
       activeProgram,
       nextSession,
@@ -656,5 +673,93 @@ export const generateStrengthWorkout = async ({
       deficit: target.deficit,
       goalSets: target.goalSets,
     })),
+  };
+
+  return { summary, startWorkoutPayload };
+};
+
+export const commitWorkoutPlan = (
+  dispatch: AppDispatch,
+  startWorkoutPayload: WorkoutPlanResult["startWorkoutPayload"]
+) => {
+  dispatch(startWorkout(startWorkoutPayload));
+};
+
+export const generateStrengthWorkout = async (
+  params: GenerateStrengthWorkoutParams
+): Promise<GeneratedWorkoutSummary> => {
+  const { dispatch, ...rest } = params;
+  const { summary, startWorkoutPayload } = await buildWorkoutPlan(rest);
+  commitWorkoutPlan(dispatch, startWorkoutPayload);
+  return summary;
+};
+
+export const useProposeWorkout = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const workoutHistory = useAppSelector(selectWorkoutHistory);
+
+  return async (): Promise<CoachToolResultPayload> => {
+    const userId = user?.id ?? null;
+    const weekRange = getCurrentWeekRange();
+    const [baseExercises, movementArchetypes, activeProgram, weeklyArchetypeSets] =
+      await Promise.all([
+        queryClient.ensureQueryData({
+          queryKey: ["exercises"],
+          queryFn: fetchGuidanceExercises,
+          staleTime: Infinity,
+        }),
+        queryClient.ensureQueryData({
+          queryKey: ["movementArchetypes"],
+          queryFn: fetchMovementArchetypes,
+          staleTime: Infinity,
+        }),
+        userId
+          ? queryClient.ensureQueryData({
+              queryKey: ["activeMesocycleProgram", userId],
+              queryFn: () => getActiveMesocycleProgram(userId),
+              staleTime: 60 * 1000,
+            })
+          : Promise.resolve(null),
+        userId
+          ? queryClient.ensureQueryData({
+              queryKey: [
+                "weeklyArchetypeSets_v2",
+                userId,
+                weekRange.start,
+                weekRange.end,
+              ],
+              queryFn: () =>
+                fetchWeeklyArchetypeSets(userId, weekRange.start, weekRange.end),
+              staleTime: 5 * 60 * 1000,
+            })
+          : Promise.resolve([] as WeeklyArchetypeSetData[]),
+      ]);
+
+    const { summary, startWorkoutPayload } = await buildWorkoutPlan({
+      baseExercises,
+      movementArchetypes,
+      planningContext: {
+        activeProgram,
+        volumeProgress: buildVolumeProgressDisplayData(weeklyArchetypeSets),
+      },
+      userId,
+      workoutHistory,
+    });
+
+    return {
+      message: summary.message,
+      data: { summary },
+      artifact: {
+        type: "workout_draft",
+        title: "Proposed session",
+        rationale: summary.message,
+        sessionFocus: summary.sessionFocus,
+        exercises: summary.selectedExercises.map((name) => ({ name, sets: 3 })),
+        apply: {
+          startWorkoutPayload: startWorkoutPayload as Record<string, unknown>,
+        },
+      },
+    };
   };
 };

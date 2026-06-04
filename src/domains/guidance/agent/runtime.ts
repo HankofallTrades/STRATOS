@@ -68,7 +68,7 @@ You are operating as an AI agent inside the STRATOS Coach screen.
 Tool rules:
 - Use \`get_user_profile_summary\` when profile data would materially improve the answer.
 - Use \`get_recent_workout_summary\` when recent training history is relevant.
-- Use \`generate_strength_workout\` when the user explicitly wants you to create, start, or generate a workout in the app, especially when they mention their current block, phase, or archetype volume.
+- Use \`propose_workout\` when the user wants a session created or adapted (e.g. limited time, a cranky joint, or "make my next workout"). It returns a draft the user reviews and applies; never claim you saved it.
 - Use \`get_training_volume\` when the user asks about volume, stalled lifts, or "what should I change"; it renders a chart inline, so do not re-list every number.
 - Call at most one client tool in a single turn.
 - Never invent tool outputs. If a tool returns limited data, say so plainly.
@@ -217,9 +217,9 @@ const createServerToolPayload = (
 });
 
 const createCoachAgentTools = (context: CoachServerDataContext) => ({
-  generate_strength_workout: tool({
-    description: coachToolDefinitions.generate_strength_workout.description,
-    inputSchema: coachToolDefinitions.generate_strength_workout.inputSchema,
+  propose_workout: tool({
+    description: coachToolDefinitions.propose_workout.description,
+    inputSchema: coachToolDefinitions.propose_workout.inputSchema,
   }),
   get_recent_workout_summary: tool({
     description: coachToolDefinitions.get_recent_workout_summary.description,
@@ -353,7 +353,7 @@ const coachToolExecutionByName: Record<
   CoachToolName,
   CoachToolExecutionEnvironment
 > = {
-  generate_strength_workout: "client",
+  propose_workout: "client",
   get_recent_workout_summary: "server",
   get_user_profile_summary: "server",
   get_training_volume: "server",

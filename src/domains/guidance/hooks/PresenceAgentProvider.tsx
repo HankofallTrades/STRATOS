@@ -13,6 +13,7 @@ import {
 import { buildScreenContext } from "@/domains/guidance/agent/screenContext";
 import { sendCoachMessage } from "@/domains/guidance/agent/transport";
 import { executeCoachTool, getCoachToolLabel } from "@/domains/guidance/agent/tools";
+import { useProposeWorkout } from "@/domains/guidance/hooks/useWorkoutGenerator";
 import {
   buildMissingProviderConfigurationMessage,
   providerRequiresApiKey,
@@ -45,6 +46,8 @@ export const PresenceAgentProvider = ({ children }: { children: ReactNode }) => 
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const conversationRef = useRef<CoachConversationMessage[]>([]);
   conversationRef.current = conversation;
+
+  const proposeWorkout = useProposeWorkout();
 
   const llmPreferences = readLlmPreferences();
   const isCoachConfigured = !providerRequiresApiKey(llmPreferences.provider);
@@ -132,11 +135,7 @@ export const PresenceAgentProvider = ({ children }: { children: ReactNode }) => 
             clientToolCalls.map(async (toolCall) => {
               try {
                 const result = await executeCoachTool(toolCall, {
-                  generateWorkout: async () => {
-                    throw new Error(
-                      "Coach workout generation is wired in a later task."
-                    );
-                  },
+                  proposeWorkout,
                 });
                 if (result.nextRoute) pendingNavigation = result.nextRoute;
                 return createCoachToolResultMessage({
@@ -192,6 +191,7 @@ export const PresenceAgentProvider = ({ children }: { children: ReactNode }) => 
       isWorkoutActive,
       location.pathname,
       navigate,
+      proposeWorkout,
       session?.access_token,
     ]
   );
