@@ -1,18 +1,39 @@
 import { z } from "zod";
+import { screenContextSchema, type ScreenContext } from "./screenContext";
 
 export const coachToolNames = [
-  "generate_strength_workout",
+  "propose_workout",
   "get_user_profile_summary",
   "get_recent_workout_summary",
+  "get_training_volume",
 ] as const;
 
 export type CoachToolName = (typeof coachToolNames)[number];
 export type CoachToolExecutionEnvironment = "client" | "server";
 
+export type { ScreenContext } from "./screenContext";
+
+export type CoachArtifact =
+  | {
+      type: "volume_chart";
+      title: string;
+      range: { start: string; end: string };
+      series: Array<{ label: string; current: number; goal: number }>;
+    }
+  | {
+      type: "workout_draft";
+      title: string;
+      rationale: string;
+      sessionFocus: string;
+      exercises: Array<{ name: string; sets: number }>;
+      apply: { startWorkoutPayload: Record<string, unknown> };
+    };
+
 export interface CoachToolResultPayload {
   message: string;
   data?: unknown;
   nextRoute?: string;
+  artifact?: CoachArtifact;
 }
 
 export interface CoachUserMessage {
@@ -83,6 +104,7 @@ export interface CoachAgentRequest {
   provider: CoachLlmProvider;
   model?: string;
   auth?: CoachAgentAuthContext;
+  screenContext?: ScreenContext;
 }
 
 export interface CoachAgentResponse {
@@ -93,10 +115,36 @@ export interface CoachAgentResponse {
 const coachToolNameSchema = z.enum(coachToolNames);
 const coachToolExecutionSchema = z.enum(["client", "server"]);
 
+const coachArtifactSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("volume_chart"),
+    title: z.string(),
+    range: z.object({ start: z.string(), end: z.string() }),
+    series: z.array(
+      z.object({
+        label: z.string(),
+        current: z.number(),
+        goal: z.number(),
+      })
+    ),
+  }),
+  z.object({
+    type: z.literal("workout_draft"),
+    title: z.string(),
+    rationale: z.string(),
+    sessionFocus: z.string(),
+    exercises: z.array(
+      z.object({ name: z.string(), sets: z.number() })
+    ),
+    apply: z.object({ startWorkoutPayload: z.record(z.string(), z.unknown()) }),
+  }),
+]);
+
 const coachToolResultPayloadSchema = z.object({
   data: z.unknown().optional(),
   message: z.string(),
   nextRoute: z.string().optional(),
+  artifact: coachArtifactSchema.optional(),
 });
 
 const coachUserMessageSchema = z.object({
@@ -153,6 +201,7 @@ export const coachAgentRequestSchema = z.object({
   messages: z.array(coachConversationMessageSchema),
   model: z.string().optional(),
   provider: z.enum(coachLlmProviders),
+  screenContext: screenContextSchema.optional(),
 });
 
 export const coachAgentResponseSchema = z.object({
