@@ -64,7 +64,7 @@ const NavBar = () => {
                 tooltip="Coach"
                 className="group app-nav-item [&>span]:font-medium"
               >
-                <PresenceMarkVisual size={22} />
+                <PresenceMarkVisual size={18} disc={false} />
                 <span>Coach</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
