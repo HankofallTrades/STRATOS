@@ -42,7 +42,8 @@ This file is the fast operational map for agents and future sessions. It is not 
 - `src/components/layout/MainAppLayout.tsx`
   - Protected app shell.
   - Defines in-app routes.
-  - Owns the global FAB and quick-action dialogs.
+  - Mounts the global presence orb (`PresenceMark`) + summon surface (`SummonSurface`) and wraps the shell in `PresenceAgentProvider`.
+  - Owns the quick-action dialogs (protein, sun, single-exercise). Quick actions are triggered from the summon-surface chips; the old global "+" FAB was removed.
   - Mounts the fitness offline-workout sync hook for protected sessions.
 - `api/coach.ts`
   - Vercel server function for Coach.
@@ -72,9 +73,7 @@ This file is the fast operational map for agents and future sessions. It is not 
   - Screen: `src/domains/analytics/ui/AnalyticsScreen.tsx`
   - Main hook: `src/domains/analytics/hooks/useAnalyticsScreen.ts`
 - `/coach`
-  - Page: `src/pages/Coach.tsx`
-  - Screen: `src/domains/guidance/ui/CoachScreen.tsx`
-  - Main hook: `src/domains/guidance/hooks/useCoachScreen.ts`
+  - Redirects to `/`. The Coach is no longer a route — it is the global presence orb + summon surface (`SummonSurface`) mounted in `MainAppLayout` and available on every protected screen.
 - `/profile`
   - Page: `src/pages/Profile.tsx`
   - Screen: `src/domains/account/ui/ProfileScreen.tsx`
@@ -118,6 +117,10 @@ Pages should stay thin wrappers around domain screens.
   - `history`: persisted workout history, capped during serialization so local-storage hydration cost does not grow without bound
 
 The workout flow is the main Redux-heavy area. Most other features should prefer React Query plus local component state.
+
+### Coach Presence
+
+- `src/domains/guidance/hooks/PresenceAgentProvider.tsx` owns the Coach conversation, send loop, and summon-surface open-state via React context (not Redux). It is mounted at the protected-shell root in `MainAppLayout`. State is ephemeral: it survives navigation but resets on reload (no persistence by design).
 
 ## Domain Map
 
@@ -214,19 +217,23 @@ This is still the most complex domain and the main place where UI, Redux, and Re
   - `hooks/useOneRepMax.ts`
   - `hooks/usePerformanceOverview.ts`
   - `hooks/useRecentWorkouts.ts`
-  - `hooks/useVolumeChart.ts`
+  - `hooks/useVolumeChart.ts` (re-exports the pure helpers below)
+- Pure (server-safe) helpers:
+  - `data/volumeProgress.ts` — `getCurrentWeekRange` + `buildVolumeProgressDisplayData` and goal/archetype constants, extracted so the server Coach runtime can reuse them without importing React/react-query or the browser Supabase client.
 
 ### `src/domains/guidance`
 
-- Purpose: Coach and workout-generation guidance.
-- Screen/state entry:
-  - `ui/CoachScreen.tsx`
-  - `hooks/useCoachScreen.ts`
+- Purpose: Coach (presence/summon) and workout-generation guidance.
+- Presence surface + state entry:
+  - `hooks/PresenceAgentProvider.tsx` + `hooks/usePresenceAgent.ts` — app-root context owning the Coach conversation, send loop, and surface open-state.
+  - `ui/SummonSurface.tsx` — the bottom-sheet command surface (opened by `PresenceMark`).
+  - `ui/ArtifactRenderer.tsx` + `ui/artifacts/*` — inline artifact renderers (`VolumeChartArtifact`, `WorkoutDraftArtifact`).
 - Agent/runtime layer:
-  - `agent/contracts.ts` for typed message and tool contracts
-  - `agent/transport.ts` for frontend request boundary
+  - `agent/contracts.ts` for typed message, tool, `ScreenContext`, and `CoachArtifact` contracts
+  - `agent/screenContext.ts` for the read-only screen-context type + client assembler + prompt formatter
+  - `agent/transport.ts` for frontend request boundary (sends `screenContext`)
   - `agent/tools.ts` for tool definitions and client execution
-  - `agent/runtime.ts` for server-side AI SDK tool loop
+  - `agent/runtime.ts` for server-side AI SDK tool loop (injects `ScreenContext`, emits artifacts)
 - Data:
   - `data/guidanceRepository.ts`
   - `data/llmPreferences.ts`
@@ -234,13 +241,17 @@ This is still the most complex domain and the main place where UI, Redux, and Re
 Current Coach architecture:
 - Uses `/api/coach`.
 - Uses `/api/coach-credentials` for hosted BYOK credential save/delete/status.
+- Conversation state is ephemeral (lives in `PresenceAgentProvider`, persists across navigation, fresh each launch — no storage).
+- Each turn sends a read-only `ScreenContext` (route + screen + small focus hints); the runtime injects it into the system prompt. It grants no write access.
+- Tool results may carry a typed `CoachArtifact`; a client `ArtifactRenderer` registry renders them inline. Tool calls/results are surfaced in the summon surface (not dropped).
 - Supports both server-executable and client-executable tools.
 - Supports BYOK hosted providers through `data/llmPreferences.ts`: OpenRouter, OpenAI, Anthropic, and Google.
 - Stores user-supplied provider keys encrypted server-side in Supabase via service-role access and a server-only master encryption key.
 - The browser only sees provider preference, model preference, and saved-key status metadata such as `last4`.
 - Current tools:
-  - `generate_strength_workout` (client)
-  - `get_user_profile_summary` (server) — now also returns active `user_facts` and the background fields (`experience_level`, `training_age_years`).
+  - `propose_workout` (client) — builds a draft session honoring `ScreenContext` + constraints and returns a `workout_draft` artifact; does NOT save. The artifact's Apply commits via the existing create-workout flow (`buildWorkoutPlan` → `commitWorkoutPlan` in `useWorkoutGenerator.ts`). Editing existing programs is out of scope (sub-project 3).
+  - `get_training_volume` (server) — current-week archetype volume via the `fetch_weekly_archetype_sets_v2` RPC; returns a `volume_chart` artifact.
+  - `get_user_profile_summary` (server) — also returns active `user_facts` and the background fields (`experience_level`, `training_age_years`).
   - `get_recent_workout_summary` (server)
 
 ### `src/domains/periodization`
@@ -269,7 +280,7 @@ These are scaffold placeholders only. They currently expose empty `data/hooks/ui
 - `src/components/layout/navigationItems.ts`
 - `src/components/layout/MainAppLayout.tsx`
 
-`MainAppLayout` is the protected shell and the only place that should own app-wide FAB actions and global dialogs.
+`MainAppLayout` is the protected shell and the only place that should own the app-wide presence orb/surface mount and global dialogs. The old global "+" FAB was removed; its quick actions now live as summon-surface chips.
 
 ## Data and Boundary Rules
 
@@ -292,7 +303,8 @@ These are scaffold placeholders only. They currently expose empty `data/hooks/ui
 - Home dashboard:
   - `src/domains/dashboard/hooks/useHomeDashboard.ts`
 - Coach runtime:
-  - `src/domains/guidance/agent/*`
+  - `src/domains/guidance/agent/*` (typed message + tool + `ScreenContext` + `CoachArtifact` contracts; runtime injects read-only screen context and emits inline artifacts)
+  - `src/domains/guidance/hooks/PresenceAgentProvider.tsx` (client conversation/send-loop owner)
   - `api/coach.ts`
 - Periodization:
   - `src/domains/periodization/hooks/usePeriodization.ts`
