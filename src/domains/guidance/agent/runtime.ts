@@ -61,6 +61,12 @@ interface RecentWorkoutSummaryRow {
   workout_id: string;
 }
 
+interface WeeklyArchetypeSetRow {
+  base_archetype_name: string;
+  archetype_subtype_name: string | null;
+  total_sets: number;
+}
+
 const coachAgentInstructions = `${coachPrompts.systemPromptV1}
 
 You are operating as an AI agent inside the STRATOS Coach screen.
@@ -325,7 +331,7 @@ const createCoachAgentTools = (context: CoachServerDataContext) => ({
         );
       }
       const progress = buildVolumeProgressDisplayData(
-        (data ?? []) as never[] as Parameters<typeof buildVolumeProgressDisplayData>[0]
+        (data ?? []) as WeeklyArchetypeSetRow[] as Parameters<typeof buildVolumeProgressDisplayData>[0]
       );
       const series = progress.map((point) => ({
         label: point.name,

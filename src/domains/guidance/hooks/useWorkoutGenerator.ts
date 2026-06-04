@@ -1,5 +1,5 @@
 import { differenceInDays, startOfDay } from "date-fns";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { v4 as uuidv4 } from "uuid";
 
@@ -699,7 +699,7 @@ export const useProposeWorkout = () => {
   const { user } = useAuth();
   const workoutHistory = useAppSelector(selectWorkoutHistory);
 
-  return async (): Promise<CoachToolResultPayload> => {
+  return useCallback(async (): Promise<CoachToolResultPayload> => {
     const userId = user?.id ?? null;
     const weekRange = getCurrentWeekRange();
     const [baseExercises, movementArchetypes, activeProgram, weeklyArchetypeSets] =
@@ -761,5 +761,5 @@ export const useProposeWorkout = () => {
         },
       },
     };
-  };
+  }, [queryClient, user?.id, workoutHistory]);
 };

@@ -13,6 +13,9 @@ const WorkoutDraftArtifact = ({ artifact }: { artifact: WorkoutDraft }) => {
         {artifact.title}
       </p>
       <p className="mt-1 text-xs text-muted-foreground">{artifact.rationale}</p>
+      <p className="mt-1 text-[11px] uppercase tracking-wide text-muted-foreground">
+        {artifact.sessionFocus}
+      </p>
       <ul className="mt-2 space-y-1">
         {artifact.exercises.map((exercise, index) => (
           <li
