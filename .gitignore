@@ -45,3 +45,6 @@ skills-lock.json
 # Deployment and backend tooling state
 .vercel/
 supabase/.temp/
+
+# Superpowers brainstorm companion (local only)
+.superpowers/

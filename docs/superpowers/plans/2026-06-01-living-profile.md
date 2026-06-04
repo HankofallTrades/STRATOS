@@ -1,6 +1,16 @@
 # Living Profile Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **STATUS: ✅ COMPLETE — shipped and merged to `main` (2026-06).** All 10 tasks
+> are implemented in the codebase: `user_facts` migration + profile background
+> fields, `userFactsRepository`, `useProfileModel`, `ProfileScreen` /
+> `ProfileFactDialog` / `ProfileAboutDialog` / `ProfileScheduleSection`,
+> `pages/Profile.tsx`, the Settings→Profile nav swap with nested
+> `/profile/settings` (+ `/settings` redirect), and the Coach read tool
+> (`runtime.ts` folds `user_facts` + experience/training-age into the profile
+> summary). Checkboxes below were ticked retroactively to reflect the merged
+> state. Next: sub-project 2 (presence shell + context-aware summon).
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Add a structured, user-editable "model of you" (`user_facts` + two profile fields) surfaced on a new `/profile` screen that replaces Settings in the nav, with the existing Coach able to read the model.
 
@@ -49,7 +59,7 @@ Do **not** introduce a test framework (Rule 2: nothing speculative). Each task i
 **Files:**
 - Create: `supabase/migrations/20260601000001_add_user_facts_and_profile_background.sql`
 
-- [ ] **Step 1: Write the migration**
+- [x] **Step 1: Write the migration**
 
 ```sql
 -- Living profile: user_facts table + profile background fields
@@ -95,17 +105,17 @@ COMMENT ON COLUMN public.profiles.experience_level IS 'Self-reported training ex
 COMMENT ON COLUMN public.profiles.training_age_years IS 'Years of consistent training.';
 ```
 
-- [ ] **Step 2: Apply migrations locally**
+- [x] **Step 2: Apply migrations locally**
 
 Run: `npm run supabase:reset`
 Expected: reset completes, all migrations apply with no error.
 
-- [ ] **Step 3: Verify the table + policies**
+- [x] **Step 3: Verify the table + policies**
 
 Run: `npm run supabase:status` (confirm local stack is up), then in the Supabase Studio SQL editor (or psql) run `select * from public.user_facts limit 1;`
 Expected: empty result, no "relation does not exist" error.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add supabase/migrations/20260601000001_add_user_facts_and_profile_background.sql
@@ -119,22 +129,22 @@ git commit -m "feat(db): add user_facts table and profile background fields"
 **Files:**
 - Modify: `src/lib/integrations/supabase/types.ts`
 
-- [ ] **Step 1: Regenerate types from the local DB**
+- [x] **Step 1: Regenerate types from the local DB**
 
 Run: `npx supabase gen types typescript --local > src/lib/integrations/supabase/types.ts`
 (If the project id is required, use the linked-project form per `README.md`. Local requires the Supabase stack running from Task 1.)
 
-- [ ] **Step 2: Confirm the new types exist**
+- [x] **Step 2: Confirm the new types exist**
 
 Run: `grep -n "user_facts" src/lib/integrations/supabase/types.ts`
 Expected: matches showing a `user_facts` table with `Row/Insert/Update`. Also confirm `experience_level` and `training_age_years` now appear under `profiles`.
 
-- [ ] **Step 3: Typecheck**
+- [x] **Step 3: Typecheck**
 
 Run: `npm run build`
 Expected: build succeeds.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/lib/integrations/supabase/types.ts
@@ -148,7 +158,7 @@ git commit -m "chore(types): regenerate supabase types for user_facts + profile 
 **Files:**
 - Create: `src/domains/account/data/userFactsRepository.ts`
 
-- [ ] **Step 1: Write the repository**
+- [x] **Step 1: Write the repository**
 
 ```typescript
 import { supabase } from '@/lib/integrations/supabase/client';
@@ -229,12 +239,12 @@ export const deleteUserFact = async (factId: string): Promise<void> => {
 };
 ```
 
-- [ ] **Step 2: Verify**
+- [x] **Step 2: Verify**
 
 Run: `npm run build` then `npm run lint`
 Expected: build succeeds; lint shows the existing 8-warning baseline, 0 errors.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/domains/account/data/userFactsRepository.ts
@@ -248,7 +258,7 @@ git commit -m "feat(account): add user_facts repository"
 **Files:**
 - Create: `src/domains/account/hooks/useProfileModel.ts`
 
-- [ ] **Step 1: Write the hook**
+- [x] **Step 1: Write the hook**
 
 ```typescript
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -333,12 +343,12 @@ export const useProfileModel = (userId: string | null | undefined) => {
 };
 ```
 
-- [ ] **Step 2: Verify**
+- [x] **Step 2: Verify**
 
 Run: `npm run build` then `npm run lint`
 Expected: build succeeds; lint baseline unchanged.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/domains/account/hooks/useProfileModel.ts
@@ -352,7 +362,7 @@ git commit -m "feat(account): add useProfileModel hook"
 **Files:**
 - Create: `src/domains/account/ui/ProfileFactDialog.tsx`
 
-- [ ] **Step 1: Write the dialog**
+- [x] **Step 1: Write the dialog**
 
 ```tsx
 import { useEffect, useState } from 'react';
@@ -437,12 +447,12 @@ export const ProfileFactDialog = ({
 export default ProfileFactDialog;
 ```
 
-- [ ] **Step 2: Verify**
+- [x] **Step 2: Verify**
 
 Run: `npm run build` then `npm run lint`
 Expected: build succeeds; lint baseline unchanged.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/domains/account/ui/ProfileFactDialog.tsx
@@ -456,7 +466,7 @@ git commit -m "feat(account): add ProfileFactDialog"
 **Files:**
 - Create: `src/domains/account/ui/ProfileAboutDialog.tsx`
 
-- [ ] **Step 1: Write the dialog**
+- [x] **Step 1: Write the dialog**
 
 ```tsx
 import { useEffect, useState } from 'react';
@@ -571,12 +581,12 @@ export const ProfileAboutDialog = ({
 export default ProfileAboutDialog;
 ```
 
-- [ ] **Step 2: Verify**
+- [x] **Step 2: Verify**
 
 Run: `npm run build` then `npm run lint`
 Expected: build succeeds; lint baseline unchanged.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/domains/account/ui/ProfileAboutDialog.tsx
@@ -591,7 +601,7 @@ git commit -m "feat(account): add ProfileAboutDialog"
 - Create: `src/domains/account/ui/ProfileScreen.tsx`
 - Create: `src/pages/Profile.tsx`
 
-- [ ] **Step 1: Write the screen**
+- [x] **Step 1: Write the screen**
 
 ```tsx
 import { useMemo, useState } from 'react';
@@ -775,7 +785,7 @@ const ProfileScreen = () => {
 export default ProfileScreen;
 ```
 
-- [ ] **Step 2: Write the thin page wrapper**
+- [x] **Step 2: Write the thin page wrapper**
 
 ```tsx
 import ProfileScreen from "@/domains/account/ui/ProfileScreen";
@@ -787,12 +797,12 @@ const Profile = () => {
 export default Profile;
 ```
 
-- [ ] **Step 3: Verify**
+- [x] **Step 3: Verify**
 
 Run: `npm run build` then `npm run lint`
 Expected: build succeeds; lint baseline unchanged.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/domains/account/ui/ProfileScreen.tsx src/pages/Profile.tsx
@@ -808,7 +818,7 @@ git commit -m "feat(account): add ProfileScreen and Profile page"
 - Modify: `src/components/layout/MainAppLayout.tsx`
 - Modify: `src/pages/Settings.tsx`
 
-- [ ] **Step 1: Swap the nav item to Profile**
+- [x] **Step 1: Swap the nav item to Profile**
 
 In `src/components/layout/navigationItems.ts`, replace the `Settings` icon import with `User`, and replace the Settings nav entry. Final import block and array:
 
@@ -835,7 +845,7 @@ export const navigationItems: NavigationItem[] = [
 
 (Leave `isNavigationItemActive` unchanged — `'/profile'` already matches `'/profile/settings'` via its `startsWith(`${to}/`)` branch.)
 
-- [ ] **Step 2: Add routes + redirect + FAB path update in `MainAppLayout.tsx`**
+- [x] **Step 2: Add routes + redirect + FAB path update in `MainAppLayout.tsx`**
 
 Add `Navigate` to the router import:
 
@@ -872,7 +882,7 @@ Replace the `<Route path="/settings" ... />` line with the profile routes plus a
 
 (Keep the existing `Settings` lazy import — it now renders at `/profile/settings`.)
 
-- [ ] **Step 3: Add a back-to-Profile affordance on the nested Settings page**
+- [x] **Step 3: Add a back-to-Profile affordance on the nested Settings page**
 
 Rewrite `src/pages/Settings.tsx` so the nested route has a way back (the page wrapper stays thin):
 
@@ -898,12 +908,12 @@ const Settings = () => {
 export default Settings;
 ```
 
-- [ ] **Step 4: Verify (build + lint)**
+- [x] **Step 4: Verify (build + lint)**
 
 Run: `npm run build` then `npm run lint`
 Expected: build succeeds; lint baseline unchanged.
 
-- [ ] **Step 5: Manual check**
+- [x] **Step 5: Manual check**
 
 Run: `npm run dev`, log in, then verify:
 - Bottom nav (mobile width) and side `NavBar` (desktop) show **Profile** instead of Settings; the Profile tab is active on `/profile` and `/profile/settings`.
@@ -912,7 +922,7 @@ Run: `npm run dev`, log in, then verify:
 - All prior Settings actions (units, Coach provider/key, training reset, sign out) still work.
 - The global FAB does **not** appear on `/profile` or `/profile/settings`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/components/layout/navigationItems.ts src/components/layout/MainAppLayout.tsx src/pages/Settings.tsx
@@ -926,7 +936,7 @@ git commit -m "feat(nav): replace Settings nav with Profile; nest Settings under
 **Files:**
 - Modify: `src/domains/guidance/agent/runtime.ts`
 
-- [ ] **Step 1: Add a facts formatter helper**
+- [x] **Step 1: Add a facts formatter helper**
 
 Add this near `formatProfileSummary` (around line 73):
 
@@ -954,7 +964,7 @@ const formatProfileFacts = (
 };
 ```
 
-- [ ] **Step 2: Include background columns in the profile select**
+- [x] **Step 2: Include background columns in the profile select**
 
 In `get_user_profile_summary` (around line 238), change the `.select(...)` string to add the two background columns:
 
@@ -964,7 +974,7 @@ In `get_user_profile_summary` (around line 238), change the `.select(...)` strin
         )
 ```
 
-- [ ] **Step 3: Query active facts and append them to the summary**
+- [x] **Step 3: Query active facts and append them to the summary**
 
 In the same `execute`, after the existing profile `if (!data)` guard and before the final `return`, fetch facts and compose the message. Replace the existing final return:
 
@@ -993,16 +1003,16 @@ with:
 
 (RLS already restricts `user_facts` to the caller; the explicit `user_id` filter is belt-and-suspenders and keeps the query intentional.)
 
-- [ ] **Step 4: Verify (build + lint)**
+- [x] **Step 4: Verify (build + lint)**
 
 Run: `npm run build` then `npm run lint`
 Expected: build succeeds; lint baseline unchanged.
 
-- [ ] **Step 5: Manual check**
+- [x] **Step 5: Manual check**
 
 With `npm run dev` + a configured Coach provider: add a goal and a constraint on `/profile`, then ask Coach "what are my goals and constraints?" Expected: the reply reflects the facts you entered (the tool returns them).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/domains/guidance/agent/runtime.ts
@@ -1016,7 +1026,7 @@ git commit -m "feat(coach): read user_facts + background in get_user_profile_sum
 **Files:**
 - Modify: `CODEMAP.md`
 
-- [ ] **Step 1: Update the route map and account domain entries**
+- [x] **Step 1: Update the route map and account domain entries**
 
 In `CODEMAP.md`:
 - Under **Route Map**, replace the `/settings` entry with:
@@ -1026,14 +1036,14 @@ In `CODEMAP.md`:
 - Under **Coach runtime**, note `get_user_profile_summary` now also returns active `user_facts` + background fields.
 - Under **Backend and Data Contract**, add `user_facts` and the `profiles` background columns to recent feature areas.
 
-- [ ] **Step 2: Final full verification**
+- [x] **Step 2: Final full verification**
 
 Run sequentially:
 1. `npm run build`
 2. `npm run lint`
 Expected: build succeeds; lint shows the 8-warning baseline, 0 errors.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add CODEMAP.md
