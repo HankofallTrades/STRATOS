@@ -6,6 +6,9 @@ import { Plus } from "lucide-react";
 import NavBar from "@/components/layout/NavBar";
 import BottomNav from "@/components/layout/BottomNav";
 import { Button } from "@/components/core/button";
+import PresenceMark from "@/components/layout/PresenceMark";
+import SummonSurface from "@/domains/guidance/ui/SummonSurface";
+import { PresenceAgentProvider } from "@/domains/guidance/hooks/PresenceAgentProvider";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -124,7 +127,8 @@ const MainAppLayout = () => {
   ].includes(location.pathname);
 
   return (
-    <SidebarProvider defaultOpen={false}>
+    <PresenceAgentProvider>
+      <SidebarProvider defaultOpen={false}>
       <div className="hidden md:block">
         <NavBar />
       </div>
@@ -174,6 +178,9 @@ const MainAppLayout = () => {
           </div>
         )}
 
+        <PresenceMark />
+        <SummonSurface />
+
         {isProteinModalOpen ? (
           <Suspense fallback={<div className="sr-only">Loading protein dialog</div>}>
             <ProteinLogging
@@ -206,6 +213,7 @@ const MainAppLayout = () => {
       </SidebarInset>
       <BottomNav />
     </SidebarProvider>
+    </PresenceAgentProvider>
   );
 };
 
