@@ -27,10 +27,19 @@ export const useAnalyticsScreen = () => {
     useState<BenchmarkType>("Strength");
   const [selectedAnalysisType, setSelectedAnalysisType] =
     useState<AnalysisType>(readSelectedAnalysisType);
+  const [shouldFetchRecoveryData, setShouldFetchRecoveryData] = useState(false);
 
   useEffect(() => {
     persistSelectedAnalysisType(selectedAnalysisType);
   }, [selectedAnalysisType]);
+
+  useEffect(() => {
+    const timerId = window.setTimeout(() => {
+      setShouldFetchRecoveryData(true);
+    }, 0);
+
+    return () => window.clearTimeout(timerId);
+  }, []);
 
   const todayDate = useMemo(() => getTodayDateKey(), []);
 
@@ -47,7 +56,7 @@ export const useAnalyticsScreen = () => {
   const { data: recoverySnapshot } = useQuery<RecoverySnapshot | null, Error>({
     queryKey: ["analyticsRecoverySnapshot", userId, todayDate],
     queryFn: async () => (userId ? getRecoverySnapshot(userId, todayDate) : null),
-    enabled: !!userId,
+    enabled: !!userId && shouldFetchRecoveryData,
     staleTime: 60 * 1000,
     refetchInterval: 60 * 1000,
   });
