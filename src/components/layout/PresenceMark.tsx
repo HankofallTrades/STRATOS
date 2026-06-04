@@ -1,5 +1,3 @@
-import { Sparkles } from "lucide-react";
-
 import { usePresenceAgent } from "@/domains/guidance/hooks/usePresenceAgent";
 import { cn } from "@/lib/utils/cn";
 
@@ -18,7 +16,12 @@ const PresenceMark = () => {
         "hover:bg-primary/90 active:scale-95 md:bottom-6"
       )}
     >
-      <Sparkles size={22} aria-hidden="true" />
+      <span
+        aria-hidden="true"
+        className="font-sans text-2xl font-bold leading-none tracking-tight text-white"
+      >
+        S
+      </span>
     </button>
   );
 };
