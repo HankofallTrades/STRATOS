@@ -3,6 +3,7 @@ import { Button } from "@/components/core/button";
 import { Input } from "@/components/core/input";
 import { usePresenceAgent } from "@/domains/guidance/hooks/usePresenceAgent";
 import { cn } from "@/lib/utils/cn";
+import ArtifactRenderer from "@/domains/guidance/ui/ArtifactRenderer";
 
 export interface SummonSurfaceQuickActions {
   onStartWorkout: () => void;
@@ -87,6 +88,18 @@ const SummonSurface = ({
                       )}
                     >
                       {message.content}
+                    </div>
+                  </div>
+                );
+              }
+              if (
+                message.kind === "tool_result" &&
+                message.output.artifact
+              ) {
+                return (
+                  <div key={message.id} className="flex justify-start">
+                    <div className="w-[90%]">
+                      <ArtifactRenderer artifact={message.output.artifact} />
                     </div>
                   </div>
                 );
