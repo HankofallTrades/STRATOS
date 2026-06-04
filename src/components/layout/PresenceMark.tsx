@@ -26,7 +26,7 @@ export const PresenceMarkVisual = ({ size = 44, className }: PresenceMarkVisualP
         "transition-[background-color,box-shadow] duration-200 ease-out",
         hasAttention
           ? "bg-[#1a221f] shadow-[0_3px_10px_rgba(0,0,0,0.45)] ring-1 ring-[#2f3a36]"
-          : "bg-transparent shadow-none ring-0 group-hover:ring-1 group-hover:ring-[#46514d]",
+          : "bg-transparent shadow-none ring-1 ring-[#2f3a36] group-hover:ring-[#46514d]",
         className
       )}
     >
