@@ -1,4 +1,5 @@
 import { Component, Suspense, lazy, type ReactNode } from "react";
+import AppScreenSkeleton from "@/components/loading/AppScreenSkeleton";
 import { Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { Plus } from "lucide-react";
 
@@ -94,11 +95,6 @@ const Profile = lazyWithRetry(() => import("@/pages/Profile"));
 const Settings = lazyWithRetry(() => import("@/pages/Settings"));
 const NotFound = lazyWithRetry(() => import("@/pages/NotFound"));
 
-const RouteFallback = () => (
-  <div className="app-page">
-    <div className="stone-surface min-h-[16rem] animate-pulse rounded-[26px]" />
-  </div>
-);
 
 const MainAppLayout = () => {
   useOfflineWorkoutSync();
@@ -134,7 +130,7 @@ const MainAppLayout = () => {
       </div>
       <SidebarInset className="app-shell">
         <RouteErrorBoundary resetKey={location.key}>
-          <Suspense fallback={<RouteFallback />}>
+          <Suspense fallback={<AppScreenSkeleton />}>
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/workout" element={<Workout />} />
@@ -179,7 +175,7 @@ const MainAppLayout = () => {
         )}
 
         {isProteinModalOpen ? (
-          <Suspense fallback={null}>
+          <Suspense fallback={<div className="sr-only">Loading protein dialog</div>}>
             <ProteinLogging
               isOpen={isProteinModalOpen}
               onClose={() => setIsProteinModalOpen(false)}
@@ -189,7 +185,7 @@ const MainAppLayout = () => {
         ) : null}
 
         {isSunExposureModalOpen ? (
-          <Suspense fallback={null}>
+          <Suspense fallback={<div className="sr-only">Loading sun exposure dialog</div>}>
             <SunExposureLogging
               isOpen={isSunExposureModalOpen}
               onClose={() => setIsSunExposureModalOpen(false)}
@@ -199,7 +195,7 @@ const MainAppLayout = () => {
         ) : null}
 
         {isAddExerciseDialogOpen ? (
-          <Suspense fallback={null}>
+          <Suspense fallback={<div className="sr-only">Loading exercise dialog</div>}>
             <AddSingleExerciseDialog
               open={isAddExerciseDialogOpen}
               onOpenChange={setIsAddExerciseDialogOpen}
