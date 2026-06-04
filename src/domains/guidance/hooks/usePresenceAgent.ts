@@ -4,6 +4,7 @@ import type { CoachConversationMessage } from "@/domains/guidance/agent/contract
 
 export interface PresenceAgentContextValue {
   isOpen: boolean;
+  hasAttention: boolean;
   summon: () => void;
   dismiss: () => void;
   toggle: () => void;

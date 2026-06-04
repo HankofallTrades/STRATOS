@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -44,8 +44,26 @@ export const PresenceAgentProvider = ({ children }: { children: ReactNode }) => 
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [hasAttention, setHasAttention] = useState(false);
   const conversationRef = useRef<CoachConversationMessage[]>([]);
   conversationRef.current = conversation;
+  const seenAgentCountRef = useRef(0);
+
+  // Attention = an agent message or an actionable artifact arrived while the
+  // surface was closed. Reset whenever the user opens the surface.
+  useEffect(() => {
+    const agentCount = conversation.filter(
+      (message) =>
+        message.kind === "assistant" ||
+        (message.kind === "tool_result" && Boolean(message.output.artifact))
+    ).length;
+    if (isOpen) {
+      seenAgentCountRef.current = agentCount;
+      setHasAttention(false);
+    } else if (agentCount > seenAgentCountRef.current) {
+      setHasAttention(true);
+    }
+  }, [conversation, isOpen]);
 
   const proposeWorkout = useProposeWorkout();
 
@@ -199,6 +217,7 @@ export const PresenceAgentProvider = ({ children }: { children: ReactNode }) => 
   const value = useMemo<PresenceAgentContextValue>(
     () => ({
       isOpen,
+      hasAttention,
       summon,
       dismiss,
       toggle,
@@ -217,6 +236,7 @@ export const PresenceAgentProvider = ({ children }: { children: ReactNode }) => 
       configurationMessage,
       conversation,
       dismiss,
+      hasAttention,
       input,
       isCoachConfigured,
       isLoading,
