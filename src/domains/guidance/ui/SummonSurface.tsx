@@ -4,7 +4,18 @@ import { Input } from "@/components/core/input";
 import { usePresenceAgent } from "@/domains/guidance/hooks/usePresenceAgent";
 import { cn } from "@/lib/utils/cn";
 
-const SummonSurface = () => {
+export interface SummonSurfaceQuickActions {
+  onStartWorkout: () => void;
+  onLogSingleExercise: () => void;
+  onLogProtein: () => void;
+  onLogSunExposure: () => void;
+}
+
+const SummonSurface = ({
+  quickActions,
+}: {
+  quickActions: SummonSurfaceQuickActions;
+}) => {
   const {
     isOpen,
     dismiss,
@@ -17,6 +28,13 @@ const SummonSurface = () => {
     configurationMessage,
   } = usePresenceAgent();
 
+  const chips: Array<{ label: string; onClick: () => void }> = [
+    { label: "Start workout", onClick: quickActions.onStartWorkout },
+    { label: "Single exercise", onClick: quickActions.onLogSingleExercise },
+    { label: "Protein", onClick: quickActions.onLogProtein },
+    { label: "Sun", onClick: quickActions.onLogSunExposure },
+  ];
+
   return (
     <Sheet open={isOpen} onOpenChange={(open) => (open ? undefined : dismiss())}>
       <SheetContent
@@ -24,6 +42,22 @@ const SummonSurface = () => {
         className="flex h-[80svh] flex-col gap-0 rounded-t-2xl border-border bg-card p-0"
       >
         <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-muted" />
+
+        <div className="flex flex-wrap gap-2 px-4 pb-1 pt-3">
+          {chips.map((chip) => (
+            <button
+              key={chip.label}
+              type="button"
+              onClick={() => {
+                dismiss();
+                chip.onClick();
+              }}
+              className="rounded-full border border-border bg-muted px-3 py-1 text-xs text-foreground hover:bg-accent"
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
 
         <div className="flex-1 space-y-3 overflow-y-auto p-4">
           {conversation.length === 0 ? (

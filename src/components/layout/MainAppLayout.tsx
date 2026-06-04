@@ -179,7 +179,14 @@ const MainAppLayout = () => {
         )}
 
         <PresenceMark />
-        <SummonSurface />
+        <SummonSurface
+            quickActions={{
+              onStartWorkout: handleAddWorkout,
+              onLogSingleExercise: handleAddExercise,
+              onLogProtein: handleLogProtein,
+              onLogSunExposure: handleLogSunExposure,
+            }}
+          />
 
         {isProteinModalOpen ? (
           <Suspense fallback={<div className="sr-only">Loading protein dialog</div>}>
