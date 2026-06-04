@@ -1,20 +1,12 @@
 import { Component, Suspense, lazy, type ReactNode } from "react";
 import AppScreenSkeleton from "@/components/loading/AppScreenSkeleton";
 import { Routes, Route, useLocation, Navigate } from "react-router-dom";
-import { Plus } from "lucide-react";
-
 import NavBar from "@/components/layout/NavBar";
 import BottomNav from "@/components/layout/BottomNav";
 import { Button } from "@/components/core/button";
 import PresenceMark from "@/components/layout/PresenceMark";
 import SummonSurface from "@/domains/guidance/ui/SummonSurface";
 import { PresenceAgentProvider } from "@/domains/guidance/hooks/PresenceAgentProvider";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/core/dropdown-menu";
 import { SidebarInset, SidebarProvider } from "@/components/core/sidebar";
 import { useOfflineWorkoutSync } from "@/domains/fitness/hooks/useOfflineWorkoutSync";
 import { useQuickActions } from "@/domains/fitness/hooks/useQuickActions";
@@ -93,7 +85,6 @@ const SunExposureLogging = lazyWithRetry(
 const Home = lazyWithRetry(() => import("@/pages/Home"));
 const Workout = lazyWithRetry(() => import("@/pages/Workout"));
 const Analytics = lazyWithRetry(() => import("@/pages/Analytics"));
-const Coach = lazyWithRetry(() => import("@/pages/Coach"));
 const Profile = lazyWithRetry(() => import("@/pages/Profile"));
 const Settings = lazyWithRetry(() => import("@/pages/Settings"));
 const NotFound = lazyWithRetry(() => import("@/pages/NotFound"));
@@ -117,15 +108,6 @@ const MainAppLayout = () => {
     handleLogSunExposure,
   } = useQuickActions();
 
-  const shouldShowGlobalFab = ![
-    "/",
-    "/workout",
-    "/analytics",
-    "/coach",
-    "/profile",
-    "/profile/settings",
-  ].includes(location.pathname);
-
   return (
     <PresenceAgentProvider>
       <SidebarProvider defaultOpen={false}>
@@ -139,7 +121,7 @@ const MainAppLayout = () => {
               <Route path="/" element={<Home />} />
               <Route path="/workout" element={<Workout />} />
               <Route path="/analytics" element={<Analytics />} />
-              <Route path="/coach" element={<Coach />} />
+              <Route path="/coach" element={<Navigate to="/" replace />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/profile/settings" element={<Settings />} />
               <Route path="/settings" element={<Navigate to="/profile/settings" replace />} />
@@ -147,36 +129,6 @@ const MainAppLayout = () => {
             </Routes>
           </Suspense>
         </RouteErrorBoundary>
-
-        {shouldShowGlobalFab && (
-          <div className="fixed bottom-20 right-6 z-20">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="default"
-                  size="icon"
-                  className="rounded-full h-14 w-14 bg-primary hover:bg-primary/90 shadow-lg text-primary-foreground"
-                >
-                  <Plus size={24} />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent side="top" align="end" className="w-56 bg-card border-border">
-                <DropdownMenuItem onSelect={handleAddWorkout} className="focus:bg-accent focus:text-accent-foreground">
-                  Start New Workout
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={handleAddExercise} className="focus:bg-accent focus:text-accent-foreground">
-                  Log Single Exercise
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={handleLogProtein} className="focus:bg-accent focus:text-accent-foreground">
-                  Log Protein
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={handleLogSunExposure} className="focus:bg-accent focus:text-accent-foreground">
-                  Log Sun Exposure
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        )}
 
         <PresenceMark />
         <SummonSurface
