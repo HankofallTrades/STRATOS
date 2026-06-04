@@ -53,10 +53,6 @@ const NavBar = () => {
                 </SidebarMenuItem>
               );
             })}
-          </SidebarMenu>
-        </SidebarGroup>
-        <SidebarGroup className="mt-auto border-t border-sidebar-border/60 pt-2">
-          <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
                 onClick={toggle}
@@ -64,7 +60,7 @@ const NavBar = () => {
                 tooltip="Coach"
                 className="group app-nav-item [&>span]:font-medium"
               >
-                <PresenceMarkVisual size={18} disc={false} />
+                <PresenceMarkVisual size={20} />
                 <span>Coach</span>
               </SidebarMenuButton>
             </SidebarMenuItem>

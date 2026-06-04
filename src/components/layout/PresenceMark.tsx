@@ -3,29 +3,19 @@ import { cn } from "@/lib/utils/cn";
 
 interface PresenceMarkVisualProps {
   size?: number;
-  /**
-   * `true` (default) renders the matte stone disc body for a standalone button
-   * (mobile raised nav). `false` renders just the ring + core glyph at icon
-   * weight, to sit inline like a nav icon (desktop sidebar).
-   */
-  disc?: boolean;
   className?: string;
 }
 
 /**
- * The agent presence mark (ring + pthalo core). Calm at rest; the ring/core
- * light and it breathes when the agent has a message or action waiting.
+ * The matte stone mark itself (ring + pthalo core). Calm at rest; the ring/core
+ * light and the body breathes when the agent has a message or action waiting.
  * Presentational only, so it can sit inside either a standalone button (mobile
  * nav) or a labelled row button (desktop sidebar).
  */
-export const PresenceMarkVisual = ({
-  size = 44,
-  disc = true,
-  className,
-}: PresenceMarkVisualProps) => {
+export const PresenceMarkVisual = ({ size = 44, className }: PresenceMarkVisualProps) => {
   const { hasAttention } = usePresenceAgent();
-  const ringSize = Math.round(size * (disc ? 0.5 : 0.86));
-  const coreSize = Math.max(4, Math.round(ringSize * 0.34));
+  const ringSize = Math.round(size * 0.5);
+  const coreSize = Math.max(5, Math.round(size * 0.16));
 
   return (
     <span
@@ -33,8 +23,8 @@ export const PresenceMarkVisual = ({
       style={{ width: size, height: size }}
       className={cn(
         "relative flex shrink-0 items-center justify-center rounded-full",
-        disc &&
-          "bg-[#1a221f] shadow-[0_3px_10px_rgba(0,0,0,0.45)] ring-1 ring-[#2f3a36] transition-[box-shadow] duration-200 ease-out group-hover:ring-[#46514d]",
+        "bg-[#1a221f] shadow-[0_3px_10px_rgba(0,0,0,0.45)] ring-1 ring-[#2f3a36]",
+        "transition-[box-shadow] duration-200 ease-out group-hover:ring-[#46514d]",
         className
       )}
     >
@@ -52,7 +42,7 @@ export const PresenceMarkVisual = ({
         style={{ width: ringSize, height: ringSize, borderWidth: 1.5 }}
         className={cn(
           "flex items-center justify-center rounded-full border transition-colors duration-300",
-          hasAttention ? "border-[#7ea99c]" : "border-[#51605b]"
+          hasAttention ? "border-[#7ea99c]" : "border-[#3f4945]"
         )}
       >
         <span
@@ -61,7 +51,7 @@ export const PresenceMarkVisual = ({
             "rounded-full transition-colors duration-300",
             hasAttention
               ? "bg-[#dff5ed] shadow-[0_0_8px_2px_rgba(120,200,180,0.7)]"
-              : "bg-[#3f8a78]"
+              : "bg-[#586059]"
           )}
         />
       </span>

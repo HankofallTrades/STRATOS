@@ -30,8 +30,8 @@ const BottomNav = () => {
     <nav className="app-bottom-nav fixed inset-x-0 bottom-0 z-40 md:hidden" aria-label="Primary">
       <div className="app-bottom-nav-frame">
         {leftItems.map(renderItem)}
-        <div className="flex flex-1 items-start justify-center">
-          <PresenceMark size={46} className="-mt-5" />
+        <div className="flex flex-1 items-center justify-center">
+          <PresenceMark size={40} />
         </div>
         {rightItems.map(renderItem)}
       </div>
