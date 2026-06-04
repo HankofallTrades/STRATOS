@@ -66,6 +66,7 @@ export const handleCoachAgentRequest = async ({
       messages: request.messages,
       model: request.model,
       provider: request.provider,
+      screenContext: request.screenContext,
     });
 
     return {

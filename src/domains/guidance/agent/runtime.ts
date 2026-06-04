@@ -25,6 +25,7 @@ import {
   type CoachToolName,
   type CoachToolResultPayload,
 } from "./contracts.js";
+import { formatScreenContextForPrompt } from "./screenContext.js";
 import { coachToolDefinitions } from "./tools.js";
 
 export interface CoachAgentRuntimeEnvironment {
@@ -547,6 +548,7 @@ export const runCoachAgentTurn = async ({
   messages,
   model,
   provider,
+  screenContext,
 }: RunCoachAgentTurnParams): Promise<CoachAgentResponse> => {
   try {
     const serverContext = await createCoachServerDataContext(env, auth);
@@ -563,7 +565,7 @@ export const runCoachAgentTurn = async ({
     const tools = createCoachAgentTools(serverContext);
     const agent = new ToolLoopAgent<never, CoachToolSet>({
       id: "stratos-coach",
-      instructions: coachAgentInstructions,
+      instructions: `${coachAgentInstructions}${formatScreenContextForPrompt(screenContext)}`,
       model: createLlmModel({
         apiKey: resolvedProviderApiKey ?? undefined,
         localLlmUrl: env.localLlmUrl,

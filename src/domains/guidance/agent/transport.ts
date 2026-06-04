@@ -5,12 +5,14 @@ import {
   type CoachAgentResponse,
   type CoachConversationMessage,
 } from "@/domains/guidance/agent/contracts";
+import type { ScreenContext } from "@/domains/guidance/agent/contracts";
 
 interface SendCoachMessageRequest {
   auth?: CoachAgentAuthContext;
   messages: CoachConversationMessage[];
   provider: LlmProviderPreference;
   model?: string;
+  screenContext?: ScreenContext;
 }
 
 export const sendCoachMessage = async ({
@@ -18,6 +20,7 @@ export const sendCoachMessage = async ({
   messages,
   provider,
   model,
+  screenContext,
 }: SendCoachMessageRequest): Promise<CoachAgentResponse> => {
   const response = await fetch("/api/coach", {
     method: "POST",
@@ -29,6 +32,7 @@ export const sendCoachMessage = async ({
       messages,
       provider,
       model,
+      screenContext,
     }),
   });
 
