@@ -23,8 +23,10 @@ export const PresenceMarkVisual = ({ size = 44, className }: PresenceMarkVisualP
       style={{ width: size, height: size }}
       className={cn(
         "relative flex shrink-0 items-center justify-center rounded-full",
-        "bg-[#1a221f] shadow-[0_3px_10px_rgba(0,0,0,0.45)] ring-1 ring-[#2f3a36]",
-        "transition-[box-shadow] duration-200 ease-out group-hover:ring-[#46514d]",
+        "transition-[background-color,box-shadow] duration-200 ease-out",
+        hasAttention
+          ? "bg-[#1a221f] shadow-[0_3px_10px_rgba(0,0,0,0.45)] ring-1 ring-[#2f3a36]"
+          : "bg-transparent shadow-none ring-0 group-hover:ring-1 group-hover:ring-[#46514d]",
         className
       )}
     >
