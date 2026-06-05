@@ -19,6 +19,7 @@ import {
   providerRequiresApiKey,
   readLlmPreferences,
 } from "@/domains/guidance/data/llmPreferences";
+import { readProviderApiKey } from "@/domains/guidance/data/providerKeyStore";
 import { useAppDispatch, useAppSelector } from "@/hooks/redux";
 import { useAuth } from "@/state/auth/AuthProvider";
 import {
@@ -68,7 +69,9 @@ export const PresenceAgentProvider = ({ children }: { children: ReactNode }) => 
   const proposeWorkout = useProposeWorkout();
 
   const llmPreferences = readLlmPreferences();
-  const isCoachConfigured = !providerRequiresApiKey(llmPreferences.provider);
+  const isCoachConfigured =
+    !providerRequiresApiKey(llmPreferences.provider) ||
+    Boolean(readProviderApiKey(llmPreferences.provider));
   const configurationMessage = isCoachConfigured
     ? null
     : buildMissingProviderConfigurationMessage(llmPreferences.provider);
@@ -93,7 +96,7 @@ export const PresenceAgentProvider = ({ children }: { children: ReactNode }) => 
       if (!messageToSend) return;
 
       const { model, provider } = readLlmPreferences();
-      if (providerRequiresApiKey(provider)) {
+      if (providerRequiresApiKey(provider) && !readProviderApiKey(provider)) {
         const missing = buildMissingProviderConfigurationMessage(provider);
         toast.error(missing);
         setConversation((prev) => [...prev, createCoachErrorMessage(missing ?? "Coach is not configured.")]);
