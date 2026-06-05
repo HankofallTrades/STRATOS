@@ -105,6 +105,7 @@ export interface CoachAgentRequest {
   model?: string;
   auth?: CoachAgentAuthContext;
   screenContext?: ScreenContext;
+  apiKey?: string;
 }
 
 export interface CoachAgentResponse {
@@ -202,6 +203,7 @@ export const coachAgentRequestSchema = z.object({
   model: z.string().optional(),
   provider: z.enum(coachLlmProviders),
   screenContext: screenContextSchema.optional(),
+  apiKey: z.string().optional(),
 });
 
 export const coachAgentResponseSchema = z.object({

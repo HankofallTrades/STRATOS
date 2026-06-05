@@ -10,8 +10,6 @@ import { createClient, type SupabaseClient, type User } from "@supabase/supabase
 import type { Database } from "../../../lib/integrations/supabase/types.js";
 import { createLlmModel } from "../../../lib/llm/llmClient.js";
 import { coachPrompts } from "../../../lib/prompts/coachPrompts.js";
-import type { HostedCredentialProvider } from "../data/providerCredentialContracts.js";
-import { loadStoredProviderCredentialForUser } from "../data/providerCredentialStore.js";
 import {
   createCoachAssistantMessage,
   createCoachErrorResponse,
@@ -39,9 +37,7 @@ export interface CoachAgentRuntimeEnvironment {
   openRouterAppName: string;
   openRouterReferer: string;
   supabaseAnonKey?: string;
-  supabaseServiceRoleKey?: string;
   supabaseUrl?: string;
-  userSecretEncryptionKey?: string;
 }
 
 interface RunCoachAgentTurnParams extends CoachAgentRequest {
@@ -614,16 +610,7 @@ export const runCoachAgentTurn = async ({
 }: RunCoachAgentTurnParams): Promise<CoachAgentResponse> => {
   try {
     const serverContext = await createCoachServerDataContext(env, auth);
-    const resolvedProviderApiKey =
-      provider === "local"
-        ? undefined
-        : serverContext.user
-          ? await loadStoredProviderCredentialForUser({
-              env,
-              provider: provider as HostedCredentialProvider,
-              userId: serverContext.user.id,
-            })
-          : null;
+    const resolvedProviderApiKey = provider === "local" ? undefined : apiKey ?? undefined;
     const tools = createCoachAgentTools(serverContext);
     const agent = new ToolLoopAgent<never, CoachToolSet>({
       id: "stratos-coach",

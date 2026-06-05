@@ -59,9 +59,6 @@ const SettingsScreen = () => {
     isPeriodDialogOpen,
     isPeriodUpdating,
     isPeriodWorkoutInProgress,
-    isProviderCredentialBusy,
-    isProviderCredentialLoading,
-    isProviderCredentialSaving,
     isSigningOut,
     llmModelPref,
     llmProviderPref,
@@ -113,13 +110,11 @@ const SettingsScreen = () => {
     ? `${selectedProvider.label}${selectedModelLabel ? ` · ${selectedModelLabel}` : ""}`
     : "Local runtime";
   const credentialStatus = shouldShowApiKeyInput
-    ? isProviderCredentialLoading
-      ? "Checking key"
-      : hasStoredProviderCredential
-        ? providerCredentialLastFour
-          ? `Saved ••••${providerCredentialLastFour}`
-          : "Saved"
-        : "No saved key"
+    ? hasStoredProviderCredential
+      ? providerCredentialLastFour
+        ? `Saved ••••${providerCredentialLastFour}`
+        : "Saved"
+      : "No saved key"
     : null;
 
   return (
@@ -324,7 +319,6 @@ const SettingsScreen = () => {
                         handleProviderApiKeyChange(event.target.value)
                       }
                       placeholder={selectedProvider.apiKeyPlaceholder}
-                      disabled={isProviderCredentialBusy}
                       autoComplete="off"
                       className="app-form-input h-12 rounded-[16px]"
                     />
@@ -333,17 +327,17 @@ const SettingsScreen = () => {
                   <Button
                     type="button"
                     onClick={handleSaveProviderApiKey}
-                    disabled={isProviderCredentialBusy || !providerApiKeyDraft.trim()}
+                    disabled={!providerApiKeyDraft.trim()}
                     className="settings-action-primary h-11 rounded-[16px] px-5 text-sm font-semibold"
                   >
-                    {isProviderCredentialSaving ? "Saving..." : "Save key"}
+                    Save key
                   </Button>
 
                   <Button
                     type="button"
                     variant="ghost"
                     onClick={handleClearProviderApiKey}
-                    disabled={isProviderCredentialBusy || !hasStoredProviderCredential}
+                    disabled={!hasStoredProviderCredential}
                     className="settings-action-secondary h-11 rounded-[16px] px-5 text-sm font-semibold"
                   >
                     Delete

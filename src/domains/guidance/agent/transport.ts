@@ -1,4 +1,5 @@
 import type { LlmProviderPreference } from "@/domains/guidance/data/llmPreferences";
+import { readProviderApiKey } from "@/domains/guidance/data/providerKeyStore";
 import {
   coachAgentResponseSchema,
   type CoachAgentAuthContext,
@@ -22,6 +23,7 @@ export const sendCoachMessage = async ({
   model,
   screenContext,
 }: SendCoachMessageRequest): Promise<CoachAgentResponse> => {
+  const apiKey = provider !== "local" ? readProviderApiKey(provider) ?? undefined : undefined;
   const response = await fetch("/api/coach", {
     method: "POST",
     headers: {
@@ -33,6 +35,7 @@ export const sendCoachMessage = async ({
       provider,
       model,
       screenContext,
+      apiKey,
     }),
   });
 

@@ -5,9 +5,6 @@ import {
   type CoachAgentResponse,
 } from "./contracts.js";
 import {
-  resolveProviderCredentialEnvironment,
-} from "../data/providerCredentialStore.js";
-import {
   runCoachAgentTurn,
   type CoachAgentRuntimeEnvironment,
 } from "./runtime.js";
@@ -40,7 +37,8 @@ export const resolveCoachAgentEnvironment = (
   openRouterAppName: envSource.VITE_APP_NAME || envSource.APP_NAME || "STRATOS",
   openRouterReferer:
     envSource.VITE_APP_URL || envSource.APP_URL || "http://localhost:5173",
-  ...resolveProviderCredentialEnvironment(envSource),
+  supabaseAnonKey: envSource.SUPABASE_ANON_KEY || envSource.VITE_SUPABASE_ANON_KEY,
+  supabaseUrl: envSource.SUPABASE_URL || envSource.VITE_SUPABASE_URL,
 });
 
 export const handleCoachAgentRequest = async ({
@@ -62,6 +60,7 @@ export const handleCoachAgentRequest = async ({
     const request: CoachAgentRequest = parsedRequest.data;
     const agentResponse = await runCoachAgentTurn({
       auth: request.auth,
+      apiKey: request.apiKey,
       env,
       messages: request.messages,
       model: request.model,

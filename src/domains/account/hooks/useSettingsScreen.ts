@@ -16,10 +16,10 @@ import {
   type LlmProviderPreference,
 } from "@/domains/guidance/data/llmPreferences";
 import {
-  deleteProviderCredential,
-  fetchProviderCredentialStatus,
-  upsertProviderCredential,
-} from "@/domains/guidance/data/providerCredentialRepository";
+  clearProviderApiKey,
+  readProviderApiKey,
+  writeProviderApiKey,
+} from "@/domains/guidance/data/providerKeyStore";
 import type { SessionFocus } from "@/lib/types/workout";
 import { useAuth } from "@/state/auth/AuthProvider";
 import { selectCurrentWorkout } from "@/state/workout/workoutSlice";
@@ -68,7 +68,7 @@ const buildPeriodName = (
 };
 
 export const useSettingsScreen = () => {
-  const { session, signOut, user, triggerOnboarding } = useAuth();
+  const { signOut, user, triggerOnboarding } = useAuth();
   const currentWorkout = useAppSelector(selectCurrentWorkout);
   const {
     activeProgram,
@@ -91,15 +91,12 @@ export const useSettingsScreen = () => {
   );
   const [llmModelPref, setLlmModelPref] = useState(initialLlmPreferences.model);
   const [providerApiKeyDraft, setProviderApiKeyDraft] = useState("");
+  const initialStoredKey = readProviderApiKey(initialLlmPreferences.provider);
   const [hasStoredProviderCredential, setHasStoredProviderCredential] =
-    useState(false);
+    useState(Boolean(initialStoredKey));
   const [providerCredentialLastFour, setProviderCredentialLastFour] = useState<
     string | null
-  >(null);
-  const [isProviderCredentialLoading, setIsProviderCredentialLoading] =
-    useState(false);
-  const [isProviderCredentialSaving, setIsProviderCredentialSaving] =
-    useState(false);
+  >(initialStoredKey ? initialStoredKey.slice(-4) : null);
   const [isPeriodDialogOpen, setIsPeriodDialogOpen] = useState(false);
   const [periodDurationWeeks, setPeriodDurationWeeks] = useState(
     DEFAULT_PERIOD_DURATION_WEEKS
@@ -141,50 +138,6 @@ export const useSettingsScreen = () => {
     void loadProfile();
   }, [loadProfile]);
 
-  useEffect(() => {
-    if (llmProviderPref === "local" || !session?.access_token) {
-      setHasStoredProviderCredential(false);
-      setIsProviderCredentialLoading(false);
-      setProviderCredentialLastFour(null);
-      setProviderApiKeyDraft("");
-      return;
-    }
-
-    let isCancelled = false;
-    setIsProviderCredentialLoading(true);
-
-    void fetchProviderCredentialStatus({
-      accessToken: session.access_token,
-      provider: llmProviderPref,
-    })
-      .then(status => {
-        if (isCancelled) {
-          return;
-        }
-
-        setHasStoredProviderCredential(status.hasStoredCredential);
-        setProviderCredentialLastFour(status.last4);
-        setProviderApiKeyDraft("");
-      })
-      .catch(error => {
-        if (isCancelled) {
-          return;
-        }
-
-        console.error("Error fetching provider credential status:", error);
-        toast.error("Failed to load your saved Coach provider key.");
-      })
-      .finally(() => {
-        if (!isCancelled) {
-          setIsProviderCredentialLoading(false);
-        }
-      });
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [llmProviderPref, session?.access_token]);
-
   const handleLlmProviderChange = (value: string) => {
     const provider: LlmProviderPreference =
       value === "anthropic" ||
@@ -194,15 +147,13 @@ export const useSettingsScreen = () => {
         ? value
         : "local";
     const nextModel = resolveStoredModelForProvider(provider);
+    const storedKey = provider !== "local" ? readProviderApiKey(provider) : null;
 
     setLlmProviderPref(provider);
     setLlmModelPref(nextModel);
     setProviderApiKeyDraft("");
-    setHasStoredProviderCredential(false);
-    setProviderCredentialLastFour(null);
-    setIsProviderCredentialLoading(
-      provider !== "local" && Boolean(session?.access_token)
-    );
+    setHasStoredProviderCredential(Boolean(storedKey));
+    setProviderCredentialLastFour(storedKey ? storedKey.slice(-4) : null);
     writeLlmProviderPreference(provider);
     writeLlmModelPreference(provider, nextModel);
   };
@@ -216,14 +167,9 @@ export const useSettingsScreen = () => {
     setProviderApiKeyDraft(value);
   };
 
-  const handleSaveProviderApiKey = async () => {
+  const handleSaveProviderApiKey = () => {
     if (llmProviderPref === "local") {
       toast.error("Local mode does not use a hosted provider API key.");
-      return;
-    }
-
-    if (!session?.access_token) {
-      toast.error("You must be logged in to save a Coach provider key.");
       return;
     }
 
@@ -232,61 +178,21 @@ export const useSettingsScreen = () => {
       return;
     }
 
-    setIsProviderCredentialSaving(true);
-
-    try {
-      const status = await upsertProviderCredential({
-        accessToken: session.access_token,
-        apiKey: providerApiKeyDraft,
-        provider: llmProviderPref,
-      });
-      setHasStoredProviderCredential(status.hasStoredCredential);
-      setProviderCredentialLastFour(status.last4);
-      setProviderApiKeyDraft("");
-      toast.success("Coach provider key saved.");
-    } catch (error) {
-      console.error("Error saving provider credential:", error);
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to save your Coach provider key."
-      );
-    } finally {
-      setIsProviderCredentialSaving(false);
-    }
+    const trimmedKey = providerApiKeyDraft.trim();
+    writeProviderApiKey(llmProviderPref, trimmedKey);
+    setHasStoredProviderCredential(true);
+    setProviderCredentialLastFour(trimmedKey.slice(-4));
+    setProviderApiKeyDraft("");
+    toast.success("Coach provider key saved.");
   };
 
-  const handleClearProviderApiKey = async () => {
-    if (llmProviderPref === "local") {
-      return;
-    }
-
-    if (!session?.access_token) {
-      toast.error("You must be logged in to delete a Coach provider key.");
-      return;
-    }
-
-    setIsProviderCredentialSaving(true);
-
-    try {
-      await deleteProviderCredential({
-        accessToken: session.access_token,
-        provider: llmProviderPref,
-      });
-      setHasStoredProviderCredential(false);
-      setProviderCredentialLastFour(null);
-      setProviderApiKeyDraft("");
-      toast.success("Coach provider key deleted.");
-    } catch (error) {
-      console.error("Error deleting provider credential:", error);
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to delete your Coach provider key."
-      );
-    } finally {
-      setIsProviderCredentialSaving(false);
-    }
+  const handleClearProviderApiKey = () => {
+    if (llmProviderPref === "local") return;
+    clearProviderApiKey(llmProviderPref);
+    setHasStoredProviderCredential(false);
+    setProviderCredentialLastFour(null);
+    setProviderApiKeyDraft("");
+    toast.success("Coach provider key deleted.");
   };
 
   const handleUnitChange = (newUnit: WeightUnit) => {
@@ -447,10 +353,6 @@ export const useSettingsScreen = () => {
     isPeriodDialogOpen,
     isPeriodUpdating: isCreatingMesocycle || isResettingMesocycle,
     isPeriodWorkoutInProgress,
-    isProviderCredentialBusy:
-      isProviderCredentialLoading || isProviderCredentialSaving,
-    isProviderCredentialLoading,
-    isProviderCredentialSaving,
     isProfileBusy: isLoadingProfile || isSavingProfile,
     isSigningOut,
     llmModelPref,

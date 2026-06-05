@@ -48,9 +48,6 @@ This file is the fast operational map for agents and future sessions. It is not 
 - `api/coach.ts`
   - Vercel server function for Coach.
   - Validates requests with the guidance agent contracts and delegates to the agent runtime.
-- `api/coach-credentials.ts`
-  - Vercel server function for hosted Coach credential save/load/delete status.
-  - Verifies the caller with Supabase auth, encrypts provider keys server-side, and stores only ciphertext plus metadata.
 
 ## Route Map
 
@@ -240,14 +237,12 @@ This is still the most complex domain and the main place where UI, Redux, and Re
 
 Current Coach architecture:
 - Uses `/api/coach`.
-- Uses `/api/coach-credentials` for hosted BYOK credential save/delete/status.
 - Conversation state is ephemeral (lives in `PresenceAgentProvider`, persists across navigation, fresh each launch — no storage).
 - Each turn sends a read-only `ScreenContext` (route + screen + small focus hints); the runtime injects it into the system prompt. It grants no write access.
 - Tool results may carry a typed `CoachArtifact`; a client `ArtifactRenderer` registry renders them inline. Tool calls/results are surfaced in the summon surface (not dropped).
 - Supports both server-executable and client-executable tools.
 - Supports BYOK hosted providers through `data/llmPreferences.ts`: OpenRouter, OpenAI, Anthropic, and Google.
-- Stores user-supplied provider keys encrypted server-side in Supabase via service-role access and a server-only master encryption key.
-- The browser only sees provider preference, model preference, and saved-key status metadata such as `last4`.
+- Provider API keys are stored client-side in localStorage via `data/providerKeyStore.ts` and sent in each Coach request body. The server uses the key per-turn and never persists it.
 - Current tools:
   - `propose_workout` (client) — builds a draft session honoring `ScreenContext` + constraints and returns a `workout_draft` artifact; does NOT save. The artifact's Apply commits via the existing create-workout flow (`buildWorkoutPlan` → `commitWorkoutPlan` in `useWorkoutGenerator.ts`). Editing existing programs is out of scope (sub-project 3).
   - `get_training_volume` (server) — current-week archetype volume via the `fetch_weekly_archetype_sets_v2` RPC; returns a `volume_chart` artifact.
