@@ -601,6 +601,7 @@ const responseMessagesToCoachMessages = (
 };
 
 export const runCoachAgentTurn = async ({
+  apiKey,
   auth,
   env,
   messages,
