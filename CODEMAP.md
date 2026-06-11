@@ -11,6 +11,9 @@ This file is the fast operational map for agents and future sessions. It is not 
 - Do not run `npm run build` and `npm run lint` at the same time. Vite can create transient `vite.config.ts.timestamp-*.mjs` files that make ESLint fail with `ENOENT`.
 - Public routes do not load Redux persistence or the protected shell up front; `App.tsx` lazy-loads the protected app shell after route match.
 - Protected app routes and heavy quick-action dialogs are lazy-loaded from `MainAppLayout` to keep non-active screens out of the initial protected-shell bundle.
+- Vendor `manualChunks` in `vite.config.ts` split the entry bundle (react-vendor / supabase / radix / state); the chunk-size warning is resolved and every chunk is under 500 kB. framer-motion and recharts are intentionally NOT in the manual list so they stay lazily chunked.
+- Motion convention: CSS-first tokens in `tailwind.config.ts` (`motion-safe:animate-fade-rise` entrances, `motion-safe:animate-set-confirm` pulse); framer-motion is confined to workout interaction physics. `prefers-reduced-motion` is honored via the `motion-safe:` variant.
+- Loading convention: skeletons for known-layout loads; genuine in-flight waits use `src/components/core/UnicodeSpinner.tsx` (frames vendored from sindresorhus/cli-spinners, MIT).
 
 ## Read Order
 
@@ -335,7 +338,6 @@ If you touch any of those, read the full file first. They are coordination seams
 ## Known Debt / Hotspots
 
 - `goals` and `rpg` are still placeholders.
-- The main browser bundle is large and build warns about chunk size.
 - Some fitness UI is still more stateful than ideal.
 - `README.md` and `docs/plan.md` may lag implementation details after large refactors.
 - Only lint/build verification exists right now; there is no automated test suite.
