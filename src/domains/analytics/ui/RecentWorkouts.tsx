@@ -1,6 +1,7 @@
 import React from 'react';
 import { formatTime } from '@/lib/utils/timeUtils';
-import { Clock, Loader2, AlertTriangle, ChevronRight } from "lucide-react";
+import { Clock, AlertTriangle, ChevronRight } from "lucide-react";
+import UnicodeSpinner from "@/components/core/UnicodeSpinner";
 import { Skeleton } from "@/components/core/skeleton";
 import {
     Dialog,
@@ -134,7 +135,7 @@ const RecentWorkoutsView: React.FC<{ userId: string | undefined }> = ({ userId }
 
                     {isLoadingDetailedWorkout && (
                         <div className="flex items-center justify-center py-8">
-                            <Loader2 className="h-8 w-8 animate-spin app-accent-text" />
+                            <UnicodeSpinner className="text-2xl app-accent-text" />
                             <p className="ml-2 text-foreground/82">Loading workout details...</p>
                         </div>
                     )}

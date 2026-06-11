@@ -1,4 +1,5 @@
 import React, { Fragment, useEffect, useMemo, useState, useRef } from 'react';
+import UnicodeSpinner from "@/components/core/UnicodeSpinner";
 import { motion, AnimatePresence } from 'framer-motion';
 import type { RecommendedStrengthSetPerformance } from '../data/recommendations';
 // TanStack Query - Removed hooks, just keep types if needed
@@ -695,7 +696,7 @@ export const WorkoutExerciseView = ({
                     disabled={!newVariationName.trim() || newVariationName.trim().toLowerCase() === DEFAULT_VARIATION.toLowerCase() || isSavingVariation}
                     aria-label="Save new variation"
                   >
-                    {isSavingVariation ? <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-current"></div> : <Check size={16} />}
+                    {isSavingVariation ? <UnicodeSpinner className="text-sm" /> : <Check size={16} />}
                   </Button>
                   <Button
                     size="icon"

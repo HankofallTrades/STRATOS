@@ -1,7 +1,8 @@
 import React from 'react';
 import { Button } from "@/components/core/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/core/popover";
-import { ChevronDown, Loader2, Plus } from 'lucide-react';
+import { ChevronDown, Plus } from 'lucide-react';
+import UnicodeSpinner from "@/components/core/UnicodeSpinner";
 import type { ExerciseVariationRow } from '../data/fitnessRepository';
 import {
   workoutMenuOptionClassName,
@@ -41,7 +42,7 @@ const VariationSelector: React.FC<VariationSelectorProps> = ({
           disabled={disabled || isLoading}
         >
           <span className="truncate">{isLoading ? "Loading..." : (selectedVariation ?? defaultVariationText)}</span>
-          {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+          {isLoading ? <UnicodeSpinner className="text-[13px]" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
         </Button>
       </PopoverTrigger>
       <PopoverContent className={workoutPopoverClassName}>

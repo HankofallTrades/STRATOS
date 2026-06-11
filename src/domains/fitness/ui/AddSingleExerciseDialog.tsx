@@ -8,7 +8,8 @@ import {
   DialogTitle,
 } from "@/components/core/Dialog";
 import { Button } from "@/components/core/button";
-import { Loader2, Check, X as XIcon } from 'lucide-react';
+import { Check, X as XIcon } from 'lucide-react';
+import UnicodeSpinner from "@/components/core/UnicodeSpinner";
 import { Input } from "@/components/core/input";
 import { Label } from "@/components/core/label";
 import { cn } from '@/lib/utils/cn';
@@ -104,7 +105,7 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
             <div className="flex-grow min-w-0">
               <label htmlFor="exercise-select" className="sr-only">Exercise</label>
               {isLoading ? (
-                <div className="h-9 flex items-center justify-center"><Loader2 className="h-5 w-5 animate-spin" /></div>
+                <div className="h-9 flex items-center justify-center"><UnicodeSpinner className="text-base" /></div>
               ) : (
                 <select
                   id="exercise-select"
@@ -300,7 +301,7 @@ const AddSingleExerciseDialog: React.FC<AddSingleExerciseDialogProps> = ({ open,
             disabled={isPending}
             className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
-            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isSubmitting && <UnicodeSpinner className="mr-2 text-sm" />}
             Save
           </Button>
         </DialogFooter>
