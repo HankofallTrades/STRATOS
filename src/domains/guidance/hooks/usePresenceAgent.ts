@@ -1,6 +1,11 @@
 import { createContext, useContext } from "react";
 
-import type { CoachConversationMessage } from "@/domains/guidance/agent/contracts";
+import type {
+  CoachConversationMessage,
+  ProgramDraftApply,
+  ProgramEditApply,
+  WorkoutEditApply,
+} from "@/domains/guidance/agent/contracts";
 
 export interface PresenceAgentContextValue {
   isOpen: boolean;
@@ -15,6 +20,9 @@ export interface PresenceAgentContextValue {
   setInput: (value: string) => void;
   send: (text?: string) => Promise<void>;
   applyWorkoutDraft: (startWorkoutPayload: Record<string, unknown>) => void;
+  applyProgramDraft: (apply: ProgramDraftApply) => Promise<void>;
+  applyProgramEdit: (apply: ProgramEditApply) => Promise<void>;
+  applyWorkoutEdit: (apply: WorkoutEditApply) => Promise<void>;
   isCoachConfigured: boolean;
   configurationMessage: string | null;
 }

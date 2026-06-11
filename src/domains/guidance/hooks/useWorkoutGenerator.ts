@@ -341,7 +341,7 @@ const normalizeStrengthSessionFocus = (
   return "strength";
 };
 
-const buildExerciseDraft = (exercise: Exercise): WorkoutExercise => {
+export const buildExerciseDraft = (exercise: Exercise): WorkoutExercise => {
   const defaultEquipment = exercise.default_equipment_type ?? undefined;
   const defaultVariation = "Standard";
   const defaultSet: ExerciseSet = {

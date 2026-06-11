@@ -13,6 +13,7 @@ import {
 import { buildScreenContext } from "@/domains/guidance/agent/screenContext";
 import { sendCoachMessage } from "@/domains/guidance/agent/transport";
 import { executeCoachTool, getCoachToolLabel } from "@/domains/guidance/agent/tools";
+import { useProgramActions } from "@/domains/guidance/hooks/useProgramActions";
 import { useProposeWorkout } from "@/domains/guidance/hooks/useWorkoutGenerator";
 import {
   buildMissingProviderConfigurationMessage,
@@ -67,6 +68,15 @@ export const PresenceAgentProvider = ({ children }: { children: ReactNode }) => 
   }, [conversation, isOpen]);
 
   const proposeWorkout = useProposeWorkout();
+  const {
+    getProgramContext,
+    proposeProgram,
+    proposeProgramEdit,
+    proposeActiveWorkoutEdit,
+    applyProgramDraft,
+    applyProgramEdit,
+    applyWorkoutEdit,
+  } = useProgramActions();
 
   const llmPreferences = readLlmPreferences();
   const isCoachConfigured =
@@ -157,6 +167,10 @@ export const PresenceAgentProvider = ({ children }: { children: ReactNode }) => 
               try {
                 const result = await executeCoachTool(toolCall, {
                   proposeWorkout,
+                  getProgramContext,
+                  proposeProgram,
+                  proposeProgramEdit,
+                  proposeActiveWorkoutEdit,
                 });
                 if (result.nextRoute) pendingNavigation = result.nextRoute;
                 return createCoachToolResultMessage({
@@ -207,11 +221,15 @@ export const PresenceAgentProvider = ({ children }: { children: ReactNode }) => 
     },
     [
       currentWorkout?.id,
+      getProgramContext,
       input,
       isLoading,
       isWorkoutActive,
       location.pathname,
       navigate,
+      proposeActiveWorkoutEdit,
+      proposeProgram,
+      proposeProgramEdit,
       proposeWorkout,
       session?.access_token,
     ]
@@ -231,11 +249,17 @@ export const PresenceAgentProvider = ({ children }: { children: ReactNode }) => 
       setInput,
       send,
       applyWorkoutDraft,
+      applyProgramDraft,
+      applyProgramEdit,
+      applyWorkoutEdit,
       isCoachConfigured,
       configurationMessage,
     }),
     [
       applyWorkoutDraft,
+      applyProgramDraft,
+      applyProgramEdit,
+      applyWorkoutEdit,
       configurationMessage,
       conversation,
       dismiss,

@@ -6,12 +6,33 @@ export const coachToolNames = [
   "get_user_profile_summary",
   "get_recent_workout_summary",
   "get_training_volume",
+  "get_program_context",
+  "propose_program",
+  "propose_program_edit",
+  "propose_active_workout_edit",
 ] as const;
 
 export type CoachToolName = (typeof coachToolNames)[number];
 export type CoachToolExecutionEnvironment = "client" | "server";
 
 export type { ScreenContext } from "./screenContext.js";
+
+export interface ProgramDraftApply {
+  draftedProgram: Record<string, unknown>;
+}
+
+export interface ProgramEditApply {
+  mesocycleId: string;
+  summary: string;
+  resolvedOps: Array<Record<string, unknown>>;
+}
+
+export interface WorkoutEditApply {
+  workoutId: string;
+  summary: string;
+  actions: Array<Record<string, unknown>>;
+  inverseActions: Array<Record<string, unknown>>;
+}
 
 export type CoachArtifact =
   | {
@@ -27,6 +48,37 @@ export type CoachArtifact =
       sessionFocus: string;
       exercises: Array<{ name: string; sets: number }>;
       apply: { startWorkoutPayload: Record<string, unknown> };
+    }
+  | {
+      type: "program_draft";
+      title: string;
+      rationale: string;
+      goalFocus: string;
+      durationWeeks: number;
+      sessions: Array<{
+        name: string;
+        exercises: Array<{
+          name: string;
+          targetSets: number | null;
+          targetReps: string | null;
+        }>;
+      }>;
+      apply: ProgramDraftApply;
+    }
+  | {
+      type: "program_edit";
+      title: string;
+      rationale: string;
+      convertsToCoachProtocol: boolean;
+      changes: Array<{ label: string; before: string | null; after: string | null }>;
+      apply: ProgramEditApply;
+    }
+  | {
+      type: "workout_edit";
+      title: string;
+      rationale: string;
+      changes: Array<{ label: string }>;
+      apply: WorkoutEditApply;
     };
 
 export interface CoachToolResultPayload {
@@ -138,6 +190,58 @@ const coachArtifactSchema = z.discriminatedUnion("type", [
       z.object({ name: z.string(), sets: z.number() })
     ),
     apply: z.object({ startWorkoutPayload: z.record(z.string(), z.unknown()) }),
+  }),
+  z.object({
+    type: z.literal("program_draft"),
+    title: z.string(),
+    rationale: z.string(),
+    goalFocus: z.string(),
+    durationWeeks: z.number(),
+    sessions: z.array(
+      z.object({
+        name: z.string(),
+        exercises: z.array(
+          z.object({
+            name: z.string(),
+            targetSets: z.number().nullable(),
+            targetReps: z.string().nullable(),
+          })
+        ),
+      })
+    ),
+    apply: z.object({
+      draftedProgram: z.record(z.string(), z.unknown()),
+    }),
+  }),
+  z.object({
+    type: z.literal("program_edit"),
+    title: z.string(),
+    rationale: z.string(),
+    convertsToCoachProtocol: z.boolean(),
+    changes: z.array(
+      z.object({
+        label: z.string(),
+        before: z.string().nullable(),
+        after: z.string().nullable(),
+      })
+    ),
+    apply: z.object({
+      mesocycleId: z.string(),
+      summary: z.string(),
+      resolvedOps: z.array(z.record(z.string(), z.unknown())),
+    }),
+  }),
+  z.object({
+    type: z.literal("workout_edit"),
+    title: z.string(),
+    rationale: z.string(),
+    changes: z.array(z.object({ label: z.string() })),
+    apply: z.object({
+      workoutId: z.string(),
+      summary: z.string(),
+      actions: z.array(z.record(z.string(), z.unknown())),
+      inverseActions: z.array(z.record(z.string(), z.unknown())),
+    }),
   }),
 ]);
 

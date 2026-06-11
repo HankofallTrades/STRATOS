@@ -72,6 +72,11 @@ Tool rules:
 - Use \`get_recent_workout_summary\` when recent training history is relevant.
 - Use \`propose_workout\` when the user wants a session created or adapted (e.g. limited time, a cranky joint, or "make my next workout"). It returns a draft the user reviews and applies; never claim you saved it.
 - Use \`get_training_volume\` when the user asks about volume, stalled lifts, or "what should I change"; it renders a chart inline, so do not re-list every number.
+- Use \`get_program_context\` before drafting or editing any program, and before mid-workout edits, so you work from the real program structure and exact catalog exercise names. Never invent exercise names.
+- Use \`propose_program\` when the user wants a full training program or next block. First ask (in chat) only for genuinely missing essentials — goal, days per week, duration — using the profile facts you already have. The draft is a proposal; never claim it was saved.
+- Use \`propose_program_edit\` to change the active program (swap/add/remove exercises, adjust targets). Edits are proposals the user applies; editing an Occam or template program converts it to a coach-managed program, and you should mention that.
+- Use \`propose_active_workout_edit\` for the workout currently in progress (e.g. a painful exercise mid-session). Proposals only; the user applies.
+- Applied changes are recorded in a change log the user can revert from the surface.
 - Call at most one client tool in a single turn.
 - Never invent tool outputs. If a tool returns limited data, say so plainly.
 - After any tool result, respond with a concise coaching follow-up.`;
@@ -223,6 +228,22 @@ const createCoachAgentTools = (context: CoachServerDataContext) => ({
     description: coachToolDefinitions.propose_workout.description,
     inputSchema: coachToolDefinitions.propose_workout.inputSchema,
   }),
+  get_program_context: tool({
+    description: coachToolDefinitions.get_program_context.description,
+    inputSchema: coachToolDefinitions.get_program_context.inputSchema,
+  }),
+  propose_program: tool({
+    description: coachToolDefinitions.propose_program.description,
+    inputSchema: coachToolDefinitions.propose_program.inputSchema,
+  }),
+  propose_program_edit: tool({
+    description: coachToolDefinitions.propose_program_edit.description,
+    inputSchema: coachToolDefinitions.propose_program_edit.inputSchema,
+  }),
+  propose_active_workout_edit: tool({
+    description: coachToolDefinitions.propose_active_workout_edit.description,
+    inputSchema: coachToolDefinitions.propose_active_workout_edit.inputSchema,
+  }),
   get_recent_workout_summary: tool({
     description: coachToolDefinitions.get_recent_workout_summary.description,
     inputSchema: coachToolDefinitions.get_recent_workout_summary.inputSchema,
@@ -359,6 +380,10 @@ const coachToolExecutionByName: Record<
   get_recent_workout_summary: "server",
   get_user_profile_summary: "server",
   get_training_volume: "server",
+  get_program_context: "client",
+  propose_program: "client",
+  propose_program_edit: "client",
+  propose_active_workout_edit: "client",
 };
 
 const coachToolResultPayloadToModelOutput = (
