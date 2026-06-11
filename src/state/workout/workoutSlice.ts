@@ -17,7 +17,7 @@ interface StartWorkoutPayload {
   mesocycleId?: string;
   mesocycleSessionId?: string;
   mesocycleWeek?: number;
-  mesocycleProtocol?: 'occams' | 'custom';
+  mesocycleProtocol?: 'occams' | 'custom' | 'coach';
   ownerUserId?: string | null;
 }
 

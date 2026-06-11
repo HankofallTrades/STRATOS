@@ -1,6 +1,6 @@
 import type { Exercise, SessionFocus } from '@/lib/types/workout';
 
-export type MesocycleProtocol = 'occams' | 'custom';
+export type MesocycleProtocol = 'occams' | 'custom' | 'coach';
 export type MesocycleStatus = 'active' | 'completed' | 'cancelled';
 export type MesocycleGoalFocus = SessionFocus;
 
@@ -72,4 +72,64 @@ export interface CreateCustomMesocycleSessionInput {
   mesocycle_id: string;
   name: string;
   session_focus?: SessionFocus | null;
+}
+
+export interface DraftedProgramExerciseInput {
+  exerciseId: string;
+  exerciseName: string;
+  targetSets: number | null;
+  targetReps: string | null;
+  loadIncrementKg: number | null;
+  notes: string | null;
+}
+
+export interface DraftedProgramSessionInput {
+  name: string;
+  sessionFocus: SessionFocus | null;
+  setsPerExercise: number | null;
+  repRange: string | null;
+  progressionRule: string | null;
+  exercises: DraftedProgramExerciseInput[];
+}
+
+export interface DraftedProgramInput {
+  name: string;
+  goalFocus: MesocycleGoalFocus;
+  durationWeeks: number;
+  notes: string | null;
+  sessions: DraftedProgramSessionInput[];
+}
+
+export interface SaveDraftedProgramResult {
+  mesocycle: Mesocycle;
+  previousActiveMesocycleId: string | null;
+}
+
+export type ResolvedProgramEditOp =
+  | { op: 'replace_exercise'; sessionId: string; rowId: string; newExerciseId: string }
+  | { op: 'add_exercise'; sessionId: string; exerciseId: string; targetSets: number | null; targetReps: string | null }
+  | { op: 'remove_exercise'; sessionId: string; rowId: string }
+  | {
+      op: 'update_targets';
+      sessionId: string;
+      rowId: string;
+      targetSets?: number | null;
+      targetReps?: string | null;
+      loadIncrementKg?: number | null;
+    };
+
+export interface SessionExerciseSnapshotRow {
+  id: string;
+  mesocycle_session_id: string;
+  exercise_id: string;
+  exercise_order: number;
+  target_sets: number | null;
+  target_reps: string | null;
+  load_increment_kg: number | null;
+  notes: string | null;
+}
+
+export interface ProgramEditResult {
+  snapshot: SessionExerciseSnapshotRow[];
+  protocolBefore: MesocycleProtocol;
 }
