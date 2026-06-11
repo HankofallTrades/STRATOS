@@ -110,6 +110,15 @@ export default {
 				'presence-ping': {
 					'0%': { transform: 'scale(1)', opacity: '0.7' },
 					'100%': { transform: 'scale(1.6)', opacity: '0' },
+				},
+				'fade-rise': {
+					from: { opacity: '0', transform: 'translateY(6px)' },
+					to: { opacity: '1', transform: 'translateY(0)' },
+				},
+				'set-confirm': {
+					'0%': { transform: 'scale(1)' },
+					'50%': { transform: 'scale(1.3)' },
+					'100%': { transform: 'scale(1)' },
 				}
 			},
 			animation: {
@@ -117,6 +126,8 @@ export default {
 				'accordion-up': 'accordion-up 0.2s ease-out',
 				'pulse-light': 'pulse-light 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
 				'presence-ping': 'presence-ping 3.2s ease-out infinite',
+				'fade-rise': 'fade-rise 220ms cubic-bezier(0.2, 0, 0, 1) both',
+				'set-confirm': 'set-confirm 200ms cubic-bezier(0.2, 0, 0, 1)',
 			}
 		}
 	},
