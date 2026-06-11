@@ -3,11 +3,17 @@ import type {
   ActiveMesocycleProgram,
   CreateCustomMesocycleSessionInput,
   CreateMesocycleInput,
+  DraftedProgramInput,
   Mesocycle,
+  MesocycleProtocol,
   MesocycleStatus,
   MesocycleSession,
   MesocycleSessionExerciseWithExercise,
   MesocycleSessionTemplate,
+  ProgramEditResult,
+  ResolvedProgramEditOp,
+  SaveDraftedProgramResult,
+  SessionExerciseSnapshotRow,
 } from './types';
 import type { Exercise, SessionFocus } from '@/lib/types/workout';
 
@@ -893,4 +899,271 @@ export const createCustomMesocycleSession = async (
   }
 
   return insertedSession as MesocycleSession;
+};
+
+const fetchSessionExerciseSnapshot = async (
+  sessionIds: string[]
+): Promise<SessionExerciseSnapshotRow[]> => {
+  if (sessionIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from('mesocycle_session_exercises' as never)
+    .select('id, mesocycle_session_id, exercise_id, exercise_order, target_sets, target_reps, load_increment_kg, notes')
+    .in('mesocycle_session_id', sessionIds)
+    .order('exercise_order', { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []) as SessionExerciseSnapshotRow[];
+};
+
+export const saveDraftedProgram = async (
+  userId: string,
+  draft: DraftedProgramInput
+): Promise<SaveDraftedProgramResult> => {
+  if (draft.durationWeeks < 4 || draft.durationWeeks > 12) {
+    throw new Error('Mesocycles must be between 4 and 12 weeks.');
+  }
+  if (draft.sessions.length === 0) {
+    throw new Error('A drafted program needs at least one session.');
+  }
+  if (draft.sessions.some(session => session.exercises.length === 0)) {
+    throw new Error('Every drafted session needs at least one exercise.');
+  }
+
+  const { data: currentActive, error: currentActiveError } = await supabase
+    .from('mesocycles' as never)
+    .select('id')
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (currentActiveError && !isMissingPeriodizationTableError(currentActiveError)) {
+    throw currentActiveError;
+  }
+  const previousActiveMesocycleId = (currentActive?.id as string | undefined) ?? null;
+
+  const nowIso = new Date().toISOString();
+  if (previousActiveMesocycleId) {
+    const { error: deactivateError } = await supabase
+      .from('mesocycles' as never)
+      .update({ status: 'completed', updated_at: nowIso })
+      .eq('id', previousActiveMesocycleId)
+      .eq('user_id', userId);
+    if (deactivateError) throw deactivateError;
+  }
+
+  const { data: insertedMesocycle, error: insertError } = await supabase
+    .from('mesocycles' as never)
+    .insert({
+      user_id: userId,
+      name: draft.name.trim(),
+      goal_focus: draft.goalFocus,
+      protocol: 'coach',
+      start_date: nowIso.slice(0, 10),
+      duration_weeks: draft.durationWeeks,
+      status: 'active',
+      notes: draft.notes?.trim() ? draft.notes.trim() : null,
+      updated_at: nowIso,
+    })
+    .select('*')
+    .single();
+
+  if (insertError || !insertedMesocycle) {
+    throw insertError ?? new Error('Failed to create the drafted program.');
+  }
+  const mesocycle = insertedMesocycle as Mesocycle;
+
+  for (let sessionIndex = 0; sessionIndex < draft.sessions.length; sessionIndex += 1) {
+    const session = draft.sessions[sessionIndex];
+    const { data: insertedSession, error: sessionError } = await supabase
+      .from('mesocycle_sessions' as never)
+      .insert({
+        mesocycle_id: mesocycle.id,
+        name: session.name.trim(),
+        session_order: sessionIndex + 1,
+        session_focus: session.sessionFocus,
+        sets_per_exercise: session.setsPerExercise,
+        rep_range: session.repRange,
+        progression_rule: session.progressionRule,
+      })
+      .select('id')
+      .single();
+
+    if (sessionError || !insertedSession) {
+      throw sessionError ?? new Error(`Failed to create session "${session.name}".`);
+    }
+
+    const sessionId = (insertedSession as { id: string }).id;
+    const exerciseRows = session.exercises.map((exercise, exerciseIndex) => ({
+      mesocycle_session_id: sessionId,
+      exercise_id: exercise.exerciseId,
+      exercise_order: exerciseIndex + 1,
+      target_sets: exercise.targetSets,
+      target_reps: exercise.targetReps,
+      load_increment_kg: exercise.loadIncrementKg,
+      notes: exercise.notes,
+    }));
+
+    const { error: exercisesError } = await supabase
+      .from('mesocycle_session_exercises' as never)
+      .insert(exerciseRows);
+    if (exercisesError) throw exercisesError;
+  }
+
+  return { mesocycle, previousActiveMesocycleId };
+};
+
+export const applyProgramEdits = async (
+  userId: string,
+  mesocycleId: string,
+  ops: ResolvedProgramEditOp[]
+): Promise<ProgramEditResult> => {
+  if (ops.length === 0) throw new Error('No program edits to apply.');
+
+  const { data: mesocycleRow, error: mesocycleError } = await supabase
+    .from('mesocycles' as never)
+    .select('id, protocol')
+    .eq('id', mesocycleId)
+    .eq('user_id', userId)
+    .single();
+
+  if (mesocycleError || !mesocycleRow) {
+    throw mesocycleError ?? new Error('Program not found.');
+  }
+  const protocolBefore = (mesocycleRow as { protocol: MesocycleProtocol }).protocol;
+
+  const sessionIds = Array.from(new Set(ops.map(op => op.sessionId)));
+  const snapshot = await fetchSessionExerciseSnapshot(sessionIds);
+
+  const nextOrderBySession = new Map<string, number>();
+  for (const sessionId of sessionIds) {
+    const maxOrder = snapshot
+      .filter(row => row.mesocycle_session_id === sessionId)
+      .reduce((max, row) => Math.max(max, row.exercise_order), 0);
+    nextOrderBySession.set(sessionId, maxOrder + 1);
+  }
+
+  for (const op of ops) {
+    if (op.op === 'replace_exercise') {
+      const { error } = await supabase
+        .from('mesocycle_session_exercises' as never)
+        .update({ exercise_id: op.newExerciseId })
+        .eq('id', op.rowId);
+      if (error) throw error;
+    } else if (op.op === 'add_exercise') {
+      const order = nextOrderBySession.get(op.sessionId) ?? 1;
+      nextOrderBySession.set(op.sessionId, order + 1);
+      const { error } = await supabase
+        .from('mesocycle_session_exercises' as never)
+        .insert({
+          mesocycle_session_id: op.sessionId,
+          exercise_id: op.exerciseId,
+          exercise_order: order,
+          target_sets: op.targetSets,
+          target_reps: op.targetReps,
+          load_increment_kg: null,
+          notes: null,
+        });
+      if (error) throw error;
+    } else if (op.op === 'remove_exercise') {
+      const { error } = await supabase
+        .from('mesocycle_session_exercises' as never)
+        .delete()
+        .eq('id', op.rowId);
+      if (error) throw error;
+    } else {
+      const updates: Record<string, unknown> = {};
+      if (typeof op.targetSets !== 'undefined') updates.target_sets = op.targetSets;
+      if (typeof op.targetReps !== 'undefined') updates.target_reps = op.targetReps;
+      if (typeof op.loadIncrementKg !== 'undefined') updates.load_increment_kg = op.loadIncrementKg;
+      if (Object.keys(updates).length === 0) continue;
+      const { error } = await supabase
+        .from('mesocycle_session_exercises' as never)
+        .update(updates)
+        .eq('id', op.rowId);
+      if (error) throw error;
+    }
+  }
+
+  if (protocolBefore !== 'coach') {
+    const { error } = await supabase
+      .from('mesocycles' as never)
+      .update({ protocol: 'coach', updated_at: new Date().toISOString() })
+      .eq('id', mesocycleId)
+      .eq('user_id', userId);
+    if (error) throw error;
+  }
+
+  return { snapshot, protocolBefore };
+};
+
+export const revertProgramCreation = async (
+  userId: string,
+  payload: { mesocycleId: string; previousActiveMesocycleId: string | null }
+): Promise<void> => {
+  const nowIso = new Date().toISOString();
+  const { error: cancelError } = await supabase
+    .from('mesocycles' as never)
+    .update({ status: 'cancelled', updated_at: nowIso })
+    .eq('id', payload.mesocycleId)
+    .eq('user_id', userId);
+  if (cancelError) throw cancelError;
+
+  if (payload.previousActiveMesocycleId) {
+    const { error: restoreError } = await supabase
+      .from('mesocycles' as never)
+      .update({ status: 'active', updated_at: nowIso })
+      .eq('id', payload.previousActiveMesocycleId)
+      .eq('user_id', userId);
+    if (restoreError) throw restoreError;
+  }
+};
+
+export const revertProgramEdits = async (
+  userId: string,
+  payload: {
+    mesocycleId: string;
+    snapshot: SessionExerciseSnapshotRow[];
+    protocolBefore: MesocycleProtocol;
+  }
+): Promise<void> => {
+  const { data: mesocycleRow, error: mesocycleError } = await supabase
+    .from('mesocycles' as never)
+    .select('id')
+    .eq('id', payload.mesocycleId)
+    .eq('user_id', userId)
+    .single();
+  if (mesocycleError || !mesocycleRow) {
+    throw mesocycleError ?? new Error('Program not found.');
+  }
+
+  const sessionIds = Array.from(
+    new Set(payload.snapshot.map(row => row.mesocycle_session_id))
+  );
+
+  for (const sessionId of sessionIds) {
+    const { error: deleteError } = await supabase
+      .from('mesocycle_session_exercises' as never)
+      .delete()
+      .eq('mesocycle_session_id', sessionId);
+    if (deleteError) throw deleteError;
+  }
+
+  if (payload.snapshot.length > 0) {
+    const { error: insertError } = await supabase
+      .from('mesocycle_session_exercises' as never)
+      .insert(payload.snapshot.map(row => ({ ...row })));
+    if (insertError) throw insertError;
+  }
+
+  if (payload.protocolBefore !== 'coach') {
+    const { error: protocolError } = await supabase
+      .from('mesocycles' as never)
+      .update({ protocol: payload.protocolBefore, updated_at: new Date().toISOString() })
+      .eq('id', payload.mesocycleId)
+      .eq('user_id', userId);
+    if (protocolError) throw protocolError;
+  }
 };
