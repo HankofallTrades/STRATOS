@@ -78,6 +78,14 @@ const SetComponent: React.FC<SetComponentProps> = ({
     recommendedPerformance,
     onComplete,
   });
+  const [justCompleted, setJustCompleted] = React.useState(false);
+  const handleCompletionPress = () => {
+    if (!isCompleted) {
+      setJustCompleted(true);
+      window.setTimeout(() => setJustCompleted(false), 250);
+    }
+    handleCompletionChange(!isCompleted);
+  };
   const weightIndicatorDirection =
     recommendedPerformance?.action === 'increase_load'
       ? 'up'
@@ -237,7 +245,7 @@ const SetComponent: React.FC<SetComponentProps> = ({
             <div className="flex justify-center items-center h-full">
               <button
                 id={`completed-${set.id}`}
-                onClick={() => handleCompletionChange(!isCompleted)}
+                onClick={handleCompletionPress}
                 className={cn(
                   "flex h-8 w-8 items-center justify-center rounded-[10px] bg-transparent transition-colors",
                   isCompleted
@@ -246,7 +254,7 @@ const SetComponent: React.FC<SetComponentProps> = ({
                 )}
                 aria-label="Mark set as completed"
               >
-                <Check size={20} className={cn(isCompleted && "stroke-[3px]")} />
+                <Check size={20} className={cn(isCompleted && "stroke-[3px]", justCompleted && "motion-safe:animate-set-confirm")} />
               </button>
             </div>
           )}
@@ -359,7 +367,7 @@ const SetComponent: React.FC<SetComponentProps> = ({
           <div className="flex justify-center items-center h-full">
             <button
               id={`completed-${set.id}`}
-              onClick={() => handleCompletionChange(!isCompleted)}
+              onClick={handleCompletionPress}
               className={cn(
                 "flex h-8 w-8 items-center justify-center rounded-[10px] bg-transparent transition-colors",
                 isCompleted
@@ -368,7 +376,7 @@ const SetComponent: React.FC<SetComponentProps> = ({
               )}
               aria-label="Mark set as completed"
             >
-              <Check size={20} className={cn(isCompleted && "stroke-[3px]")} />
+              <Check size={20} className={cn(isCompleted && "stroke-[3px]", justCompleted && "motion-safe:animate-set-confirm")} />
             </button>
           </div>
         )}

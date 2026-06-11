@@ -88,7 +88,7 @@ const SummonSurface = ({
             conversation.map((message) => {
               if (message.kind === "user") {
                 return (
-                  <div key={message.id} className="flex justify-end">
+                  <div key={message.id} className="flex justify-end motion-safe:animate-fade-rise">
                     <div className="max-w-[80%] rounded-2xl bg-accent px-3 py-2 text-sm text-accent-foreground">
                       {message.content}
                     </div>
@@ -97,7 +97,7 @@ const SummonSurface = ({
               }
               if (message.kind === "assistant" || message.kind === "error") {
                 return (
-                  <div key={message.id} className="flex justify-start">
+                  <div key={message.id} className="flex justify-start motion-safe:animate-fade-rise">
                     <div
                       className={cn(
                         "max-w-[85%] rounded-2xl px-3 py-2 text-sm",
@@ -116,7 +116,7 @@ const SummonSurface = ({
                 message.output.artifact
               ) {
                 return (
-                  <div key={message.id} className="flex justify-start">
+                  <div key={message.id} className="flex justify-start motion-safe:animate-fade-rise">
                     <div className="w-[90%]">
                       <ArtifactRenderer artifact={message.output.artifact} />
                     </div>

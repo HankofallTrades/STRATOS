@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Trophy } from "lucide-react";
 
 import { Card, CardContent, CardHeader } from "@/components/core/card";
@@ -5,7 +6,18 @@ import { Button } from "@/components/core/button";
 import { Skeleton } from "@/components/core/skeleton";
 import { useHomeDashboard } from "@/domains/dashboard/hooks/useHomeDashboard";
 
+// Entrance animation runs on the first dashboard mount per app load only,
+// not when navigating back to home.
+let hasAnimatedHomeEntrance = false;
+
+const entranceClass = (animate: boolean) =>
+  animate ? "motion-safe:animate-fade-rise" : "";
+
 const HomeDashboard = () => {
+  const [animateEntrance] = useState(() => !hasAnimatedHomeEntrance);
+  useEffect(() => {
+    hasAnimatedHomeEntrance = true;
+  }, []);
   const {
     isLoadingLastSession,
     isLoadingRecentPr,
@@ -35,7 +47,7 @@ const HomeDashboard = () => {
       </header>
 
       <main className="space-y-4">
-        <Card className="home-session-card stone-panel stone-panel-hero overflow-hidden border-white/10">
+        <Card className={`home-session-card stone-panel stone-panel-hero overflow-hidden border-white/10 ${entranceClass(animateEntrance)}`}>
           <CardContent className="relative flex flex-col gap-5 px-6 pb-6 pt-7 md:flex-row md:items-center md:justify-between md:gap-6 md:px-8 md:pb-7 md:pt-8">
             <div className="space-y-3">
               <div className="app-kicker">Today&apos;s Workout</div>
@@ -61,7 +73,10 @@ const HomeDashboard = () => {
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div
+          className={`grid grid-cols-1 gap-3 md:grid-cols-2 ${entranceClass(animateEntrance)}`}
+          style={animateEntrance ? { animationDelay: "60ms" } : undefined}
+        >
           <Card className="home-data-card">
             <CardHeader className="pb-1 pt-4 md:px-5 md:pt-5">
               <div className="app-kicker">Last Session</div>
@@ -121,7 +136,11 @@ const HomeDashboard = () => {
           </Card>
         </div>
 
-        <section className="home-habit-grid" aria-label="Daily habits">
+        <section
+          className={`home-habit-grid ${entranceClass(animateEntrance)}`}
+          style={animateEntrance ? { animationDelay: "120ms" } : undefined}
+          aria-label="Daily habits"
+        >
           {habitItems.map(item => (
             <button
               key={item.label}

@@ -153,11 +153,16 @@ const AnalyticsScreen = () => {
   return (
     <div className="app-page">
       <main className="space-y-6">
-        <Suspense fallback={<PerformanceOverviewFallback />}>
-          <PerformanceOverview userId={userId} exercises={exercises} />
-        </Suspense>
+        <div className="motion-safe:animate-fade-rise">
+          <Suspense fallback={<PerformanceOverviewFallback />}>
+            <PerformanceOverview userId={userId} exercises={exercises} />
+          </Suspense>
+        </div>
 
-        <section className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(21rem,0.85fr)]">
+        <section
+          className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(21rem,0.85fr)] motion-safe:animate-fade-rise"
+          style={{ animationDelay: "60ms" }}
+        >
           <div className="stone-surface overflow-hidden rounded-[26px]">
             <Tabs
               value={selectedAnalysisType}
