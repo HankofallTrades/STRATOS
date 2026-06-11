@@ -1,9 +1,12 @@
+import { useState } from "react";
+
 import { Sheet, SheetContent } from "@/components/core/sheet";
 import { Button } from "@/components/core/button";
 import { Input } from "@/components/core/input";
 import { usePresenceAgent } from "@/domains/guidance/hooks/usePresenceAgent";
 import { cn } from "@/lib/utils/cn";
 import ArtifactRenderer from "@/domains/guidance/ui/ArtifactRenderer";
+import ChangeLogPanel from "@/domains/guidance/ui/ChangeLogPanel";
 
 export interface SummonSurfaceQuickActions {
   onStartWorkout: () => void;
@@ -28,6 +31,8 @@ const SummonSurface = ({
     statusMessage,
     configurationMessage,
   } = usePresenceAgent();
+
+  const [showChanges, setShowChanges] = useState(false);
 
   const chips: Array<{ label: string; onClick: () => void }> = [
     { label: "Start workout", onClick: quickActions.onStartWorkout },
@@ -58,10 +63,24 @@ const SummonSurface = ({
               {chip.label}
             </button>
           ))}
+          <button
+            type="button"
+            onClick={() => setShowChanges((open) => !open)}
+            className={cn(
+              "rounded-full border border-border px-3 py-1 text-xs hover:bg-accent",
+              showChanges
+                ? "bg-accent text-accent-foreground"
+                : "bg-muted text-foreground"
+            )}
+          >
+            Changes
+          </button>
         </div>
 
         <div className="flex-1 space-y-3 overflow-y-auto p-4">
-          {conversation.length === 0 ? (
+          {showChanges ? (
+            <ChangeLogPanel />
+          ) : conversation.length === 0 ? (
             <p className="px-1 pt-4 text-sm text-muted-foreground">
               Ask about your training, or request an adapted session.
             </p>
