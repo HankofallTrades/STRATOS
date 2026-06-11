@@ -6,7 +6,7 @@ This file is the fast operational map for agents and future sessions. It is not 
 
 - Architecture rename is complete: use `ui / hooks / data`, not `view / controller / model`.
 - `npm run build` passes.
-- `npm run lint` currently reports warnings but no errors (react-refresh export warnings in shared providers/components).
+- `npm run lint` currently reports warnings but no errors (react-refresh export warnings in shared providers/components; the 8 unique warnings are currently double-reported as 16 — pre-existing output duplication, not new findings).
 - There is no test script in `package.json`.
 - Do not run `npm run build` and `npm run lint` at the same time. Vite can create transient `vite.config.ts.timestamp-*.mjs` files that make ESLint fail with `ENOENT`.
 - Public routes do not load Redux persistence or the protected shell up front; `App.tsx` lazy-loads the protected app shell after route match.
@@ -244,17 +244,29 @@ Current Coach architecture:
 - Supports BYOK hosted providers through `data/llmPreferences.ts`: OpenRouter, OpenAI, Anthropic, and Google.
 - Provider API keys are stored client-side in localStorage via `data/providerKeyStore.ts` and sent in each Coach request body. The server uses the key per-turn and never persists it.
 - Current tools:
-  - `propose_workout` (client) — builds a draft session honoring `ScreenContext` + constraints and returns a `workout_draft` artifact; does NOT save. The artifact's Apply commits via the existing create-workout flow (`buildWorkoutPlan` → `commitWorkoutPlan` in `useWorkoutGenerator.ts`). Editing existing programs is out of scope (sub-project 3).
+  - `propose_workout` (client) — builds a draft session honoring `ScreenContext` + constraints and returns a `workout_draft` artifact; does NOT save. The artifact's Apply commits via the existing create-workout flow (`buildWorkoutPlan` → `commitWorkoutPlan` in `useWorkoutGenerator.ts`).
   - `get_training_volume` (server) — current-week archetype volume via the `fetch_weekly_archetype_sets_v2` RPC; returns a `volume_chart` artifact.
   - `get_user_profile_summary` (server) — also returns active `user_facts` and the background fields (`experience_level`, `training_age_years`).
   - `get_recent_workout_summary` (server)
+  - `get_program_context` (client) — active program structure + exercise catalog grouped by archetype; the model must call it before drafting/editing so it uses exact catalog names.
+  - `propose_program` (client) — the model authors a full mesocycle draft as tool input; client resolves exercise names (unresolved names bounce back as tool errors) and returns a `program_draft` artifact. Apply saves via `saveDraftedProgram` (protocol `coach`).
+  - `propose_program_edit` (client) — replace/add/remove/update-targets ops against the active program; returns a `program_edit` before/after artifact. Apply persists via `applyProgramEdits`; editing an `occams`/`custom` program converts it to `coach`.
+  - `propose_active_workout_edit` (client) — swap/add/remove against the in-progress Redux workout; returns a `workout_edit` artifact. Apply dispatches workout-slice actions.
+- Acting layer (sub-project 3): all mutations are confirm-only (explicit Apply) and recorded in `coach_change_log` with one-tap revert. Key seams:
+  - `hooks/useProgramActions.ts` — client tool implementations + Apply handlers.
+  - `hooks/useCoachChangeLog.ts` + `ui/ChangeLogPanel.tsx` — change list + revert (surface's "Changes" toggle).
+  - `data/changeLogRepository.ts` — `coach_change_log` CRUD.
+  - `data/workoutEditActions.ts` — typed Redux edit actions shared by apply and revert.
+  - `ui/artifacts/ProgramDraftArtifact.tsx`, `ProgramEditArtifact.tsx`, `WorkoutEditArtifact.tsx`.
 
 ### `src/domains/periodization`
 
 - Purpose: mesocycles, session templates, progression blocks.
+- Protocols: `occams` and `custom` are template-managed (re-seeded/synced on load); `coach` is agent-authored and never re-seeded. Applying a Coach edit to a template-managed program converts it to `coach`.
 - Data:
   - `data/repository.ts`
     - Seeds focus-aware `Workout A/B/C` session templates for custom mesocycles (hypertrophy + strength blueprints) and keeps Occam templates synced when present.
+    - Coach acting boundaries: `saveDraftedProgram` (insert a drafted `coach` program + sessions/exercises), `applyProgramEdits` (snapshot-first ops on session exercises), `revertProgramCreation`, `revertProgramEdits`.
   - `data/types.ts`
 - Hooks:
   - `hooks/usePeriodization.ts`
@@ -315,6 +327,8 @@ If you touch any of those, read the full file first. They are coordination seams
   - habits and goals
   - periodization mesocycles
   - living profile: `user_facts` table (free-text Coach context per user); `profiles` extended with `experience_level` and `training_age_years` background columns.
+  - coach acting layer: `mesocycles.protocol` CHECK extended with `coach`; `coach_change_log` table (RLS owner-only) for applied Coach mutations + revert payloads.
+- Remote migration drift (known): sub-project 1's migration was applied remotely via MCP under version `20260603133849`, so local `20260601000001` shows unapplied; local `20260605000001` (drop `user_provider_credentials`) was never applied remotely and that table still exists. `supabase db push` will fail on the duplicate `user_facts` — apply new migrations via Supabase MCP `apply_migration` until reconciled.
 - Legacy migration copies exist in `supabase/migrations_legacy`.
 
 ## Known Debt / Hotspots
@@ -333,8 +347,9 @@ Run these sequentially, not in parallel:
 2. `npm run lint`
 
 Current expected lint baseline:
-- 8 warnings
+- 8 unique warnings (currently double-reported as 16 in the CLI output)
 - warnings are `react-refresh/only-export-components` in shared UI/provider files
+- 0 errors
 
 ## When To Update This File
 
