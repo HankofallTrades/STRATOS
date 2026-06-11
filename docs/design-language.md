@@ -73,6 +73,20 @@ Rule: side-by-side modules should usually align at the top and size to their con
 - Icons should usually sit directly in the layout. Do not put them in generic circles, pills, or badges unless the container itself communicates state.
 - If an icon does not clarify state or action, remove it.
 
+## Interaction States
+
+- Keyboard focus uses a soft pthalo `:focus-visible` outline (defined globally in `src/index.css`). Do not suppress it without replacing it.
+- Text selection is pthalo-tinted; desktop scrollbars are thin stone-toned thumbs.
+- Primary actions press down 1px on `:active`.
+- Completed set rows are a tinted pthalo wash plus the check icon. No colored edge stripes; the same applies to active nav items (tinted fill, accent icon).
+
+## Agent Surfaces
+
+- The summon surface is a stone sheet: quick actions and starters are `stone-chip` pills, the input is `stone-inset`, send is `app-primary-action`.
+- User messages are pthalo-tinted bubbles; coach messages are quiet `white/[0.045]` bubbles.
+- Coach artifacts (drafts, edits, charts) and change-log entries are `stone-chip` cards with a small uppercase verdigris title and an `app-primary-action` Apply. Chart fills use the muted accent (`--stone-accent-text`) on a `white/[0.06]` track.
+- Loading/status moments use the unicode glyph spinner, accent-colored, never a graphic spinner.
+
 ## Do / Avoid
 
 - Do use large radii, soft borders, and restrained shadows.

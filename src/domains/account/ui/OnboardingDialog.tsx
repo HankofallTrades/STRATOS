@@ -31,11 +31,11 @@ export const OnboardingDialog: React.FC<OnboardingDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]"> {/* Or adjust width as needed */}
+      <DialogContent className="stone-panel rounded-[24px] border-white/10 sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Welcome to STRATOS!</DialogTitle>
+          <DialogTitle>Welcome to STRATOS</DialogTitle>
           <DialogDescription>
-            Let's get some basic information to personalize your experience.
+            A few basics to set up your training.
           </DialogDescription>
         </DialogHeader>
 

@@ -119,7 +119,9 @@ const ProfileScreen = () => {
   return (
     <div className="app-page space-y-6">
       <header className="flex items-center gap-3">
-        <div className="h-10 w-10 flex-none rounded-full bg-gradient-to-br from-primary/70 to-primary/20" />
+        <div className="app-accent-emblem flex h-10 w-10 flex-none items-center justify-center rounded-full text-sm font-semibold uppercase">
+          {(profile?.username ?? '?').charAt(0)}
+        </div>
         <div className="min-w-0">
           <h1 className="app-page-title">{profile?.username ?? 'Profile'}</h1>
           {subtitle ? <p className="text-sm text-muted-foreground">{subtitle}</p> : null}
@@ -155,7 +157,7 @@ const ProfileScreen = () => {
             <button
               type="button"
               aria-label={`Add ${label}`}
-              className="text-sm text-primary"
+              className="app-accent-text text-sm transition-colors hover:text-[#dff3ec]"
               onClick={() => setFactDialog({ mode: 'add', category: key, label })}
             >
               <Plus aria-hidden className="inline h-3.5 w-3.5" /> add
@@ -192,7 +194,7 @@ const ProfileScreen = () => {
           <span className={LABEL_CLASS}>
             Body
           </span>
-          <button type="button" aria-label="Edit body metrics" className="text-sm text-primary" onClick={() => setAboutOpen(true)}>
+          <button type="button" aria-label="Edit body metrics" className="app-accent-text text-sm transition-colors hover:text-[#dff3ec]" onClick={() => setAboutOpen(true)}>
             <Pencil aria-hidden className="inline h-3.5 w-3.5" /> edit
           </button>
         </div>

@@ -29,13 +29,16 @@ const SunExposureLogging: React.FC<SunExposureLoggingProps> = ({ isOpen, onClose
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-background p-6 rounded-lg shadow-xl w-full max-w-md">
-        <h2 className="text-xl font-semibold mb-4">Log Sun Exposure</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+      <div className="stone-panel w-full max-w-md rounded-[24px] border-white/10 p-6 motion-safe:animate-fade-rise">
+        <h2 className="mb-5 text-xl font-semibold tracking-tight text-foreground">Log Sun Exposure</h2>
         <form onSubmit={handleSubmit}>
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div>
-              <label htmlFor="sunExposureHoursInput" className="block text-sm font-medium text-muted-foreground mb-1">
+          <div className="mb-5 grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <label
+                htmlFor="sunExposureHoursInput"
+                className="block text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground"
+              >
                 Hours
               </label>
               <Input
@@ -44,13 +47,17 @@ const SunExposureLogging: React.FC<SunExposureLoggingProps> = ({ isOpen, onClose
                 inputMode="numeric"
                 value={hours}
                 onChange={(e) => setHours(e.target.value)}
-                placeholder="e.g., 1"
+                placeholder="e.g. 1"
                 min="0"
                 disabled={isLogging}
+                className="app-form-input stone-inset h-11 rounded-[16px] border-0 px-3 text-sm tabular-nums focus-visible:ring-0 focus-visible:ring-offset-0"
               />
             </div>
-            <div>
-              <label htmlFor="sunExposureMinutesInput" className="block text-sm font-medium text-muted-foreground mb-1">
+            <div className="space-y-2">
+              <label
+                htmlFor="sunExposureMinutesInput"
+                className="block text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground"
+              >
                 Minutes
               </label>
               <Input
@@ -59,19 +66,30 @@ const SunExposureLogging: React.FC<SunExposureLoggingProps> = ({ isOpen, onClose
                 inputMode="numeric"
                 value={minutes}
                 onChange={(e) => setMinutes(e.target.value)}
-                placeholder="e.g., 30"
+                placeholder="e.g. 30"
                 min="0"
                 max="59"
                 disabled={isLogging}
+                className="app-form-input stone-inset h-11 rounded-[16px] border-0 px-3 text-sm tabular-nums focus-visible:ring-0 focus-visible:ring-offset-0"
               />
             </div>
           </div>
-          <div className="flex justify-end space-x-2">
-            <Button type="button" variant="outline" onClick={onClose} disabled={isLogging}>
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={onClose}
+              disabled={isLogging}
+              className="app-tonal-control h-10 rounded-[16px] px-4 text-sm font-medium"
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={isLogging}>
-              {isLogging ? 'Logging...' : 'Log Sun Exposure'}
+            <Button
+              type="submit"
+              disabled={isLogging}
+              className="app-primary-action h-10 rounded-[16px] px-5 text-sm font-semibold"
+            >
+              {isLogging ? 'Logging...' : 'Log'}
             </Button>
           </div>
         </form>

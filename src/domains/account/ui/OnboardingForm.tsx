@@ -260,8 +260,12 @@ export const OnboardingForm: React.FC<OnboardingFormProps> = ({ onSuccess }) => 
           }}
         />
 
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Saving..." : "Save Information"}
+        <Button
+          type="submit"
+          disabled={isSubmitting}
+          className="app-primary-action h-11 w-full rounded-[16px] text-sm font-semibold"
+        >
+          {isSubmitting ? "Saving..." : "Save"}
         </Button>
       </form>
     </Form>

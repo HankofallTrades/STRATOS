@@ -66,7 +66,7 @@ export const ProfileAboutDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="stone-panel rounded-[24px] border-white/10">
         <DialogHeader>
           <DialogTitle>About you</DialogTitle>
         </DialogHeader>
@@ -100,7 +100,13 @@ export const ProfileAboutDialog = ({
           </div>
         </div>
         <DialogFooter>
-          <Button onClick={handleSave} disabled={isSaving}>Save</Button>
+          <Button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="app-primary-action h-10 rounded-[16px] px-5 text-sm font-semibold"
+          >
+            Save
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

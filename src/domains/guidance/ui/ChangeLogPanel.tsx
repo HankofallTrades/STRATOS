@@ -17,8 +17,8 @@ const ChangeLogPanel = () => {
   if (changes.length === 0) {
     return (
       <p className="px-1 pt-4 text-sm text-muted-foreground">
-        No coach changes yet. When the coach changes your program or workout, it
-        shows up here and can be reverted.
+        When the coach changes your program or workout, it shows up here and can
+        be reverted.
       </p>
     );
   }
@@ -26,19 +26,16 @@ const ChangeLogPanel = () => {
   return (
     <ul className="space-y-2">
       {changes.map((entry) => (
-        <li
-          key={entry.id}
-          className="rounded-xl border border-border bg-background p-3"
-        >
+        <li key={entry.id} className="stone-chip rounded-[18px] p-3.5">
           <p
             className={cn(
-              "text-sm text-foreground",
-              entry.reverted_at && "line-through opacity-60"
+              "text-sm text-foreground/92",
+              entry.reverted_at && "line-through opacity-55"
             )}
           >
             {entry.summary}
           </p>
-          <div className="mt-1 flex items-center justify-between">
+          <div className="mt-1.5 flex items-center justify-between">
             <p className="text-xs text-muted-foreground">
               {formatDistanceToNow(new Date(entry.created_at), {
                 addSuffix: true,
@@ -49,15 +46,16 @@ const ChangeLogPanel = () => {
             ) : canRevert(entry) ? (
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 disabled={isReverting}
                 onClick={() => revert(entry)}
+                className="app-tonal-control h-8 rounded-[12px] px-3 text-xs font-medium"
               >
                 Revert
               </Button>
             ) : (
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-muted-foreground/70">
                 No longer revertible
               </span>
             )}

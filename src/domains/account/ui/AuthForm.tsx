@@ -71,8 +71,13 @@ export const AuthForm = () => {
 
   return (
     <div className="app-shell min-h-screen">
-      <div className="mx-auto flex min-h-screen w-full max-w-5xl items-center px-4 py-10 sm:px-8 lg:px-10">
-        <div className="w-full space-y-4">
+      <div className="mx-auto flex min-h-screen w-full max-w-md items-center px-4 py-10 sm:px-6">
+        <div className="w-full space-y-8">
+          <div className="space-y-1.5 motion-safe:animate-fade-rise">
+            <p className="app-kicker">Personal training OS</p>
+            <h1 className="app-page-title">STRATOS</h1>
+          </div>
+          <div className="space-y-4">
           <Auth
             supabaseClient={supabase}
             view="sign_in"
@@ -176,6 +181,7 @@ export const AuthForm = () => {
           {googleError ? (
             <p className="stratos-auth-message text-sm">{googleError}</p>
           ) : null}
+          </div>
         </div>
       </div>
     </div>

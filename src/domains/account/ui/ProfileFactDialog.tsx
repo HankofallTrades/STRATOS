@@ -46,12 +46,14 @@ export const ProfileFactDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="stone-panel rounded-[24px] border-white/10">
         <DialogHeader>
           <DialogTitle>{isEditing ? `Edit ${categoryLabel}` : `Add ${categoryLabel}`}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-2 py-2">
-          <Label htmlFor="fact-content">Description</Label>
+        <div className="py-2">
+          <Label htmlFor="fact-content" className="sr-only">
+            Description
+          </Label>
           <Input
             id="fact-content"
             value={content}
@@ -61,17 +63,27 @@ export const ProfileFactDialog = ({
             onKeyDown={(event) => {
               if (event.key === 'Enter' && trimmed) onSubmit(trimmed);
             }}
+            className="app-form-input stone-inset h-11 rounded-[16px] border-0 px-3 text-sm focus-visible:ring-0 focus-visible:ring-offset-0"
           />
         </div>
         <DialogFooter className="flex items-center justify-between gap-2">
           {isEditing && onDelete ? (
-            <Button variant="ghost" className="text-destructive" onClick={onDelete} disabled={isSaving}>
+            <Button
+              variant="ghost"
+              className="h-10 rounded-[16px] px-4 text-sm font-medium text-rose-300/90 hover:bg-rose-500/10 hover:text-rose-200"
+              onClick={onDelete}
+              disabled={isSaving}
+            >
               Remove
             </Button>
           ) : (
             <span />
           )}
-          <Button onClick={() => onSubmit(trimmed)} disabled={!trimmed || isSaving}>
+          <Button
+            onClick={() => onSubmit(trimmed)}
+            disabled={!trimmed || isSaving}
+            className="app-primary-action h-10 rounded-[16px] px-5 text-sm font-semibold"
+          >
             {isEditing ? 'Save' : 'Add'}
           </Button>
         </DialogFooter>
