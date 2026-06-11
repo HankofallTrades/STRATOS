@@ -6,6 +6,7 @@ import type {
   ProgramEditApply,
   WorkoutEditApply,
 } from "@/domains/guidance/agent/contracts";
+import type { ProactiveInsight } from "@/domains/guidance/data/proactiveGates";
 
 export interface PresenceAgentContextValue {
   isOpen: boolean;
@@ -23,6 +24,9 @@ export interface PresenceAgentContextValue {
   applyProgramDraft: (apply: ProgramDraftApply) => Promise<void>;
   applyProgramEdit: (apply: ProgramEditApply) => Promise<void>;
   applyWorkoutEdit: (apply: WorkoutEditApply) => Promise<void>;
+  proactiveInsights: ProactiveInsight[];
+  engageInsight: (insight: ProactiveInsight) => void;
+  dismissInsight: (insight: ProactiveInsight) => void;
   isCoachConfigured: boolean;
   configurationMessage: string | null;
 }

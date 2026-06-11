@@ -13,6 +13,7 @@ import {
 import { buildScreenContext } from "@/domains/guidance/agent/screenContext";
 import { sendCoachMessage } from "@/domains/guidance/agent/transport";
 import { executeCoachTool, getCoachToolLabel } from "@/domains/guidance/agent/tools";
+import { useProactiveEngine } from "@/domains/guidance/hooks/useProactiveEngine";
 import { useProgramActions } from "@/domains/guidance/hooks/useProgramActions";
 import { useProposeWorkout } from "@/domains/guidance/hooks/useWorkoutGenerator";
 import {
@@ -235,10 +236,16 @@ export const PresenceAgentProvider = ({ children }: { children: ReactNode }) => 
     ]
   );
 
+  const {
+    insights: proactiveInsights,
+    engageInsight,
+    dismissInsight,
+  } = useProactiveEngine({ summon, send, isOpen, isLoading });
+
   const value = useMemo<PresenceAgentContextValue>(
     () => ({
       isOpen,
-      hasAttention,
+      hasAttention: hasAttention || proactiveInsights.length > 0,
       summon,
       dismiss,
       toggle,
@@ -252,6 +259,9 @@ export const PresenceAgentProvider = ({ children }: { children: ReactNode }) => 
       applyProgramDraft,
       applyProgramEdit,
       applyWorkoutEdit,
+      proactiveInsights,
+      engageInsight,
+      dismissInsight,
       isCoachConfigured,
       configurationMessage,
     }),
@@ -261,6 +271,9 @@ export const PresenceAgentProvider = ({ children }: { children: ReactNode }) => 
       applyProgramEdit,
       applyWorkoutEdit,
       configurationMessage,
+      dismissInsight,
+      engageInsight,
+      proactiveInsights,
       conversation,
       dismiss,
       hasAttention,

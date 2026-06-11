@@ -5,6 +5,7 @@ import NavBar from "@/components/layout/NavBar";
 import BottomNav from "@/components/layout/BottomNav";
 import { Button } from "@/components/core/button";
 import SummonSurface from "@/domains/guidance/ui/SummonSurface";
+import PresencePeek from "@/domains/guidance/ui/PresencePeek";
 import { PresenceAgentProvider } from "@/domains/guidance/hooks/PresenceAgentProvider";
 import { SidebarInset, SidebarProvider } from "@/components/core/sidebar";
 import { useOfflineWorkoutSync } from "@/domains/fitness/hooks/useOfflineWorkoutSync";
@@ -137,6 +138,8 @@ const MainAppLayout = () => {
               onLogSunExposure: handleLogSunExposure,
             }}
           />
+
+        <PresencePeek />
 
         {isProteinModalOpen ? (
           <Suspense fallback={<div className="sr-only">Loading protein dialog</div>}>
