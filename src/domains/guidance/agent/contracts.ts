@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { screenContextSchema, type ScreenContext } from "./screenContext";
+import { screenContextSchema, type ScreenContext } from "./screenContext.js";
 
 export const coachToolNames = [
   "propose_workout",
@@ -11,7 +11,7 @@ export const coachToolNames = [
 export type CoachToolName = (typeof coachToolNames)[number];
 export type CoachToolExecutionEnvironment = "client" | "server";
 
-export type { ScreenContext } from "./screenContext";
+export type { ScreenContext } from "./screenContext.js";
 
 export type CoachArtifact =
   | {
