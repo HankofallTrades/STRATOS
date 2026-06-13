@@ -141,11 +141,11 @@ const CircularProgressDisplay: React.FC<CircularProgressDisplayProps> = ({
         </ResponsiveContainer>
         {showCenterText && (
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <span className={cn("text-2xl font-bold text-foreground", textClassName)}>
+            <span className={cn("text-2xl font-bold tabular-nums text-foreground", textClassName)}>
               {Math.round(animatedValue)}
             </span>
             {goalValue > 0 && (
-              <span className={cn("text-xs text-muted-foreground", textClassName)}>
+              <span className={cn("text-xs tabular-nums text-muted-foreground", textClassName)}>
                 / {goalValue}{unit}
               </span>
             )}

@@ -110,7 +110,7 @@ const StrengthBenchmarksView: React.FC<StrengthBenchmarksProps> = ({
             );
         }
         if (errorProfile) {
-            return <p className="text-red-500 italic text-center py-4">Error loading profile data.</p>;
+            return <p className="text-red-500 text-center py-4">Error loading profile data.</p>;
         }
         if (!userProfile?.weight_kg) {
             return (
@@ -124,10 +124,10 @@ const StrengthBenchmarksView: React.FC<StrengthBenchmarksProps> = ({
             );
         }
         if (errorStrength) {
-            return <p className="text-red-500 italic text-center py-4">Error loading benchmark data.</p>;
+            return <p className="text-red-500 text-center py-4">Error loading benchmark data.</p>;
         }
         if (foundStrengthCount === 0 && exercises.length > 0) {
-            return <p className="text-muted-foreground italic text-center py-4">Could not calculate benchmarks. Ensure exercises like Deadlift and Squat exist.</p>;
+            return <p className="text-muted-foreground text-center py-4">Could not calculate benchmarks. Ensure exercises like Deadlift and Squat exist.</p>;
         }
 
         if (!startAnimation) return null;

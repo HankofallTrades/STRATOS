@@ -99,10 +99,10 @@ const CalisthenicBenchmarksView: React.FC<CalisthenicBenchmarksProps> = ({
             );
         }
         if (errorCalisthenics) {
-            return <p className="text-red-500 italic text-center py-4">Error loading benchmark data.</p>;
+            return <p className="text-red-500 text-center py-4">Error loading benchmark data.</p>;
         }
         if (foundCalisthenicCount === 0 && exercises.length > 0) {
-            return <p className="text-muted-foreground italic text-center py-4">Could not calculate benchmarks. Ensure exercises like Pull-up and Push-up exist.</p>;
+            return <p className="text-muted-foreground text-center py-4">Could not calculate benchmarks. Ensure exercises like Pull-up and Push-up exist.</p>;
         }
 
         if (!startAnimation) return null;

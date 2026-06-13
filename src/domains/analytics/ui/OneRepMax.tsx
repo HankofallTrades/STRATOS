@@ -375,7 +375,7 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
                     <Skeleton className="h-[400px] w-full rounded-[16px]" />
                 </div>
             ) : errorExercises ? (
-                <div className="p-5 text-center text-sm italic text-red-400 md:p-6">
+                <div className="p-5 text-center text-sm text-red-400 md:p-6">
                     Error loading exercises: {errorExercises.message}
                 </div>
             ) : exercises.length > 0 ? (
@@ -418,7 +418,7 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
                                         <Skeleton className="mx-auto h-[300px] w-full rounded-[16px]" />
                                     </div>
                                 ) : errorHistory ? (
-                                    <p className="text-red-500 italic text-center py-10">Error loading history: {errorHistory.message}</p>
+                                    <p className="text-red-500 text-center py-10">Error loading history: {errorHistory.message}</p>
                                 ) : chartData.length > 0 ? (
                                     <ResponsiveContainer width="100%" height={400}>
                                         <LineChart
@@ -499,7 +499,7 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
                                         </LineChart>
                                     </ResponsiveContainer>
                                 ) : (
-                                    <p className="text-muted-foreground italic text-center py-10">
+                                    <p className="text-muted-foreground text-center py-10">
                                         {selectedTimeRange === 'ALL'
                                             ? "No estimated 1RM history found for this exercise. Complete some sets!"
                                             : `No estimated 1RM history found for this exercise in the last ${selectedTimeRange}.`}
@@ -508,12 +508,12 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
                             </>
                         )}
                         {!selectedExercise && (
-                            <p className="text-muted-foreground italic text-center py-10">Select an exercise above to see its progress.</p>
+                            <p className="text-muted-foreground text-center py-10">Select an exercise above to see its progress.</p>
                         )}
                     </CardContent>
                 </div>
             ) : (
-                <div className="p-5 text-sm italic text-muted-foreground md:p-6">
+                <div className="p-5 text-sm text-muted-foreground md:p-6">
                     No exercises defined yet. Add some via the workout screen.
                 </div>
             )}

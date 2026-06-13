@@ -95,7 +95,7 @@ const HomeDashboard = () => {
                   <p className="text-sm text-muted-foreground tabular-nums">{lastSessionSummary.subtitle}</p>
                 </>
               ) : (
-                <p className="text-sm text-muted-foreground">No completed sessions yet.</p>
+                <p className="text-sm text-muted-foreground">Your last session will appear here once you finish one.</p>
               )}
             </CardContent>
           </Card>
@@ -132,7 +132,7 @@ const HomeDashboard = () => {
                   </div>
                 </>
               ) : (
-                <p className="text-sm text-muted-foreground">No e1RM PR increase recorded yet.</p>
+                <p className="text-sm text-muted-foreground">Beat a top set and your first e1RM PR shows up here.</p>
               )}
             </CardContent>
           </Card>

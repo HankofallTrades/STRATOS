@@ -71,7 +71,7 @@ const RecentWorkoutsView: React.FC<{ userId: string | undefined }> = ({ userId }
 
     if (errorWorkouts) {
         return (
-            <div className="stone-surface rounded-[26px] p-5 text-center text-sm italic text-red-400 md:p-6">
+            <div className="stone-surface rounded-[26px] p-5 text-center text-sm text-red-400 md:p-6">
                 Error loading recent workouts.
             </div>
         );
@@ -111,13 +111,13 @@ const RecentWorkoutsView: React.FC<{ userId: string | undefined }> = ({ userId }
                                     Exercises: {workout.exercise_names.join(', ')}
                                 </p>
                             ) : (
-                                <p className="text-sm italic text-muted-foreground">No exercises recorded.</p>
+                                <p className="text-sm text-muted-foreground">No exercises recorded.</p>
                             )}
                         </button>
                     ))}
                 </div>
             ) : (
-                <div className="mt-5 text-sm italic text-muted-foreground">
+                <div className="mt-5 text-sm text-muted-foreground">
                     No workout history available yet. Complete a workout to see it here.
                 </div>
             )}
@@ -181,11 +181,11 @@ const RecentWorkoutsView: React.FC<{ userId: string | undefined }> = ({ userId }
                                             ))}
                                         </ul>
                                     ) : (
-                                        <p className="text-xs italic text-muted-foreground">No sets recorded for this exercise.</p>
+                                        <p className="text-xs text-muted-foreground">No sets recorded for this exercise.</p>
                                     )}
                                 </div>
                             )) : (
-                                <p className="text-sm italic text-muted-foreground">No exercises found in this workout.</p>
+                                <p className="text-sm text-muted-foreground">No exercises found in this workout.</p>
                             )}
                         </div>
                     )}

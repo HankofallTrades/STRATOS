@@ -213,13 +213,13 @@ const SunMoonProgress: React.FC<SunMoonProgressProps> = ({
 
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
             <span
-              className={`text-2xl font-bold text-foreground transition-opacity duration-500 ${textClassName || ''}`}
+              className={`text-2xl font-bold tabular-nums text-foreground transition-opacity duration-500 ${textClassName || ''}`}
               style={{ opacity: (progress > 0.05 && progress < 1) ? 1 : 0 }}
             >
               {`${Math.round(progress * 100)}%`}
             </span>
             <span
-              className={`text-xs text-muted-foreground transition-opacity duration-500 ${textClassName || ''}`}
+              className={`text-xs tabular-nums text-muted-foreground transition-opacity duration-500 ${textClassName || ''}`}
               style={{ opacity: (progress > 0.05 && progress < 1) ? 1 : 0 }}
             >
               {`${currentHours.toFixed(1)} / ${goalHours} hrs`}

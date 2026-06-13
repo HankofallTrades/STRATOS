@@ -68,7 +68,7 @@ const PerformanceOverviewView: React.FC<PerformanceOverviewProps> = ({ userId, e
 
     if (errorStats) {
         return (
-            <div className="stone-surface rounded-[26px] p-5 text-center text-sm italic text-red-400 md:p-6">
+            <div className="stone-surface rounded-[26px] p-5 text-center text-sm text-red-400 md:p-6">
                 Error loading performance overview.
             </div>
         );

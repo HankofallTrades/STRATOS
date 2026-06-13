@@ -38,7 +38,7 @@ const VolumeView: React.FC<VolumeProps> = ({ userId, embedded = false }) => {
 
     if (error) {
         return (
-            <div className="p-5 text-center text-sm italic text-red-400 md:p-6">
+            <div className="p-5 text-center text-sm text-red-400 md:p-6">
                 Error loading volume data.
             </div>
         );

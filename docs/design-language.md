@@ -102,6 +102,7 @@ Rule: side-by-side modules should usually align at the top and size to their con
 - Avoid dead air created by equal-height cards when one panel has much less content.
 - Avoid decorative icon containers that add shape but no meaning.
 - Avoid borders or surface breaks that do not create real hierarchy.
+- Avoid italic type for empty states, helper text, and errors. The system expresses hierarchy through weight and color, not slant.
 - Avoid turning metadata rows or option grids into card farms.
 - Avoid card-within-card-within-card composition for a single task. If one module already frames the action, remove the extra shell.
 

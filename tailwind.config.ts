@@ -68,18 +68,6 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
-				fitnessBlue: "#3B82F6",
-				fitnessGreen: "#22C55E",
-				fitnessIndigo: "#6366F1",
-				genesis: {
-					'dark-blue': '#0A2A4D',
-					'mid-blue': '#2C5B8E',
-					'light-blue': '#73A2D5',
-					'pale-yellow': '#FFF9C4',
-					'sun-yellow': '#FFEC8B',
-					'sun-orange': '#FFD180',
-					'sun-glow': '#FFFDE7',
-				},
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
