@@ -1,9 +1,9 @@
-import React, { useMemo, useState } from 'react';
-import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from 'recharts';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { LineChart, Line, XAxis, YAxis, Legend, ResponsiveContainer, CartesianGrid, ReferenceDot } from 'recharts';
 import type { NameType, Payload, ValueType } from 'recharts/types/component/DefaultTooltipContent';
 import type { TooltipProps } from 'recharts/types/component/Tooltip';
 import { CardContent, CardHeader } from "@/components/core/card";
-import { ChevronDown, Search } from "lucide-react";
+import { ChevronDown, Search, X } from "lucide-react";
 import { Exercise } from '@/lib/types/workout';
 import { Button } from "@/components/core/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/core/Dialog";
@@ -48,23 +48,41 @@ interface ChartTooltipEntry extends Omit<Payload<ValueType, NameType>, 'dataKey'
 type ChartTooltipProps = TooltipProps<ValueType, NameType> & {
     label?: number;
     payload?: ChartTooltipEntry[];
+    isLocked?: boolean;
+    onClose?: () => void;
 };
 
 interface LockedTooltipState {
     label?: number;
     payload?: ChartTooltipEntry[];
+    coord?: { x: number; y: number };
 }
 
-interface SelectableDotProps {
+// Only snap to a data point when the pointer is within this many pixels of it.
+const SNAP_RADIUS_PX = 60;
+
+// Pointer position (pixels, plot-relative) Recharts passes to chart handlers.
+// All-optional so any chart state object is assignable.
+interface ChartMouseState {
+    chartX?: number;
+    chartY?: number;
+}
+
+// A rendered data-point dot's pixel position plus the tooltip entry it maps to.
+// Recorded by the Line dot renderers so we can hit-test in 2D rather than
+// relying on Recharts' horizontal-only nearest-index snapping.
+interface DotCoord {
+    x: number;
+    y: number;
+    timestamp: number;
+    entry: ChartTooltipEntry;
+}
+
+interface DotRenderProps {
     cx?: number;
     cy?: number;
-    stroke?: string;
-    fill?: string;
+    index?: number;
     payload?: UnifiedDataPoint;
-    dataKey?: string;
-    name?: string;
-    value?: number | string | null;
-    onSelect?: (state: LockedTooltipState) => void;
 }
 
 interface CombinationLegendEntry {
@@ -92,7 +110,7 @@ const formatAxisDate = (timestamp: number, timeRange?: TimeRange): string => {
     }
 };
 
-const CustomTooltip = ({ active, payload, label }: ChartTooltipProps) => {
+const CustomTooltip = ({ active, payload, label, isLocked, onClose }: ChartTooltipProps) => {
     if (active && payload && payload.length) {
         const timestamp = label;
         if (timestamp == null) {
@@ -101,8 +119,20 @@ const CustomTooltip = ({ active, payload, label }: ChartTooltipProps) => {
         const date = new Date(timestamp);
 
         return (
-            <div className="stone-panel rounded-[16px] border-white/10 p-3 text-sm space-y-1">
-                <p className="label mb-1 font-semibold text-foreground">{`Date: ${formatDate(date)}`}</p>
+            <div className="stone-panel min-w-[200px] max-w-[85vw] rounded-[16px] border-white/10 p-3 text-sm space-y-1 sm:min-w-[240px] md:min-w-[280px]">
+                <div className="mb-1 flex items-center justify-between gap-3">
+                    <p className="label font-semibold text-foreground">{`Date: ${formatDate(date)}`}</p>
+                    {isLocked && onClose && (
+                        <button
+                            type="button"
+                            onClick={(event) => { event.stopPropagation(); onClose(); }}
+                            aria-label="Dismiss"
+                            className="-mr-1 -mt-1 grid h-6 w-6 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+                        >
+                            <X className="h-3.5 w-3.5" />
+                        </button>
+                    )}
+                </div>
                 {payload.map((entry, index: number) => {
                     const name = entry.name;
                     const value = entry.value;
@@ -147,45 +177,6 @@ const CustomTooltip = ({ active, payload, label }: ChartTooltipProps) => {
         );
     }
     return null;
-};
-
-const SelectableDot = ({ cx, cy, fill, payload, dataKey, name, value, onSelect }: SelectableDotProps) => {
-    if (cx == null || cy == null || value == null || !payload || !dataKey || !name) {
-        return null;
-    }
-
-    const numericValue = typeof value === 'number' ? value : Number(value);
-    if (Number.isNaN(numericValue)) {
-        return null;
-    }
-
-    const selectPoint = () => {
-        onSelect?.({
-            label: payload.workout_timestamp,
-            payload: [{
-                dataKey,
-                name,
-                payload,
-                value: numericValue,
-                color: fill,
-            }],
-        });
-    };
-
-    return (
-        <g>
-            <circle
-                cx={cx}
-                cy={cy}
-                r={20}
-                fill="transparent"
-                style={{ cursor: 'pointer' }}
-                onMouseDown={selectPoint}
-                onTouchStart={selectPoint}
-            />
-            <circle cx={cx} cy={cy} r={4.5} fill={fill} strokeWidth={0} />
-        </g>
-    );
 };
 
 interface AnalyticsExerciseSelectorProps {
@@ -313,6 +304,11 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
     embedded = false,
 }) => {
     const [lockedTooltip, setLockedTooltip] = useState<LockedTooltipState | null>(null);
+    const [hoverTooltip, setHoverTooltip] = useState<LockedTooltipState | null>(null);
+    const chartRef = useRef<HTMLDivElement>(null);
+    const dotCoordsRef = useRef<Map<string, DotCoord>>(new Map());
+    const lastChartDataRef = useRef<UnifiedDataPoint[] | null>(null);
+    const activeTooltip = lockedTooltip ?? hoverTooltip;
     const {
         selectedExercise,
         setSelectedExercise,
@@ -331,9 +327,45 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
     const handleSelectExercise = (exercise: Exercise) => {
         setSelectedExercise(exercise);
         setLockedTooltip(null);
+        setHoverTooltip(null);
     };
 
-    const captureTooltip = (state: LockedTooltipState) => setLockedTooltip(state);
+    // Dismiss a pinned tooltip when the user taps/clicks outside the chart.
+    useEffect(() => {
+        if (!lockedTooltip) return;
+        const handlePointerDown = (event: PointerEvent) => {
+            if (chartRef.current && !chartRef.current.contains(event.target as Node)) {
+                setLockedTooltip(null);
+            }
+        };
+        document.addEventListener('pointerdown', handlePointerDown);
+        return () => document.removeEventListener('pointerdown', handlePointerDown);
+    }, [lockedTooltip]);
+
+    // 2D nearest-point hit test against the dot positions recorded during render.
+    // Picks the Euclidean-closest point, then shows every entry sharing that date.
+    const pickNearest = (chartX?: number, chartY?: number): LockedTooltipState | null => {
+        if (chartX == null || chartY == null) return null;
+
+        let nearest: DotCoord | null = null;
+        let nearestDist = Infinity;
+        for (const dot of dotCoordsRef.current.values()) {
+            const dx = dot.x - chartX;
+            const dy = dot.y - chartY;
+            const dist = dx * dx + dy * dy;
+            if (dist < nearestDist) {
+                nearestDist = dist;
+                nearest = dot;
+            }
+        }
+        if (!nearest || nearestDist > SNAP_RADIUS_PX * SNAP_RADIUS_PX) return null;
+
+        const { timestamp } = nearest;
+        const payload = Array.from(dotCoordsRef.current.values())
+            .filter(dot => dot.timestamp === timestamp)
+            .map(dot => dot.entry);
+        return { label: timestamp, payload, coord: { x: nearest.x, y: nearest.y } };
+    };
 
     const legendPayload = useMemo(() => {
         return allCombinationKeys.map((key, index) => {
@@ -361,6 +393,15 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
             };
         });
     }, [allCombinationKeys]);
+
+    // The Line dot renderers below record point pixel positions keyed by point.
+    // Only reset when the plotted data changes — Recharts may skip re-rendering
+    // dots on hover-driven re-renders, so clearing every render would wipe the
+    // cache and break snapping after the first hover.
+    if (lastChartDataRef.current !== chartData) {
+        dotCoordsRef.current.clear();
+        lastChartDataRef.current = chartData;
+    }
 
     return (
         <>
@@ -420,10 +461,23 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
                                 ) : errorHistory ? (
                                     <p className="text-red-500 text-center py-10">Error loading history: {errorHistory.message}</p>
                                 ) : chartData.length > 0 ? (
+                                    <div ref={chartRef} className="relative">
                                     <ResponsiveContainer width="100%" height={400}>
                                         <LineChart
                                             data={chartData}
                                             margin={{ top: 10, right: 4, left: 8, bottom: 5 }}
+                                            onMouseMove={(next: ChartMouseState) => {
+                                                if (lockedTooltip) return;
+                                                setHoverTooltip(pickNearest(next?.chartX, next?.chartY));
+                                            }}
+                                            onMouseLeave={() => setHoverTooltip(null)}
+                                            onClick={(next: ChartMouseState) => {
+                                                const picked = pickNearest(next?.chartX, next?.chartY);
+                                                setLockedTooltip(prev =>
+                                                    prev && picked && prev.label === picked.label ? null : picked
+                                                );
+                                                setHoverTooltip(null);
+                                            }}
                                         >
                                             <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.06)" />
                                             <XAxis
@@ -443,14 +497,6 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
                                                 tickFormatter={(value) => `${value} kg`}
                                                 axisLine={false}
                                                 tickLine={false}
-                                            />
-                                            <Tooltip
-                                                content={<CustomTooltip />}
-                                                cursor={lockedTooltip ? { stroke: 'rgba(214, 223, 218, 0.18)', strokeWidth: 1 } : false}
-                                                active={!!lockedTooltip}
-                                                label={lockedTooltip?.label}
-                                                payload={lockedTooltip?.payload}
-                                                trigger="click"
                                             />
                                             <Legend
                                                 onClick={(data) => {
@@ -475,6 +521,7 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
                                                 const displayVariation = variationPart === 'Default' ? 'Standard' : variationPart;
                                                 const displayEquipment = equipmentPart === 'DB_KB_COMBO' ? 'DB/KB' : (equipmentPart === 'Default' ? 'Default' : equipmentPart);
                                                 const displayName = `${displayVariation} - ${displayEquipment}`;
+                                                const color = lineColors[index % lineColors.length];
 
                                                 return (
                                                     <Line
@@ -482,22 +529,64 @@ const OneRepMaxView: React.FC<OneRepMaxProps> = ({
                                                         type="monotone"
                                                         dataKey={key}
                                                         name={displayName}
-                                                        stroke={lineColors[index % lineColors.length]}
+                                                        stroke={color}
                                                         strokeWidth={2.6}
-                                                        dot={(dotProps) => (
-                                                            <SelectableDot
-                                                                {...dotProps}
-                                                                fill={lineColors[index % lineColors.length]}
-                                                                onSelect={captureTooltip}
-                                                            />
-                                                        )}
-                                                        activeDot={{ r: 9, fill: lineColors[index % lineColors.length], stroke: 'rgba(214, 223, 218, 0.22)', strokeWidth: 10 }}
+                                                        dot={(dotProps: DotRenderProps) => {
+                                                            const { cx, cy, index: pointIndex, payload } = dotProps;
+                                                            const dotKey = `${key}-${pointIndex}`;
+                                                            const value = payload?.[key];
+                                                            if (cx == null || cy == null || typeof value !== 'number') {
+                                                                return <g key={dotKey} />;
+                                                            }
+                                                            dotCoordsRef.current.set(`${key}__${payload.workout_timestamp}`, {
+                                                                x: cx,
+                                                                y: cy,
+                                                                timestamp: payload.workout_timestamp,
+                                                                entry: { dataKey: key, name: displayName, value, color, payload },
+                                                            });
+                                                            return <circle key={dotKey} cx={cx} cy={cy} r={3} fill={color} />;
+                                                        }}
+                                                        activeDot={false}
                                                         connectNulls={true}
+                                                        isAnimationActive={false}
                                                     />
                                                 );
                                             })}
+                                            {activeTooltip?.label != null && activeTooltip.payload?.map((entry, i) => (
+                                                entry.value != null ? (
+                                                    <ReferenceDot
+                                                        key={`active-${entry.dataKey ?? i}`}
+                                                        x={activeTooltip.label}
+                                                        y={entry.value}
+                                                        r={6}
+                                                        fill={entry.color}
+                                                        stroke="rgba(214, 223, 218, 0.5)"
+                                                        strokeWidth={2}
+                                                        isFront={true}
+                                                    />
+                                                ) : null
+                                            ))}
                                         </LineChart>
                                     </ResponsiveContainer>
+                                    {activeTooltip?.coord && activeTooltip.payload?.length ? (
+                                        <div
+                                            className="absolute z-10 -translate-x-1/2 -translate-y-full transition-[left,top] duration-150 ease-out motion-safe:animate-in motion-safe:fade-in-0"
+                                            style={{
+                                                left: activeTooltip.coord.x,
+                                                top: activeTooltip.coord.y - 12,
+                                                pointerEvents: lockedTooltip ? 'auto' : 'none',
+                                            }}
+                                        >
+                                            <CustomTooltip
+                                                active
+                                                label={activeTooltip.label}
+                                                payload={activeTooltip.payload}
+                                                isLocked={!!lockedTooltip}
+                                                onClose={() => setLockedTooltip(null)}
+                                            />
+                                        </div>
+                                    ) : null}
+                                    </div>
                                 ) : (
                                     <p className="text-muted-foreground text-center py-10">
                                         {selectedTimeRange === 'ALL'

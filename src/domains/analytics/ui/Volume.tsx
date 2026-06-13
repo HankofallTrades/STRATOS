@@ -82,7 +82,7 @@ const VolumeView: React.FC<VolumeProps> = ({ userId, embedded = false }) => {
                                                     <div
                                                         className="h-full transition-all duration-700 ease-in-out"
                                                         style={{
-                                                            width: `${Math.min(100 - (arch.verticalSets / arch.goal) * 100, (arch.horizontalSets / arch.goal) * 100)}%`,
+                                                            width: `${Math.min(Math.max(0, 100 - (arch.verticalSets / arch.goal) * 100), (arch.horizontalSets / arch.goal) * 100)}%`,
                                                             backgroundColor: arch.displayHorizontalColor,
                                                         }}
                                                     />

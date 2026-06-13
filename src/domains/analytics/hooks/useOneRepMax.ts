@@ -33,8 +33,8 @@ const getCombinationKey = (
 
 export const useOneRepMax = (userId: string | undefined, exercises: Exercise[]) => {
     const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
-    const [allCombinationKeys, setAllCombinationKeys] = useState<string[]>([]);
     const [activeCombinationKeys, setActiveCombinationKeys] = useState<string[]>([]);
+    const [lastInitializedExerciseId, setLastInitializedExerciseId] = useState<string | null>(null);
     const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>(() => {
         const storedRange = localStorage.getItem(SELECTED_TIME_RANGE_STORAGE_KEY);
         const validRanges: TimeRange[] = ['1W', '1M', '3M', '6M', '1Y', 'ALL'];
@@ -79,24 +79,15 @@ export const useOneRepMax = (userId: string | undefined, exercises: Exercise[]) 
         staleTime: 5 * 60 * 1000,
     });
 
-    // Track which exercise the keys were initialized for
-    const [lastInitializedExerciseId, setLastInitializedExerciseId] = useState<string | null>(null);
-
-    // Process keys
-    useEffect(() => {
-        if (!maxE1RMHistory || maxE1RMHistory.length === 0) {
-            setAllCombinationKeys([]);
-            setActiveCombinationKeys([]);
-            return;
-        }
-
+    // Derive the available combination keys (and their frequency) from history.
+    const { allCombinationKeys, keyFrequency } = useMemo(() => {
         const uniqueKeys = new Set<string>();
-        const keyFrequency: Record<string, number> = {};
+        const frequency: Record<string, number> = {};
 
         maxE1RMHistory.forEach(item => {
             const key = getCombinationKey(item.variation, item.equipment_type);
             uniqueKeys.add(key);
-            keyFrequency[key] = (keyFrequency[key] || 0) + 1;
+            frequency[key] = (frequency[key] || 0) + 1;
         });
 
         const sortedKeys = Array.from(uniqueKeys).sort((a, b) => {
@@ -107,39 +98,44 @@ export const useOneRepMax = (userId: string | undefined, exercises: Exercise[]) 
             return a.localeCompare(b);
         });
 
-        if (JSON.stringify(sortedKeys) !== JSON.stringify(allCombinationKeys)) {
-            setAllCombinationKeys(sortedKeys);
+        return { allCombinationKeys: sortedKeys, keyFrequency: frequency };
+    }, [maxE1RMHistory]);
+
+    // Initialize the active combination once per exercise (or when the current
+    // selection is no longer valid). User legend toggles afterwards are preserved.
+    useEffect(() => {
+        if (allCombinationKeys.length === 0) {
+            if (activeCombinationKeys.length > 0) setActiveCombinationKeys([]);
+            return;
         }
 
-        // Only auto-select the most frequent key if we haven't initialized for this exercise yet
-        // OR if the current active keys are no longer valid for this exercise
         const currentExerciseId = selectedExercise?.id || null;
         const needsInitialization = lastInitializedExerciseId !== currentExerciseId;
-        const currentKeysValid = activeCombinationKeys.every(k => sortedKeys.includes(k)) && activeCombinationKeys.length > 0;
+        const currentKeysValid = activeCombinationKeys.length > 0
+            && activeCombinationKeys.every(k => allCombinationKeys.includes(k));
 
-        if (needsInitialization || !currentKeysValid) {
-            let mostFrequentKey: string | null = null;
-            let maxFreq = 0;
-            Object.entries(keyFrequency).forEach(([key, freq]) => {
-                if (freq > maxFreq) {
-                    maxFreq = freq;
-                    mostFrequentKey = key;
-                }
-            });
+        if (!needsInitialization && currentKeysValid) return;
 
-            const storedCombinationsRaw = localStorage.getItem(SELECTED_COMBINATION_STORAGE_KEY);
-            const storedCombinations: Record<string, string> = storedCombinationsRaw ? JSON.parse(storedCombinationsRaw) : {};
-            const storedKeyForExercise = currentExerciseId ? storedCombinations[currentExerciseId] : undefined;
+        let mostFrequentKey: string | null = null;
+        let maxFreq = 0;
+        Object.entries(keyFrequency).forEach(([key, freq]) => {
+            if (freq > maxFreq) {
+                maxFreq = freq;
+                mostFrequentKey = key;
+            }
+        });
 
-            const preferredKey = storedKeyForExercise && sortedKeys.includes(storedKeyForExercise)
-                ? storedKeyForExercise
-                : mostFrequentKey;
+        const storedCombinationsRaw = localStorage.getItem(SELECTED_COMBINATION_STORAGE_KEY);
+        const storedCombinations: Record<string, string> = storedCombinationsRaw ? JSON.parse(storedCombinationsRaw) : {};
+        const storedKeyForExercise = currentExerciseId ? storedCombinations[currentExerciseId] : undefined;
 
-            const newActiveKeys = preferredKey ? [preferredKey] : (sortedKeys.length > 0 ? [sortedKeys[0]] : []);
-            setActiveCombinationKeys(newActiveKeys);
-            setLastInitializedExerciseId(currentExerciseId);
-        }
-    }, [maxE1RMHistory, selectedExercise?.id, allCombinationKeys, activeCombinationKeys, lastInitializedExerciseId]);
+        const preferredKey = storedKeyForExercise && allCombinationKeys.includes(storedKeyForExercise)
+            ? storedKeyForExercise
+            : mostFrequentKey;
+
+        setActiveCombinationKeys(preferredKey ? [preferredKey] : [allCombinationKeys[0]]);
+        setLastInitializedExerciseId(currentExerciseId);
+    }, [allCombinationKeys, keyFrequency, selectedExercise?.id, activeCombinationKeys, lastInitializedExerciseId]);
 
     useEffect(() => {
         if (!selectedExercise?.id || activeCombinationKeys.length === 0) return;
@@ -190,13 +186,8 @@ export const useOneRepMax = (userId: string | undefined, exercises: Exercise[]) 
             }
         }
 
-        const allDatesInRange: Date[] = [];
-        const currentDate = new Date(startDate);
-        while (currentDate <= effectiveEndDate) {
-            allDatesInRange.push(new Date(currentDate));
-            currentDate.setUTCDate(currentDate.getUTCDate() + 1);
-        }
-
+        // Group history by its raw date string (YYYY-MM-DD) so chart rows key off
+        // the same value the DB returns — no UTC round-trip mismatch.
         const historyByDate: Record<string, DailyMaxE1RM[]> = {};
         maxE1RMHistory.forEach(item => {
             const dateStr = item.workout_date;
@@ -204,29 +195,38 @@ export const useOneRepMax = (userId: string | undefined, exercises: Exercise[]) 
             historyByDate[dateStr].push(item);
         });
 
-        const chartData: UnifiedDataPoint[] = allDatesInRange.map(date => {
-            const dateStr = date.toISOString().split('T')[0];
-            const dataForDate = historyByDate[dateStr] || [];
-            const point: UnifiedDataPoint = {
-                workout_timestamp: date.getTime(),
-                workout_date: dateStr,
-            };
+        const startMillis = startDate.getTime();
+        const endMillis = effectiveEndDate.getTime();
 
-            allCombinationKeys.forEach(key => {
-                point[key] = null;
+        // One chart row per date that actually has data, within the selected range.
+        const chartData: UnifiedDataPoint[] = Object.keys(historyByDate)
+            .sort()
+            .map(dateStr => {
+                const parts = dateStr.split('-').map(Number);
+                return { dateStr, timestamp: Date.UTC(parts[0], parts[1] - 1, parts[2]) };
+            })
+            .filter(({ timestamp }) => timestamp >= startMillis && timestamp <= endMillis)
+            .map(({ dateStr, timestamp }) => {
+                const point: UnifiedDataPoint = {
+                    workout_timestamp: timestamp,
+                    workout_date: dateStr,
+                };
+
+                allCombinationKeys.forEach(key => {
+                    point[key] = null;
+                });
+
+                historyByDate[dateStr].forEach(item => {
+                    const key = getCombinationKey(item.variation, item.equipment_type);
+                    if (item.max_e1rm != null && !isNaN(item.max_e1rm)) {
+                        if (!point._originalEquipment) point._originalEquipment = {};
+                        point._originalEquipment[key] = item.equipment_type || 'Default';
+                        point[key] = item.max_e1rm;
+                    }
+                });
+
+                return point;
             });
-
-            dataForDate.forEach(item => {
-                const key = getCombinationKey(item.variation, item.equipment_type);
-                if (item.max_e1rm != null && !isNaN(item.max_e1rm)) {
-                    if (!point._originalEquipment) point._originalEquipment = {};
-                    point._originalEquipment[key] = item.equipment_type || 'Default';
-                    point[key] = item.max_e1rm;
-                }
-            });
-
-            return point;
-        });
 
         const domain: [number, number] = [startDate.getTime(), effectiveEndDate.getTime() + 1];
         const tickTimestamps: number[] = [startDate.getTime()];
