@@ -4,6 +4,7 @@ import { Trophy } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/core/card";
 import { Button } from "@/components/core/button";
 import { Skeleton } from "@/components/core/skeleton";
+import { cn } from "@/lib/utils/cn";
 import { useHomeDashboard } from "@/domains/dashboard/hooks/useHomeDashboard";
 
 // Entrance animation runs on the first dashboard mount per app load only,
@@ -15,6 +16,7 @@ const entranceClass = (animate: boolean) =>
 
 const HomeDashboard = () => {
   const [animateEntrance] = useState(() => !hasAnimatedHomeEntrance);
+  const [justDoneId, setJustDoneId] = useState<string | null>(null);
   useEffect(() => {
     hasAnimatedHomeEntrance = true;
   }, []);
@@ -42,7 +44,7 @@ const HomeDashboard = () => {
           <h1 className="app-page-title">Time to train.</h1>
         </div>
         <div className="self-start text-sm font-medium md:self-auto">
-          <span className="home-header-status warm-metal-text">{movementStreakLabel}</span>
+          <span className="home-header-status warm-metal-text tabular-nums">{movementStreakLabel}</span>
         </div>
       </header>
 
@@ -90,7 +92,7 @@ const HomeDashboard = () => {
               ) : lastSessionSummary ? (
                 <>
                   <p className="text-lg font-semibold text-foreground">{lastSessionSummary.title}</p>
-                  <p className="text-sm text-muted-foreground">{lastSessionSummary.subtitle}</p>
+                  <p className="text-sm text-muted-foreground tabular-nums">{lastSessionSummary.subtitle}</p>
                 </>
               ) : (
                 <p className="text-sm text-muted-foreground">No completed sessions yet.</p>
@@ -114,7 +116,7 @@ const HomeDashboard = () => {
                   <p className="text-lg font-semibold text-foreground">{recentPr.exerciseName}</p>
                   <div className="space-y-1.5">
                     <div className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-                      <p className="inline-flex items-center gap-1.5 font-medium text-foreground/88">
+                      <p className="inline-flex items-center gap-1.5 font-medium text-foreground/88 tabular-nums">
                         <Trophy className="h-3.5 w-3.5 verdigris-text" />
                         <span>
                           {recentPr.topSetWeightLabel && recentPr.topSetRepsLabel
@@ -122,11 +124,11 @@ const HomeDashboard = () => {
                             : "PR set"}
                         </span>
                       </p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm text-muted-foreground tabular-nums">
                         (e1RM {recentPr.currentE1RMLabel})
                       </p>
                     </div>
-                    <p className="text-sm text-muted-foreground">{recentPr.whenLabel}</p>
+                    <p className="text-sm text-muted-foreground tabular-nums">{recentPr.whenLabel}</p>
                   </div>
                 </>
               ) : (
@@ -148,9 +150,24 @@ const HomeDashboard = () => {
               className="home-habit-option app-inline-action inline-flex items-center gap-2 text-sm disabled:cursor-not-allowed"
               data-done={item.done ? "true" : "false"}
               disabled={item.disabled}
-              onClick={() => handleToggleHabit(item.id, item.done)}
+              onClick={() => {
+                if (!item.done) {
+                  setJustDoneId(item.id);
+                  window.setTimeout(
+                    () => setJustDoneId((id) => (id === item.id ? null : id)),
+                    260
+                  );
+                }
+                handleToggleHabit(item.id, item.done);
+              }}
             >
-              <span className={item.done ? "verdigris-text" : "text-muted-foreground"}>
+              <span
+                className={cn(
+                  "inline-block",
+                  item.done ? "verdigris-text" : "text-muted-foreground",
+                  justDoneId === item.id && "motion-safe:animate-set-confirm"
+                )}
+              >
                 {item.done ? "◉" : "○"}
               </span>
               <span className={item.done ? "text-foreground" : ""}>{item.label}</span>

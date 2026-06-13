@@ -96,7 +96,7 @@ const SetComponent: React.FC<SetComponentProps> = ({
     recommendedPerformance?.action === 'increase_reps' ? 'up' : null;
   const shouldAnimateCellContent = contentInitialY !== 0;
   const strengthInputClassName = cn(
-    "h-10 w-full rounded-[14px] border-0 bg-transparent px-0 text-center text-base font-medium text-foreground shadow-none outline-none placeholder:text-muted-foreground/40 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 disabled:cursor-default disabled:opacity-100",
+    "h-10 w-full rounded-[14px] border-0 bg-transparent px-0 text-center text-base font-medium tabular-nums text-foreground shadow-none outline-none placeholder:text-muted-foreground/40 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 disabled:cursor-default disabled:opacity-100",
     "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
     isCompleted && "text-foreground/58"
   );
@@ -200,10 +200,9 @@ const SetComponent: React.FC<SetComponentProps> = ({
                 onChange={handleDurationChange}
                 onBlur={() => handleBlur('duration')}
                 className={cn(
-                  "stone-inset h-10 w-full rounded-[14px] px-0 text-center text-sm font-medium text-foreground shadow-none focus-visible:ring-0",
+                  "stone-inset h-10 w-full rounded-[14px] px-0 text-center text-sm font-medium tabular-nums text-foreground shadow-none focus-visible:ring-0",
                   "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-                  isCompleted && "stone-inset-complete text-foreground/58",
-                  cardioTimerRunning && "tabular-nums"
+                  isCompleted && "stone-inset-complete text-foreground/58"
                 )}
                 placeholder={previousPerformance?.time_seconds ? String(previousPerformance.time_seconds) : "0"}
                 aria-label="Duration in seconds"
@@ -227,7 +226,7 @@ const SetComponent: React.FC<SetComponentProps> = ({
                 onChange={handleDistanceChange}
                 onBlur={() => handleBlur('distance')}
                 className={cn(
-                  "stone-inset h-10 w-full rounded-[14px] px-0 text-center text-sm font-medium text-foreground shadow-none focus-visible:ring-0",
+                  "stone-inset h-10 w-full rounded-[14px] px-0 text-center text-sm font-medium tabular-nums text-foreground shadow-none focus-visible:ring-0",
                   "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
                   isCompleted && "stone-inset-complete text-foreground/58"
                 )}

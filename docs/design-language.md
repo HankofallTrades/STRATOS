@@ -38,6 +38,8 @@ Anti-pattern: `stone-panel` -> `stone-surface` -> bordered inner card for the sa
 
 Rule: do not invent a new heading treatment for each module. Pages should feel authored from a small set of repeated text roles.
 
+Rule: numbers that the user reads or types as data (weights, reps, durations, counts, e1RM, streaks, set totals) use `tabular-nums` so digits hold a fixed width. This keeps logged figures from shifting as they are typed and keeps stacked stats and bar labels optically aligned. Prose that merely contains an incidental number does not need it.
+
 ## Copy Density
 
 - Default to omission. If the control is self-explanatory, do not add copy around it.

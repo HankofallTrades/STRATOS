@@ -63,7 +63,7 @@ const VolumeView: React.FC<VolumeProps> = ({ userId, embedded = false }) => {
                                             </span>
                                             <Info className="h-3.5 w-3.5 text-muted-foreground" />
                                         </div>
-                                        <span className="text-sm font-medium text-foreground/82">
+                                        <span className="text-sm font-medium tabular-nums text-foreground/82">
                                             {arch.totalSets} / {arch.goal}
                                         </span>
                                     </div>

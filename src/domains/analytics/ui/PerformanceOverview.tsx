@@ -83,7 +83,7 @@ const PerformanceOverviewView: React.FC<PerformanceOverviewProps> = ({ userId, e
                             <Icon className={`h-4 w-4 ${iconClassName}`} />
                             <span>{label}</span>
                         </div>
-                        <p className={`font-semibold tracking-tight text-foreground ${valueClassName}`}>
+                        <p className={`font-semibold tracking-tight text-foreground tabular-nums ${valueClassName}`}>
                             {value}
                         </p>
                     </div>
