@@ -6,7 +6,7 @@ This file is the fast operational map for agents and future sessions. It is not 
 
 - Architecture rename is complete: use `ui / hooks / data`, not `view / controller / model`.
 - `npm run build` passes.
-- `npm run lint` currently reports warnings but no errors (react-refresh export warnings in shared providers/components; the 8 unique warnings are currently double-reported as 16 — pre-existing output duplication, not new findings).
+- `npm run lint` reports 8 warnings, no errors (`react-refresh/only-export-components` in shared providers/components — benign dev-HMR hints). The earlier 16 was this same set double-counted because `eslint .` was traversing the nested `.claude/worktrees/` checkout; `.claude` is now in the eslint `ignores`.
 - Unit tests run via Vitest (`npm test`, config in `vitest.config.ts`, node environment). The first suites cover pure domain logic only: fitness `recommendations`, guidance `proactiveGates`, analytics `volumeProgress`.
 - Do not run `npm run build` and `npm run lint` at the same time. Vite can create transient `vite.config.ts.timestamp-*.mjs` files that make ESLint fail with `ENOENT`.
 - Public routes do not load Redux persistence or the protected shell up front; `App.tsx` lazy-loads the protected app shell after route match.
@@ -356,9 +356,8 @@ Run these sequentially, not in parallel:
 3. `npm test` (Vitest, safe to run independently of build/lint)
 
 Current expected lint baseline:
-- 8 unique warnings (currently double-reported as 16 in the CLI output)
-- warnings are `react-refresh/only-export-components` in shared UI/provider files
-- 0 errors
+- 8 warnings, 0 errors
+- warnings are `react-refresh/only-export-components` in shared UI/provider files (6 vendored shadcn core components that co-locate `cva` variants, plus `ThemeProvider`/`AuthProvider` which export their hook alongside the provider). Left as-is: forking vendored shadcn fights upstream, and extracting the provider hooks would churn 20+ consumer imports for a benign dev-only HMR hint.
 
 ## When To Update This File
 
