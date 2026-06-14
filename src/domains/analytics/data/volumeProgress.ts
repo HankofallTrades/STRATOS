@@ -43,9 +43,14 @@ export function getCurrentWeekRange() {
     const sunday = new Date(monday);
     sunday.setDate(monday.getDate() + 6);
     sunday.setHours(23, 59, 59, 999);
+    // Format from local calendar components, not toISOString() — the latter
+    // serializes in UTC, which in UTC+ timezones shifts `start` to the prior
+    // Sunday and widens the window past the intended Mon–Sun week.
+    const toLocalIsoDate = (d: Date) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     return {
-        start: monday.toISOString().split('T')[0],
-        end: sunday.toISOString().split('T')[0],
+        start: toLocalIsoDate(monday),
+        end: toLocalIsoDate(sunday),
     };
 }
 

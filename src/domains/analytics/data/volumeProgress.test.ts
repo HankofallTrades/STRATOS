@@ -88,15 +88,20 @@ describe("buildVolumeProgressDisplayData", () => {
 });
 
 describe("getCurrentWeekRange", () => {
-  // NOTE: this function builds the Monday boundary at *local* midnight but
-  // serializes with toISOString() (UTC), so in UTC+ timezones `start` lands on
-  // the prior Sunday and the window is 7 days wide instead of Mon–Sun. The
-  // exact span is therefore timezone-dependent and intentionally not asserted
-  // here. See the known-issue note flagged alongside this suite.
-  it("returns two ordered ISO-date strings", () => {
+  // The range drives the weekly-volume query window, so it must be the local
+  // Mon–Sun calendar week regardless of the runner's timezone. (It once used
+  // toISOString(), which serialized in UTC and shifted `start` to the prior
+  // Sunday in UTC+ zones — the fix formats from local components instead.)
+  const localDay = (isoDate: string) => new Date(`${isoDate}T00:00:00`).getDay();
+  const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+  it("returns two ISO-date strings spanning exactly a Mon–Sun week", () => {
     const { start, end } = getCurrentWeekRange();
     expect(start).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(end).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    expect(Date.parse(end)).toBeGreaterThan(Date.parse(start));
+    // Start is a Monday, end is a Sunday, six calendar days apart.
+    expect(localDay(start)).toBe(1);
+    expect(localDay(end)).toBe(0);
+    expect((Date.parse(end) - Date.parse(start)) / MS_PER_DAY).toBe(6);
   });
 });

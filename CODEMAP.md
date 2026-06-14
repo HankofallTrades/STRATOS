@@ -342,7 +342,6 @@ If you touch any of those, read the full file first. They are coordination seams
 - Some fitness UI is still more stateful than ideal.
 - `README.md` and `docs/plan.md` may lag implementation details after large refactors.
 - Test coverage is an early foundation only: Vitest covers three pure data seams (fitness recommendations, guidance proactive gates, analytics volume progress). Most domains, hooks, and UI have no tests.
-- `getCurrentWeekRange` (`src/domains/analytics/data/volumeProgress.ts`) builds the Monday boundary at local midnight but serializes via `toISOString()` (UTC), so in UTC+ timezones the returned week starts on the prior Sunday (7-day span). Latent; not yet fixed.
 
 ## Verification Workflow
 
