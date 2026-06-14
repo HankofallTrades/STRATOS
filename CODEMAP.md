@@ -332,8 +332,9 @@ If you touch any of those, read the full file first. They are coordination seams
   - periodization mesocycles
   - living profile: `user_facts` table (free-text Coach context per user); `profiles` extended with `experience_level` and `training_age_years` background columns.
   - coach acting layer: `mesocycles.protocol` CHECK extended with `coach`; `coach_change_log` table (RLS owner-only) for applied Coach mutations + revert payloads.
-- Remote migration drift (known): sub-project 1's migration was applied remotely via MCP under version `20260603133849`, so local `20260601000001` shows unapplied; local `20260605000001` (drop `user_provider_credentials`) was never applied remotely and that table still exists. `supabase db push` will fail on the duplicate `user_facts` — apply new migrations via Supabase MCP `apply_migration` until reconciled.
-- Legacy migration copies exist in `supabase/migrations_legacy`.
+- Migration history is reconciled: local `supabase/migrations` version prefixes now match the remote `schema_migrations` table exactly, and `user_provider_credentials` (dead since BYOK keys moved to localStorage) was dropped via migration `20260614065001`.
+- Migrations applied via the Supabase MCP `apply_migration` get an MCP-assigned timestamp version, not the local filename's version. To keep history aligned, after applying via MCP, rename the local migration file to the version MCP recorded (check `schema_migrations`). Drift is what previously broke `db push`.
+- Local `src/lib/integrations/supabase/types.ts` is hand-maintained and still lists the dropped `user_provider_credentials` table; regenerate it (e.g. `supabase gen types typescript --linked`) to remove the stale entry.
 
 ## Known Debt / Hotspots
 
