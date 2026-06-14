@@ -12,7 +12,8 @@
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
     "supabase:reset": "supabase db reset",
-    "supabase:status": "supabase status -o env"
+    "supabase:status": "supabase status -o env",
+    "gen:types": "supabase gen types typescript --linked > src/lib/integrations/supabase/types.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.64",

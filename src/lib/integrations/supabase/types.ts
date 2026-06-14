@@ -107,6 +107,44 @@ export type Database = {
         }
         Relationships: []
       }
+      coach_change_log: {
+        Row: {
+          change_type: string
+          created_at: string
+          id: string
+          payload: Json
+          reverted_at: string | null
+          summary: string
+          user_id: string
+        }
+        Insert: {
+          change_type: string
+          created_at?: string
+          id?: string
+          payload: Json
+          reverted_at?: string | null
+          summary: string
+          user_id: string
+        }
+        Update: {
+          change_type?: string
+          created_at?: string
+          id?: string
+          payload?: Json
+          reverted_at?: string | null
+          summary?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coach_change_log_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       equipment_types: {
         Row: {
           created_at: string | null
@@ -680,45 +718,6 @@ export type Database = {
         }
         Relationships: []
       }
-      user_provider_credentials: {
-        Row: {
-          created_at: string
-          encrypted_api_key: string
-          encryption_iv: string
-          encryption_tag: string
-          id: string
-          key_last_four: string
-          key_version: number
-          provider: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          encrypted_api_key: string
-          encryption_iv: string
-          encryption_tag: string
-          id?: string
-          key_last_four: string
-          key_version?: number
-          provider: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          encrypted_api_key?: string
-          encryption_iv?: string
-          encryption_tag?: string
-          id?: string
-          key_last_four?: string
-          key_version?: number
-          provider?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       protein_intake: {
         Row: {
           amount_grams: number
@@ -855,42 +854,6 @@ export type Database = {
           },
         ]
       }
-      user_hidden_exercises: {
-        Row: {
-          created_at: string
-          exercise_id: string | null
-          id: string
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          exercise_id?: string | null
-          id?: string
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          exercise_id?: string | null
-          id?: string
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_hidden_exercises_exercise_id_fkey"
-            columns: ["exercise_id"]
-            isOneToOne: false
-            referencedRelation: "exercises"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_hidden_exercises_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       user_facts: {
         Row: {
           category: string
@@ -932,7 +895,43 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          }
+          },
+        ]
+      }
+      user_hidden_exercises: {
+        Row: {
+          created_at: string
+          exercise_id: string | null
+          id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          exercise_id?: string | null
+          id?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          exercise_id?: string | null
+          id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_hidden_exercises_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_hidden_exercises_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       workout_exercises: {
