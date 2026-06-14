@@ -8,6 +8,7 @@ import { usePresenceAgent } from "@/domains/guidance/hooks/usePresenceAgent";
 import { cn } from "@/lib/utils/cn";
 import ArtifactRenderer from "@/domains/guidance/ui/ArtifactRenderer";
 import ChangeLogPanel from "@/domains/guidance/ui/ChangeLogPanel";
+import CoachMarkdown from "@/domains/guidance/ui/CoachMarkdown";
 
 export interface SummonSurfaceQuickActions {
   onStartWorkout: () => void;
@@ -135,7 +136,11 @@ const SummonSurface = ({
                           : "bg-white/[0.045] text-foreground/92"
                       )}
                     >
-                      {message.content}
+                      {message.kind === "assistant" ? (
+                        <CoachMarkdown content={message.content} />
+                      ) : (
+                        message.content
+                      )}
                     </div>
                   </div>
                 );
