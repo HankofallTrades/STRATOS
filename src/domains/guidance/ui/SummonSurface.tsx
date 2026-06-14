@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { X } from "lucide-react";
 
 import { Sheet, SheetContent } from "@/components/core/sheet";
 import { Button } from "@/components/core/button";
@@ -9,6 +10,7 @@ import { cn } from "@/lib/utils/cn";
 import ArtifactRenderer from "@/domains/guidance/ui/ArtifactRenderer";
 import ChangeLogPanel from "@/domains/guidance/ui/ChangeLogPanel";
 import CoachMarkdown from "@/domains/guidance/ui/CoachMarkdown";
+import { devProactiveSamples } from "@/domains/guidance/data/proactiveDevSamples";
 
 export interface SummonSurfaceQuickActions {
   onStartWorkout: () => void;
@@ -38,9 +40,17 @@ const SummonSurface = ({
     isLoading,
     statusMessage,
     configurationMessage,
+    proactiveInsights,
+    engageInsight,
+    dismissInsight,
+    devTriggerInsight,
+    devResetCooldowns,
+    devToolsEnabled,
   } = usePresenceAgent();
 
   const [showChanges, setShowChanges] = useState(false);
+  const [showDev, setShowDev] = useState(false);
+  const activeInsight = proactiveInsights[0] ?? null;
 
   const chips: Array<{ label: string; onClick: () => void }> = [
     { label: "Start workout", onClick: quickActions.onStartWorkout },
@@ -73,7 +83,10 @@ const SummonSurface = ({
           ))}
           <button
             type="button"
-            onClick={() => setShowChanges((open) => !open)}
+            onClick={() => {
+              setShowDev(false);
+              setShowChanges((open) => !open);
+            }}
             className={cn(
               "rounded-full px-3.5 py-1.5 text-xs transition-colors",
               showChanges
@@ -83,29 +96,110 @@ const SummonSurface = ({
           >
             Changes
           </button>
+          {devToolsEnabled ? (
+            <button
+              type="button"
+              onClick={() => {
+                setShowChanges(false);
+                setShowDev((open) => !open);
+              }}
+              className={cn(
+                "rounded-full px-3.5 py-1.5 text-xs transition-colors",
+                showDev
+                  ? "border border-amber-500/50 bg-amber-500/20 text-amber-200"
+                  : "stone-chip text-foreground/85 hover:bg-white/[0.05] hover:text-foreground"
+              )}
+            >
+              Dev
+            </button>
+          ) : null}
         </div>
 
         <div className="flex-1 space-y-3 overflow-y-auto p-4">
           {showChanges ? (
             <ChangeLogPanel />
+          ) : showDev ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs uppercase tracking-wide text-amber-200/80">
+                  Coach dev tools
+                </p>
+                <button
+                  type="button"
+                  onClick={() => devResetCooldowns()}
+                  className="rounded-full border border-amber-500/40 px-3 py-1.5 text-xs text-amber-200 transition-colors hover:bg-amber-500/15"
+                >
+                  Reset cooldowns
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Trigger forces an insight into the surface, ignoring its gate
+                condition and cooldown.
+              </p>
+              <div className="flex flex-col gap-2">
+                {devProactiveSamples.map((sample) => (
+                  <div
+                    key={sample.id}
+                    className="flex items-center gap-3 rounded-[14px] border border-white/[0.07] bg-white/[0.025] px-3 py-2"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[11px] uppercase tracking-wide text-muted-foreground">
+                        {sample.id} · {sample.tier}
+                      </p>
+                      <p className="truncate text-xs text-foreground/85">
+                        {sample.line}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        devTriggerInsight(sample);
+                        setShowDev(false);
+                      }}
+                      className="shrink-0 rounded-full bg-amber-500/20 px-3 py-1.5 text-xs text-amber-100 transition-colors hover:bg-amber-500/30"
+                    >
+                      Trigger
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
           ) : conversation.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-5 pb-8">
               <p className="text-sm text-muted-foreground">
                 Ask anything about your training.
               </p>
               <div className="flex w-full max-w-xs flex-col items-stretch gap-2">
-                {conversationStarters.map((starter, index) => (
+                {activeInsight ? (
                   <button
-                    key={starter}
                     type="button"
                     disabled={isLoading}
-                    onClick={() => void send(starter)}
-                    style={{ animationDelay: `${index * 60}ms` }}
-                    className="stone-chip rounded-[16px] px-4 py-2.5 text-left text-sm text-foreground/85 transition-colors hover:bg-white/[0.05] hover:text-foreground motion-safe:animate-fade-rise"
+                    onClick={() => engageInsight(activeInsight)}
+                    className="flex items-start gap-2.5 rounded-[16px] border border-[#2c6b60] bg-[#154f47] px-4 py-2.5 text-left text-sm text-[#eafff8] transition-colors hover:bg-[#1a5d53] motion-safe:animate-fade-rise"
                   >
-                    {starter}
+                    <span
+                      aria-hidden="true"
+                      className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#7ea99c] shadow-[0_0_8px_rgba(126,169,156,0.8)]"
+                    />
+                    {activeInsight.line}
                   </button>
-                ))}
+                ) : null}
+                {conversationStarters
+                  .slice(0, activeInsight ? 2 : 3)
+                  .map((starter, index) => (
+                    <button
+                      key={starter}
+                      type="button"
+                      disabled={isLoading}
+                      onClick={() => void send(starter)}
+                      style={{
+                        animationDelay: `${(index + (activeInsight ? 1 : 0)) * 60}ms`,
+                      }}
+                      className="stone-chip rounded-[16px] px-4 py-2.5 text-left text-sm text-foreground/85 transition-colors hover:bg-white/[0.05] hover:text-foreground motion-safe:animate-fade-rise"
+                    >
+                      {starter}
+                    </button>
+                  ))}
               </div>
             </div>
           ) : (
@@ -163,7 +257,7 @@ const SummonSurface = ({
               return null;
             })
           )}
-          {!showChanges && statusMessage ? (
+          {!showChanges && !showDev && statusMessage ? (
             <p className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
               <UnicodeSpinner className="app-accent-text text-sm" />
               {statusMessage}
@@ -175,6 +269,31 @@ const SummonSurface = ({
           <p className="px-4 pb-2 text-xs text-rose-300/90">
             {configurationMessage}
           </p>
+        ) : null}
+
+        {activeInsight && conversation.length > 0 ? (
+          <div className="mx-3 mb-1 flex items-center gap-2 rounded-[14px] border border-[#2c6b60] bg-[#154f47] px-3 py-2 text-xs text-[#eafff8] motion-safe:animate-fade-rise">
+            <span
+              aria-hidden="true"
+              className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#7ea99c] shadow-[0_0_8px_rgba(126,169,156,0.8)]"
+            />
+            <button
+              type="button"
+              disabled={isLoading}
+              onClick={() => engageInsight(activeInsight)}
+              className="flex-1 text-left leading-snug"
+            >
+              {activeInsight.line}
+            </button>
+            <button
+              type="button"
+              aria-label="Dismiss suggestion"
+              onClick={() => dismissInsight(activeInsight)}
+              className="rounded-full p-1 text-[#dff3ec]/70 transition-colors hover:bg-white/10 hover:text-[#dff3ec]"
+            >
+              <X size={13} />
+            </button>
+          </div>
         ) : null}
 
         <form

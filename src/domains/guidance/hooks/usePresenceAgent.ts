@@ -27,6 +27,9 @@ export interface PresenceAgentContextValue {
   proactiveInsights: ProactiveInsight[];
   engageInsight: (insight: ProactiveInsight) => void;
   dismissInsight: (insight: ProactiveInsight) => void;
+  devTriggerInsight: (insight: ProactiveInsight) => void;
+  devResetCooldowns: () => void;
+  devToolsEnabled: boolean;
   isCoachConfigured: boolean;
   configurationMessage: string | null;
 }

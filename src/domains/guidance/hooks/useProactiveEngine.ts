@@ -8,6 +8,7 @@ import {
   getCurrentWeekRange,
 } from "@/domains/analytics/hooks/useVolumeChart";
 import {
+  clearCooldowns,
   cooldownKey,
   isSuppressed,
   suppress,
@@ -29,14 +30,12 @@ import {
 interface UseProactiveEngineParams {
   summon: () => void;
   send: (text?: string) => Promise<void>;
-  isOpen: boolean;
   isLoading: boolean;
 }
 
 export const useProactiveEngine = ({
   summon,
   send,
-  isOpen,
   isLoading,
 }: UseProactiveEngineParams) => {
   const queryClient = useQueryClient();
@@ -138,15 +137,6 @@ export const useProactiveEngine = ({
     };
   }, [isWorkoutActive, currentWorkout?.id, runGates]);
 
-  // Opening the surface counts as "the user looked": clear pulse-only insights.
-  useEffect(() => {
-    if (isOpen) {
-      setInsights((previous) =>
-        previous.filter((insight) => insight.tier === "peek")
-      );
-    }
-  }, [isOpen]);
-
   const engageInsight = useCallback(
     (insight: ProactiveInsight) => {
       if (!userId || isLoading) return;
@@ -179,5 +169,26 @@ export const useProactiveEngine = ({
     [userId]
   );
 
-  return { insights, engageInsight, dismissInsight };
+  // Dev tools: force an insight into the surface (bypassing gate + cooldown),
+  // and wipe all cooldowns so eligible insights resurface immediately.
+  const devTriggerInsight = useCallback((insight: ProactiveInsight) => {
+    setInsights((previous) => [
+      insight,
+      ...previous.filter((existing) => existing.id !== insight.id),
+    ]);
+  }, []);
+
+  const devResetCooldowns = useCallback(() => {
+    if (!userId) return;
+    clearCooldowns(userId);
+    void runGates("app_open");
+  }, [runGates, userId]);
+
+  return {
+    insights,
+    engageInsight,
+    dismissInsight,
+    devTriggerInsight,
+    devResetCooldowns,
+  };
 };

@@ -15,6 +15,7 @@ import { sendCoachMessage } from "@/domains/guidance/agent/transport";
 import { executeCoachTool, getCoachToolLabel } from "@/domains/guidance/agent/tools";
 import { useProactiveEngine } from "@/domains/guidance/hooks/useProactiveEngine";
 import { useProgramActions } from "@/domains/guidance/hooks/useProgramActions";
+import { useIsDeveloper } from "@/domains/account/hooks/useIsDeveloper";
 import { useProposeWorkout } from "@/domains/guidance/hooks/useWorkoutGenerator";
 import {
   buildMissingProviderConfigurationMessage,
@@ -240,7 +241,11 @@ export const PresenceAgentProvider = ({ children }: { children: ReactNode }) => 
     insights: proactiveInsights,
     engageInsight,
     dismissInsight,
-  } = useProactiveEngine({ summon, send, isOpen, isLoading });
+    devTriggerInsight,
+    devResetCooldowns,
+  } = useProactiveEngine({ summon, send, isLoading });
+
+  const devToolsEnabled = useIsDeveloper();
 
   const value = useMemo<PresenceAgentContextValue>(
     () => ({
@@ -262,6 +267,9 @@ export const PresenceAgentProvider = ({ children }: { children: ReactNode }) => 
       proactiveInsights,
       engageInsight,
       dismissInsight,
+      devTriggerInsight,
+      devResetCooldowns,
+      devToolsEnabled,
       isCoachConfigured,
       configurationMessage,
     }),
@@ -271,6 +279,9 @@ export const PresenceAgentProvider = ({ children }: { children: ReactNode }) => 
       applyProgramEdit,
       applyWorkoutEdit,
       configurationMessage,
+      devResetCooldowns,
+      devToolsEnabled,
+      devTriggerInsight,
       dismissInsight,
       engageInsight,
       proactiveInsights,

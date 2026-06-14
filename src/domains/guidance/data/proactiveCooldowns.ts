@@ -38,6 +38,14 @@ export const isSuppressed = (
   return new Date(entry.suppressedUntil).getTime() > now.getTime();
 };
 
+export const clearCooldowns = (userId: string): void => {
+  try {
+    window.localStorage.removeItem(storageKey(userId));
+  } catch {
+    // Storage unavailable: nothing to clear.
+  }
+};
+
 export const suppress = (
   userId: string,
   key: string,

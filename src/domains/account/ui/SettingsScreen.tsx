@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/core/select";
 import { useSettingsScreen } from "@/domains/account/hooks/useSettingsScreen";
+import { useIsDeveloper } from "@/domains/account/hooks/useIsDeveloper";
 import {
   formatSessionFocusLabel,
   sessionFocusOptions,
@@ -43,6 +44,7 @@ const unitOptions = [
 
 const SettingsScreen = () => {
   const location = useLocation();
+  const isDeveloper = useIsDeveloper();
   const {
     activeProgram,
     hasStoredProviderCredential,
@@ -202,6 +204,22 @@ const SettingsScreen = () => {
               </div>
             </div>
           </section>
+
+          {isDeveloper ? (
+            <section className={SECTION_CLASS}>
+              <div className="space-y-2">
+                <h2 className="text-xl font-semibold tracking-tight text-foreground">
+                  Developer
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Your account has the developer role. Coach dev tools (force an
+                  insight, reset cooldowns) are available from the{" "}
+                  <span className="text-foreground/85">Dev</span> tab inside the
+                  coach surface.
+                </p>
+              </div>
+            </section>
+          ) : null}
         </div>
 
         <div className="space-y-4">

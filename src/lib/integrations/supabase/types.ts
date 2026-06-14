@@ -679,6 +679,7 @@ export type Database = {
           preferred_distance_unit: string | null
           preferred_height_unit: string | null
           preferred_weight_unit: string | null
+          role: string
           training_age_years: number | null
           updated_at: string
           username: string | null
@@ -695,6 +696,7 @@ export type Database = {
           preferred_distance_unit?: string | null
           preferred_height_unit?: string | null
           preferred_weight_unit?: string | null
+          role?: string
           training_age_years?: number | null
           updated_at?: string
           username?: string | null
@@ -711,6 +713,7 @@ export type Database = {
           preferred_distance_unit?: string | null
           preferred_height_unit?: string | null
           preferred_weight_unit?: string | null
+          role?: string
           training_age_years?: number | null
           updated_at?: string
           username?: string | null
