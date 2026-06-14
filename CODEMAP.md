@@ -342,6 +342,10 @@ If you touch any of those, read the full file first. They are coordination seams
 - Some fitness UI is still more stateful than ideal.
 - `README.md` and `docs/plan.md` may lag implementation details after large refactors.
 - Test coverage is an early foundation only: Vitest covers three pure data seams (fitness recommendations, guidance proactive gates, analytics volume progress). Most domains, hooks, and UI have no tests.
+- Accepted Dependabot advisories (do not re-chase): after `npm audit fix`, ~14 remain, all dev-only or non-exploitable in the shipped browser bundle, none fixable without a breaking change:
+  - **`@vercel/node` chain** (`tar`, `undici`, `tsx`, `path-to-regexp`, `@vercel/nft`, `@mapbox/node-pre-gyp`, `ajv`, `@vercel/static-config`): a serverless-build toolchain pulled in solely for the two type imports in `api/coach.ts`. Even `@vercel/node@5` still ships these vulnerable transitives, so the only fix is dropping the package — deliberately kept for deploy stability / standard typing.
+  - **`esbuild`/`vite`**: the esbuild advisory affects only the dev server (`npm run dev`); fix is a `vite` 5→7 major (PWA/swc-plugin compat risk), deferred to its own pass.
+  - **`uuid`**: advisory is `v3/v5/v6`-only; this app imports `v4` exclusively.
 
 ## Verification Workflow
 
