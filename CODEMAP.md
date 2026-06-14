@@ -7,7 +7,7 @@ This file is the fast operational map for agents and future sessions. It is not 
 - Architecture rename is complete: use `ui / hooks / data`, not `view / controller / model`.
 - `npm run build` passes.
 - `npm run lint` currently reports warnings but no errors (react-refresh export warnings in shared providers/components; the 8 unique warnings are currently double-reported as 16 — pre-existing output duplication, not new findings).
-- There is no test script in `package.json`.
+- Unit tests run via Vitest (`npm test`, config in `vitest.config.ts`, node environment). The first suites cover pure domain logic only: fitness `recommendations`, guidance `proactiveGates`, analytics `volumeProgress`.
 - Do not run `npm run build` and `npm run lint` at the same time. Vite can create transient `vite.config.ts.timestamp-*.mjs` files that make ESLint fail with `ENOENT`.
 - Public routes do not load Redux persistence or the protected shell up front; `App.tsx` lazy-loads the protected app shell after route match.
 - Protected app routes and heavy quick-action dialogs are lazy-loaded from `MainAppLayout` to keep non-active screens out of the initial protected-shell bundle.
@@ -341,7 +341,8 @@ If you touch any of those, read the full file first. They are coordination seams
 - `goals` and `rpg` are still placeholders.
 - Some fitness UI is still more stateful than ideal.
 - `README.md` and `docs/plan.md` may lag implementation details after large refactors.
-- Only lint/build verification exists right now; there is no automated test suite.
+- Test coverage is an early foundation only: Vitest covers three pure data seams (fitness recommendations, guidance proactive gates, analytics volume progress). Most domains, hooks, and UI have no tests.
+- `getCurrentWeekRange` (`src/domains/analytics/data/volumeProgress.ts`) builds the Monday boundary at local midnight but serializes via `toISOString()` (UTC), so in UTC+ timezones the returned week starts on the prior Sunday (7-day span). Latent; not yet fixed.
 
 ## Verification Workflow
 
@@ -349,6 +350,7 @@ Run these sequentially, not in parallel:
 
 1. `npm run build`
 2. `npm run lint`
+3. `npm test` (Vitest, safe to run independently of build/lint)
 
 Current expected lint baseline:
 - 8 unique warnings (currently double-reported as 16 in the CLI output)
