@@ -8,7 +8,7 @@ import type {
 } from "./contracts.js";
 
 export interface CoachToolContext {
-  proposeWorkout: () => Promise<CoachToolResultPayload>;
+  proposeWorkout: (input: Record<string, unknown>) => Promise<CoachToolResultPayload>;
   getProgramContext: () => Promise<CoachToolResultPayload>;
   proposeProgram: (input: Record<string, unknown>) => Promise<CoachToolResultPayload>;
   proposeProgramEdit: (input: Record<string, unknown>) => Promise<CoachToolResultPayload>;
@@ -36,6 +36,25 @@ const sessionFocusInputSchema = z.enum([
   "zone2",
   "zone5",
 ]);
+
+const movementArchetypeInputSchema = z.enum([
+  "bend",
+  "lunge",
+  "pull_horizontal",
+  "pull_vertical",
+  "push_horizontal",
+  "push_vertical",
+  "squat",
+  "twist",
+]);
+
+export const proposeWorkoutInputSchema = z.object({
+  focus: sessionFocusInputSchema.nullish(),
+  durationMinutes: z.number().int().min(10).max(180).nullish(),
+  targetArchetypes: z.array(movementArchetypeInputSchema).nullish(),
+  avoidArchetypes: z.array(movementArchetypeInputSchema).nullish(),
+});
+export type ProposeWorkoutInput = z.infer<typeof proposeWorkoutInputSchema>;
 
 export const proposeProgramInputSchema = z.object({
   name: z.string().min(1),
@@ -135,9 +154,9 @@ export type ProposeActiveWorkoutEditInput = z.infer<
 export const coachToolDefinitions = {
   propose_workout: {
     description:
-      "Build a draft training session honoring the user's block focus, volume gaps, and any stated constraints (time available, sore area), and render it as a reviewable draft. Does NOT save; the user applies it.",
+      "Build a draft training session and render it as a reviewable draft (does NOT save; the user applies it). Pass any constraints the user states: `focus` (e.g. hypertrophy, strength, recovery), `durationMinutes` for time available, `targetArchetypes` to emphasize specific movement patterns, and `avoidArchetypes` for sore/injured areas (map the body part to its movement archetypes, e.g. a cranky shoulder -> push_vertical/pull_vertical). Omit any field that wasn't stated; the draft still honors the user's program and weekly volume gaps.",
     execution: "client",
-    inputSchema: emptyInputSchema,
+    inputSchema: proposeWorkoutInputSchema,
     label: "Propose Workout",
     name: "propose_workout",
   },
@@ -210,7 +229,7 @@ export const executeCoachTool = async (
 ): Promise<CoachToolResultPayload> => {
   switch (toolCall.toolName) {
     case "propose_workout": {
-      return context.proposeWorkout();
+      return context.proposeWorkout(toolCall.input);
     }
     case "get_program_context":
       return context.getProgramContext();

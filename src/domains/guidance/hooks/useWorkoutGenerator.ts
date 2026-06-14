@@ -22,6 +22,7 @@ import {
   fetchMovementArchetypes,
 } from "@/domains/guidance/data/guidanceRepository";
 import type { CoachToolResultPayload } from "@/domains/guidance/agent/contracts";
+import { proposeWorkoutInputSchema } from "@/domains/guidance/agent/tools";
 import { getActiveMesocycleProgram } from "@/domains/periodization/data/repository";
 import { useAppDispatch, useAppSelector } from "@/hooks/redux";
 import type {
@@ -81,6 +82,13 @@ interface WorkoutGeneratorPlanningContext {
   volumeProgress?: DisplayArchetypeData[];
 }
 
+export interface WorkoutConstraints {
+  focus?: SessionFocus | null;
+  durationMinutes?: number | null;
+  targetArchetypes?: string[] | null;
+  avoidArchetypes?: string[] | null;
+}
+
 export interface MovementArchetypeOption {
   id: string;
   name: string;
@@ -108,12 +116,22 @@ export interface GeneratedWorkoutSummary {
 
 interface GenerateStrengthWorkoutParams {
   baseExercises: Exercise[];
+  constraints?: WorkoutConstraints;
   dispatch: AppDispatch;
   movementArchetypes: MovementArchetypeOption[];
   planningContext?: WorkoutGeneratorPlanningContext;
   userId: string | null;
   workoutHistory: Workout[];
 }
+
+const shuffle = <T,>(values: T[]): T[] => {
+  const copy = [...values];
+  for (let index = copy.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [copy[index], copy[swapIndex]] = [copy[swapIndex], copy[index]];
+  }
+  return copy;
+};
 
 const getArchetypeName = (
   exercise: Exercise,
@@ -395,7 +413,7 @@ const selectExercisesForWorkout = ({
       continue;
     }
 
-    const match = availableExercises.find(exercise => {
+    const candidates = availableExercises.filter(exercise => {
       if (
         alreadySelectedExerciseIds.has(exercise.id) ||
         excludeExerciseIds.includes(exercise.id)
@@ -406,9 +424,11 @@ const selectExercisesForWorkout = ({
       return getArchetypeName(exercise, archetypeMap) === target.name;
     });
 
-    if (!match) {
+    if (candidates.length === 0) {
       continue;
     }
+
+    const match = candidates[Math.floor(Math.random() * candidates.length)];
 
     selectedExercises.push(match);
     alreadySelectedExerciseIds.add(match.id);
@@ -426,7 +446,7 @@ const selectExercisesForWorkout = ({
   );
 
   const remainingCount = targetExerciseCount - selectedExercises.length;
-  return [...selectedExercises, ...fallbackExercises.slice(0, remainingCount)];
+  return [...selectedExercises, ...shuffle(fallbackExercises).slice(0, remainingCount)];
 };
 
 const buildGeneratorMessage = ({
@@ -523,6 +543,7 @@ export interface WorkoutPlanResult {
 
 export const buildWorkoutPlan = async ({
   baseExercises,
+  constraints,
   movementArchetypes,
   planningContext,
   userId,
@@ -544,19 +565,59 @@ export const buildWorkoutPlan = async ({
   );
   const activeProgram = planningContext?.activeProgram ?? null;
   const nextSession = getNextSession(activeProgram);
-  const sessionFocus = normalizeStrengthSessionFocus(
-    nextSession?.session_focus ?? activeProgram?.mesocycle.goal_focus
-  );
+  const sessionFocus =
+    constraints?.focus ??
+    normalizeStrengthSessionFocus(
+      nextSession?.session_focus ?? activeProgram?.mesocycle.goal_focus
+    );
   const recencyConstraints = resolveRecencyConstraints(workoutHistory);
   const weeklySets = calculateWeeklySetsPerArchetype(
     workoutHistory,
     exerciseMap,
     archetypeMap
   );
-  const priorityTargets =
+
+  const avoidArchetypes = new Set(constraints?.avoidArchetypes ?? []);
+  const requestedArchetypes = (constraints?.targetArchetypes ?? []).filter(
+    name => !avoidArchetypes.has(name)
+  );
+
+  const basePriorityTargets = (
     planningContext?.volumeProgress && planningContext.volumeProgress.length > 0
       ? buildDeficitsFromProgressData(planningContext.volumeProgress)
-      : buildDeficitsFromWeeklySets(weeklySets);
+      : buildDeficitsFromWeeklySets(weeklySets)
+  ).filter(target => !avoidArchetypes.has(target.name));
+
+  // Requested archetypes lead the priority order so they're selected first,
+  // synthesizing a target for any that have no current deficit.
+  const priorityTargets = [
+    ...requestedArchetypes.map(
+      name =>
+        basePriorityTargets.find(target => target.name === name) ??
+        createArchetypeDeficit(name, 0, ARCHETYPE_TARGETS[name] ?? 5)
+    ),
+    ...basePriorityTargets.filter(
+      target => !requestedArchetypes.includes(target.name)
+    ),
+  ];
+
+  const avoidedExerciseIds =
+    avoidArchetypes.size > 0
+      ? exercisesWithArchetypes
+          .filter(exercise => {
+            const archetype = getArchetypeName(exercise, archetypeMap);
+            return archetype ? avoidArchetypes.has(archetype) : false;
+          })
+          .map(exercise => exercise.id)
+      : [];
+  const excludeExerciseIds = Array.from(
+    new Set([...recencyConstraints.excludeExerciseIds, ...avoidedExerciseIds])
+  );
+
+  const requestedExerciseCount =
+    constraints?.durationMinutes != null
+      ? Math.min(8, Math.max(2, Math.round(constraints.durationMinutes / 12)))
+      : null;
 
   const templateExercises =
     nextSession?.exercises.some(
@@ -570,7 +631,9 @@ export const buildWorkoutPlan = async ({
       : [];
 
   const defaultExerciseCount =
-    DEFAULT_EXERCISE_COUNT_BY_FOCUS[sessionFocus] ?? DEFAULT_EXERCISE_COUNT_BY_FOCUS.strength;
+    requestedExerciseCount ??
+    DEFAULT_EXERCISE_COUNT_BY_FOCUS[sessionFocus] ??
+    DEFAULT_EXERCISE_COUNT_BY_FOCUS.strength;
   const templateExerciseCount = templateExercises.length;
 
   const targetExerciseCount =
@@ -603,7 +666,7 @@ export const buildWorkoutPlan = async ({
     alreadySelectedExerciseIds: selectedExerciseIds,
     archetypeMap,
     availableExercises: exercisesWithArchetypes,
-    excludeExerciseIds: recencyConstraints.excludeExerciseIds,
+    excludeExerciseIds,
     priorityTargets,
     targetExerciseCount: Math.max(0, targetExerciseCount - templateExerciseCount),
   }).map(buildExerciseDraft);
@@ -699,7 +762,18 @@ export const useProposeWorkout = () => {
   const { user } = useAuth();
   const workoutHistory = useAppSelector(selectWorkoutHistory);
 
-  return useCallback(async (): Promise<CoachToolResultPayload> => {
+  return useCallback(async (
+    input: Record<string, unknown> = {}
+  ): Promise<CoachToolResultPayload> => {
+    const parsedInput = proposeWorkoutInputSchema.safeParse(input);
+    const constraints: WorkoutConstraints = parsedInput.success
+      ? {
+          focus: parsedInput.data.focus,
+          durationMinutes: parsedInput.data.durationMinutes,
+          targetArchetypes: parsedInput.data.targetArchetypes,
+          avoidArchetypes: parsedInput.data.avoidArchetypes,
+        }
+      : {};
     const userId = user?.id ?? null;
     const weekRange = getCurrentWeekRange();
     const [baseExercises, movementArchetypes, activeProgram, weeklyArchetypeSets] =
@@ -738,6 +812,7 @@ export const useProposeWorkout = () => {
 
     const { summary, startWorkoutPayload } = await buildWorkoutPlan({
       baseExercises,
+      constraints,
       movementArchetypes,
       planningContext: {
         activeProgram,
