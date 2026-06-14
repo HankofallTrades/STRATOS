@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/integrations/supabase/client";
+import type { Json } from "@/lib/integrations/supabase/types";
 
 export type CoachChangeType =
   | "program_created"
@@ -20,7 +21,7 @@ export const listCoachChanges = async (
   limit = 30
 ): Promise<CoachChangeLogEntry[]> => {
   const { data, error } = await supabase
-    .from("coach_change_log" as never)
+    .from("coach_change_log")
     .select("*")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
@@ -36,19 +37,19 @@ export const insertCoachChange = async (
   summary: string,
   payload: Record<string, unknown>
 ): Promise<void> => {
-  const { error } = await supabase.from("coach_change_log" as never).insert({
+  const { error } = await supabase.from("coach_change_log").insert({
     user_id: userId,
     change_type: changeType,
     summary,
-    payload,
-  } as never);
+    payload: payload as Json,
+  });
   if (error) throw error;
 };
 
 export const markCoachChangeReverted = async (id: string): Promise<void> => {
   const { error } = await supabase
-    .from("coach_change_log" as never)
-    .update({ reverted_at: new Date().toISOString() } as never)
+    .from("coach_change_log")
+    .update({ reverted_at: new Date().toISOString() })
     .eq("id", id);
   if (error) throw error;
 };
