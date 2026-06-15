@@ -32,8 +32,7 @@ A pure helper determines whether history spans more than three calendar months. 
 
 ## Verification
 
-- Add focused Bun tests for the range helper covering empty, one-workout, short-span, boundary, and long-span histories.
+- Add focused Vitest tests for the range helper covering empty, one-workout, short-span, boundary, and long-span histories.
 - Run the production build and inspect generated chunks to confirm the proposal implementation is split from the protected shell.
 - Run lint after build, sequentially per repository rules.
 - Update `CODEMAP.md` because protected-shell startup and Coach runtime boundaries change.
-

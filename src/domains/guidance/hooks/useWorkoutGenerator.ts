@@ -1,7 +1,6 @@
 import { differenceInDays, startOfDay } from "date-fns";
 import { useMemo } from "react";
 import type { QueryClient } from "@tanstack/react-query";
-import { v4 as uuidv4 } from "uuid";
 
 import {
   fetchWeeklyArchetypeSets,
@@ -21,13 +20,13 @@ import {
   fetchGuidanceExercises,
   fetchMovementArchetypes,
 } from "@/domains/guidance/data/guidanceRepository";
+import { buildExerciseDraft } from "@/domains/guidance/data/workoutDraft";
 import type { CoachToolResultPayload } from "@/domains/guidance/agent/contracts";
 import { proposeWorkoutInputSchema } from "@/domains/guidance/agent/tools";
 import { getActiveMesocycleProgram } from "@/domains/periodization/data/repository";
 import { useAppDispatch, useAppSelector } from "@/hooks/redux";
 import type {
   Exercise,
-  ExerciseSet,
   SessionFocus,
   Workout,
   WorkoutExercise,
@@ -357,29 +356,6 @@ const normalizeStrengthSessionFocus = (
   }
 
   return "strength";
-};
-
-export const buildExerciseDraft = (exercise: Exercise): WorkoutExercise => {
-  const defaultEquipment = exercise.default_equipment_type ?? undefined;
-  const defaultVariation = "Standard";
-  const defaultSet: ExerciseSet = {
-    completed: false,
-    equipmentType: defaultEquipment,
-    exerciseId: exercise.id,
-    id: uuidv4(),
-    reps: 0,
-    variation: defaultVariation,
-    weight: 0,
-  };
-
-  return {
-    equipmentType: defaultEquipment,
-    exercise: { ...exercise },
-    exerciseId: exercise.id,
-    id: uuidv4(),
-    sets: [defaultSet],
-    variation: defaultVariation,
-  };
 };
 
 const uniqueStrings = (values: Array<string | undefined>) =>

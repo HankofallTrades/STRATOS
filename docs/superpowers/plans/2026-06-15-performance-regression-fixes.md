@@ -6,7 +6,7 @@
 
 **Architecture:** Keep Redux persistence and the global Coach provider active, but remove their avoidable startup costs. Extract the Coach proposal implementation behind a dynamic import, and isolate analytics range selection in a pure tested helper.
 
-**Tech Stack:** React 18, TypeScript, Redux Toolkit, redux-persist, TanStack Query, Vite, Bun test
+**Tech Stack:** React 18, TypeScript, Redux Toolkit, redux-persist, TanStack Query, Vite, Vitest
 
 ---
 
@@ -17,11 +17,11 @@
 - Create: `src/domains/analytics/data/oneRepMaxRange.test.ts`
 - Modify: `src/domains/analytics/hooks/useOneRepMax.ts`
 
-- [x] Write Bun tests proving `ALL` is retained for empty, single-point, short-span, and exact three-month histories, while histories longer than three calendar months select `3M`.
-- [x] Run `bun test src/domains/analytics/data/oneRepMaxRange.test.ts` and confirm failure because the helper does not exist.
+- [x] Write Vitest tests proving `ALL` is retained for empty, single-point, short-span, and exact three-month histories, while histories longer than three calendar months select `3M`.
+- [x] Run `npm test -- src/domains/analytics/data/oneRepMaxRange.test.ts` and confirm failure because the helper does not exist.
 - [x] Implement `getAutomaticTimeRange` as a pure calendar-month comparison.
 - [x] Update `useOneRepMax` to read an optional saved preference once, apply the automatic range once per exercise only without a saved preference, and persist only direct user selections.
-- [x] Run the focused Bun test and confirm all cases pass.
+- [x] Run the focused Vitest test and confirm all cases pass.
 
 ### Task 2: Lazy Coach proposal implementation
 

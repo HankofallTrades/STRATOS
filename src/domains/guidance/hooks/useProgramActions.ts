@@ -22,7 +22,7 @@ import {
   applyWorkoutEditActions,
   type WorkoutEditAction,
 } from "@/domains/guidance/data/workoutEditActions";
-import { buildExerciseDraft } from "@/domains/guidance/hooks/useWorkoutGenerator";
+import { buildExerciseDraft } from "@/domains/guidance/data/workoutDraft";
 import {
   applyProgramEdits,
   getActiveMesocycleProgram,
