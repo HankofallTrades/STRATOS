@@ -1,10 +1,14 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Exercise } from '@/lib/types/workout';
 import { DailyMaxE1RM } from '@/lib/types/analytics';
+import {
+    getAutomaticTimeRange,
+    type TimeRange,
+} from '../data/oneRepMaxRange';
 import * as analyticsRepo from '../data/analyticsRepository';
 
-export type TimeRange = '1W' | '1M' | '3M' | '6M' | '1Y' | 'ALL';
+export type { TimeRange } from '../data/oneRepMaxRange';
 
 export interface UnifiedDataPoint {
     workout_timestamp: number;
@@ -18,6 +22,14 @@ export interface UnifiedDataPoint {
 const SELECTED_EXERCISE_STORAGE_KEY = 'selectedAnalyticsExerciseId';
 const SELECTED_TIME_RANGE_STORAGE_KEY = 'selectedAnalyticsTimeRange';
 const SELECTED_COMBINATION_STORAGE_KEY = 'selectedAnalyticsCombinationByExercise';
+const VALID_TIME_RANGES: TimeRange[] = ['1W', '1M', '3M', '6M', '1Y', 'ALL'];
+
+const readSelectedTimeRange = (): TimeRange | null => {
+    const storedRange = localStorage.getItem(SELECTED_TIME_RANGE_STORAGE_KEY);
+    return storedRange && VALID_TIME_RANGES.includes(storedRange as TimeRange)
+        ? (storedRange as TimeRange)
+        : null;
+};
 
 const getCombinationKey = (
     variation?: string | null,
@@ -35,13 +47,12 @@ export const useOneRepMax = (userId: string | undefined, exercises: Exercise[]) 
     const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
     const [activeCombinationKeys, setActiveCombinationKeys] = useState<string[]>([]);
     const [lastInitializedExerciseId, setLastInitializedExerciseId] = useState<string | null>(null);
-    const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>(() => {
-        const storedRange = localStorage.getItem(SELECTED_TIME_RANGE_STORAGE_KEY);
-        const validRanges: TimeRange[] = ['1W', '1M', '3M', '6M', '1Y', 'ALL'];
-        return storedRange && validRanges.includes(storedRange as TimeRange)
-            ? (storedRange as TimeRange)
-            : 'ALL';
-    });
+    const [storedTimeRange] = useState<TimeRange | null>(readSelectedTimeRange);
+    const [selectedTimeRange, setSelectedTimeRangeState] = useState<TimeRange>(
+        storedTimeRange ?? 'ALL'
+    );
+    const hasExplicitTimeRangeRef = useRef(storedTimeRange !== null);
+    const autoRangeExerciseIdRef = useRef<string | null>(null);
 
     // Initialize/Sync selected exercise from storage
     useEffect(() => {
@@ -60,10 +71,6 @@ export const useOneRepMax = (userId: string | undefined, exercises: Exercise[]) 
         }
     }, [selectedExercise]);
 
-    useEffect(() => {
-        localStorage.setItem(SELECTED_TIME_RANGE_STORAGE_KEY, selectedTimeRange);
-    }, [selectedTimeRange]);
-
     // Fetch history
     const {
         data: maxE1RMHistory = [],
@@ -78,6 +85,28 @@ export const useOneRepMax = (userId: string | undefined, exercises: Exercise[]) 
         enabled: !!userId && !!selectedExercise?.id,
         staleTime: 5 * 60 * 1000,
     });
+
+    useEffect(() => {
+        const exerciseId = selectedExercise?.id;
+        if (
+            hasExplicitTimeRangeRef.current ||
+            !exerciseId ||
+            isLoadingHistory ||
+            errorHistory ||
+            autoRangeExerciseIdRef.current === exerciseId
+        ) {
+            return;
+        }
+
+        autoRangeExerciseIdRef.current = exerciseId;
+        setSelectedTimeRangeState(getAutomaticTimeRange(maxE1RMHistory));
+    }, [errorHistory, isLoadingHistory, maxE1RMHistory, selectedExercise?.id]);
+
+    const setSelectedTimeRange = useCallback((timeRange: TimeRange) => {
+        hasExplicitTimeRangeRef.current = true;
+        setSelectedTimeRangeState(timeRange);
+        localStorage.setItem(SELECTED_TIME_RANGE_STORAGE_KEY, timeRange);
+    }, []);
 
     // Derive the available combination keys (and their frequency) from history.
     const { allCombinationKeys, keyFrequency } = useMemo(() => {

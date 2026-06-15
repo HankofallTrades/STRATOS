@@ -14,6 +14,8 @@ This file is the fast operational map for agents and future sessions. It is not 
 - Vendor `manualChunks` in `vite.config.ts` split the entry bundle (react-vendor / supabase / radix / state); the chunk-size warning is resolved and every chunk is under 500 kB. framer-motion and recharts are intentionally NOT in the manual list so they stay lazily chunked.
 - Motion convention: CSS-first tokens in `tailwind.config.ts` (`motion-safe:animate-fade-rise` entrances, `motion-safe:animate-set-confirm` pulse); framer-motion is confined to workout interaction physics. `prefers-reduced-motion` is honored via the `motion-safe:` variant.
 - Loading convention: skeletons for known-layout loads; genuine in-flight waits use `src/components/core/UnicodeSpinner.tsx` (frames vendored from sindresorhus/cli-spinners, MIT).
+- Redux persistence rehydrates after the protected shell mounts; it does not blank first protected paint behind `PersistGate`.
+- The global Coach shell stays available on every protected route, while workout proposal planning loads only when the `propose_workout` client tool runs.
 
 ## Read Order
 
@@ -215,6 +217,7 @@ This is still the most complex domain and the main place where UI, Redux, and Re
 - Important sub-hooks:
   - `hooks/useBenchmarks.ts`
   - `hooks/useOneRepMax.ts`
+    - Uses a saved range when present; otherwise defaults to `3M` only when the selected exercise history spans more than three calendar months, and keeps sparse histories on `ALL`.
   - `hooks/usePerformanceOverview.ts`
   - `hooks/useRecentWorkouts.ts`
   - `hooks/useVolumeChart.ts` (re-exports the pure helpers below)
@@ -226,6 +229,7 @@ This is still the most complex domain and the main place where UI, Redux, and Re
 - Purpose: Coach (presence/summon) and workout-generation guidance.
 - Presence surface + state entry:
   - `hooks/PresenceAgentProvider.tsx` + `hooks/usePresenceAgent.ts` — app-root context owning the Coach conversation, send loop, and surface open-state.
+  - `hooks/useProposeWorkout.ts` keeps the constrained workout-proposal tool registered while dynamically loading the planner only when it executes.
   - `ui/SummonSurface.tsx` — the bottom-sheet command surface (opened by `PresenceMark`).
   - `ui/ArtifactRenderer.tsx` + `ui/artifacts/*` — inline artifact renderers (`VolumeChartArtifact`, `WorkoutDraftArtifact`).
 - Agent/runtime layer:

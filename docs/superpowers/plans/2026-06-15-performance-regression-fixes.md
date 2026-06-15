@@ -17,41 +17,39 @@
 - Create: `src/domains/analytics/data/oneRepMaxRange.test.ts`
 - Modify: `src/domains/analytics/hooks/useOneRepMax.ts`
 
-- [ ] Write Bun tests proving `ALL` is retained for empty, single-point, short-span, and exact three-month histories, while histories longer than three calendar months select `3M`.
-- [ ] Run `bun test src/domains/analytics/data/oneRepMaxRange.test.ts` and confirm failure because the helper does not exist.
-- [ ] Implement `getAutomaticTimeRange` as a pure calendar-month comparison.
-- [ ] Update `useOneRepMax` to read an optional saved preference once, apply the automatic range once per exercise only without a saved preference, and persist only direct user selections.
-- [ ] Run the focused Bun test and confirm all cases pass.
+- [x] Write Bun tests proving `ALL` is retained for empty, single-point, short-span, and exact three-month histories, while histories longer than three calendar months select `3M`.
+- [x] Run `bun test src/domains/analytics/data/oneRepMaxRange.test.ts` and confirm failure because the helper does not exist.
+- [x] Implement `getAutomaticTimeRange` as a pure calendar-month comparison.
+- [x] Update `useOneRepMax` to read an optional saved preference once, apply the automatic range once per exercise only without a saved preference, and persist only direct user selections.
+- [x] Run the focused Bun test and confirm all cases pass.
 
 ### Task 2: Lazy Coach proposal implementation
 
 **Files:**
 - Create: `src/domains/guidance/hooks/useProposeWorkout.ts`
-- Create: `src/domains/guidance/data/createWorkoutProposal.ts`
 - Modify: `src/domains/guidance/hooks/PresenceAgentProvider.tsx`
 - Modify: `src/domains/guidance/hooks/useWorkoutGenerator.ts`
 
-- [ ] Move the existing QueryClient data gathering and workout-draft artifact construction into `createWorkoutProposal` without changing query keys, stale times, planner inputs, or output shape.
-- [ ] Add a thin hook that captures QueryClient, user id, and workout history, then dynamically imports and calls `createWorkoutProposal` only when `propose_workout` executes.
-- [ ] Point `PresenceAgentProvider` at the thin hook and remove proposal-only imports from `useWorkoutGenerator.ts`.
-- [ ] Confirm through the production build manifest/chunk list that `createWorkoutProposal` is emitted separately from the protected shell.
+- [x] Convert the existing proposal hook body into an exported async planner entry without changing query keys, stale times, planner inputs, or output shape.
+- [x] Add a thin hook that captures QueryClient, user id, and workout history, then dynamically imports the planner module and calls that entry only when `propose_workout` executes.
+- [x] Point `PresenceAgentProvider` at the thin hook and remove proposal-only imports from the eager provider path.
+- [x] Confirm through the production build chunk list that `useWorkoutGenerator` is emitted separately from the protected shell.
 
 ### Task 3: Non-blocking Redux rehydration
 
 **Files:**
 - Modify: `src/components/layout/ProtectedAppShell.tsx`
 
-- [ ] Remove `PersistGate` while retaining the Redux provider and store import so persistence still initializes.
-- [ ] Verify the protected shell renders reducer defaults immediately and receives the normal redux-persist `REHYDRATE` update.
+- [x] Remove `PersistGate` while retaining the Redux provider and store import so persistence still initializes.
+- [x] Verify the store module still creates the persistor and the protected shell no longer waits for its bootstrapped render gate.
 
 ### Task 4: Architecture documentation and verification
 
 **Files:**
 - Modify: `CODEMAP.md`
 
-- [ ] Document non-blocking protected-shell rehydration, planner-only Coach lazy loading, and adaptive analytics range behavior.
-- [ ] Install dependencies with `npm ci` if `node_modules` is absent.
-- [ ] Run `npm run build` and require exit code 0.
-- [ ] Run `npm run lint` only after build completes and require no errors.
-- [ ] Review `git diff --check`, `git diff --stat`, and the final diff for unrelated changes.
-
+- [x] Document non-blocking protected-shell rehydration, planner-only Coach lazy loading, and adaptive analytics range behavior.
+- [x] Install dependencies with `npm ci` if `node_modules` is absent.
+- [x] Run `npm run build` and require exit code 0.
+- [x] Run `npm run lint` only after build completes and require no errors.
+- [x] Review `git diff --check`, `git diff --stat`, and the final diff for unrelated changes.

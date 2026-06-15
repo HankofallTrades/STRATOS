@@ -16,7 +16,7 @@ import { executeCoachTool, getCoachToolLabel } from "@/domains/guidance/agent/to
 import { useProactiveEngine } from "@/domains/guidance/hooks/useProactiveEngine";
 import { useProgramActions } from "@/domains/guidance/hooks/useProgramActions";
 import { useIsDeveloper } from "@/domains/account/hooks/useIsDeveloper";
-import { useProposeWorkout } from "@/domains/guidance/hooks/useWorkoutGenerator";
+import { useProposeWorkout } from "@/domains/guidance/hooks/useProposeWorkout";
 import {
   buildMissingProviderConfigurationMessage,
   providerRequiresApiKey,

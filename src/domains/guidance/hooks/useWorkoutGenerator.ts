@@ -1,6 +1,6 @@
 import { differenceInDays, startOfDay } from "date-fns";
-import { useCallback, useMemo } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
+import type { QueryClient } from "@tanstack/react-query";
 import { v4 as uuidv4 } from "uuid";
 
 import {
@@ -757,84 +757,85 @@ export const generateStrengthWorkout = async (
   return summary;
 };
 
-export const useProposeWorkout = () => {
-  const queryClient = useQueryClient();
-  const { user } = useAuth();
-  const workoutHistory = useAppSelector(selectWorkoutHistory);
+export const createWorkoutProposal = async ({
+  input = {},
+  queryClient,
+  userId,
+  workoutHistory,
+}: {
+  input?: Record<string, unknown>;
+  queryClient: QueryClient;
+  userId: string | null;
+  workoutHistory: Workout[];
+}): Promise<CoachToolResultPayload> => {
+  const parsedInput = proposeWorkoutInputSchema.safeParse(input);
+  const constraints: WorkoutConstraints = parsedInput.success
+    ? {
+        focus: parsedInput.data.focus,
+        durationMinutes: parsedInput.data.durationMinutes,
+        targetArchetypes: parsedInput.data.targetArchetypes,
+        avoidArchetypes: parsedInput.data.avoidArchetypes,
+      }
+    : {};
+  const weekRange = getCurrentWeekRange();
+  const [baseExercises, movementArchetypes, activeProgram, weeklyArchetypeSets] =
+    await Promise.all([
+      queryClient.ensureQueryData({
+        queryKey: ["exercises"],
+        queryFn: fetchGuidanceExercises,
+        staleTime: Infinity,
+      }),
+      queryClient.ensureQueryData({
+        queryKey: ["movementArchetypes"],
+        queryFn: fetchMovementArchetypes,
+        staleTime: Infinity,
+      }),
+      userId
+        ? queryClient.ensureQueryData({
+            queryKey: ["activeMesocycleProgram", userId],
+            queryFn: () => getActiveMesocycleProgram(userId),
+            staleTime: 60 * 1000,
+          })
+        : Promise.resolve(null),
+      userId
+        ? queryClient.ensureQueryData({
+            queryKey: [
+              "weeklyArchetypeSets_v2",
+              userId,
+              weekRange.start,
+              weekRange.end,
+            ],
+            queryFn: () =>
+              fetchWeeklyArchetypeSets(userId, weekRange.start, weekRange.end),
+            staleTime: 5 * 60 * 1000,
+          })
+        : Promise.resolve([] as WeeklyArchetypeSetData[]),
+    ]);
 
-  return useCallback(async (
-    input: Record<string, unknown> = {}
-  ): Promise<CoachToolResultPayload> => {
-    const parsedInput = proposeWorkoutInputSchema.safeParse(input);
-    const constraints: WorkoutConstraints = parsedInput.success
-      ? {
-          focus: parsedInput.data.focus,
-          durationMinutes: parsedInput.data.durationMinutes,
-          targetArchetypes: parsedInput.data.targetArchetypes,
-          avoidArchetypes: parsedInput.data.avoidArchetypes,
-        }
-      : {};
-    const userId = user?.id ?? null;
-    const weekRange = getCurrentWeekRange();
-    const [baseExercises, movementArchetypes, activeProgram, weeklyArchetypeSets] =
-      await Promise.all([
-        queryClient.ensureQueryData({
-          queryKey: ["exercises"],
-          queryFn: fetchGuidanceExercises,
-          staleTime: Infinity,
-        }),
-        queryClient.ensureQueryData({
-          queryKey: ["movementArchetypes"],
-          queryFn: fetchMovementArchetypes,
-          staleTime: Infinity,
-        }),
-        userId
-          ? queryClient.ensureQueryData({
-              queryKey: ["activeMesocycleProgram", userId],
-              queryFn: () => getActiveMesocycleProgram(userId),
-              staleTime: 60 * 1000,
-            })
-          : Promise.resolve(null),
-        userId
-          ? queryClient.ensureQueryData({
-              queryKey: [
-                "weeklyArchetypeSets_v2",
-                userId,
-                weekRange.start,
-                weekRange.end,
-              ],
-              queryFn: () =>
-                fetchWeeklyArchetypeSets(userId, weekRange.start, weekRange.end),
-              staleTime: 5 * 60 * 1000,
-            })
-          : Promise.resolve([] as WeeklyArchetypeSetData[]),
-      ]);
+  const { summary, startWorkoutPayload } = await buildWorkoutPlan({
+    baseExercises,
+    constraints,
+    movementArchetypes,
+    planningContext: {
+      activeProgram,
+      volumeProgress: buildVolumeProgressDisplayData(weeklyArchetypeSets),
+    },
+    userId,
+    workoutHistory,
+  });
 
-    const { summary, startWorkoutPayload } = await buildWorkoutPlan({
-      baseExercises,
-      constraints,
-      movementArchetypes,
-      planningContext: {
-        activeProgram,
-        volumeProgress: buildVolumeProgressDisplayData(weeklyArchetypeSets),
+  return {
+    message: summary.message,
+    data: { summary },
+    artifact: {
+      type: "workout_draft",
+      title: "Proposed session",
+      rationale: summary.message,
+      sessionFocus: summary.sessionFocus,
+      exercises: summary.selectedExercises.map((name) => ({ name, sets: 3 })),
+      apply: {
+        startWorkoutPayload: startWorkoutPayload as Record<string, unknown>,
       },
-      userId,
-      workoutHistory,
-    });
-
-    return {
-      message: summary.message,
-      data: { summary },
-      artifact: {
-        type: "workout_draft",
-        title: "Proposed session",
-        rationale: summary.message,
-        sessionFocus: summary.sessionFocus,
-        exercises: summary.selectedExercises.map((name) => ({ name, sets: 3 })),
-        apply: {
-          startWorkoutPayload: startWorkoutPayload as Record<string, unknown>,
-        },
-      },
-    };
-  }, [queryClient, user?.id, workoutHistory]);
+    },
+  };
 };
