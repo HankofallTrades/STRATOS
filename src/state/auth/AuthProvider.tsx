@@ -6,7 +6,10 @@ import React, {
   ReactNode,
 } from 'react';
 import { Session, User } from '@supabase/supabase-js';
-import { supabase } from '@/lib/integrations/supabase/client';
+import {
+  hasSupabaseBrowserConfig,
+  loadSupabaseBrowserClient,
+} from '@/lib/integrations/supabase/browserClient';
 import { OnboardingDialog } from '@/domains/account/ui/OnboardingDialog';
 import { useOnboardingPrompt } from '@/state/auth/hooks/useOnboardingPrompt';
 
@@ -37,33 +40,63 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   } = useOnboardingPrompt(user, loading);
 
   useEffect(() => {
-    supabase.auth
-      .getSession()
-      .then(({ data: { session: initialSession } }) => {
-        setSession(initialSession);
-        setUser(initialSession?.user ?? null);
-        setLoading(false);
+    let isActive = true;
+    let unsubscribe = () => undefined;
+
+    void loadSupabaseBrowserClient()
+      .then((supabase) => {
+        if (!supabase) {
+          if (isActive) setLoading(false);
+          return;
+        }
+
+        supabase.auth
+          .getSession()
+          .then(({ data: { session: initialSession } }) => {
+            if (!isActive) return;
+            setSession(initialSession);
+            setUser(initialSession?.user ?? null);
+            setLoading(false);
+          })
+          .catch(() => {
+            if (isActive) {
+              setLoading(false);
+            }
+          });
+
+        const {
+          data: { subscription },
+        } = supabase.auth.onAuthStateChange((event, nextSession) => {
+          if (!isActive) return;
+          setSession(nextSession);
+          setUser(nextSession?.user ?? null);
+          if (event !== 'INITIAL_SESSION') {
+            setLoading(false);
+          }
+        });
+
+        unsubscribe = () => {
+          subscription?.unsubscribe();
+        };
       })
       .catch(() => {
+        if (!isActive) return;
         setLoading(false);
       });
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, nextSession) => {
-      setSession(nextSession);
-      setUser(nextSession?.user ?? null);
-      if (event !== 'INITIAL_SESSION') {
-        setLoading(false);
-      }
-    });
-
     return () => {
-      subscription?.unsubscribe();
+      isActive = false;
+      unsubscribe();
     };
   }, []);
 
   const signOut = async () => {
+    const supabase = await loadSupabaseBrowserClient();
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     await supabase.auth.signOut();
     setLoading(false);
@@ -80,11 +113,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }}
     >
       {children}
-      <OnboardingDialog
-        open={showOnboarding}
-        onOpenChange={setShowOnboarding}
-        onComplete={markOnboardingComplete}
-      />
+      {hasSupabaseBrowserConfig ? (
+        <OnboardingDialog
+          open={showOnboarding}
+          onOpenChange={setShowOnboarding}
+          onComplete={markOnboardingComplete}
+        />
+      ) : null}
     </AuthContext.Provider>
   );
 };

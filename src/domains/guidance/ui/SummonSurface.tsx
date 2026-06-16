@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Suspense, lazy, useState } from "react";
 import { X } from "lucide-react";
 
 import { Sheet, SheetContent } from "@/components/core/sheet";
@@ -7,10 +7,19 @@ import { Input } from "@/components/core/input";
 import UnicodeSpinner from "@/components/core/UnicodeSpinner";
 import { usePresenceAgent } from "@/domains/guidance/hooks/usePresenceAgent";
 import { cn } from "@/lib/utils/cn";
-import ArtifactRenderer from "@/domains/guidance/ui/ArtifactRenderer";
-import ChangeLogPanel from "@/domains/guidance/ui/ChangeLogPanel";
-import CoachMarkdown from "@/domains/guidance/ui/CoachMarkdown";
-import { devProactiveSamples } from "@/domains/guidance/data/proactiveDevSamples";
+
+const ArtifactRenderer = lazy(
+  () => import("@/domains/guidance/ui/ArtifactRenderer")
+);
+const ChangeLogPanel = lazy(
+  () => import("@/domains/guidance/ui/ChangeLogPanel")
+);
+const CoachMarkdown = lazy(
+  () => import("@/domains/guidance/ui/CoachMarkdown")
+);
+const DevToolsPanel = lazy(
+  () => import("@/domains/guidance/ui/coach/DevToolsPanel")
+);
 
 export interface SummonSurfaceQuickActions {
   onStartWorkout: () => void;
@@ -117,53 +126,17 @@ const SummonSurface = ({
 
         <div className="flex-1 space-y-3 overflow-y-auto p-4">
           {showChanges ? (
-            <ChangeLogPanel />
+            <Suspense fallback={<p className="px-1 pt-4 text-sm text-muted-foreground">Loading changes…</p>}>
+              <ChangeLogPanel />
+            </Suspense>
           ) : showDev ? (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="text-xs uppercase tracking-wide text-amber-200/80">
-                  Coach dev tools
-                </p>
-                <button
-                  type="button"
-                  onClick={() => devResetCooldowns()}
-                  className="rounded-full border border-amber-500/40 px-3 py-1.5 text-xs text-amber-200 transition-colors hover:bg-amber-500/15"
-                >
-                  Reset cooldowns
-                </button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Trigger forces an insight into the surface, ignoring its gate
-                condition and cooldown.
-              </p>
-              <div className="flex flex-col gap-2">
-                {devProactiveSamples.map((sample) => (
-                  <div
-                    key={sample.id}
-                    className="flex items-center gap-3 rounded-[14px] border border-white/[0.07] bg-white/[0.025] px-3 py-2"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[11px] uppercase tracking-wide text-muted-foreground">
-                        {sample.id} · {sample.tier}
-                      </p>
-                      <p className="truncate text-xs text-foreground/85">
-                        {sample.line}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        devTriggerInsight(sample);
-                        setShowDev(false);
-                      }}
-                      className="shrink-0 rounded-full bg-amber-500/20 px-3 py-1.5 text-xs text-amber-100 transition-colors hover:bg-amber-500/30"
-                    >
-                      Trigger
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <Suspense fallback={<p className="px-1 pt-4 text-sm text-muted-foreground">Loading dev tools…</p>}>
+              <DevToolsPanel
+                devResetCooldowns={devResetCooldowns}
+                devTriggerInsight={devTriggerInsight}
+                onTriggered={() => setShowDev(false)}
+              />
+            </Suspense>
           ) : conversation.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-5 pb-8">
               <p className="text-sm text-muted-foreground">
@@ -231,7 +204,9 @@ const SummonSurface = ({
                       )}
                     >
                       {message.kind === "assistant" ? (
-                        <CoachMarkdown content={message.content} />
+                        <Suspense fallback={<p className="text-sm text-foreground/92">{message.content}</p>}>
+                          <CoachMarkdown content={message.content} />
+                        </Suspense>
                       ) : (
                         message.content
                       )}
@@ -249,7 +224,9 @@ const SummonSurface = ({
                     className="flex justify-start motion-safe:animate-fade-rise"
                   >
                     <div className="w-[90%]">
-                      <ArtifactRenderer artifact={message.output.artifact} />
+                      <Suspense fallback={<div className="stone-chip rounded-[20px] p-4 text-sm text-muted-foreground">Loading artifact…</div>}>
+                        <ArtifactRenderer artifact={message.output.artifact} />
+                      </Suspense>
                     </div>
                   </div>
                 );

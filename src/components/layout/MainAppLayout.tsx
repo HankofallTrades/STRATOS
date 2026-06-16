@@ -10,6 +10,10 @@ import { PresenceAgentProvider } from "@/domains/guidance/hooks/PresenceAgentPro
 import { SidebarInset, SidebarProvider } from "@/components/core/sidebar";
 import { useOfflineWorkoutSync } from "@/domains/fitness/hooks/useOfflineWorkoutSync";
 import { useQuickActions } from "@/domains/fitness/hooks/useQuickActions";
+import {
+  shouldAutoReloadRouteError,
+  shouldRenderRouteLoadingState,
+} from "@/components/layout/routeErrorRecovery";
 
 const lazyWithRetry = <TModule extends { default: React.ComponentType<unknown> }>(
   importFn: () => Promise<TModule>
@@ -27,7 +31,12 @@ class RouteErrorBoundary extends Component<
   { children: ReactNode; resetKey: string },
   { hasError: boolean; retryNonce: number; autoRetryAttempted: boolean }
 > {
-  state = { hasError: false, retryNonce: 0, autoRetryAttempted: false };
+  state = {
+    hasError: false,
+    lastError: null as Error | null,
+    autoReloadScheduled: false,
+    retryNonce: 0,
+  };
 
   static getDerivedStateFromError() {
     return { hasError: true };
@@ -35,34 +44,47 @@ class RouteErrorBoundary extends Component<
 
   componentDidUpdate(prevProps: Readonly<{ children: ReactNode; resetKey: string }>) {
     if (this.state.hasError && prevProps.resetKey !== this.props.resetKey) {
-      this.setState({ hasError: false, autoRetryAttempted: false });
+      this.setState({
+        autoReloadScheduled: false,
+        hasError: false,
+        lastError: null,
+      });
     }
   }
 
-  componentDidCatch() {
-    if (!this.state.autoRetryAttempted) {
+  componentDidCatch(error: Error) {
+    const shouldReload = shouldAutoReloadRouteError(error);
+    this.setState({ autoReloadScheduled: shouldReload, lastError: error });
+
+    if (shouldReload && this.state.retryNonce < 1) {
       window.setTimeout(() => {
-        this.setState((state) => ({
-          hasError: false,
-          retryNonce: state.retryNonce + 1,
-          autoRetryAttempted: true,
-        }));
-      }, 250);
+        window.location.reload();
+      }, 150);
     }
   }
-
-  private handleRetry = () => {
-    window.location.reload();
-  };
 
   render() {
+    if (
+      shouldRenderRouteLoadingState({
+        attempts: this.state.retryNonce,
+        autoReloadScheduled: this.state.autoReloadScheduled,
+        hasError: this.state.hasError,
+      })
+    ) {
+      return <AppScreenSkeleton />;
+    }
+
     if (this.state.hasError) {
       return (
         <div className="app-page">
           <div className="stone-surface rounded-[26px] p-6 text-sm text-muted-foreground space-y-3">
-            <p>We couldn&apos;t load this screen. Please refresh to reload the latest app files.</p>
-            <Button onClick={this.handleRetry} size="sm" variant="outline">
-              Refresh app
+            <p>We couldn&apos;t load this screen.</p>
+            <Button
+              onClick={() => window.location.reload()}
+              size="sm"
+              variant="outline"
+            >
+              Reload app
             </Button>
           </div>
         </div>

@@ -33,6 +33,19 @@ interface UseProactiveEngineParams {
   isLoading: boolean;
 }
 
+const scheduleBackgroundGateRun = (callback: () => void) => {
+  if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+    const idleCallback = window.requestIdleCallback(callback, {
+      timeout: 1200,
+    });
+
+    return () => window.cancelIdleCallback(idleCallback);
+  }
+
+  const timeoutId = window.setTimeout(callback, 0);
+  return () => window.clearTimeout(timeoutId);
+};
+
 export const useProactiveEngine = ({
   summon,
   send,
@@ -109,7 +122,9 @@ export const useProactiveEngine = ({
   useEffect(() => {
     if (!userId || ranInitialRef.current) return;
     ranInitialRef.current = true;
-    void runGates("app_open");
+    return scheduleBackgroundGateRun(() => {
+      void runGates("app_open");
+    });
   }, [userId, runGates]);
 
   // Re-check when navigating to home (cooldowns keep this quiet).

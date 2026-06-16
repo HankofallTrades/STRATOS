@@ -7,9 +7,8 @@ import { ThemeProvider as NextThemeProvider } from "next-themes";
 
 import { ThemeProvider } from "@/lib/themes";
 
-import LoginPage from "./pages/LoginPage";
-import WaitlistPage from "./pages/WaitlistPage";
-
+const LoginPage = lazy(() => import("./pages/LoginPage"));
+const WaitlistPage = lazy(() => import("./pages/WaitlistPage"));
 const ProtectedAppShell = lazy(
   () => import("@/components/layout/ProtectedAppShell")
 );
@@ -28,8 +27,22 @@ const App = () => {
           <Sonner />
           <Router>
             <Routes>
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/waitlist" element={<WaitlistPage />} />
+              <Route
+                path="/login"
+                element={
+                  <Suspense fallback={<ProtectedShellFallback />}>
+                    <LoginPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/waitlist"
+                element={
+                  <Suspense fallback={<ProtectedShellFallback />}>
+                    <WaitlistPage />
+                  </Suspense>
+                }
+              />
               <Route
                 path="/*"
                 element={

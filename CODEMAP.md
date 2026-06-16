@@ -10,6 +10,8 @@ This file is the fast operational map for agents and future sessions. It is not 
 - Unit tests run via Vitest (`npm test`, config in `vitest.config.ts`, node environment). The first suites cover pure domain logic only: fitness `recommendations`, guidance `proactiveGates`, analytics `volumeProgress`.
 - Do not run `npm run build` and `npm run lint` at the same time. Vite can create transient `vite.config.ts.timestamp-*.mjs` files that make ESLint fail with `ENOENT`.
 - Public routes do not load Redux persistence or the protected shell up front; `App.tsx` lazy-loads the protected app shell after route match.
+- Public auth routes are also lazy route chunks. `src/main.tsx` no longer mounts `AuthProvider` globally; auth boot now lives in the protected shell, so `/login` can render without pulling protected auth/state code into the entry bundle.
+- Public auth bootstrap uses the async loader in `src/lib/integrations/supabase/browserClient.ts`; the login route no longer statically imports `@supabase/supabase-js`, so the browser Supabase vendor chunk is not preloaded from `dist/index.html`.
 - Protected app routes and heavy quick-action dialogs are lazy-loaded from `MainAppLayout` to keep non-active screens out of the initial protected-shell bundle.
 - Vendor `manualChunks` in `vite.config.ts` split the entry bundle (react-vendor / supabase / radix / state); the chunk-size warning is resolved and every chunk is under 500 kB. framer-motion and recharts are intentionally NOT in the manual list so they stay lazily chunked.
 - Motion convention: CSS-first tokens in `tailwind.config.ts` (`motion-safe:animate-fade-rise` entrances, `motion-safe:animate-set-confirm` pulse); framer-motion is confined to workout interaction physics. `prefers-reduced-motion` is honored via the `motion-safe:` variant.
@@ -35,12 +37,13 @@ This file is the fast operational map for agents and future sessions. It is not 
 
 - `src/main.tsx`
   - Creates the React app.
-  - Wraps the app in `QueryClientProvider` and `AuthProvider`.
+  - Wraps the app in `QueryClientProvider`.
 - `src/App.tsx`
   - Owns the theme, toast, and router providers.
   - Splits public routes (`/login`, legacy `/waitlist` redirect) from the lazy protected app shell.
+  - Lazy-loads the login/waitlist route chunks as well as the protected shell.
 - `src/components/layout/ProtectedAppShell.tsx`
-  - Owns Redux provider + persistence gate for protected routes only.
+  - Owns auth provider, Redux provider, and persistence gate for protected routes only.
   - Mounts `ProtectedRoute` and `MainAppLayout` after the protected shell chunk loads.
 - `src/components/layout/ProtectedRoute.tsx`
   - Gates protected routes on Supabase session state from `AuthProvider`.
@@ -100,7 +103,9 @@ Pages should stay thin wrappers around domain screens.
 - `src/domains/account/ui/AuthForm.tsx`
   - Still imports Supabase directly only for the Supabase Auth widget.
   - Exposes email self-signup by default for public account creation.
-  - Should not create its own auth state source.
+  - Manages its own session redirect check (does not require `AuthProvider` on `/login`).
+  - Renders a local configuration message instead of crashing when browser Supabase env vars are missing.
+  - Loads the browser Supabase client asynchronously for the public auth surface.
 
 ### Server State
 
