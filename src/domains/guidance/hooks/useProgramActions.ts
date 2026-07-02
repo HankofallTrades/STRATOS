@@ -1,52 +1,35 @@
 import { useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 
-import type {
-  CoachToolResultPayload,
-  ProgramDraftApply,
-  ProgramEditApply,
-  WorkoutEditApply,
-} from "@/domains/guidance/agent/contracts";
+import type { CoachToolResultPayload } from "@/domains/guidance/agent/contracts";
 import {
   proposeActiveWorkoutEditInputSchema,
   proposeProgramEditInputSchema,
   proposeProgramInputSchema,
 } from "@/domains/guidance/agent/tools";
-import { insertCoachChange } from "@/domains/guidance/data/changeLogRepository";
 import {
   fetchGuidanceExercises,
   fetchMovementArchetypes,
 } from "@/domains/guidance/data/guidanceRepository";
 import {
-  applyWorkoutEditActions,
   buildActiveWorkoutEdit,
   buildProgramContextMessage,
   buildProgramDraft,
   buildProgramEdit,
-  type WorkoutEditAction,
 } from "@/domains/guidance/data/toolBuilders";
-import {
-  applyProgramEdits,
-  getActiveMesocycleProgram,
-  saveDraftedProgram,
-} from "@/domains/periodization/data/repository";
-import type {
-  ActiveMesocycleProgram,
-  DraftedProgramInput,
-  ResolvedProgramEditOp,
-} from "@/domains/periodization";
-import { useAppDispatch, useAppSelector } from "@/hooks/redux";
+import { getActiveMesocycleProgram } from "@/domains/periodization/data/repository";
+import type { ActiveMesocycleProgram } from "@/domains/periodization";
+import { useAppSelector } from "@/hooks/redux";
 import { useAuth } from "@/state/auth/AuthProvider";
 import { selectCurrentWorkout } from "@/state/workout/workoutSlice";
 
-// React seam for the client Coach tools: this hook fetches the catalog/program/
-// workout deps and hands them to the pure builders in data/toolBuilders.ts. The
-// builders own the logic (and the tests); this hook owns the I/O and the
-// confirm-only apply handlers.
+// React seam for the client Coach propose/context tools: this hook fetches the
+// catalog/program/workout deps and hands them to the pure builders in
+// data/toolBuilders.ts. The builders own the logic (and the tests); this hook
+// owns the I/O. Applying a proposed artifact is a Coach mutation and lives in
+// useCoachMutations / data/coachMutations.ts.
 export const useProgramActions = () => {
   const queryClient = useQueryClient();
-  const dispatch = useAppDispatch();
   const { user } = useAuth();
   const currentWorkout = useAppSelector(selectCurrentWorkout);
   const userId = user?.id ?? null;
@@ -123,111 +106,10 @@ export const useProgramActions = () => {
     [currentWorkout, loadCatalog]
   );
 
-  const recordChange = useCallback(
-    async (
-      changeType: "program_created" | "program_edited" | "workout_edited",
-      summary: string,
-      payload: Record<string, unknown>
-    ) => {
-      if (!userId) return;
-      try {
-        await insertCoachChange(userId, changeType, summary, payload);
-        queryClient.invalidateQueries({ queryKey: ["coachChangeLog", userId] });
-      } catch {
-        toast.warning(
-          "The change was applied but could not be added to the change log."
-        );
-      }
-    },
-    [queryClient, userId]
-  );
-
-  const applyProgramDraft = useCallback(
-    async (apply: ProgramDraftApply) => {
-      if (!userId) {
-        toast.error("You need to be signed in to apply a program.");
-        return;
-      }
-      try {
-        const draft = apply.draftedProgram as unknown as DraftedProgramInput;
-        const result = await saveDraftedProgram(userId, draft);
-        await recordChange(
-          "program_created",
-          `Created program "${result.mesocycle.name}"`,
-          {
-            mesocycleId: result.mesocycle.id,
-            previousActiveMesocycleId: result.previousActiveMesocycleId,
-          }
-        );
-        queryClient.invalidateQueries({
-          queryKey: ["activeMesocycleProgram", userId],
-        });
-        toast.success(`"${result.mesocycle.name}" is now your active program.`);
-      } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : "Failed to apply the program."
-        );
-      }
-    },
-    [queryClient, recordChange, userId]
-  );
-
-  const applyProgramEdit = useCallback(
-    async (apply: ProgramEditApply) => {
-      if (!userId) {
-        toast.error("You need to be signed in to apply program edits.");
-        return;
-      }
-      try {
-        const ops = apply.resolvedOps as unknown as ResolvedProgramEditOp[];
-        const result = await applyProgramEdits(userId, apply.mesocycleId, ops);
-        await recordChange("program_edited", apply.summary, {
-          mesocycleId: apply.mesocycleId,
-          ops: apply.resolvedOps,
-          snapshot: result.snapshot,
-          protocolBefore: result.protocolBefore,
-        });
-        queryClient.invalidateQueries({
-          queryKey: ["activeMesocycleProgram", userId],
-        });
-        toast.success("Program updated.");
-      } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : "Failed to apply program edits."
-        );
-      }
-    },
-    [queryClient, recordChange, userId]
-  );
-
-  const applyWorkoutEdit = useCallback(
-    async (apply: WorkoutEditApply) => {
-      if (!currentWorkout || currentWorkout.id !== apply.workoutId) {
-        toast.error("That workout is no longer active.");
-        return;
-      }
-      applyWorkoutEditActions(
-        dispatch,
-        apply.actions as unknown as WorkoutEditAction[]
-      );
-      await recordChange("workout_edited", apply.summary, {
-        workoutId: apply.workoutId,
-        inverseActions: apply.inverseActions,
-      });
-      toast.success("Workout updated.");
-    },
-    [currentWorkout, dispatch, recordChange]
-  );
-
   return {
     getProgramContext,
     proposeProgram,
     proposeProgramEdit,
     proposeActiveWorkoutEdit,
-    applyProgramDraft,
-    applyProgramEdit,
-    applyWorkoutEdit,
   };
 };

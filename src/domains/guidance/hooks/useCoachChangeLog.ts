@@ -7,21 +7,17 @@ import {
   type CoachChangeLogEntry,
 } from "@/domains/guidance/data/changeLogRepository";
 import {
-  applyWorkoutEditActions,
-  type WorkoutEditAction,
-} from "@/domains/guidance/data/workoutEditActions";
-import {
-  revertProgramCreation,
-  revertProgramEdits,
-} from "@/domains/periodization/data/repository";
-import type {
-  MesocycleProtocol,
-  SessionExerciseSnapshotRow,
-} from "@/domains/periodization";
+  canRevertCoachChange,
+  revertCoachChange,
+} from "@/domains/guidance/data/coachMutations";
 import { useAppDispatch, useAppSelector } from "@/hooks/redux";
 import { useAuth } from "@/state/auth/AuthProvider";
 import { selectCurrentWorkout } from "@/state/workout/workoutSlice";
 
+// Change-log surface: listing plus revert. Revert dispatches through the Coach
+// mutation registry (data/coachMutations.ts), which parses the stored payload
+// with the same schema `apply` wrote it with and runs the command's inverse —
+// this hook never inspects a payload itself.
 export const useCoachChangeLog = () => {
   const queryClient = useQueryClient();
   const dispatch = useAppDispatch();
@@ -36,42 +32,15 @@ export const useCoachChangeLog = () => {
   });
 
   const canRevert = (entry: CoachChangeLogEntry): boolean => {
-    if (entry.reverted_at) return false;
-    if (entry.change_type !== "workout_edited") return true;
-    const workoutId = entry.payload.workoutId as string | undefined;
-    return Boolean(workoutId && currentWorkout?.id === workoutId);
+    if (!userId) return false;
+    return canRevertCoachChange(entry, { userId, dispatch, currentWorkout });
   };
 
   const revertMutation = useMutation({
     mutationFn: async (entry: CoachChangeLogEntry) => {
       if (!userId) throw new Error("Not signed in.");
       if (entry.reverted_at) throw new Error("This change was already reverted.");
-
-      if (entry.change_type === "program_created") {
-        await revertProgramCreation(userId, {
-          mesocycleId: entry.payload.mesocycleId as string,
-          previousActiveMesocycleId:
-            (entry.payload.previousActiveMesocycleId as string | null) ?? null,
-        });
-      } else if (entry.change_type === "program_edited") {
-        await revertProgramEdits(userId, {
-          mesocycleId: entry.payload.mesocycleId as string,
-          snapshot: entry.payload.snapshot as SessionExerciseSnapshotRow[],
-          protocolBefore: entry.payload.protocolBefore as MesocycleProtocol,
-        });
-      } else {
-        const workoutId = entry.payload.workoutId as string | undefined;
-        if (!workoutId || currentWorkout?.id !== workoutId) {
-          throw new Error(
-            "That workout is no longer active, so this change cannot be undone."
-          );
-        }
-        applyWorkoutEditActions(
-          dispatch,
-          entry.payload.inverseActions as unknown as WorkoutEditAction[]
-        );
-      }
-
+      await revertCoachChange(entry, { userId, dispatch, currentWorkout });
       await markCoachChangeReverted(entry.id);
     },
     onSuccess: () => {

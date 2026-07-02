@@ -7,7 +7,7 @@ This file is the fast operational map for agents and future sessions. It is not 
 - Architecture rename is complete: use `ui / hooks / data`, not `view / controller / model`.
 - `npm run build` passes.
 - `npm run lint` reports 8 warnings, no errors (`react-refresh/only-export-components` in shared providers/components — benign dev-HMR hints). The earlier 16 was this same set double-counted because `eslint .` was traversing the nested `.claude/worktrees/` checkout; `.claude` is now in the eslint `ignores`.
-- Unit tests run via Vitest (`npm test`, config in `vitest.config.ts`, node environment). The suites cover pure domain logic only: fitness `recommendations`, guidance `proactiveGates`, guidance `toolBuilders` (client Coach tool logic), analytics `volumeProgress`.
+- Unit tests run via Vitest (`npm test`, config in `vitest.config.ts`, node environment). The suites cover domain logic without React or live Supabase: fitness `recommendations`, guidance `proactiveGates`, guidance `toolBuilders` (client Coach tool logic), guidance `coachMutations` (apply/revert payload round-trip, repo mocked), analytics `volumeProgress`.
 - Do not run `npm run build` and `npm run lint` at the same time. Vite can create transient `vite.config.ts.timestamp-*.mjs` files that make ESLint fail with `ENOENT`.
 - Public routes do not load Redux persistence or the protected shell up front; `App.tsx` lazy-loads the protected app shell after route match.
 - Public auth routes are also lazy route chunks. `src/main.tsx` no longer mounts `AuthProvider` globally; auth boot now lives in the protected shell, so `/login` can render without pulling protected auth/state code into the entry bundle.
@@ -268,8 +268,10 @@ Current Coach architecture:
   - `propose_active_workout_edit` (client) — swap/add/remove against the in-progress Redux workout; returns a `workout_edit` artifact. Apply dispatches workout-slice actions.
 - Proactive layer (sub-project 4): deterministic gates run on app open / workout finished (`hooks/useProactiveEngine.ts` + pure `data/proactiveGates.ts`); insights are template-composed in code (no LLM call until the user engages), tiered `pulse` (orb glow) or `peek` (one-line chip `ui/PresencePeek.tsx`, mounted in `MainAppLayout`); engagement summons the surface and sends a seeded prompt; dismiss/engage cooldowns persist in localStorage (`data/proactiveCooldowns.ts`). Propose-only — the engine never mutates anything. The orb's attention state is conversation attention ∪ pending proactive insights. Insights persist in the surface until engaged/dismissed/replaced (they are no longer cleared on open); the active insight is surfaced inside `SummonSurface` as a solid-green starter (empty state) or a pinned row above the input (mid-conversation). Dev tools (a `Dev` tab in the surface, gated by `useIsDeveloper`/`profiles.role`) can force any insight in regardless of gate/cooldown and reset cooldowns (`useProactiveEngine` `devTriggerInsight`/`devResetCooldowns`, samples in `data/proactiveDevSamples.ts`, `data/proactiveCooldowns.ts` `clearCooldowns`).
 - Acting layer (sub-project 3): all mutations are confirm-only (explicit Apply) and recorded in `coach_change_log` with one-tap revert. Key seams:
-  - `hooks/useProgramActions.ts` — client tool implementations + Apply handlers.
-  - `hooks/useCoachChangeLog.ts` + `ui/ChangeLogPanel.tsx` — change list + revert (surface's "Changes" toggle).
+  - `data/coachMutations.ts` — the **Coach mutation registry** (see CONTEXT.md): one command descriptor per `CoachChangeType` owning `apply`, `revert`, `canRevert`, and the zod payload schema both sides share (apply writes it, revert parses it — drift is a compile error, malformed legacy rows fail the parse cleanly). Unit-tested in `coachMutations.test.ts` (repo mocked).
+  - `hooks/useCoachMutations.ts` — the one apply path: `applyMutation(changeType, input)` runs the command then the shared tail (change-log insert, declared invalidations, toast). `applyArtifact` in `PresenceAgentProvider` routes program/workout artifacts here.
+  - `hooks/useProgramActions.ts` — client propose/context tool implementations (I/O for the pure builders; no apply handlers anymore).
+  - `hooks/useCoachChangeLog.ts` + `ui/ChangeLogPanel.tsx` — change list + revert (surface's "Changes" toggle); revert dispatches through the mutation registry.
   - `data/changeLogRepository.ts` — `coach_change_log` CRUD.
   - `data/workoutEditActions.ts` — typed Redux edit actions shared by apply and revert.
   - `ui/artifacts/ProgramDraftArtifact.tsx`, `ProgramEditArtifact.tsx`, `WorkoutEditArtifact.tsx`.
@@ -353,7 +355,7 @@ If you touch any of those, read the full file first. They are coordination seams
 - `goals` and `rpg` are still placeholders.
 - Some fitness UI is still more stateful than ideal.
 - `README.md` and `docs/plan.md` may lag implementation details after large refactors.
-- Test coverage is an early foundation only: Vitest covers four pure data seams (fitness recommendations, guidance proactive gates, guidance tool builders, analytics volume progress). Most domains, hooks, and UI have no tests.
+- Test coverage is an early foundation only: Vitest covers five data seams (fitness recommendations, guidance proactive gates, guidance tool builders, guidance coach mutations, analytics volume progress). Most domains, hooks, and UI have no tests.
 - Accepted Dependabot advisories (do not re-chase): after `npm audit fix`, ~14 remain, all dev-only or non-exploitable in the shipped browser bundle, none fixable without a breaking change:
   - **`@vercel/node` chain** (`tar`, `undici`, `tsx`, `path-to-regexp`, `@vercel/nft`, `@mapbox/node-pre-gyp`, `ajv`, `@vercel/static-config`): a serverless-build toolchain pulled in solely for the two type imports in `api/coach.ts`. Even `@vercel/node@5` still ships these vulnerable transitives, so the only fix is dropping the package — deliberately kept for deploy stability / standard typing.
   - **`esbuild`/`vite`**: the esbuild advisory affects only the dev server (`npm run dev`); fix is a `vite` 5→7 major (PWA/swc-plugin compat risk), deferred to its own pass.

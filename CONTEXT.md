@@ -46,6 +46,21 @@ looks a tool up here instead of switching on its name. Typed as a `Record` over
 the registry's client tools, so a client tool without a runner is a compile
 error.
 
+## Coach mutation / mutation registry
+
+A **Coach mutation** is a confirm-only change the Coach can make on the user's
+behalf (`program_created`, `program_edited`, `workout_edited` — the
+`CoachChangeType` union). The **mutation registry** (`coachMutationRegistry` in
+`src/domains/guidance/data/coachMutations.ts`) makes each one a command
+descriptor owning its forward op (`apply`), its inverse (`revert`), its
+revertibility rule (`canRevert`), and the zod schema of the change-log payload
+both sides share — apply writes it, revert parses it, so payload drift is a
+compile error and a malformed legacy row is a clean parse failure.
+`useCoachMutations().applyMutation(type, input)` is the one apply path (shared
+tail: change-log insert, invalidation, toast); `useCoachChangeLog` reverts
+through `revertCoachChange`/`canRevertCoachChange`. Neither hook inspects a
+payload itself.
+
 ## Artifact / artifact registry
 
 A `CoachArtifact` is the typed, reviewable result a propose tool emits

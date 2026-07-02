@@ -19,7 +19,7 @@ import {
 } from "@/domains/guidance/agent/tools";
 import { useClientCoachToolRunners } from "@/domains/guidance/hooks/useClientCoachToolRunners";
 import { useProactiveEngine } from "@/domains/guidance/hooks/useProactiveEngine";
-import { useProgramActions } from "@/domains/guidance/hooks/useProgramActions";
+import { useCoachMutations } from "@/domains/guidance/hooks/useCoachMutations";
 import { useIsDeveloper } from "@/domains/account/hooks/useIsDeveloper";
 import {
   buildMissingProviderConfigurationMessage,
@@ -74,8 +74,7 @@ export const PresenceAgentProvider = ({ children }: { children: ReactNode }) => 
   }, [conversation, isOpen]);
 
   const clientToolRunners = useClientCoachToolRunners();
-  const { applyProgramDraft, applyProgramEdit, applyWorkoutEdit } =
-    useProgramActions();
+  const { applyMutation } = useCoachMutations();
 
   const llmPreferences = readLlmPreferences();
   const isCoachConfigured =
@@ -111,16 +110,16 @@ export const PresenceAgentProvider = ({ children }: { children: ReactNode }) => 
       } = {
         volume_chart: null,
         workout_draft: (a) => applyWorkoutDraft(a.apply.startWorkoutPayload),
-        program_draft: (a) => applyProgramDraft(a.apply),
-        program_edit: (a) => applyProgramEdit(a.apply),
-        workout_edit: (a) => applyWorkoutEdit(a.apply),
+        program_draft: (a) => applyMutation("program_created", a.apply),
+        program_edit: (a) => applyMutation("program_edited", a.apply),
+        workout_edit: (a) => applyMutation("workout_edited", a.apply),
       };
       const applier = appliers[artifact.type] as
         | ((artifact: CoachArtifact) => void | Promise<void>)
         | null;
       return applier?.(artifact);
     },
-    [applyProgramDraft, applyProgramEdit, applyWorkoutDraft, applyWorkoutEdit]
+    [applyMutation, applyWorkoutDraft]
   );
 
   const send = useCallback(
