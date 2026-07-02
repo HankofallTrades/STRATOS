@@ -5,7 +5,7 @@ import { usePresenceAgent } from "@/domains/guidance/hooks/usePresenceAgent";
 type WorkoutDraft = Extract<CoachArtifact, { type: "workout_draft" }>;
 
 const WorkoutDraftArtifact = ({ artifact }: { artifact: WorkoutDraft }) => {
-  const { applyWorkoutDraft } = usePresenceAgent();
+  const { applyArtifact } = usePresenceAgent();
 
   return (
     <div className="stone-chip rounded-[20px] p-4">
@@ -34,7 +34,7 @@ const WorkoutDraftArtifact = ({ artifact }: { artifact: WorkoutDraft }) => {
       <Button
         type="button"
         className="app-primary-action mt-4 h-10 w-full rounded-[16px] text-sm font-semibold"
-        onClick={() => applyWorkoutDraft(artifact.apply.startWorkoutPayload)}
+        onClick={() => applyArtifact(artifact)}
       >
         Apply &amp; start
       </Button>

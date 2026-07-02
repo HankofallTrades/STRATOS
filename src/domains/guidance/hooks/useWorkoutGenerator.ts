@@ -29,7 +29,6 @@ import type {
   Exercise,
   SessionFocus,
   Workout,
-  WorkoutExercise,
 } from "@/lib/types/workout";
 import { useAuth } from "@/state/auth/AuthProvider";
 import { selectWorkoutHistory } from "@/state/history/historySlice";

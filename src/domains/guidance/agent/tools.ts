@@ -1,23 +1,12 @@
 import { z } from "zod";
 
 import type {
-  CoachToolCallMessage,
   CoachToolExecutionEnvironment,
   CoachToolName,
   CoachToolResultPayload,
 } from "./contracts.js";
 
-export interface CoachToolContext {
-  proposeWorkout: (input: Record<string, unknown>) => Promise<CoachToolResultPayload>;
-  getProgramContext: () => Promise<CoachToolResultPayload>;
-  proposeProgram: (input: Record<string, unknown>) => Promise<CoachToolResultPayload>;
-  proposeProgramEdit: (input: Record<string, unknown>) => Promise<CoachToolResultPayload>;
-  proposeActiveWorkoutEdit: (
-    input: Record<string, unknown>
-  ) => Promise<CoachToolResultPayload>;
-}
-
-interface CoachToolDefinition<TInput extends Record<string, unknown>> {
+export interface CoachToolDescriptor<TInput extends Record<string, unknown>> {
   description: string;
   execution: CoachToolExecutionEnvironment;
   inputSchema: z.ZodType<TInput>;
@@ -151,7 +140,7 @@ export type ProposeActiveWorkoutEditInput = z.infer<
   typeof proposeActiveWorkoutEditInputSchema
 >;
 
-export const coachToolDefinitions = {
+export const coachToolRegistry = {
   propose_workout: {
     description:
       "Build a draft training session and render it as a reviewable draft (does NOT save; the user applies it). Pass any constraints the user states: `focus` (e.g. hypertrophy, strength, recovery), `durationMinutes` for time available, `targetArchetypes` to emphasize specific movement patterns, and `avoidArchetypes` for sore/injured areas (map the body part to its movement archetypes, e.g. a cranky shoulder -> push_vertical/pull_vertical). Omit any field that wasn't stated; the draft still honors the user's program and weekly volume gaps.",
@@ -218,34 +207,25 @@ export const coachToolDefinitions = {
     label: "Propose Workout Edit",
     name: "propose_active_workout_edit",
   },
-} satisfies Record<string, CoachToolDefinition<Record<string, unknown>>>;
+} as const satisfies Record<CoachToolName, CoachToolDescriptor<Record<string, unknown>>>;
 
 export const getCoachToolLabel = (toolName: CoachToolName) =>
-  coachToolDefinitions[toolName].label;
+  coachToolRegistry[toolName].label;
 
-export const executeCoachTool = async (
-  toolCall: Pick<CoachToolCallMessage, "input" | "toolName">,
-  context: CoachToolContext
-): Promise<CoachToolResultPayload> => {
-  switch (toolCall.toolName) {
-    case "propose_workout": {
-      return context.proposeWorkout(toolCall.input);
-    }
-    case "get_program_context":
-      return context.getProgramContext();
-    case "propose_program":
-      return context.proposeProgram(toolCall.input);
-    case "propose_program_edit":
-      return context.proposeProgramEdit(toolCall.input);
-    case "propose_active_workout_edit":
-      return context.proposeActiveWorkoutEdit(toolCall.input);
-    case "get_recent_workout_summary":
-    case "get_user_profile_summary":
-    case "get_training_volume":
-      throw new Error(
-        `Coach tool ${toolCall.toolName} is server-executable and cannot run on the client.`
-      );
-    default:
-      throw new Error(`Unknown coach tool: ${toolCall.toolName}`);
-  }
-};
+/** Names of the Coach tools that execute on the client. Derived from the
+ * registry's `execution` field, so it can never drift from it. */
+export type ClientCoachToolName = {
+  [K in CoachToolName]: (typeof coachToolRegistry)[K]["execution"] extends "client"
+    ? K
+    : never;
+}[CoachToolName];
+
+export type CoachToolRunner = (
+  input: Record<string, unknown>
+) => Promise<CoachToolResultPayload>;
+
+/** Client-executed Coach tools keyed by name. A React hook builds this by
+ * injecting each tool builder's data deps; the send loop iterates it instead of
+ * switching on tool name. `Record<ClientCoachToolName, ...>` makes a missing
+ * runner a compile error. */
+export type CoachClientToolRunners = Record<ClientCoachToolName, CoachToolRunner>;

@@ -5,7 +5,7 @@ import { usePresenceAgent } from "@/domains/guidance/hooks/usePresenceAgent";
 type ProgramEdit = Extract<CoachArtifact, { type: "program_edit" }>;
 
 const ProgramEditArtifact = ({ artifact }: { artifact: ProgramEdit }) => {
-  const { applyProgramEdit } = usePresenceAgent();
+  const { applyArtifact } = usePresenceAgent();
 
   return (
     <div className="stone-chip rounded-[20px] p-4">
@@ -43,7 +43,7 @@ const ProgramEditArtifact = ({ artifact }: { artifact: ProgramEdit }) => {
       <Button
         type="button"
         className="app-primary-action mt-4 h-10 w-full rounded-[16px] text-sm font-semibold"
-        onClick={() => void applyProgramEdit(artifact.apply)}
+        onClick={() => void applyArtifact(artifact)}
       >
         Apply changes
       </Button>

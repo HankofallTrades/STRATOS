@@ -8,15 +8,19 @@ import {
   createCoachToolResultMessage,
   createCoachUserMessage,
   isClientCoachToolCallMessage,
+  type CoachArtifact,
   type CoachConversationMessage,
 } from "@/domains/guidance/agent/contracts";
 import { buildScreenContext } from "@/domains/guidance/agent/screenContext";
 import { sendCoachMessage } from "@/domains/guidance/agent/transport";
-import { executeCoachTool, getCoachToolLabel } from "@/domains/guidance/agent/tools";
+import {
+  getCoachToolLabel,
+  type ClientCoachToolName,
+} from "@/domains/guidance/agent/tools";
+import { useClientCoachToolRunners } from "@/domains/guidance/hooks/useClientCoachToolRunners";
 import { useProactiveEngine } from "@/domains/guidance/hooks/useProactiveEngine";
 import { useProgramActions } from "@/domains/guidance/hooks/useProgramActions";
 import { useIsDeveloper } from "@/domains/account/hooks/useIsDeveloper";
-import { useProposeWorkout } from "@/domains/guidance/hooks/useProposeWorkout";
 import {
   buildMissingProviderConfigurationMessage,
   providerRequiresApiKey,
@@ -69,16 +73,9 @@ export const PresenceAgentProvider = ({ children }: { children: ReactNode }) => 
     }
   }, [conversation, isOpen]);
 
-  const proposeWorkout = useProposeWorkout();
-  const {
-    getProgramContext,
-    proposeProgram,
-    proposeProgramEdit,
-    proposeActiveWorkoutEdit,
-    applyProgramDraft,
-    applyProgramEdit,
-    applyWorkoutEdit,
-  } = useProgramActions();
+  const clientToolRunners = useClientCoachToolRunners();
+  const { applyProgramDraft, applyProgramEdit, applyWorkoutEdit } =
+    useProgramActions();
 
   const llmPreferences = readLlmPreferences();
   const isCoachConfigured =
@@ -99,6 +96,31 @@ export const PresenceAgentProvider = ({ children }: { children: ReactNode }) => 
       navigate("/workout");
     },
     [dispatch, navigate]
+  );
+
+  // Single apply entry point: route an artifact to its handler by `type`. The
+  // Record over CoachArtifact["type"] forces every artifact kind to be
+  // considered (volume_chart is read-only -> null). Artifact UI never names a
+  // handler; it just calls applyArtifact(artifact).
+  const applyArtifact = useCallback(
+    (artifact: CoachArtifact): void | Promise<void> => {
+      const appliers: {
+        [T in CoachArtifact["type"]]:
+          | ((artifact: Extract<CoachArtifact, { type: T }>) => void | Promise<void>)
+          | null;
+      } = {
+        volume_chart: null,
+        workout_draft: (a) => applyWorkoutDraft(a.apply.startWorkoutPayload),
+        program_draft: (a) => applyProgramDraft(a.apply),
+        program_edit: (a) => applyProgramEdit(a.apply),
+        workout_edit: (a) => applyWorkoutEdit(a.apply),
+      };
+      const applier = appliers[artifact.type] as
+        | ((artifact: CoachArtifact) => void | Promise<void>)
+        | null;
+      return applier?.(artifact);
+    },
+    [applyProgramDraft, applyProgramEdit, applyWorkoutDraft, applyWorkoutEdit]
   );
 
   const send = useCallback(
@@ -167,13 +189,14 @@ export const PresenceAgentProvider = ({ children }: { children: ReactNode }) => 
           const toolResults = await Promise.all(
             clientToolCalls.map(async (toolCall) => {
               try {
-                const result = await executeCoachTool(toolCall, {
-                  proposeWorkout,
-                  getProgramContext,
-                  proposeProgram,
-                  proposeProgramEdit,
-                  proposeActiveWorkoutEdit,
-                });
+                const runTool =
+                  clientToolRunners[toolCall.toolName as ClientCoachToolName];
+                if (!runTool) {
+                  throw new Error(
+                    `No client runner for Coach tool ${toolCall.toolName}.`
+                  );
+                }
+                const result = await runTool(toolCall.input);
                 if (result.nextRoute) pendingNavigation = result.nextRoute;
                 return createCoachToolResultMessage({
                   execution: toolCall.execution,
@@ -222,17 +245,13 @@ export const PresenceAgentProvider = ({ children }: { children: ReactNode }) => 
       }
     },
     [
+      clientToolRunners,
       currentWorkout?.id,
-      getProgramContext,
       input,
       isLoading,
       isWorkoutActive,
       location.pathname,
       navigate,
-      proposeActiveWorkoutEdit,
-      proposeProgram,
-      proposeProgramEdit,
-      proposeWorkout,
       session?.access_token,
     ]
   );
@@ -260,10 +279,7 @@ export const PresenceAgentProvider = ({ children }: { children: ReactNode }) => 
       input,
       setInput,
       send,
-      applyWorkoutDraft,
-      applyProgramDraft,
-      applyProgramEdit,
-      applyWorkoutEdit,
+      applyArtifact,
       proactiveInsights,
       engageInsight,
       dismissInsight,
@@ -274,10 +290,7 @@ export const PresenceAgentProvider = ({ children }: { children: ReactNode }) => 
       configurationMessage,
     }),
     [
-      applyWorkoutDraft,
-      applyProgramDraft,
-      applyProgramEdit,
-      applyWorkoutEdit,
+      applyArtifact,
       configurationMessage,
       devResetCooldowns,
       devToolsEnabled,

@@ -10,7 +10,7 @@ const formatTargets = (targetSets: number | null, targetReps: string | null) => 
 };
 
 const ProgramDraftArtifact = ({ artifact }: { artifact: ProgramDraft }) => {
-  const { applyProgramDraft } = usePresenceAgent();
+  const { applyArtifact } = usePresenceAgent();
 
   return (
     <div className="stone-chip rounded-[20px] p-4">
@@ -48,7 +48,7 @@ const ProgramDraftArtifact = ({ artifact }: { artifact: ProgramDraft }) => {
       <Button
         type="button"
         className="app-primary-action mt-4 h-10 w-full rounded-[16px] text-sm font-semibold"
-        onClick={() => void applyProgramDraft(artifact.apply)}
+        onClick={() => void applyArtifact(artifact)}
       >
         Apply program
       </Button>

@@ -7,7 +7,7 @@ This file is the fast operational map for agents and future sessions. It is not 
 - Architecture rename is complete: use `ui / hooks / data`, not `view / controller / model`.
 - `npm run build` passes.
 - `npm run lint` reports 8 warnings, no errors (`react-refresh/only-export-components` in shared providers/components — benign dev-HMR hints). The earlier 16 was this same set double-counted because `eslint .` was traversing the nested `.claude/worktrees/` checkout; `.claude` is now in the eslint `ignores`.
-- Unit tests run via Vitest (`npm test`, config in `vitest.config.ts`, node environment). The first suites cover pure domain logic only: fitness `recommendations`, guidance `proactiveGates`, analytics `volumeProgress`.
+- Unit tests run via Vitest (`npm test`, config in `vitest.config.ts`, node environment). The suites cover pure domain logic only: fitness `recommendations`, guidance `proactiveGates`, guidance `toolBuilders` (client Coach tool logic), analytics `volumeProgress`.
 - Do not run `npm run build` and `npm run lint` at the same time. Vite can create transient `vite.config.ts.timestamp-*.mjs` files that make ESLint fail with `ENOENT`.
 - Public routes do not load Redux persistence or the protected shell up front; `App.tsx` lazy-loads the protected app shell after route match.
 - Public auth routes are also lazy route chunks. `src/main.tsx` no longer mounts `AuthProvider` globally; auth boot now lives in the protected shell, so `/login` can render without pulling protected auth/state code into the entry bundle.
@@ -233,18 +233,20 @@ This is still the most complex domain and the main place where UI, Redux, and Re
 
 - Purpose: Coach (presence/summon) and workout-generation guidance.
 - Presence surface + state entry:
-  - `hooks/PresenceAgentProvider.tsx` + `hooks/usePresenceAgent.ts` — app-root context owning the Coach conversation, send loop, and surface open-state.
+  - `hooks/PresenceAgentProvider.tsx` + `hooks/usePresenceAgent.ts` — app-root context owning the Coach conversation, send loop, and surface open-state. The send loop dispatches client tools through `hooks/useClientCoachToolRunners.ts` (the registry-typed runner map) instead of a switch, and exposes a single `applyArtifact(artifact)` that routes by `artifact.type` to the confirm-only handlers.
   - `hooks/useProposeWorkout.ts` keeps the constrained workout-proposal tool registered while dynamically loading the planner only when it executes.
   - `ui/SummonSurface.tsx` — the bottom-sheet command surface (opened by `PresenceMark`).
-  - `ui/ArtifactRenderer.tsx` + `ui/artifacts/*` — inline artifact renderers (`VolumeChartArtifact`, `WorkoutDraftArtifact`).
+  - `ui/ArtifactRenderer.tsx` + `ui/artifacts/*` — the **artifact registry** (`Record<CoachArtifact["type"], renderer>`, a missing renderer is a compile error) and inline artifact renderers (`VolumeChartArtifact`, `WorkoutDraftArtifact`). Artifact UI calls `applyArtifact(artifact)`; it never names an apply handler.
 - Agent/runtime layer:
   - `agent/contracts.ts` for typed message, tool, `ScreenContext`, and `CoachArtifact` contracts
   - `agent/screenContext.ts` for the read-only screen-context type + client assembler + prompt formatter
   - `agent/transport.ts` for frontend request boundary (sends `screenContext`)
-  - `agent/tools.ts` for tool definitions and client execution
-  - `agent/runtime.ts` for server-side AI SDK tool loop (injects `ScreenContext`, emits artifacts)
+  - `agent/tools.ts` for the **Coach tool registry** (`coachToolRegistry`): the single env-free spine of `CoachToolDescriptor`s. `as const satisfies Record<CoachToolName, …>` makes a missing tool a compile error and single-sources the execution environment (no separate execution map). Also exports `ClientCoachToolName` / `CoachClientToolRunners`.
+  - `agent/runtime.ts` for the server-side AI SDK tool loop: builds the tool set by iterating the registry, attaching `execute` only to server tools via the `coachServerExecutors` map (injects `ScreenContext`, emits artifacts).
+  - Tool registry seam (see CONTEXT.md "Coach tool registry"): adding a Coach tool is one registry entry + one pure builder (client) or one `coachServerExecutors` entry (server) + (if it draws something) one artifact-registry entry; the compiler flags any omission.
 - Data:
   - `data/guidanceRepository.ts`
+  - `data/toolBuilders.ts` — pure client-tool builders (`buildProgramDraft`, `buildProgramEdit`, `buildActiveWorkoutEdit`, `buildProgramContextMessage`, `buildExerciseDraft`); validated input + injected catalog/program/workout deps → `CoachToolResultPayload` (or throws). The unit-test surface for client Coach tools (`toolBuilders.test.ts`). No React/Supabase.
   - `data/llmPreferences.ts`
 
 Current Coach architecture:
@@ -351,7 +353,7 @@ If you touch any of those, read the full file first. They are coordination seams
 - `goals` and `rpg` are still placeholders.
 - Some fitness UI is still more stateful than ideal.
 - `README.md` and `docs/plan.md` may lag implementation details after large refactors.
-- Test coverage is an early foundation only: Vitest covers three pure data seams (fitness recommendations, guidance proactive gates, analytics volume progress). Most domains, hooks, and UI have no tests.
+- Test coverage is an early foundation only: Vitest covers four pure data seams (fitness recommendations, guidance proactive gates, guidance tool builders, analytics volume progress). Most domains, hooks, and UI have no tests.
 - Accepted Dependabot advisories (do not re-chase): after `npm audit fix`, ~14 remain, all dev-only or non-exploitable in the shipped browser bundle, none fixable without a breaking change:
   - **`@vercel/node` chain** (`tar`, `undici`, `tsx`, `path-to-regexp`, `@vercel/nft`, `@mapbox/node-pre-gyp`, `ajv`, `@vercel/static-config`): a serverless-build toolchain pulled in solely for the two type imports in `api/coach.ts`. Even `@vercel/node@5` still ships these vulnerable transitives, so the only fix is dropping the package — deliberately kept for deploy stability / standard typing.
   - **`esbuild`/`vite`**: the esbuild advisory affects only the dev server (`npm run dev`); fix is a `vite` 5→7 major (PWA/swc-plugin compat risk), deferred to its own pass.

@@ -11,6 +11,7 @@ import type { Database } from "../../../lib/integrations/supabase/types.js";
 import { createLlmModel } from "../../../lib/llm/llmClient.js";
 import { coachPrompts } from "../../../lib/prompts/coachPrompts.js";
 import {
+  coachToolNames,
   createCoachAssistantMessage,
   createCoachErrorResponse,
   createCoachToolCallMessage,
@@ -19,13 +20,12 @@ import {
   type CoachAgentRequest,
   type CoachAgentResponse,
   type CoachConversationMessage,
-  type CoachToolExecutionEnvironment,
   type CoachToolName,
   type CoachToolResultPayload,
   type CoachArtifact,
 } from "./contracts.js";
 import { formatScreenContextForPrompt } from "./screenContext.js";
-import { coachToolDefinitions } from "./tools.js";
+import { coachToolRegistry } from "./tools.js";
 import {
   buildVolumeProgressDisplayData,
   getCurrentWeekRange,
@@ -223,168 +223,154 @@ const createServerToolPayload = (
   message,
 });
 
-const createCoachAgentTools = (context: CoachServerDataContext) => ({
-  propose_workout: tool({
-    description: coachToolDefinitions.propose_workout.description,
-    inputSchema: coachToolDefinitions.propose_workout.inputSchema,
-  }),
-  get_program_context: tool({
-    description: coachToolDefinitions.get_program_context.description,
-    inputSchema: coachToolDefinitions.get_program_context.inputSchema,
-  }),
-  propose_program: tool({
-    description: coachToolDefinitions.propose_program.description,
-    inputSchema: coachToolDefinitions.propose_program.inputSchema,
-  }),
-  propose_program_edit: tool({
-    description: coachToolDefinitions.propose_program_edit.description,
-    inputSchema: coachToolDefinitions.propose_program_edit.inputSchema,
-  }),
-  propose_active_workout_edit: tool({
-    description: coachToolDefinitions.propose_active_workout_edit.description,
-    inputSchema: coachToolDefinitions.propose_active_workout_edit.inputSchema,
-  }),
-  get_recent_workout_summary: tool({
-    description: coachToolDefinitions.get_recent_workout_summary.description,
-    inputSchema: coachToolDefinitions.get_recent_workout_summary.inputSchema,
-    execute: async ({ limit }) => {
-      if (!context.supabase || !context.user) {
-        return createServerToolPayload(
-          "The user is not authenticated, so recent workout history is unavailable."
-        );
-      }
+type CoachServerExecutor = (
+  input: Record<string, unknown>,
+  context: CoachServerDataContext
+) => Promise<CoachToolResultPayload>;
 
-      const { data, error } = await context.supabase.rpc(
-        "get_recent_workouts_summary",
-        {
-          p_limit: limit,
-          p_user_id: context.user.id,
-        }
-      );
-
-      if (error) {
-        return createServerToolPayload(
-          `Recent workout history could not be loaded: ${error.message}`
-        );
-      }
-
-      const workouts = ((data ?? []) as RecentWorkoutSummaryRow[]).map(
-        workout => ({
-          ...workout,
-          exercise_names: Array.isArray(workout.exercise_names)
-            ? workout.exercise_names
-            : [],
-        })
-      );
-
-      return createServerToolPayload(formatRecentWorkoutSummary(workouts), {
-        workouts,
-      });
-    },
-  }),
-  get_user_profile_summary: tool({
-    description: coachToolDefinitions.get_user_profile_summary.description,
-    inputSchema: coachToolDefinitions.get_user_profile_summary.inputSchema,
-    execute: async () => {
-      if (!context.supabase || !context.user) {
-        return createServerToolPayload(
-          "The user is not authenticated, so profile data is unavailable."
-        );
-      }
-
-      const { data, error } = await context.supabase
-        .from("profiles")
-        .select(
-          "age, focus, height, preferred_distance_unit, preferred_height_unit, preferred_weight_unit, weight, experience_level, training_age_years"
-        )
-        .eq("id", context.user.id)
-        .maybeSingle();
-
-      if (error) {
-        return createServerToolPayload(
-          `Profile data could not be loaded: ${error.message}`
-        );
-      }
-
-      if (!data) {
-        return createServerToolPayload("The user has not completed a profile yet.");
-      }
-
-      const { data: factRows } = await context.supabase
-        .from("user_facts")
-        .select("category, content")
-        .eq("user_id", context.user.id)
-        .eq("status", "active");
-
-      const facts = (factRows ?? []) as { category: string; content: string }[];
-
+// Server-executed Coach tools: each fetches via Supabase, then shapes the
+// result with the pure helpers above. Client tools have no entry here — the
+// runtime emits a tool_call for them and the client runs the matching builder.
+const coachServerExecutors: Partial<Record<CoachToolName, CoachServerExecutor>> = {
+  get_recent_workout_summary: async (input, context) => {
+    const { limit } = coachToolRegistry.get_recent_workout_summary.inputSchema.parse(
+      input
+    ) as { limit: number };
+    if (!context.supabase || !context.user) {
       return createServerToolPayload(
-        `${formatProfileSummary(data)}${formatProfileFacts(facts)}`,
-        { profile: data, facts }
+        "The user is not authenticated, so recent workout history is unavailable."
       );
-    },
-  }),
-  get_training_volume: tool({
-    description: coachToolDefinitions.get_training_volume.description,
-    inputSchema: coachToolDefinitions.get_training_volume.inputSchema,
-    execute: async () => {
-      if (!context.supabase || !context.user) {
-        return createServerToolPayload(
-          "The user is not authenticated, so training volume is unavailable."
-        );
+    }
+
+    const { data, error } = await context.supabase.rpc(
+      "get_recent_workouts_summary",
+      {
+        p_limit: limit,
+        p_user_id: context.user.id,
       }
-      const range = getCurrentWeekRange();
-      const { data, error } = await context.supabase.rpc(
-        "fetch_weekly_archetype_sets_v2" as never,
-        {
-          p_user_id: context.user.id,
-          p_start_date: range.start,
-          p_end_date: range.end,
-        } as never
+    );
+
+    if (error) {
+      return createServerToolPayload(
+        `Recent workout history could not be loaded: ${error.message}`
       );
-      if (error) {
-        return createServerToolPayload(
-          `Training volume could not be loaded: ${error.message}`
-        );
-      }
-      const progress = buildVolumeProgressDisplayData(
-        (data ?? []) as WeeklyArchetypeSetRow[] as Parameters<typeof buildVolumeProgressDisplayData>[0]
+    }
+
+    const workouts = ((data ?? []) as RecentWorkoutSummaryRow[]).map(
+      workout => ({
+        ...workout,
+        exercise_names: Array.isArray(workout.exercise_names)
+          ? workout.exercise_names
+          : [],
+      })
+    );
+
+    return createServerToolPayload(formatRecentWorkoutSummary(workouts), {
+      workouts,
+    });
+  },
+  get_user_profile_summary: async (_input, context) => {
+    if (!context.supabase || !context.user) {
+      return createServerToolPayload(
+        "The user is not authenticated, so profile data is unavailable."
       );
-      const series = progress.map((point) => ({
-        label: point.name,
-        current: point.totalSets,
-        goal: point.goal,
-      }));
-      const summary =
-        series.length === 0
-          ? "No training volume recorded for the current week yet."
-          : series.map((p) => `${p.label}: ${p.current}/${p.goal} sets`).join("; ");
-      const artifact: CoachArtifact = {
-        type: "volume_chart",
-        title: "Volume · this week",
-        range: { start: range.start, end: range.end },
-        series,
-      };
-      return { message: summary, data: { series }, artifact };
-    },
-  }),
-});
+    }
+
+    const { data, error } = await context.supabase
+      .from("profiles")
+      .select(
+        "age, focus, height, preferred_distance_unit, preferred_height_unit, preferred_weight_unit, weight, experience_level, training_age_years"
+      )
+      .eq("id", context.user.id)
+      .maybeSingle();
+
+    if (error) {
+      return createServerToolPayload(
+        `Profile data could not be loaded: ${error.message}`
+      );
+    }
+
+    if (!data) {
+      return createServerToolPayload("The user has not completed a profile yet.");
+    }
+
+    const { data: factRows } = await context.supabase
+      .from("user_facts")
+      .select("category, content")
+      .eq("user_id", context.user.id)
+      .eq("status", "active");
+
+    const facts = (factRows ?? []) as { category: string; content: string }[];
+
+    return createServerToolPayload(
+      `${formatProfileSummary(data)}${formatProfileFacts(facts)}`,
+      { profile: data, facts }
+    );
+  },
+  get_training_volume: async (_input, context) => {
+    if (!context.supabase || !context.user) {
+      return createServerToolPayload(
+        "The user is not authenticated, so training volume is unavailable."
+      );
+    }
+    const range = getCurrentWeekRange();
+    const { data, error } = await context.supabase.rpc(
+      "fetch_weekly_archetype_sets_v2" as never,
+      {
+        p_user_id: context.user.id,
+        p_start_date: range.start,
+        p_end_date: range.end,
+      } as never
+    );
+    if (error) {
+      return createServerToolPayload(
+        `Training volume could not be loaded: ${error.message}`
+      );
+    }
+    const progress = buildVolumeProgressDisplayData(
+      (data ?? []) as WeeklyArchetypeSetRow[] as Parameters<typeof buildVolumeProgressDisplayData>[0]
+    );
+    const series = progress.map((point) => ({
+      label: point.name,
+      current: point.totalSets,
+      goal: point.goal,
+    }));
+    const summary =
+      series.length === 0
+        ? "No training volume recorded for the current week yet."
+        : series.map((p) => `${p.label}: ${p.current}/${p.goal} sets`).join("; ");
+    const artifact: CoachArtifact = {
+      type: "volume_chart",
+      title: "Volume · this week",
+      range: { start: range.start, end: range.end },
+      series,
+    };
+    return { message: summary, data: { series }, artifact };
+  },
+};
+
+// Build the AI-SDK tool set by iterating the registry: every tool contributes
+// its description + schema; only server tools get an `execute`. Client tools
+// stay bare shells so the runtime bounces them to the client.
+const createCoachAgentTools = (context: CoachServerDataContext) => {
+  const entries = coachToolNames.map((name) => {
+    const descriptor = coachToolRegistry[name];
+    const execute = coachServerExecutors[name];
+    return [
+      name,
+      tool({
+        description: descriptor.description,
+        inputSchema: descriptor.inputSchema,
+        ...(execute
+          ? { execute: (input) => execute(input as Record<string, unknown>, context) }
+          : {}),
+      }),
+    ] as const;
+  });
+  return Object.fromEntries(entries) as Record<CoachToolName, ReturnType<typeof tool>>;
+};
 
 type CoachToolSet = ReturnType<typeof createCoachAgentTools>;
-
-const coachToolExecutionByName: Record<
-  CoachToolName,
-  CoachToolExecutionEnvironment
-> = {
-  propose_workout: "client",
-  get_recent_workout_summary: "server",
-  get_user_profile_summary: "server",
-  get_training_volume: "server",
-  get_program_context: "client",
-  propose_program: "client",
-  propose_program_edit: "client",
-  propose_active_workout_edit: "client",
-};
 
 const coachToolResultPayloadToModelOutput = (
   payload: CoachToolResultPayload,
@@ -580,12 +566,12 @@ const responseMessagesToCoachMessages = (
           typeof part.toolCallId === "string" &&
           typeof part.toolName === "string" &&
           isRecord(part.input) &&
-          part.toolName in coachToolExecutionByName
+          part.toolName in coachToolRegistry
         ) {
           messages.push(
             createCoachToolCallMessage({
               execution:
-                coachToolExecutionByName[part.toolName as CoachToolName],
+                coachToolRegistry[part.toolName as CoachToolName].execution,
               input: part.input,
               toolCallId: part.toolCallId,
               toolName: part.toolName as CoachToolName,
@@ -604,7 +590,7 @@ const responseMessagesToCoachMessages = (
         part.type !== "tool-result" ||
         typeof part.toolCallId !== "string" ||
         typeof part.toolName !== "string" ||
-        !(part.toolName in coachToolExecutionByName)
+        !(part.toolName in coachToolRegistry)
       ) {
         continue;
       }
@@ -612,7 +598,7 @@ const responseMessagesToCoachMessages = (
       const { isError, payload } = parseToolResultPayload(part.output);
       messages.push(
         createCoachToolResultMessage({
-          execution: coachToolExecutionByName[part.toolName as CoachToolName],
+          execution: coachToolRegistry[part.toolName as CoachToolName].execution,
           isError,
           output: payload,
           toolCallId: part.toolCallId,
