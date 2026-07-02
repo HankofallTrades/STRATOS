@@ -3,7 +3,6 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { toast } from "@/hooks/use-toast";
 import { useAppDispatch, useAppSelector } from "@/hooks/redux";
-import { addWorkoutToHistory } from "@/state/history/historySlice";
 import { useAuth } from "@/state/auth/AuthProvider";
 import {
   clearWorkout,
@@ -11,12 +10,8 @@ import {
   selectWorkoutOwnerUserId,
 } from "@/state/workout/workoutSlice";
 
-import { getQueuedWorkouts, removeQueuedWorkout } from "../data/offlineQueue";
-import { saveWorkoutToDb } from "../data/fitnessRepository";
-import {
-  buildCompletedWorkoutForHistory,
-  isLikelyNetworkError,
-} from "../data/workoutPersistence";
+import { getQueuedWorkouts } from "../data/offlineQueue";
+import { commitFinalizedWorkout } from "../data/workoutCommit";
 import { invalidateWorkoutDependentQueries } from "../data/queryInvalidation";
 
 export const useOfflineWorkoutSync = () => {
@@ -65,31 +60,21 @@ export const useOfflineWorkoutSync = () => {
             break;
           }
 
-          try {
-            const { workoutId } = await saveWorkoutToDb(
-              user.id,
-              entry.workout,
-              entry.durationInSeconds,
-              entry.workoutType
-            );
+          const outcome = await commitFinalizedWorkout(
+            {
+              workout: entry.workout,
+              durationInSeconds: entry.durationInSeconds,
+              workoutType: entry.workoutType,
+            },
+            { userId: user.id, dispatch }
+          );
 
-            removeQueuedWorkout(entry.id);
-            dispatch(
-              addWorkoutToHistory(
-                buildCompletedWorkoutForHistory({
-                  ...entry.workout,
-                  id: workoutId,
-                })
-              )
-            );
+          if (outcome.status === "saved") {
             syncedCount += 1;
-          } catch (error) {
-            console.error("Error syncing offline workout:", error);
-
-            if (isLikelyNetworkError(error)) {
-              break;
-            }
-
+          } else if (outcome.status === "queued") {
+            // Still offline: the entry stays queued untouched; stop the pass.
+            break;
+          } else {
             hadSyncFailure = true;
           }
         }

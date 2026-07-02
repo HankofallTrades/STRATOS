@@ -46,6 +46,16 @@ looks a tool up here instead of switching on its name. Typed as a `Record` over
 the registry's client tools, so a client tool without a runner is a compile
 error.
 
+## Workout commit
+
+Completing a workout crosses one interface: `commitFinalizedWorkout(snapshot,
+deps)` in `src/domains/fitness/data/workoutCommit.ts`, returning
+`saved | queued | failed`. It owns persist → offline-queue fallback → Redux
+history settle (history always carries the server id after a successful save).
+Online save (`useWorkoutPersistence`) and offline replay
+(`useOfflineWorkoutSync`) are the two adapters; they own only what genuinely
+differs — toasts, navigation, and cache-invalidation timing.
+
 ## Coach mutation / mutation registry
 
 A **Coach mutation** is a confirm-only change the Coach can make on the user's

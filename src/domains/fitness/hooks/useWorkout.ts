@@ -6,17 +6,11 @@ import {
     selectWarmupStartTime,
     clearWorkout,
 } from "@/state/workout/workoutSlice";
-import { addWorkoutToHistory } from "@/state/history/historySlice";
 import { toast } from "@/hooks/use-toast";
-import { saveWorkoutToDb } from '../data/fitnessRepository';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/state/auth/AuthProvider';
-import { enqueueWorkout } from '../data/offlineQueue';
-import {
-    buildCompletedWorkoutForHistory,
-    finalizeWorkout,
-    isLikelyNetworkError,
-} from '../data/workoutPersistence';
+import { commitFinalizedWorkout } from '../data/workoutCommit';
+import { finalizeWorkout } from '../data/workoutPersistence';
 import { invalidateWorkoutDependentQueries } from '../data/queryInvalidation';
 
 export const useWorkoutPersistence = () => {
@@ -50,72 +44,47 @@ export const useWorkoutPersistence = () => {
             return { success: false, reason: 'auth_error' };
         }
 
-        const endTime = Date.now();
-        const finalizedWorkout = finalizeWorkout({
+        const finalized = finalizeWorkout({
             workout: currentWorkout,
-            endTime,
+            endTime: Date.now(),
             workoutStartTime,
             warmupStartTime,
         });
-        const completedWorkoutForState = buildCompletedWorkoutForHistory(finalizedWorkout.workout);
 
-        try {
-            const { workoutId } = await saveWorkoutToDb(
-                user.id,
-                finalizedWorkout.workout,
-                finalizedWorkout.durationInSeconds,
-                finalizedWorkout.workoutType
-            );
-            dispatch(
-                addWorkoutToHistory(
-                    buildCompletedWorkoutForHistory({
-                        ...finalizedWorkout.workout,
-                        id: workoutId,
-                    })
-                )
-            );
+        const outcome = await commitFinalizedWorkout(finalized, {
+            userId: user.id,
+            dispatch,
+        });
+
+        if (outcome.status === "saved") {
             dispatch(clearWorkout());
             navigate('/', { replace: true });
             await invalidateWorkoutDependentQueries(queryClient, user.id);
-
             toast({
                 title: "Workout Saved",
                 description: "Your workout has been successfully saved to your profile.",
             });
             return { success: true };
-
-        } catch (error: unknown) {
-            console.error("Error saving workout:", error);
-
-            if (isLikelyNetworkError(error)) {
-                enqueueWorkout({
-                    id: finalizedWorkout.workout.id,
-                    userId: user.id,
-                    workout: finalizedWorkout.workout,
-                    durationInSeconds: finalizedWorkout.durationInSeconds,
-                    workoutType: finalizedWorkout.workoutType,
-                    queuedAt: Date.now(),
-                });
-
-                dispatch(addWorkoutToHistory(completedWorkoutForState));
-                dispatch(clearWorkout());
-                navigate('/', { replace: true });
-
-                toast({
-                    title: "Saved Offline",
-                    description: "Your workout is saved locally and will sync when you're back online.",
-                });
-                return { success: true, offline: true };
-            }
-
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            toast({
-                title: "Save Error",
-                description: `Failed to save workout: ${errorMessage}. Please try again.`,
-                variant: "destructive",
-            });
-            return { success: false, reason: 'error', error };
         }
+
+        if (outcome.status === "queued") {
+            dispatch(clearWorkout());
+            navigate('/', { replace: true });
+            toast({
+                title: "Saved Offline",
+                description: "Your workout is saved locally and will sync when you're back online.",
+            });
+            return { success: true, offline: true };
+        }
+
+        const errorMessage =
+            outcome.error instanceof Error ? outcome.error.message : 'Unknown error';
+        toast({
+            title: "Save Error",
+            description: `Failed to save workout: ${errorMessage}. Please try again.`,
+            variant: "destructive",
+        });
+        return { success: false, reason: 'error', error: outcome.error };
     };
 
     const discardWorkout = () => {

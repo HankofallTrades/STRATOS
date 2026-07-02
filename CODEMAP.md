@@ -7,7 +7,7 @@ This file is the fast operational map for agents and future sessions. It is not 
 - Architecture rename is complete: use `ui / hooks / data`, not `view / controller / model`.
 - `npm run build` passes.
 - `npm run lint` reports 8 warnings, no errors (`react-refresh/only-export-components` in shared providers/components — benign dev-HMR hints). The earlier 16 was this same set double-counted because `eslint .` was traversing the nested `.claude/worktrees/` checkout; `.claude` is now in the eslint `ignores`.
-- Unit tests run via Vitest (`npm test`, config in `vitest.config.ts`, node environment). The suites cover domain logic without React or live Supabase: fitness `recommendations`, guidance `proactiveGates`, guidance `toolBuilders` (client Coach tool logic), guidance `coachMutations` (apply/revert payload round-trip, repo mocked), analytics `volumeProgress`.
+- Unit tests run via Vitest (`npm test`, config in `vitest.config.ts`, node environment). The suites cover domain logic without React or live Supabase: fitness `recommendations`, fitness `workoutCommit` (persist/queue/history settle), guidance `proactiveGates`, guidance `toolBuilders` (client Coach tool logic), guidance `coachMutations` (apply/revert payload round-trip, repo mocked), analytics `volumeProgress`.
 - Do not run `npm run build` and `npm run lint` at the same time. Vite can create transient `vite.config.ts.timestamp-*.mjs` files that make ESLint fail with `ENOENT`.
 - Public routes do not load Redux persistence or the protected shell up front; `App.tsx` lazy-loads the protected app shell after route match.
 - Public auth routes are also lazy route chunks. `src/main.tsx` no longer mounts `AuthProvider` globally; auth boot now lives in the protected shell, so `/login` can render without pulling protected auth/state code into the entry bundle.
@@ -198,6 +198,7 @@ The workout flow is the main Redux-heavy area. Most other features should prefer
   - `hooks/useSingleExerciseLog.ts`
   - `hooks/useQuickActions.ts`
 - Persistence helpers:
+  - `data/workoutCommit.ts` — the **workout commit** seam: `commitFinalizedWorkout(snapshot, deps)` → `saved | queued | failed`. Owns persist → offline-queue fallback → Redux history settle (incl. the server-id swap). Online save (`useWorkout.ts`) and offline replay (`useOfflineWorkoutSync.ts`) both cross this one interface; the hooks keep only what differs (toasts, navigation, invalidation timing). Unit-tested in `workoutCommit.test.ts` (repo + queue mocked).
   - `data/offlineQueue.ts` stores queued workout saves in local storage
   - `data/queryInvalidation.ts` scopes post-save cache invalidation to workout-dependent queries instead of invalidating the entire React Query cache
   - `data/workoutPersistence.ts` finalizes completed workout snapshots and history shaping
@@ -355,7 +356,7 @@ If you touch any of those, read the full file first. They are coordination seams
 - `goals` and `rpg` are still placeholders.
 - Some fitness UI is still more stateful than ideal.
 - `README.md` and `docs/plan.md` may lag implementation details after large refactors.
-- Test coverage is an early foundation only: Vitest covers five data seams (fitness recommendations, guidance proactive gates, guidance tool builders, guidance coach mutations, analytics volume progress). Most domains, hooks, and UI have no tests.
+- Test coverage is an early foundation only: Vitest covers six data seams (fitness recommendations, fitness workout commit, guidance proactive gates, guidance tool builders, guidance coach mutations, analytics volume progress). Most domains, hooks, and UI have no tests.
 - Accepted Dependabot advisories (do not re-chase): after `npm audit fix`, ~14 remain, all dev-only or non-exploitable in the shipped browser bundle, none fixable without a breaking change:
   - **`@vercel/node` chain** (`tar`, `undici`, `tsx`, `path-to-regexp`, `@vercel/nft`, `@mapbox/node-pre-gyp`, `ajv`, `@vercel/static-config`): a serverless-build toolchain pulled in solely for the two type imports in `api/coach.ts`. Even `@vercel/node@5` still ships these vulnerable transitives, so the only fix is dropping the package — deliberately kept for deploy stability / standard typing.
   - **`esbuild`/`vite`**: the esbuild advisory affects only the dev server (`npm run dev`); fix is a `vite` 5→7 major (PWA/swc-plugin compat risk), deferred to its own pass.
