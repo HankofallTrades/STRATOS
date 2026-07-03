@@ -310,6 +310,21 @@ export const fetchExerciseMuscleGroupMappings = async (): Promise<ExerciseMuscle
     return data as ExerciseMuscleGroupMapping;
 };
 
+export const fetchExercisePrimaryMuscleMap = async (): Promise<ExerciseMuscleGroupMapping> => {
+    const { data, error } = await supabase.rpc('get_exercise_primary_muscle_map' as never);
+
+    if (error) {
+        console.error('Error fetching primary muscle map from RPC:', error);
+        throw new Error(`Failed to fetch primary muscle map: ${error.message}`);
+    }
+
+    if (!data) {
+        return {};
+    }
+
+    return data as ExerciseMuscleGroupMapping;
+};
+
 /**
  * Creates a new custom exercise.
  */

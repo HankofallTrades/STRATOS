@@ -1,6 +1,7 @@
 import {
     fetchExercises,
     fetchExerciseMuscleGroupMappings,
+    fetchExercisePrimaryMuscleMap,
     fetchMovementArchetypes as fetchFitnessMovementArchetypes,
     type ExerciseMuscleGroupMapping,
 } from '@/domains/fitness/data/fitnessRepository';
@@ -18,6 +19,11 @@ export const fetchGuidanceExercises = async (): Promise<Exercise[]> => {
 export const fetchGuidanceExerciseMuscleGroupMappings =
     async (): Promise<ExerciseMuscleGroupMapping> => {
         return fetchExerciseMuscleGroupMappings();
+    };
+
+export const fetchGuidancePrimaryMuscleMap =
+    async (): Promise<ExerciseMuscleGroupMapping> => {
+        return fetchExercisePrimaryMuscleMap();
     };
 
 /**
