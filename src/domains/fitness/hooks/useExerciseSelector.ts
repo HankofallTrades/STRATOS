@@ -34,7 +34,7 @@ export const useExerciseSelector = (isOpen: boolean, selectionOptions?: Exercise
     // When setting category to mobility/stability, default the timed toggle to true
     const setNewExerciseCategory = useCallback((category: ExerciseCategory | null) => {
         setNewExerciseCategoryRaw(category);
-        if (category === 'mobility' || category === 'stability') {
+        if (category === 'mobility' || category === 'stability' || category === 'breathwork') {
             setIsStaticNewExercise(true);
         }
     }, []);

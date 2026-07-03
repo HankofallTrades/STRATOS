@@ -1,7 +1,7 @@
 /**
  * Organizational category for exercises (filtering/display only, doesn't affect set structure)
  */
-export type ExerciseCategory = 'weights' | 'calisthenics' | 'cardio' | 'mobility' | 'stability';
+export type ExerciseCategory = 'weights' | 'calisthenics' | 'cardio' | 'mobility' | 'stability' | 'breathwork';
 
 /**
  * Represents the core definition of an exercise, mirroring the Supabase 'exercises' table.
