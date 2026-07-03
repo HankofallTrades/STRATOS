@@ -104,6 +104,9 @@ const ProteinLogging = lazyWithRetry(
 const SunExposureLogging = lazyWithRetry(
   () => import("@/domains/fitness/ui/SunExposureLogging")
 );
+const BreathworkDialog = lazyWithRetry(
+  () => import("@/domains/breathwork/ui/BreathworkDialog")
+);
 const Home = lazyWithRetry(() => import("@/pages/Home"));
 const Workout = lazyWithRetry(() => import("@/pages/Workout"));
 const Analytics = lazyWithRetry(() => import("@/pages/Analytics"));
@@ -121,13 +124,16 @@ const MainAppLayout = () => {
     isAddExerciseDialogOpen,
     isProteinModalOpen,
     isSunExposureModalOpen,
+    isBreathworkModalOpen,
     setIsAddExerciseDialogOpen,
     setIsProteinModalOpen,
     setIsSunExposureModalOpen,
+    setIsBreathworkModalOpen,
     handleAddWorkout,
     handleAddExercise,
     handleLogProtein,
     handleLogSunExposure,
+    handleBreathwork,
   } = useQuickActions();
 
   return (
@@ -158,6 +164,7 @@ const MainAppLayout = () => {
               onLogSingleExercise: handleAddExercise,
               onLogProtein: handleLogProtein,
               onLogSunExposure: handleLogSunExposure,
+              onBreathwork: handleBreathwork,
             }}
           />
 
@@ -179,6 +186,15 @@ const MainAppLayout = () => {
               isOpen={isSunExposureModalOpen}
               onClose={() => setIsSunExposureModalOpen(false)}
               userId={userId}
+            />
+          </Suspense>
+        ) : null}
+
+        {isBreathworkModalOpen ? (
+          <Suspense fallback={<div className="sr-only">Loading breathwork dialog</div>}>
+            <BreathworkDialog
+              isOpen={isBreathworkModalOpen}
+              onClose={() => setIsBreathworkModalOpen(false)}
             />
           </Suspense>
         ) : null}
