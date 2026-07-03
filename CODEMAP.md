@@ -7,7 +7,7 @@ This file is the fast operational map for agents and future sessions. It is not 
 - Architecture rename is complete: use `ui / hooks / data`, not `view / controller / model`.
 - `npm run build` passes.
 - `npm run lint` reports 8 warnings, no errors (`react-refresh/only-export-components` in shared providers/components — benign dev-HMR hints). The earlier 16 was this same set double-counted because `eslint .` was traversing the nested `.claude/worktrees/` checkout; `.claude` is now in the eslint `ignores`.
-- Unit tests run via Vitest (`npm test`, config in `vitest.config.ts`, node environment). The suites cover domain logic without React or live Supabase: fitness `recommendations`, fitness `workoutCommit` (persist/queue/history settle), guidance `proactiveGates`, guidance `toolBuilders` (client Coach tool logic), guidance `coachMutations` (apply/revert payload round-trip, repo mocked), dashboard `homeModel` (home-screen derivation), analytics `volumeProgress`.
+- Unit tests run via Vitest (`npm test`, config in `vitest.config.ts`, node environment). The suites cover domain logic without React or live Supabase: fitness `recommendations`, fitness `workoutCommit` (persist/queue/history settle), guidance `proactiveGates`, guidance `toolBuilders` (client Coach tool logic), guidance `coachMutations` (apply/revert payload round-trip, repo mocked), dashboard `homeModel` (home-screen derivation), analytics `volumeProgress`, breathwork `protocols` (step timeline/early-exit rule) and `logging` (workout-exercise build + catalog resolution).
 - Do not run `npm run build` and `npm run lint` at the same time. Vite can create transient `vite.config.ts.timestamp-*.mjs` files that make ESLint fail with `ENOENT`.
 - Public routes do not load Redux persistence or the protected shell up front; `App.tsx` lazy-loads the protected app shell after route match.
 - Public auth routes are also lazy route chunks. `src/main.tsx` no longer mounts `AuthProvider` globally; auth boot now lives in the protected shell, so `/login` can render without pulling protected auth/state code into the entry bundle.
@@ -213,6 +213,22 @@ The workout flow is the main Redux-heavy area. Most other features should prefer
 
 This is still the most complex domain and the main place where UI, Redux, and React Query intersect.
 
+### `src/domains/breathwork`
+
+- Purpose: guided breathwork (box, 4-7-8, coherent, breath-rounds) that logs into the workout/session primitive rather than a parallel system.
+- Pure logic (the unit-test surface):
+  - `data/protocols.ts` — protocol data (`BREATHWORK_PROTOCOLS`) plus the step-timeline helpers `buildSteps`/`totalUnits`/`completedUnits`/`shouldSaveEarlyExit`. No React/Supabase.
+  - `data/logging.ts` — `findBreathworkExercise` (catalog lookup, prefers the global row over a user copy) and `buildBreathworkWorkoutExercise` (one completed time-only `WorkoutExercise`).
+- Hooks:
+  - `hooks/useBreathworkSession.ts` — the timer engine: a `Date.now()`-anchored state machine over `protocols.ts` steps (`idle / running / paused / retention / done`), tab-suspend-safe.
+  - `hooks/useBreathworkLogging.ts` — routes a finished session by context: dispatches `addExerciseToWorkout` when a workout is active, otherwise calls `saveSingleExerciseLog`. Neither the session hook nor the UI owns persistence directly.
+- UI:
+  - `ui/BreathworkDialog.tsx` — full-screen picker → player → done flow (default export, lazy-loaded).
+  - `ui/BreathPacer.tsx`, `ui/ProtocolPicker.tsx`.
+- Entry points: the summon-surface `Breathe` chip (`SummonSurfaceQuickActions.onBreathwork`, wired in `MainAppLayout`) and a quiet `Breathwork` control in the active-workout footer (`WorkoutScreen.tsx`, local dialog state — no new route).
+- Catalog dependency: relies on four seeded `exercise_category = 'breathwork'` rows (migration `20260703090000_add_breathwork_exercises.sql`). If unapplied, the player still runs; logging surfaces a toast and does not save.
+- See `docs/superpowers/specs/2026-07-03-breathwork-module-design.md`.
+
 ### `src/domains/analytics`
 
 - Purpose: progress charts, benchmarks, recovery/wellness overview, recent workouts.
@@ -349,6 +365,7 @@ If you touch any of those, read the full file first. They are coordination seams
   - living profile: `user_facts` table (free-text Coach context per user); `profiles` extended with `experience_level` and `training_age_years` background columns.
   - coach acting layer: `mesocycles.protocol` CHECK extended with `coach`; `coach_change_log` table (RLS owner-only) for applied Coach mutations + revert payloads.
   - access role: `profiles.role` (`user`/`developer`/`admin`, default `user`). A `profiles_guard_role` BEFORE UPDATE trigger silently reverts role changes made by the `authenticated` PostgREST role, so users cannot self-grant; only privileged connections (dashboard/service_role) set it. Gates dev-only UI via `useIsDeveloper` (`src/domains/account/hooks/useIsDeveloper.ts`).
+  - breathwork: `exercises.exercise_category` CHECK extended with `breathwork`; migration `20260703090000_add_breathwork_exercises.sql` seeds four global exercise rows. **Shipped but not applied to the linked project as part of this change** — apply via Supabase CLI/MCP after review.
 - Migration history is reconciled: local `supabase/migrations` version prefixes now match the remote `schema_migrations` table exactly, and `user_provider_credentials` (dead since BYOK keys moved to localStorage) was dropped via migration `20260614065001`.
 - Migrations applied via the Supabase MCP `apply_migration` get an MCP-assigned timestamp version, not the local filename's version. To keep history aligned, after applying via MCP, rename the local migration file to the version MCP recorded (check `schema_migrations`). Drift is what previously broke `db push`.
 - Local `src/lib/integrations/supabase/types.ts` is hand-maintained and still lists the dropped `user_provider_credentials` table; regenerate it (e.g. `supabase gen types typescript --linked`) to remove the stale entry.
