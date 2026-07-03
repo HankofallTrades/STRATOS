@@ -15,20 +15,16 @@ import {
   selectCurrentWorkout,
   startWorkout as startWorkoutAction,
 } from "@/state/workout/workoutSlice";
+import { fetchHomeDashboardSnapshot } from "@/domains/dashboard/data/homeDashboard";
 import {
-  calculateStreak,
-  estimateSessionMinutes,
-  fetchHomeDashboardSnapshot,
-  formatEstimatedSessionLabel,
+  buildHomeModel,
   formatLocalIsoDate,
-  formatSessionFocusLabel,
-  greetingFromHour,
-  inferSessionLabel,
-  isGenericSessionName,
-  summarizeRecentPr,
-  summarizeRecentWorkout,
-} from "@/domains/dashboard/data/homeDashboard";
+} from "@/domains/dashboard/data/homeModel";
 
+// Orchestration only: gather the five sources (auth, redux workout,
+// periodization, habits, snapshot query), feed them to the pure
+// buildHomeModel, and keep the effects and handlers. All display derivation
+// lives in data/homeModel.ts.
 export const useHomeDashboard = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
@@ -36,7 +32,7 @@ export const useHomeDashboard = () => {
   const currentWorkout = useAppSelector(selectCurrentWorkout);
 
   const userId = user?.id;
-  const now = new Date();
+  const hour = new Date().getHours();
   const todayIso = useMemo(() => formatLocalIsoDate(new Date()), []);
 
   const { activeProgram } = usePeriodization(userId);
@@ -48,147 +44,71 @@ export const useHomeDashboard = () => {
     isLoading: isLoadingCompletions,
   } = useHabitCompletions(userId, todayIso);
 
-  const movementHabit = useMemo(
-    () => habits.find(habit => habit.title.toLowerCase() === "movement") ?? null,
-    [habits]
-  );
-  const meditationHabit = useMemo(
-    () => habits.find(habit => habit.title.toLowerCase() === "meditation") ?? null,
-    [habits]
-  );
-  const writingHabit = useMemo(
-    () => habits.find(habit => habit.title.toLowerCase() === "writing") ?? null,
+  const movementHabitId = useMemo(
+    () =>
+      habits.find(habit => habit.title.toLowerCase() === "movement")?.id ?? null,
     [habits]
   );
 
   const { data: dashboardSnapshot, isLoading: isLoadingDashboardSnapshot } = useQuery({
-    queryKey: ["homeDashboardSnapshot", userId, movementHabit?.id ?? null],
+    queryKey: ["homeDashboardSnapshot", userId, movementHabitId],
     queryFn: async () => {
       if (!userId) return null;
-      return fetchHomeDashboardSnapshot(userId, movementHabit?.id ?? null);
+      return fetchHomeDashboardSnapshot(userId, movementHabitId);
     },
     enabled: !!userId,
     staleTime: 60 * 1000,
   });
 
-  const profile = dashboardSnapshot?.profile ?? null;
-  const recentWorkouts = useMemo(
-    () => dashboardSnapshot?.recentWorkouts ?? [],
-    [dashboardSnapshot?.recentWorkouts]
-  );
-  const recentPrRows = useMemo(
-    () => dashboardSnapshot?.recentPrRows ?? [],
-    [dashboardSnapshot?.recentPrRows]
-  );
-  const movementCompletionDates = useMemo(
-    () => dashboardSnapshot?.movementCompletionDates ?? [],
-    [dashboardSnapshot?.movementCompletionDates]
-  );
+  const userMetadataName =
+    (user?.user_metadata?.first_name as string | undefined) ??
+    (user?.user_metadata?.full_name as string | undefined) ??
+    null;
+  const userEmail = user?.email ?? null;
 
-  const lastSession = recentWorkouts[0] ?? null;
-  const workoutLoggedToday = Boolean(
-    lastSession && formatLocalIsoDate(new Date(lastSession.workout_created_at)) === todayIso
-  );
-  const workoutStartedToday = !!currentWorkout && currentWorkout.date.slice(0, 10) === todayIso;
-  const workoutMovementDone = workoutStartedToday || workoutLoggedToday;
-
-  const movementStreak = useMemo(() => {
-    if (!movementHabit?.id || !userId) {
-      return 0;
-    }
-
-    return calculateStreak(movementCompletionDates, todayIso, workoutMovementDone);
-  }, [
-    movementCompletionDates,
-    movementHabit?.id,
-    todayIso,
-    userId,
-    workoutMovementDone,
-  ]);
-
-  const nextSession = useMemo(() => {
-    if (!activeProgram) return null;
-    const startableSessions = activeProgram.sessions.filter(
-      session => session.exercises.length > 0
-    );
-
-    return (
-      startableSessions.find(
-        session => session.id === activeProgram.next_session_id
-      ) ??
-      startableSessions[0] ??
-      null
-    );
-  }, [activeProgram]);
-
-  const todayWorkoutExerciseNames = useMemo(
+  const model = useMemo(
     () =>
-      (nextSession?.exercises ?? [])
-        .map(item => item.exercise?.name)
-        .filter((value): value is string => !!value),
-    [nextSession]
+      buildHomeModel({
+        todayIso,
+        hour,
+        profile: dashboardSnapshot?.profile ?? null,
+        userMetadataName,
+        userEmail,
+        recentWorkouts: dashboardSnapshot?.recentWorkouts ?? [],
+        recentPrRows: dashboardSnapshot?.recentPrRows ?? [],
+        movementCompletionDates: dashboardSnapshot?.movementCompletionDates ?? [],
+        isLoadingSnapshot: isLoadingDashboardSnapshot,
+        habits,
+        completions,
+        pendingIds,
+        isLoadingCompletions,
+        activeProgram: activeProgram ?? null,
+        currentWorkout,
+      }),
+    [
+      activeProgram,
+      completions,
+      currentWorkout,
+      dashboardSnapshot,
+      habits,
+      hour,
+      isLoadingCompletions,
+      isLoadingDashboardSnapshot,
+      pendingIds,
+      todayIso,
+      userEmail,
+      userMetadataName,
+    ]
   );
 
-  const todayExerciseCount = nextSession?.exercises.length ?? 0;
-  const todayEstimatedMinutes = estimateSessionMinutes(
-    todayExerciseCount,
-    activeProgram?.mesocycle.protocol
-  );
-  const hasGenericSessionName = isGenericSessionName(nextSession?.name);
-  const todayFocusLabel = activeProgram
-    ? formatSessionFocusLabel(activeProgram.mesocycle.goal_focus)
-    : null;
-
-  const todayWorkoutTitle = useMemo(() => {
-    if (nextSession?.name && !hasGenericSessionName) return nextSession.name;
-    if (todayWorkoutExerciseNames.length > 0) return inferSessionLabel(todayWorkoutExerciseNames);
-    if (!activeProgram) return "Today's Session";
-    return `${formatSessionFocusLabel(activeProgram.mesocycle.goal_focus)} Session`;
-  }, [activeProgram, hasGenericSessionName, nextSession?.name, todayWorkoutExerciseNames]);
-
-  const todayWorkoutDetail = useMemo(() => {
-    if (!nextSession) return "Ready when you are";
-
-    const parts: string[] = [];
-
-    if (hasGenericSessionName && todayFocusLabel && todayFocusLabel !== "Mixed") {
-      parts.push(`${todayFocusLabel} focus`);
-    }
-
-    parts.push(formatEstimatedSessionLabel(todayEstimatedMinutes));
-    return parts.join(" · ");
-  }, [hasGenericSessionName, nextSession, todayEstimatedMinutes, todayFocusLabel]);
-
-  const displayName = useMemo(() => {
-    const username = profile?.username?.trim();
-    if (username) return username;
-
-    const metadataName =
-      (user?.user_metadata?.first_name as string | undefined) ??
-      (user?.user_metadata?.full_name as string | undefined) ??
-      null;
-
-    if (metadataName) {
-      const first = metadataName.trim().split(/\s+/)[0];
-      if (first) return first;
-    }
-
-    const emailPrefix = user?.email?.split("@")[0];
-    return emailPrefix || "Athlete";
-  }, [profile?.username, user?.user_metadata, user?.email]);
-
-  const movementCompletionRecorded = movementHabit ? Boolean(completions[movementHabit.id]) : false;
-  const movementDone = movementCompletionRecorded || workoutMovementDone;
-  const meditationDone = meditationHabit ? Boolean(completions[meditationHabit.id]) : false;
-  const writingDone = writingHabit ? Boolean(completions[writingHabit.id]) : false;
-  const sessionActionLabel = workoutStartedToday ? "Resume Session" : "Begin Session";
+  const { movementHabit, nextSession } = model;
 
   const movementAutoSyncKeyRef = useRef("");
 
   useEffect(() => {
     if (!movementHabit?.id || !userId) return;
-    if (!workoutLoggedToday) return;
-    if (movementCompletionRecorded) return;
+    if (!model.workoutLoggedToday) return;
+    if (model.movementCompletionRecorded) return;
 
     const syncKey = `${userId}:${movementHabit.id}:${todayIso}`;
     if (movementAutoSyncKeyRef.current === syncKey) return;
@@ -196,70 +116,18 @@ export const useHomeDashboard = () => {
     movementAutoSyncKeyRef.current = syncKey;
     toggleCompletion(movementHabit.id, true);
   }, [
-    movementCompletionRecorded,
+    model.movementCompletionRecorded,
+    model.workoutLoggedToday,
     movementHabit?.id,
     toggleCompletion,
     todayIso,
     userId,
-    workoutLoggedToday,
   ]);
-
-  const recentPr = useMemo(
-    () => summarizeRecentPr(recentPrRows, profile?.preferred_weight_unit),
-    [recentPrRows, profile?.preferred_weight_unit]
-  );
-
-  const lastSessionSummary = useMemo(
-    () => summarizeRecentWorkout(lastSession),
-    [lastSession]
-  );
 
   const handleToggleHabit = (habitId: string | undefined, completed: boolean) => {
     if (!habitId || !userId) return;
     toggleCompletion(habitId, !completed);
   };
-
-  const habitItems = useMemo(
-    () => [
-      {
-        id: movementHabit?.id,
-        label: "Movement",
-        done: movementDone,
-        disabled:
-          isLoadingCompletions ||
-          !movementHabit ||
-          !!(movementHabit && pendingIds[movementHabit.id]),
-      },
-      {
-        id: meditationHabit?.id,
-        label: "Meditation",
-        done: meditationDone,
-        disabled:
-          isLoadingCompletions ||
-          !meditationHabit ||
-          !!(meditationHabit && pendingIds[meditationHabit.id]),
-      },
-      {
-        id: writingHabit?.id,
-        label: "Writing",
-        done: writingDone,
-        disabled:
-          isLoadingCompletions ||
-          !writingHabit ||
-          !!(writingHabit && pendingIds[writingHabit.id]),
-      },
-    ],
-    [
-      isLoadingCompletions,
-      meditationDone,
-      meditationHabit,
-      movementDone,
-      movementHabit,
-      pendingIds,
-      writingDone,
-      writingHabit,
-    ]
-  );
 
   const goToWorkout = async () => {
     if (currentWorkout) {
@@ -294,18 +162,17 @@ export const useHomeDashboard = () => {
   };
 
   return {
-    isLoadingLastSession: isLoadingDashboardSnapshot,
-    isLoadingRecentPr: isLoadingDashboardSnapshot,
-    displayName,
-    greeting: greetingFromHour(now.getHours()),
-    movementStreakLabel:
-      movementStreak > 0 ? `${movementStreak}-day streak` : "Start your streak today",
-    todayWorkoutTitle,
-    todayWorkoutDetail,
-    sessionActionLabel,
-    lastSessionSummary,
-    recentPr,
-    habitItems,
+    isLoadingLastSession: model.isLoadingLastSession,
+    isLoadingRecentPr: model.isLoadingRecentPr,
+    displayName: model.displayName,
+    greeting: model.greeting,
+    movementStreakLabel: model.movementStreakLabel,
+    todayWorkoutTitle: model.todayWorkoutTitle,
+    todayWorkoutDetail: model.todayWorkoutDetail,
+    sessionActionLabel: model.sessionActionLabel,
+    lastSessionSummary: model.lastSessionSummary,
+    recentPr: model.recentPr,
+    habitItems: model.habitItems,
     handleToggleHabit,
     goToWorkout,
   };

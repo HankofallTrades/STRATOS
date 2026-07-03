@@ -46,6 +46,16 @@ looks a tool up here instead of switching on its name. Typed as a `Record` over
 the registry's client tools, so a client tool without a runner is a compile
 error.
 
+## Home model
+
+Everything the home screen displays is derived by the pure
+`buildHomeModel(inputs)` in `src/domains/dashboard/data/homeModel.ts` —
+greeting, display name, today's-session card, movement streak, habit items,
+recent PR/workout summaries. `useHomeDashboard` only gathers the five sources
+(auth, redux workout, periodization, habits, snapshot query), feeds the model,
+and keeps effects and handlers. `data/homeDashboard.ts` is the I/O boundary
+(one batched snapshot fetch). Mirrors the analytics `volumeProgress.ts` seam.
+
 ## Workout commit
 
 Completing a workout crosses one interface: `commitFinalizedWorkout(snapshot,

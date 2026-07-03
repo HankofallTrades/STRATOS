@@ -7,7 +7,7 @@ This file is the fast operational map for agents and future sessions. It is not 
 - Architecture rename is complete: use `ui / hooks / data`, not `view / controller / model`.
 - `npm run build` passes.
 - `npm run lint` reports 8 warnings, no errors (`react-refresh/only-export-components` in shared providers/components — benign dev-HMR hints). The earlier 16 was this same set double-counted because `eslint .` was traversing the nested `.claude/worktrees/` checkout; `.claude` is now in the eslint `ignores`.
-- Unit tests run via Vitest (`npm test`, config in `vitest.config.ts`, node environment). The suites cover domain logic without React or live Supabase: fitness `recommendations`, fitness `workoutCommit` (persist/queue/history settle), guidance `proactiveGates`, guidance `toolBuilders` (client Coach tool logic), guidance `coachMutations` (apply/revert payload round-trip, repo mocked), analytics `volumeProgress`.
+- Unit tests run via Vitest (`npm test`, config in `vitest.config.ts`, node environment). The suites cover domain logic without React or live Supabase: fitness `recommendations`, fitness `workoutCommit` (persist/queue/history settle), guidance `proactiveGates`, guidance `toolBuilders` (client Coach tool logic), guidance `coachMutations` (apply/revert payload round-trip, repo mocked), dashboard `homeModel` (home-screen derivation), analytics `volumeProgress`.
 - Do not run `npm run build` and `npm run lint` at the same time. Vite can create transient `vite.config.ts.timestamp-*.mjs` files that make ESLint fail with `ENOENT`.
 - Public routes do not load Redux persistence or the protected shell up front; `App.tsx` lazy-loads the protected app shell after route match.
 - Public auth routes are also lazy route chunks. `src/main.tsx` no longer mounts `AuthProvider` globally; auth boot now lives in the protected shell, so `/login` can render without pulling protected auth/state code into the entry bundle.
@@ -159,9 +159,11 @@ The workout flow is the main Redux-heavy area. Most other features should prefer
 - Purpose: home/dashboard composition.
 - Main entry:
   - `ui/HomeDashboard.tsx`
-  - `hooks/useHomeDashboard.ts`
-- Pure dashboard derivations:
-  - `data/homeDashboard.ts`
+  - `hooks/useHomeDashboard.ts` — orchestration only: gathers the five sources (auth, redux workout, periodization, habits, snapshot query), feeds `buildHomeModel`, keeps effects + handlers.
+- Pure home model:
+  - `data/homeModel.ts` — `buildHomeModel(inputs) -> HomeModel` plus all label/streak/PR derivation helpers. No React/react-query/Redux/Supabase (repo imports are type-only); unit-tested in `homeModel.test.ts`. Mirrors the analytics `volumeProgress.ts` seam.
+- I/O boundary:
+  - `data/homeDashboard.ts` — `fetchHomeDashboardSnapshot` (batched profile/recent-workouts/PR-rows/completion-dates fetch) only.
 - Cross-domain coordinator:
   - pulls from account, analytics, habits, periodization, auth, and current workout state.
 
@@ -356,7 +358,7 @@ If you touch any of those, read the full file first. They are coordination seams
 - `goals` and `rpg` are still placeholders.
 - Some fitness UI is still more stateful than ideal.
 - `README.md` and `docs/plan.md` may lag implementation details after large refactors.
-- Test coverage is an early foundation only: Vitest covers six data seams (fitness recommendations, fitness workout commit, guidance proactive gates, guidance tool builders, guidance coach mutations, analytics volume progress). Most domains, hooks, and UI have no tests.
+- Test coverage is an early foundation only: Vitest covers seven data seams (fitness recommendations, fitness workout commit, guidance proactive gates, guidance tool builders, guidance coach mutations, dashboard home model, analytics volume progress). Most domains, hooks, and UI have no tests.
 - Accepted Dependabot advisories (do not re-chase): after `npm audit fix`, ~14 remain, all dev-only or non-exploitable in the shipped browser bundle, none fixable without a breaking change:
   - **`@vercel/node` chain** (`tar`, `undici`, `tsx`, `path-to-regexp`, `@vercel/nft`, `@mapbox/node-pre-gyp`, `ajv`, `@vercel/static-config`): a serverless-build toolchain pulled in solely for the two type imports in `api/coach.ts`. Even `@vercel/node@5` still ships these vulnerable transitives, so the only fix is dropping the package — deliberately kept for deploy stability / standard typing.
   - **`esbuild`/`vite`**: the esbuild advisory affects only the dev server (`npm run dev`); fix is a `vite` 5→7 major (PWA/swc-plugin compat risk), deferred to its own pass.
