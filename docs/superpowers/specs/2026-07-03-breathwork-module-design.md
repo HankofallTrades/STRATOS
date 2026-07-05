@@ -6,6 +6,43 @@ simple and beautiful". Assumptions are flagged inline — review before extendin
 
 Date: 2026-07-03
 
+## Revision — 2026-07-03: native-exercise integration
+
+First-pass feedback: the initial build felt un-integrated. Two symptoms, one
+root cause. (1) The catalogue showed no breathwork exercises, because the seed
+migration was never applied — so the feature looked broken. (2) A dedicated
+"Breathwork" button in the active-workout footer opened a full-screen takeover,
+a *second* entry point parallel to the normal add-exercise flow. Breathwork was
+adjacent to the session primitive, not part of it.
+
+Resolved by committing fully to the catalogue-exercise model already chosen
+below, and deleting the parallel path:
+
+- **The seed migration is applied to the linked project** (`fhkhpwoxedcytetcjnob`),
+  so the four protocols are real catalogue rows. This is the fix for the empty
+  catalogue — the DB-row approach was sound, just never turned on.
+- **Breathwork enters a session through the same `ExerciseSelector` as every
+  other exercise** (filter/search under the Breathwork category). There is no
+  longer a footer button; the `WorkoutScreen` breathwork dialog wiring is removed.
+- **A breathwork exercise renders a dedicated in-session card**
+  (`BreathworkExerciseCard`) instead of weight/reps inputs: it shows the protocol
+  name/intent, any completed runs as time chips, and a single "Breathe" button
+  that launches the pacer overlay. Each finished run is recorded as one completed
+  timed set on that exercise via the existing generic `replaceWorkoutExercise`
+  reducer — all breathwork logic stays in the breathwork domain (`applyBreathworkCompletion`),
+  no new redux surface.
+- **The pacer is shared, not duplicated.** `BreathworkRunner` owns a running
+  session (auto-start, pacer, pause/end) and calls `onDone` once when finished.
+  The standalone dialog and the in-session card both consume it; each decides
+  what "done" means (log + summary screen vs. write a set + close).
+- **The standalone Summon "Breathe" chip stays** — the one place a protocol
+  picker belongs, for breathing outside a planned session. During an active
+  workout it adds a breathwork exercise to the session (consistent with the card).
+
+The sections below describe the original design; where they mention a footer
+button or full-screen dialog as the in-session entry point, this revision
+supersedes them.
+
 ## Goal
 
 Give STRATOS a guided breathwork practice: a calm, full-screen pacer the user
