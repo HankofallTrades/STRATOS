@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import type { Exercise } from "@/lib/types/workout";
-import { buildBreathworkWorkoutExercise, findBreathworkExercise } from "./logging";
+import type { Exercise, WorkoutExercise } from "@/lib/types/workout";
+import {
+  applyBreathworkCompletion,
+  buildBreathworkWorkoutExercise,
+  findBreathworkExercise,
+} from "./logging";
 
 const globalBox: Exercise = {
   id: "ex-1",
@@ -38,5 +42,46 @@ describe("buildBreathworkWorkoutExercise", () => {
       time: { hours: 0, minutes: 3, seconds: 5 },
     });
     expect(entry.id).not.toBe(entry.sets[0].id);
+  });
+});
+
+const breathworkExercise = (
+  sets: WorkoutExercise["sets"]
+): WorkoutExercise => ({
+  id: "we-1",
+  exerciseId: "ex-1",
+  exercise: globalBox,
+  sets,
+});
+
+describe("applyBreathworkCompletion", () => {
+  it("fills the placeholder set added when the exercise enters the session", () => {
+    const before = breathworkExercise([
+      { id: "set-1", exerciseId: "ex-1", weight: 0, reps: null, time: { hours: 0, minutes: 0, seconds: 30 }, completed: false },
+    ]);
+    const after = applyBreathworkCompletion(before, 185);
+    expect(after.sets).toHaveLength(1);
+    expect(after.sets[0]).toMatchObject({
+      id: "set-1",
+      weight: 0,
+      reps: null,
+      completed: true,
+      time: { hours: 0, minutes: 3, seconds: 5 },
+    });
+  });
+
+  it("appends a new completed set when every set is already done", () => {
+    const before = breathworkExercise([
+      { id: "set-1", exerciseId: "ex-1", weight: 0, reps: null, time: { hours: 0, minutes: 3, seconds: 0 }, completed: true },
+    ]);
+    const after = applyBreathworkCompletion(before, 120);
+    expect(after.sets).toHaveLength(2);
+    expect(after.sets[0].id).toBe("set-1");
+    expect(after.sets[1]).toMatchObject({
+      exerciseId: "ex-1",
+      completed: true,
+      time: { hours: 0, minutes: 2, seconds: 0 },
+    });
+    expect(after.sets[1].id).not.toBe("set-1");
   });
 });

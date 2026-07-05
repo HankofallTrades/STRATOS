@@ -1,6 +1,5 @@
 import { Barbell } from "@phosphor-icons/react";
 import { ChevronDown } from "lucide-react";
-import { lazy, Suspense, useState } from "react";
 
 import { Button } from "@/components/core/button";
 import { Skeleton } from "@/components/core/skeleton";
@@ -34,8 +33,6 @@ import {
   sessionFocusOptions,
 } from "@/domains/fitness/data/workoutScreen";
 import { cn } from "@/lib/utils/cn";
-
-const BreathworkDialog = lazy(() => import("@/domains/breathwork/ui/BreathworkDialog"));
 
 const builderLabelClassName =
   "text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground";
@@ -84,9 +81,6 @@ const WorkoutScreen = () => {
     handleStartWarmup,
     handleStopWarmup,
   } = useWorkoutScreen();
-
-  const [isBreathworkOpen, setIsBreathworkOpen] = useState(false);
-
 
   if (!currentWorkout) {
     const usesProgramSessions = nextProgramSession !== null;
@@ -371,14 +365,7 @@ const WorkoutScreen = () => {
           <WorkoutComponent />
         </div>
 
-        <div className="mt-4 flex items-center justify-between border-t stone-seam pt-4">
-          <Button
-            onClick={() => setIsBreathworkOpen(true)}
-            variant="ghost"
-            className="app-tonal-control h-9 rounded-[14px] px-4 text-sm font-medium"
-          >
-            Breathwork
-          </Button>
+        <div className="mt-4 flex items-center justify-end border-t stone-seam pt-4">
           <Button
             onClick={handleEndWorkout}
             variant="ghost"
@@ -388,12 +375,6 @@ const WorkoutScreen = () => {
           </Button>
         </div>
       </div>
-
-      {isBreathworkOpen ? (
-        <Suspense fallback={<div className="sr-only">Loading breathwork dialog</div>}>
-          <BreathworkDialog isOpen={isBreathworkOpen} onClose={() => setIsBreathworkOpen(false)} />
-        </Suspense>
-      ) : null}
 
       <Dialog open={isDiscardConfirmOpen} onOpenChange={setIsDiscardConfirmOpen}>
         <DialogContent className="stone-panel w-[calc(100vw-2rem)] max-w-lg rounded-[24px] border-white/10">

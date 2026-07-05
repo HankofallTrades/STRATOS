@@ -143,3 +143,10 @@ export const shouldSaveEarlyExit = (
   steps: BreathStep[],
   nextStepIndex: number
 ): boolean => completedUnits(protocol, steps, nextStepIndex) >= 1;
+
+/** Resolve the protocol a catalogue breathwork exercise runs, by its exercise name. */
+export const protocolForExerciseName = (
+  exerciseName: string
+): BreathworkProtocol | null =>
+  BREATHWORK_PROTOCOLS.find((protocol) => protocol.exerciseName === exerciseName) ??
+  null;

@@ -4,6 +4,7 @@ import {
   BREATHWORK_PROTOCOLS,
   buildSteps,
   completedUnits,
+  protocolForExerciseName,
   shouldSaveEarlyExit,
   totalUnits,
   type PacedProtocol,
@@ -60,5 +61,18 @@ describe("completedUnits / shouldSaveEarlyExit", () => {
     const steps = buildSteps(rounds);
     expect(completedUnits(rounds, steps, 61)).toBe(0);
     expect(completedUnits(rounds, steps, 62)).toBe(1);
+  });
+});
+
+describe("protocolForExerciseName", () => {
+  it("maps each seeded catalogue name to its protocol", () => {
+    // Catalogue name differs from the pacer display name for 4-7-8.
+    expect(protocolForExerciseName("4-7-8 Breathing")?.id).toBe("four-seven-eight");
+    expect(protocolForExerciseName("Box Breathing")?.id).toBe("box");
+    expect(protocolForExerciseName("Breath Rounds")?.id).toBe("breath-rounds");
+  });
+
+  it("returns null for a non-breathwork or unknown exercise", () => {
+    expect(protocolForExerciseName("Bench Press")).toBeNull();
   });
 });

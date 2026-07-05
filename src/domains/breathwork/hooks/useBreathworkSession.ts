@@ -169,11 +169,18 @@ export const useBreathworkSession = (
   const step =
     status === "idle" || stepIndex >= steps.length ? null : steps[stepIndex];
 
+  // Count down in even whole-second ticks. Capping at round(seconds - 0.5) keeps
+  // a fractional phase (e.g. coherent's 5.5s) from flashing an extra top number
+  // for a split second — the leftover fraction is absorbed into the first tick,
+  // so a 5.5s inhale reads a calm "5, 4, 3, 2, 1" instead of a fast "6" then "5".
   const secondsLeft =
     step?.seconds != null
       ? Math.max(
           0,
-          Math.ceil((stepStartedAtRef.current + step.seconds * 1000 - now) / 1000)
+          Math.min(
+            Math.max(1, Math.round(step.seconds - 0.5)),
+            Math.ceil((stepStartedAtRef.current + step.seconds * 1000 - now) / 1000)
+          )
         )
       : 0;
 
