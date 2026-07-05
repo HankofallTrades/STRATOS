@@ -12,6 +12,9 @@ import {
   getUserWeight,
 } from "@/domains/fitness/data/fitnessRepository";
 
+import BreathworkExerciseCard from "@/domains/breathwork/ui/BreathworkExerciseCard";
+import { protocolForExerciseName } from "@/domains/breathwork/data/protocols";
+
 import ExerciseSelector from "./ExerciseSelector";
 import WorkoutExerciseContainer from "./WorkoutExerciseContainer";
 
@@ -54,6 +57,10 @@ const WorkoutExerciseRow = memo(({
     [exercise.exercise.id, variationsByExerciseId]
   );
 
+  const isBreathwork =
+    exercise.exercise.exercise_category === 'breathwork' &&
+    protocolForExerciseName(exercise.exercise.name) !== null;
+
   return (
     <motion.div
       className="[overflow-x:clip] [contain:paint]"
@@ -63,14 +70,18 @@ const WorkoutExerciseRow = memo(({
       exit={{ opacity: 0, height: 0, marginBottom: 0 }}
       transition={{ type: "spring", stiffness: 250, damping: 30 }}
     >
-      <WorkoutExerciseContainer
-        historicalSets={historyByLookupKey[historyKey] ?? null}
-        isLookupsLoading={isLookupDataLoading}
-        workoutExercise={exercise}
-        restStartTime={restStartTime}
-        userWeight={userWeightKg}
-        variations={variations}
-      />
+      {isBreathwork ? (
+        <BreathworkExerciseCard workoutExercise={exercise} />
+      ) : (
+        <WorkoutExerciseContainer
+          historicalSets={historyByLookupKey[historyKey] ?? null}
+          isLookupsLoading={isLookupDataLoading}
+          workoutExercise={exercise}
+          restStartTime={restStartTime}
+          userWeight={userWeightKg}
+          variations={variations}
+        />
+      )}
     </motion.div>
   );
 });

@@ -57,6 +57,7 @@ const CATEGORY_OPTIONS: { value: ExerciseCategory; label: string }[] = [
   { value: 'cardio', label: 'Cardio' },
   { value: 'mobility', label: 'Mobility' },
   { value: 'stability', label: 'Stability' },
+  { value: 'breathwork', label: 'Breathwork' },
 ];
 
 const CATEGORY_BADGE_STYLES: Record<ExerciseCategory, string> = {
@@ -65,6 +66,7 @@ const CATEGORY_BADGE_STYLES: Record<ExerciseCategory, string> = {
   cardio: 'bg-sky-500/10 text-sky-400/70',
   mobility: 'bg-emerald-500/10 text-emerald-400/70',
   stability: 'bg-violet-500/10 text-violet-400/70',
+  breathwork: 'bg-teal-500/10 text-teal-400/70',
 };
 
 const ExerciseSelector = ({

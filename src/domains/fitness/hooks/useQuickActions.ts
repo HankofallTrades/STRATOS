@@ -15,6 +15,7 @@ export const useQuickActions = () => {
   const [isAddExerciseDialogOpen, setIsAddExerciseDialogOpen] = useState(false);
   const [isProteinModalOpen, setIsProteinModalOpen] = useState(false);
   const [isSunExposureModalOpen, setIsSunExposureModalOpen] = useState(false);
+  const [isBreathworkModalOpen, setIsBreathworkModalOpen] = useState(false);
 
   const { data: latestSingleLogData } = useQuery({
     queryKey: ["latestSingleLog", user?.id],
@@ -43,18 +44,25 @@ export const useQuickActions = () => {
     setIsSunExposureModalOpen(true);
   };
 
+  const handleBreathwork = () => {
+    setIsBreathworkModalOpen(true);
+  };
+
   return {
     userId: user?.id ?? null,
     latestSingleLogData,
     isAddExerciseDialogOpen,
     isProteinModalOpen,
     isSunExposureModalOpen,
+    isBreathworkModalOpen,
     setIsAddExerciseDialogOpen,
     setIsProteinModalOpen,
     setIsSunExposureModalOpen,
+    setIsBreathworkModalOpen,
     handleAddWorkout,
     handleAddExercise,
     handleLogProtein,
     handleLogSunExposure,
+    handleBreathwork,
   };
 };

@@ -82,7 +82,6 @@ const WorkoutScreen = () => {
     handleStopWarmup,
   } = useWorkoutScreen();
 
-
   if (!currentWorkout) {
     const usesProgramSessions = nextProgramSession !== null;
 
@@ -366,7 +365,7 @@ const WorkoutScreen = () => {
           <WorkoutComponent />
         </div>
 
-        <div className="mt-4 flex justify-end border-t stone-seam pt-4">
+        <div className="mt-4 flex items-center justify-end border-t stone-seam pt-4">
           <Button
             onClick={handleEndWorkout}
             variant="ghost"

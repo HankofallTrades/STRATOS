@@ -26,6 +26,7 @@ export interface SummonSurfaceQuickActions {
   onLogSingleExercise: () => void;
   onLogProtein: () => void;
   onLogSunExposure: () => void;
+  onBreathwork: () => void;
 }
 
 const conversationStarters = [
@@ -66,6 +67,7 @@ const SummonSurface = ({
     { label: "Single exercise", onClick: quickActions.onLogSingleExercise },
     { label: "Protein", onClick: quickActions.onLogProtein },
     { label: "Sun", onClick: quickActions.onLogSunExposure },
+    { label: "Breathe", onClick: quickActions.onBreathwork },
   ];
 
   return (
