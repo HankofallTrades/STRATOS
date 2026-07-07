@@ -7,7 +7,7 @@ This file is the fast operational map for agents and future sessions. It is not 
 - Architecture rename is complete: use `ui / hooks / data`, not `view / controller / model`.
 - `npm run build` passes.
 - `npm run lint` reports 8 warnings, no errors (`react-refresh/only-export-components` in shared providers/components — benign dev-HMR hints). The earlier 16 was this same set double-counted because `eslint .` was traversing the nested `.claude/worktrees/` checkout; `.claude` is now in the eslint `ignores`.
-- Unit tests run via Vitest (`npm test`, config in `vitest.config.ts`, node environment). The suites cover domain logic without React or live Supabase: fitness `recommendations`, fitness `workoutCommit` (persist/queue/history settle), guidance `proactiveGates`, guidance `toolBuilders` (client Coach tool logic), guidance `coachMutations` (apply/revert payload round-trip, repo mocked), dashboard `homeModel` (home-screen derivation), analytics `volumeProgress`, breathwork `protocols` (step timeline/early-exit rule) and `logging` (workout-exercise build + catalog resolution).
+- Unit tests run via Vitest (`npm test`, config in `vitest.config.ts`, node environment). The suites cover domain logic without React or live Supabase: fitness `recommendations`, fitness `workoutCommit` (persist/queue/history settle), guidance `proactiveGates`, guidance `toolBuilders` (client Coach tool logic), guidance `coachMutations` (apply/revert payload round-trip, repo mocked), dashboard `homeModel` (home-screen derivation), analytics `volumeProgress`, breathwork `protocols` (step timeline/early-exit rule) and `logging` (workout-exercise build + catalog resolution), and workout state `workoutSlice` (`lastFinishedWorkoutId` set on save/`workoutFinished`, untouched by discard's `clearWorkout`).
 - Do not run `npm run build` and `npm run lint` at the same time. Vite can create transient `vite.config.ts.timestamp-*.mjs` files that make ESLint fail with `ENOENT`.
 - Public routes do not load Redux persistence or the protected shell up front; `App.tsx` lazy-loads the protected app shell after route match.
 - Public auth routes are also lazy route chunks. `src/main.tsx` no longer mounts `AuthProvider` globally; auth boot now lives in the protected shell, so `/login` can render without pulling protected auth/state code into the entry bundle.
@@ -119,7 +119,7 @@ Pages should stay thin wrappers around domain screens.
 
 - Redux store: `src/state/store.ts`
 - Slices:
-  - `workout`: active in-progress workout, persisted with the owning user id so workouts can survive refreshes without leaking across accounts
+  - `workout`: active in-progress workout, persisted with the owning user id so workouts can survive refreshes without leaking across accounts. Also tracks `lastFinishedWorkoutId`, set only by the `workoutFinished` action on a successful save (never on discard) — the proactive coach's "workout_finished" gate (`useProactiveEngine`) keys off this id instead of the generic active-workout edge, so discarding a session never fires the post-session "session logged" nudge.
   - `exercise`: persisted exercise metadata/helpers
   - `history`: persisted workout history, capped during serialization so local-storage hydration cost does not grow without bound
 

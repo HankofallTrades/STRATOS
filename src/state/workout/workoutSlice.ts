@@ -9,6 +9,10 @@ interface WorkoutState {
   ownerUserId: string | null;
   workoutStartTime: number | null; // Store start time as timestamp (ms)
   warmupStartTime: number | null;
+  // Id of the most recently *saved* workout. Set only on a successful save,
+  // never on discard, so consumers (e.g. the proactive coach) can trigger
+  // post-session behavior without mistaking a discard for a finished session.
+  lastFinishedWorkoutId: string | null;
 }
 
 interface StartWorkoutPayload {
@@ -26,6 +30,7 @@ const initialState: WorkoutState = {
   ownerUserId: null,
   workoutStartTime: null,
   warmupStartTime: null,
+  lastFinishedWorkoutId: null,
 };
 
 const workoutSlice = createSlice({
@@ -94,6 +99,9 @@ const workoutSlice = createSlice({
       state.ownerUserId = null;
       state.workoutStartTime = null;
       state.warmupStartTime = null;
+    },
+    workoutFinished(state, action: PayloadAction<string>) {
+      state.lastFinishedWorkoutId = action.payload;
     },
     startWarmup(state) {
       state.warmupStartTime = Date.now();
@@ -290,6 +298,7 @@ export const {
   setWorkoutNotes,
   endWorkout,
   clearWorkout,
+  workoutFinished,
   startWarmup,
   stopWarmup,
   addExerciseToWorkout,
@@ -310,6 +319,7 @@ export const selectCurrentWorkout = (state: RootState) => state.workout.currentW
 export const selectWorkoutOwnerUserId = (state: RootState) => state.workout.ownerUserId;
 export const selectWorkoutStartTime = (state: RootState) => state.workout.workoutStartTime;
 export const selectIsWorkoutActive = (state: RootState) => state.workout.currentWorkout !== null && !state.workout.currentWorkout.completed && state.workout.workoutStartTime !== null;
+export const selectLastFinishedWorkoutId = (state: RootState) => state.workout.lastFinishedWorkoutId;
 export const selectWorkoutType = (state: RootState) => state.workout.currentWorkout?.workout_type;
 export const selectSessionFocus = (state: RootState) => state.workout.currentWorkout?.session_focus;
 export const selectMesocycleProtocol = (state: RootState) => state.workout.currentWorkout?.mesocycle_protocol;

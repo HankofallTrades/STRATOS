@@ -22,10 +22,7 @@ import { getActiveMesocycleProgram } from "@/domains/periodization/data/reposito
 import { useAppSelector } from "@/hooks/redux";
 import { useAuth } from "@/state/auth/AuthProvider";
 import { selectWorkoutHistory } from "@/state/history/historySlice";
-import {
-  selectCurrentWorkout,
-  selectIsWorkoutActive,
-} from "@/state/workout/workoutSlice";
+import { selectLastFinishedWorkoutId } from "@/state/workout/workoutSlice";
 
 interface UseProactiveEngineParams {
   summon: () => void;
@@ -55,8 +52,7 @@ export const useProactiveEngine = ({
   const location = useLocation();
   const { user } = useAuth();
   const workoutHistory = useAppSelector(selectWorkoutHistory);
-  const isWorkoutActive = useAppSelector(selectIsWorkoutActive);
-  const currentWorkout = useAppSelector(selectCurrentWorkout);
+  const lastFinishedWorkoutId = useAppSelector(selectLastFinishedWorkoutId);
   const userId = user?.id ?? null;
 
   const [insights, setInsights] = useState<ProactiveInsight[]>([]);
@@ -136,21 +132,18 @@ export const useProactiveEngine = ({
     previousPathRef.current = location.pathname;
   }, [location.pathname, runGates]);
 
-  // Workout finished: true -> false edge of the active-workout flag.
-  const previousWorkoutRef = useRef<{ active: boolean; id: string | null }>({
-    active: isWorkoutActive,
-    id: currentWorkout?.id ?? null,
-  });
+  // Workout finished: fires once per distinct *saved* workout id. Discarded
+  // workouts never dispatch workoutFinished, so they never reach here.
+  const previousFinishedIdRef = useRef<string | null>(lastFinishedWorkoutId);
   useEffect(() => {
-    const previous = previousWorkoutRef.current;
-    if (previous.active && !isWorkoutActive && previous.id) {
-      void runGates("workout_finished", previous.id);
+    if (
+      lastFinishedWorkoutId &&
+      lastFinishedWorkoutId !== previousFinishedIdRef.current
+    ) {
+      void runGates("workout_finished", lastFinishedWorkoutId);
     }
-    previousWorkoutRef.current = {
-      active: isWorkoutActive,
-      id: currentWorkout?.id ?? null,
-    };
-  }, [isWorkoutActive, currentWorkout?.id, runGates]);
+    previousFinishedIdRef.current = lastFinishedWorkoutId;
+  }, [lastFinishedWorkoutId, runGates]);
 
   const engageInsight = useCallback(
     (insight: ProactiveInsight) => {

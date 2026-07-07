@@ -5,6 +5,7 @@ import {
     selectWorkoutStartTime,
     selectWarmupStartTime,
     clearWorkout,
+    workoutFinished,
 } from "@/state/workout/workoutSlice";
 import { toast } from "@/hooks/use-toast";
 import { useQueryClient } from '@tanstack/react-query';
@@ -57,6 +58,7 @@ export const useWorkoutPersistence = () => {
         });
 
         if (outcome.status === "saved") {
+            dispatch(workoutFinished(currentWorkout.id));
             dispatch(clearWorkout());
             navigate('/', { replace: true });
             await invalidateWorkoutDependentQueries(queryClient, user.id);
@@ -68,6 +70,7 @@ export const useWorkoutPersistence = () => {
         }
 
         if (outcome.status === "queued") {
+            dispatch(workoutFinished(currentWorkout.id));
             dispatch(clearWorkout());
             navigate('/', { replace: true });
             toast({
