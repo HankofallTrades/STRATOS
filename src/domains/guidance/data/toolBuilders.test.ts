@@ -5,6 +5,7 @@ import {
   buildProgramContextMessage,
   buildProgramDraft,
   buildProgramEdit,
+  formatCatalogByArchetype,
 } from "./toolBuilders";
 import type {
   ProposeActiveWorkoutEditInput,
@@ -231,5 +232,17 @@ describe("buildActiveWorkoutEdit", () => {
     expect(() =>
       buildActiveWorkoutEdit(input, { catalog: CATALOG, archetypeMap: ARCHETYPE_MAP, currentWorkout: null })
     ).toThrow(/no workout in progress/);
+  });
+});
+
+describe("formatCatalogByArchetype", () => {
+  it("groups archetype-less mobility and stability exercises by category", () => {
+    const catalog: Exercise[] = [
+      { id: "1", name: "Plank", exercise_type: "strength", exercise_category: "stability", archetype_id: null },
+      { id: "2", name: "Pigeon Pose", exercise_type: "strength", exercise_category: "mobility", archetype_id: null },
+    ];
+    const formatted = formatCatalogByArchetype(catalog, new Map());
+    expect(formatted).toContain("Mobility: Pigeon Pose");
+    expect(formatted).toContain("Stability: Plank");
   });
 });

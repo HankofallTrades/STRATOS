@@ -268,6 +268,7 @@ This is still the most complex domain and the main place where UI, Redux, and Re
 - Data:
   - `data/guidanceRepository.ts`
   - `data/toolBuilders.ts` — pure client-tool builders (`buildProgramDraft`, `buildProgramEdit`, `buildActiveWorkoutEdit`, `buildProgramContextMessage`, `buildExerciseDraft`); validated input + injected catalog/program/workout deps → `CoachToolResultPayload` (or throws). The unit-test surface for client Coach tools (`toolBuilders.test.ts`). No React/Supabase.
+  - `data/workoutCandidates.ts` — pure equipment/injury candidate filtering (`filterCandidateExercises`) + recovery mobility/stability selection (`selectRecoveryExercises`); unit-tested in `workoutCandidates.test.ts`. No React/Supabase.
   - `data/llmPreferences.ts`
 
 Current Coach architecture:
@@ -279,7 +280,7 @@ Current Coach architecture:
 - Supports BYOK hosted providers through `data/llmPreferences.ts`: OpenRouter, OpenAI, Anthropic, and Google.
 - Provider API keys are stored client-side in localStorage via `data/providerKeyStore.ts` and sent in each Coach request body. The server uses the key per-turn and never persists it.
 - Current tools:
-  - `propose_workout` (client) — builds a draft session honoring `ScreenContext` plus model-supplied constraints (`focus`, `durationMinutes`, `targetArchetypes`, `avoidArchetypes`; schema `proposeWorkoutInputSchema` in `agent/tools.ts`) and returns a `workout_draft` artifact; does NOT save. Constraints + a random tie-break in exercise selection mean identical asks vary instead of returning a fixed session. The artifact's Apply commits via the existing create-workout flow (`buildWorkoutPlan` → `commitWorkoutPlan` in `useWorkoutGenerator.ts`).
+  - `propose_workout` (client) — builds a draft session honoring `ScreenContext` plus model-supplied constraints (`focus`, `durationMinutes`, `targetArchetypes`, `avoidArchetypes`, `availableEquipment` for no-gym/home setups, `avoidMuscles` which excludes only PRIMARY-muscle matches so complementary work stays; `focus: recovery` builds a mobility/stability session; schema `proposeWorkoutInputSchema` in `agent/tools.ts`) and returns a `workout_draft` artifact; does NOT save. Constraints + a random tie-break in exercise selection mean identical asks vary instead of returning a fixed session. The artifact's Apply commits via the existing create-workout flow (`buildWorkoutPlan` → `commitWorkoutPlan` in `useWorkoutGenerator.ts`).
   - `get_training_volume` (server) — current-week archetype volume via the `fetch_weekly_archetype_sets_v2` RPC; returns a `volume_chart` artifact.
   - `get_user_profile_summary` (server) — also returns active `user_facts` and the background fields (`experience_level`, `training_age_years`).
   - `get_recent_workout_summary` (server)
@@ -366,6 +367,7 @@ If you touch any of those, read the full file first. They are coordination seams
   - periodization mesocycles
   - living profile: `user_facts` table (free-text Coach context per user); `profiles` extended with `experience_level` and `training_age_years` background columns.
   - coach acting layer: `mesocycles.protocol` CHECK extended with `coach`; `coach_change_log` table (RLS owner-only) for applied Coach mutations + revert payloads.
+  - exercise taxonomy v2: muscle roles (`primary`/`secondary`/`stabilizer`) on `exercise_muscle_groups`, `exercises.compatible_equipment text[]` (OR-semantics; empty = unknown), `get_exercise_primary_muscle_map` RPC, ~70-movement global catalog incl. mobility/stability categories (archetype NULL by rule for cardio/mobility/stability).
   - access role: `profiles.role` (`user`/`developer`/`admin`, default `user`). A `profiles_guard_role` BEFORE UPDATE trigger silently reverts role changes made by the `authenticated` PostgREST role, so users cannot self-grant; only privileged connections (dashboard/service_role) set it. Gates dev-only UI via `useIsDeveloper` (`src/domains/account/hooks/useIsDeveloper.ts`).
   - breathwork: `exercises.exercise_category` CHECK extended with `breathwork`; migration `20260703185237_add_breathwork_exercises.sql` seeds four global exercise rows. Applied to the linked project via MCP `apply_migration` (recorded version `20260703185237`; local filename renamed to match to keep `db push` aligned).
 - Migration history is reconciled: local `supabase/migrations` version prefixes now match the remote `schema_migrations` table exactly, and `user_provider_credentials` (dead since BYOK keys moved to localStorage) was dropped via migration `20260614065001`.

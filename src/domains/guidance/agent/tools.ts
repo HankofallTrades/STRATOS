@@ -37,11 +37,55 @@ const movementArchetypeInputSchema = z.enum([
   "twist",
 ]);
 
+export const equipmentNameInputSchema = z.enum([
+  "Barbell",
+  "Bodyweight",
+  "Cable",
+  "Dumbbell",
+  "Kettlebell",
+  "Landmine",
+  "Machine",
+  "Pull-up Bar",
+  "Swiss Ball",
+]);
+
+export const muscleNameInputSchema = z.enum([
+  "Adductors",
+  "Anterior Deltoid",
+  "Biceps Brachii",
+  "Calves",
+  "Core",
+  "Erector Spinae",
+  "Glutes",
+  "Grip/Forearms",
+  "Hamstrings",
+  "Hip Flexors",
+  "Hip Rotators",
+  "Lateral Deltoid",
+  "Latissimus Dorsi",
+  "Lower Trapezius",
+  "Middle Trapezius",
+  "Obliques",
+  "Pectoralis Major",
+  "Posterior Deltoid",
+  "Quadriceps",
+  "Rectus Abdominis",
+  "Rhomboids",
+  "Rotator Cuff",
+  "Serratus Anterior",
+  "Teres Major",
+  "Transverse Abdominis",
+  "Triceps Brachii",
+  "Upper Trapezius",
+]);
+
 export const proposeWorkoutInputSchema = z.object({
   focus: sessionFocusInputSchema.nullish(),
   durationMinutes: z.number().int().min(10).max(180).nullish(),
   targetArchetypes: z.array(movementArchetypeInputSchema).nullish(),
   avoidArchetypes: z.array(movementArchetypeInputSchema).nullish(),
+  availableEquipment: z.array(equipmentNameInputSchema).nullish(),
+  avoidMuscles: z.array(muscleNameInputSchema).nullish(),
 });
 export type ProposeWorkoutInput = z.infer<typeof proposeWorkoutInputSchema>;
 
@@ -143,7 +187,7 @@ export type ProposeActiveWorkoutEditInput = z.infer<
 export const coachToolRegistry = {
   propose_workout: {
     description:
-      "Build a draft training session and render it as a reviewable draft (does NOT save; the user applies it). Pass any constraints the user states: `focus` (e.g. hypertrophy, strength, recovery), `durationMinutes` for time available, `targetArchetypes` to emphasize specific movement patterns, and `avoidArchetypes` for sore/injured areas (map the body part to its movement archetypes, e.g. a cranky shoulder -> push_vertical/pull_vertical). Omit any field that wasn't stated; the draft still honors the user's program and weekly volume gaps.",
+      "Build a draft training session and render it as a reviewable draft (does NOT save; the user applies it). Pass any constraints the user states: `focus` (e.g. hypertrophy, strength, recovery — recovery builds a mobility/stability session), `durationMinutes` for time available, `targetArchetypes` to emphasize movement patterns, `avoidArchetypes` to skip whole patterns, `availableEquipment` when the user lacks a full gym (no gym at all -> [\"Bodyweight\"]; home setup -> what they own), and `avoidMuscles` for injuries — exercises whose PRIMARY muscles match are excluded while complementary/supporting work stays. Omit any field that wasn't stated; the draft still honors the user's program and weekly volume gaps.",
     execution: "client",
     inputSchema: proposeWorkoutInputSchema,
     label: "Propose Workout",

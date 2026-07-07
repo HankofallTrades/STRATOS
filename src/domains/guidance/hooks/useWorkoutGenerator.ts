@@ -18,8 +18,13 @@ import type {
 } from "@/domains/periodization";
 import {
   fetchGuidanceExercises,
+  fetchGuidancePrimaryMuscleMap,
   fetchMovementArchetypes,
 } from "@/domains/guidance/data/guidanceRepository";
+import {
+  filterCandidateExercises,
+  selectRecoveryExercises,
+} from "@/domains/guidance/data/workoutCandidates";
 import { buildExerciseDraft } from "@/domains/guidance/data/workoutDraft";
 import type { CoachToolResultPayload } from "@/domains/guidance/agent/contracts";
 import { proposeWorkoutInputSchema } from "@/domains/guidance/agent/tools";
@@ -85,6 +90,8 @@ export interface WorkoutConstraints {
   durationMinutes?: number | null;
   targetArchetypes?: string[] | null;
   avoidArchetypes?: string[] | null;
+  availableEquipment?: string[] | null;
+  avoidMuscles?: string[] | null;
 }
 
 export interface MovementArchetypeOption {
@@ -102,7 +109,7 @@ export interface GeneratedWorkoutSummary {
   };
   selectedExercises: string[];
   sessionFocus: SessionFocus;
-  source: "hybrid" | "periodized_template" | "volume_deficit";
+  source: "hybrid" | "periodized_template" | "recovery" | "volume_deficit";
   targetedArchetypes: string[];
   volumeFocus: Array<{
     archetype: string;
@@ -118,6 +125,7 @@ interface GenerateStrengthWorkoutParams {
   dispatch: AppDispatch;
   movementArchetypes: MovementArchetypeOption[];
   planningContext?: WorkoutGeneratorPlanningContext;
+  primaryMuscleMap?: Record<string, string[]>;
   userId: string | null;
   workoutHistory: Workout[];
 }
@@ -445,7 +453,9 @@ const buildGeneratorMessage = ({
     ? ` for week ${activeProgram.current_week} of ${activeProgram.mesocycle.name}`
     : "";
   const sourceLabel =
-    source === "periodized_template"
+    source === "recovery"
+      ? " focused on mobility and stability work"
+      : source === "periodized_template"
       ? ` using your programmed session${nextSession?.name ? ` (${nextSession.name})` : ""}`
       : source === "hybrid"
         ? " blending your programmed session with current volume gaps"
@@ -521,9 +531,53 @@ export const buildWorkoutPlan = async ({
   constraints,
   movementArchetypes,
   planningContext,
+  primaryMuscleMap = {},
   userId,
   workoutHistory,
 }: Omit<GenerateStrengthWorkoutParams, "dispatch">): Promise<WorkoutPlanResult> => {
+  if (constraints?.focus === "recovery") {
+    const recoveryExerciseCount =
+      constraints?.durationMinutes != null
+        ? Math.min(8, Math.max(2, Math.round(constraints.durationMinutes / 12)))
+        : DEFAULT_EXERCISE_COUNT_BY_FOCUS.recovery;
+    const recoveryExercises = selectRecoveryExercises(
+      baseExercises,
+      recoveryExerciseCount,
+      constraints,
+      primaryMuscleMap
+    );
+    if (recoveryExercises.length === 0) {
+      throw new Error(
+        "No mobility or stability exercises match the constraints."
+      );
+    }
+    const initialExercises = recoveryExercises.map(buildExerciseDraft);
+    const selectedExerciseNames = initialExercises.map(
+      exercise => exercise.exercise.name
+    );
+    const summary: GeneratedWorkoutSummary = {
+      message: buildGeneratorMessage({
+        selectedExercises: selectedExerciseNames,
+        sessionFocus: "recovery",
+        source: "recovery",
+        targetedArchetypes: [],
+      }),
+      selectedExercises: selectedExerciseNames,
+      sessionFocus: "recovery",
+      source: "recovery",
+      targetedArchetypes: [],
+      volumeFocus: [],
+    };
+    return {
+      summary,
+      startWorkoutPayload: {
+        initialExercises,
+        ownerUserId: userId,
+        sessionFocus: "recovery",
+      },
+    };
+  }
+
   const archetypeMap = new Map(
     movementArchetypes.map(archetype => [archetype.id, archetype.name])
   );
@@ -535,8 +589,18 @@ export const buildWorkoutPlan = async ({
     throw new Error("Exercise data with archetypes is not available.");
   }
 
+  const constrainedExercises = filterCandidateExercises(
+    exercisesWithArchetypes,
+    constraints ?? {},
+    primaryMuscleMap
+  );
+
+  if (constrainedExercises.length === 0) {
+    throw new Error("No exercises match the equipment/injury constraints.");
+  }
+
   const exerciseMap = new Map(
-    exercisesWithArchetypes.map(exercise => [exercise.id, exercise])
+    constrainedExercises.map(exercise => [exercise.id, exercise])
   );
   const activeProgram = planningContext?.activeProgram ?? null;
   const nextSession = getNextSession(activeProgram);
@@ -578,7 +642,7 @@ export const buildWorkoutPlan = async ({
 
   const avoidedExerciseIds =
     avoidArchetypes.size > 0
-      ? exercisesWithArchetypes
+      ? constrainedExercises
           .filter(exercise => {
             const archetype = getArchetypeName(exercise, archetypeMap);
             return archetype ? avoidArchetypes.has(archetype) : false;
@@ -640,7 +704,7 @@ export const buildWorkoutPlan = async ({
     alreadyCoveredArchetypes: coveredArchetypes,
     alreadySelectedExerciseIds: selectedExerciseIds,
     archetypeMap,
-    availableExercises: exercisesWithArchetypes,
+    availableExercises: constrainedExercises,
     excludeExerciseIds,
     priorityTargets,
     targetExerciseCount: Math.max(0, targetExerciseCount - templateExerciseCount),
@@ -750,10 +814,18 @@ export const createWorkoutProposal = async ({
         durationMinutes: parsedInput.data.durationMinutes,
         targetArchetypes: parsedInput.data.targetArchetypes,
         avoidArchetypes: parsedInput.data.avoidArchetypes,
+        availableEquipment: parsedInput.data.availableEquipment,
+        avoidMuscles: parsedInput.data.avoidMuscles,
       }
     : {};
   const weekRange = getCurrentWeekRange();
-  const [baseExercises, movementArchetypes, activeProgram, weeklyArchetypeSets] =
+  const [
+    baseExercises,
+    movementArchetypes,
+    primaryMuscleMap,
+    activeProgram,
+    weeklyArchetypeSets,
+  ] =
     await Promise.all([
       queryClient.ensureQueryData({
         queryKey: ["exercises"],
@@ -763,6 +835,11 @@ export const createWorkoutProposal = async ({
       queryClient.ensureQueryData({
         queryKey: ["movementArchetypes"],
         queryFn: fetchMovementArchetypes,
+        staleTime: Infinity,
+      }),
+      queryClient.ensureQueryData({
+        queryKey: ["exercisePrimaryMuscleMap"],
+        queryFn: fetchGuidancePrimaryMuscleMap,
         staleTime: Infinity,
       }),
       userId
@@ -795,6 +872,7 @@ export const createWorkoutProposal = async ({
       activeProgram,
       volumeProgress: buildVolumeProgressDisplayData(weeklyArchetypeSets),
     },
+    primaryMuscleMap,
     userId,
     workoutHistory,
   });

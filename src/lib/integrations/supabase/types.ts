@@ -174,16 +174,19 @@ export type Database = {
           created_at: string | null
           exercise_id: string
           muscle_definition_id: string
+          role: string
         }
         Insert: {
           created_at?: string | null
           exercise_id: string
           muscle_definition_id: string
+          role?: string
         }
         Update: {
           created_at?: string | null
           exercise_id?: string
           muscle_definition_id?: string
+          role?: string
         }
         Relationships: [
           {
@@ -284,6 +287,7 @@ export type Database = {
       exercises: {
         Row: {
           archetype_id: string | null
+          compatible_equipment: string[]
           created_at: string | null
           created_by_user_id: string | null
           default_equipment_type: string | null
@@ -296,6 +300,7 @@ export type Database = {
         }
         Insert: {
           archetype_id?: string | null
+          compatible_equipment?: string[]
           created_at?: string | null
           created_by_user_id?: string | null
           default_equipment_type?: string | null
@@ -308,6 +313,7 @@ export type Database = {
         }
         Update: {
           archetype_id?: string | null
+          compatible_equipment?: string[]
           created_at?: string | null
           created_by_user_id?: string | null
           default_equipment_type?: string | null

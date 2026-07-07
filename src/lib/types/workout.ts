@@ -16,6 +16,7 @@ export interface Exercise {
   created_by_user_id?: string | null;
   muscle_groups?: string[];
   is_static?: boolean | null;
+  compatible_equipment?: string[] | null;
 }
 
 /**

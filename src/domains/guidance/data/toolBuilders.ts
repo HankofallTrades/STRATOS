@@ -54,6 +54,13 @@ const findExerciseByName = (
 const strengthCatalog = (catalog: Exercise[]): Exercise[] =>
   catalog.filter((exercise) => exercise.exercise_type !== "cardio");
 
+const categoryLabel = (category?: string | null): string | null => {
+  if (!category || category === "weights" || category === "calisthenics") {
+    return null;
+  }
+  return category.charAt(0).toUpperCase() + category.slice(1);
+};
+
 export const formatCatalogByArchetype = (
   catalog: Exercise[],
   archetypeMap: Map<string, string>
@@ -62,6 +69,7 @@ export const formatCatalogByArchetype = (
   for (const exercise of strengthCatalog(catalog)) {
     const archetype =
       (exercise.archetype_id && archetypeMap.get(exercise.archetype_id)) ||
+      categoryLabel(exercise.exercise_category) ||
       "Other";
     grouped.set(archetype, [...(grouped.get(archetype) ?? []), exercise.name]);
   }
