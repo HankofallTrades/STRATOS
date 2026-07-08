@@ -6,7 +6,10 @@ import {
 } from "@/domains/dashboard/data/homeModel";
 import type { RecentWorkoutSummary } from "@/domains/analytics/data/analyticsRepository";
 import type { HabitRow } from "@/domains/habits/data/types";
-import type { ActiveMesocycleProgram } from "@/domains/periodization";
+import type {
+  ActiveMesocycleProgram,
+  ActiveMesocycleSummary,
+} from "@/domains/periodization";
 import type { Workout } from "@/lib/types/workout";
 
 const TODAY = "2026-07-02";
@@ -24,11 +27,13 @@ const baseInputs: HomeModelInputs = {
   recentPrRows: [],
   movementCompletionDates: [],
   isLoadingSnapshot: false,
+  isLoadingProgramSummary: false,
   habits: [],
   completions: {},
   pendingIds: {},
   isLoadingCompletions: false,
   activeProgram: null,
+  activeProgramSummary: null,
   currentWorkout: null,
 };
 
@@ -53,6 +58,24 @@ const workoutToday = (createdAt: string): RecentWorkoutSummary =>
     exercise_names: ["Bench Press"],
     duration_seconds: 1800,
   }) as unknown as RecentWorkoutSummary;
+
+const programSummary = (
+  overrides: Partial<ActiveMesocycleSummary>
+): ActiveMesocycleSummary =>
+  ({
+    current_week: 8,
+    last_completed_session_id: null,
+    mesocycle: {
+      goal_focus: "mixed",
+      protocol: "custom",
+    },
+    next_session_exercise_count: 2,
+    next_session_exercise_names: ["Squat", "Barbell Row"],
+    next_session_focus: "mixed",
+    next_session_id: "s1",
+    next_session_name: "Workout A",
+    ...overrides,
+  }) as ActiveMesocycleSummary;
 
 describe("displayName fallback chain", () => {
   it("profile username wins over metadata and email", () => {
@@ -116,6 +139,26 @@ describe("today's session card", () => {
     const model = buildHomeModel(baseInputs);
     expect(model.todayWorkoutTitle).toBe("Today's Session");
     expect(model.todayWorkoutDetail).toBe("Ready when you are");
+  });
+
+  it("uses a lightweight program summary while the full session template is still loading", () => {
+    const model = buildHomeModel({
+      ...baseInputs,
+      activeProgramSummary: programSummary({}),
+    });
+
+    expect(model.todayWorkoutTitle).toBe("Full Body");
+    expect(model.todayWorkoutDetail).toBe("About 31 min");
+    expect(model.nextSession).toBeNull();
+  });
+
+  it("keeps the workout card in a loading state while the program summary is pending", () => {
+    const model = buildHomeModel({
+      ...baseInputs,
+      isLoadingProgramSummary: true,
+    });
+
+    expect(model.isLoadingTodayWorkout).toBe(true);
   });
 
   it("picks the next_session_id session, skipping sessions with no exercises", () => {

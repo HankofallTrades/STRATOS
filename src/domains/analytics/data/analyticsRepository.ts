@@ -304,9 +304,8 @@ export const fetchCompletedWeightedSetsForPr = async (
 
 export const fetchRecentCompletedWeightedSetsForPr = async (
     userId: string,
-    workoutLimit: number = 12
+    recentWorkouts: RecentWorkoutSummary[]
 ): Promise<CompletedWeightedSetForPr[]> => {
-    const recentWorkouts = await fetchRecentWorkoutsSummary(userId, workoutLimit);
     const workoutIds = recentWorkouts
         .map(workout => workout.workout_id)
         .filter(workoutId => workoutId !== "unknown-id");

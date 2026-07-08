@@ -1,9 +1,9 @@
 import { Component, Suspense, lazy, type ReactNode } from "react";
-import AppScreenSkeleton from "@/components/loading/AppScreenSkeleton";
 import { Routes, Route, useLocation, Navigate } from "react-router-dom";
 import NavBar from "@/components/layout/NavBar";
 import BottomNav from "@/components/layout/BottomNav";
 import { Button } from "@/components/core/button";
+import { RouteSkeleton } from "@/components/loading/RouteSkeletons";
 import SummonSurface from "@/domains/guidance/ui/SummonSurface";
 import PresencePeek from "@/domains/guidance/ui/PresencePeek";
 import { PresenceAgentProvider } from "@/domains/guidance/hooks/PresenceAgentProvider";
@@ -28,7 +28,7 @@ const lazyWithRetry = <TModule extends { default: React.ComponentType<unknown> }
   });
 
 class RouteErrorBoundary extends Component<
-  { children: ReactNode; resetKey: string },
+  { children: ReactNode; pathname: string; resetKey: string },
   { hasError: boolean; retryNonce: number; autoRetryAttempted: boolean }
 > {
   state = {
@@ -42,7 +42,9 @@ class RouteErrorBoundary extends Component<
     return { hasError: true };
   }
 
-  componentDidUpdate(prevProps: Readonly<{ children: ReactNode; resetKey: string }>) {
+  componentDidUpdate(
+    prevProps: Readonly<{ children: ReactNode; pathname: string; resetKey: string }>
+  ) {
     if (this.state.hasError && prevProps.resetKey !== this.props.resetKey) {
       this.setState({
         autoReloadScheduled: false,
@@ -71,7 +73,7 @@ class RouteErrorBoundary extends Component<
         hasError: this.state.hasError,
       })
     ) {
-      return <AppScreenSkeleton />;
+      return <RouteSkeleton pathname={this.props.pathname} />;
     }
 
     if (this.state.hasError) {
@@ -143,8 +145,8 @@ const MainAppLayout = () => {
         <NavBar />
       </div>
       <SidebarInset className="app-shell">
-        <RouteErrorBoundary resetKey={location.key}>
-          <Suspense fallback={<AppScreenSkeleton />}>
+        <RouteErrorBoundary pathname={location.pathname} resetKey={location.key}>
+          <Suspense fallback={<RouteSkeleton pathname={location.pathname} />}>
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/workout" element={<Workout />} />

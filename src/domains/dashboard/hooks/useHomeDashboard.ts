@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 
 import { buildExercisesFromSessionTemplate } from "@/domains/fitness/data/workoutScreen";
 import {
@@ -8,7 +8,14 @@ import {
   createProgramWorkoutStartPayload,
 } from "@/domains/fitness/data/workoutStartPayload";
 import { useTriad, useHabitCompletions } from "@/domains/habits";
-import { usePeriodization } from "@/domains/periodization";
+import {
+  fetchActiveMesocycleSummary,
+  getActiveMesocycleProgram,
+} from "@/domains/periodization/data/repository";
+import type {
+  ActiveMesocycleProgram,
+  MesocycleSessionTemplate,
+} from "@/domains/periodization";
 import { useAppDispatch, useAppSelector } from "@/hooks/redux";
 import { useAuth } from "@/state/auth/AuthProvider";
 import {
@@ -28,6 +35,7 @@ import {
 export const useHomeDashboard = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const currentWorkout = useAppSelector(selectCurrentWorkout);
 
@@ -35,7 +43,6 @@ export const useHomeDashboard = () => {
   const hour = new Date().getHours();
   const todayIso = useMemo(() => formatLocalIsoDate(new Date()), []);
 
-  const { activeProgram } = usePeriodization(userId);
   const { habits } = useTriad(userId);
   const {
     completions,
@@ -51,10 +58,22 @@ export const useHomeDashboard = () => {
   );
 
   const { data: dashboardSnapshot, isLoading: isLoadingDashboardSnapshot } = useQuery({
-    queryKey: ["homeDashboardSnapshot", userId, movementHabitId],
+    queryKey: ["homeDashboardSnapshot", userId],
     queryFn: async () => {
       if (!userId) return null;
-      return fetchHomeDashboardSnapshot(userId, movementHabitId);
+      return fetchHomeDashboardSnapshot(userId);
+    },
+    enabled: !!userId,
+    staleTime: 60 * 1000,
+  });
+  const {
+    data: activeProgramSummary,
+    isLoading: isLoadingProgramSummary,
+  } = useQuery({
+    queryKey: ["activeMesocycleSummary", userId],
+    queryFn: async () => {
+      if (!userId) return null;
+      return fetchActiveMesocycleSummary(userId);
     },
     enabled: !!userId,
     staleTime: 60 * 1000,
@@ -78,15 +97,17 @@ export const useHomeDashboard = () => {
         recentPrRows: dashboardSnapshot?.recentPrRows ?? [],
         movementCompletionDates: dashboardSnapshot?.movementCompletionDates ?? [],
         isLoadingSnapshot: isLoadingDashboardSnapshot,
+        isLoadingProgramSummary,
         habits,
         completions,
         pendingIds,
         isLoadingCompletions,
-        activeProgram: activeProgram ?? null,
+        activeProgram: null,
+        activeProgramSummary: activeProgramSummary ?? null,
         currentWorkout,
       }),
     [
-      activeProgram,
+      activeProgramSummary,
       completions,
       currentWorkout,
       dashboardSnapshot,
@@ -94,6 +115,7 @@ export const useHomeDashboard = () => {
       hour,
       isLoadingCompletions,
       isLoadingDashboardSnapshot,
+      isLoadingProgramSummary,
       pendingIds,
       todayIso,
       userEmail,
@@ -101,7 +123,7 @@ export const useHomeDashboard = () => {
     ]
   );
 
-  const { movementHabit, nextSession } = model;
+  const { movementHabit } = model;
 
   const movementAutoSyncKeyRef = useRef("");
 
@@ -135,7 +157,14 @@ export const useHomeDashboard = () => {
       return;
     }
 
-    if (nextSession && activeProgram) {
+    const startableProgram = await loadStartableProgram({
+      activeProgramSummary: activeProgramSummary ?? null,
+      queryClient,
+      userId,
+    });
+
+    if (startableProgram) {
+      const { activeProgram, nextSession } = startableProgram;
       dispatch(
         startWorkoutAction(
           createProgramWorkoutStartPayload({
@@ -154,7 +183,7 @@ export const useHomeDashboard = () => {
       startWorkoutAction(
         createBaseWorkoutStartPayload({
           ownerUserId: user?.id ?? null,
-          sessionFocus: activeProgram?.mesocycle.goal_focus,
+          sessionFocus: activeProgramSummary?.mesocycle.goal_focus,
         })
       )
     );
@@ -163,6 +192,7 @@ export const useHomeDashboard = () => {
 
   return {
     isLoadingLastSession: model.isLoadingLastSession,
+    isLoadingTodayWorkout: model.isLoadingTodayWorkout,
     isLoadingRecentPr: model.isLoadingRecentPr,
     displayName: model.displayName,
     greeting: model.greeting,
@@ -176,4 +206,52 @@ export const useHomeDashboard = () => {
     handleToggleHabit,
     goToWorkout,
   };
+};
+
+const findStartableProgramSession = (
+  activeProgram: ActiveMesocycleProgram
+): MesocycleSessionTemplate | null => {
+  const templatedSessions = activeProgram.sessions.filter(
+    session => session.exercises.length > 0
+  );
+
+  return (
+    templatedSessions.find(
+      session => session.id === activeProgram.next_session_id
+    ) ??
+    templatedSessions[0] ??
+    null
+  );
+};
+
+const loadStartableProgram = async ({
+  activeProgramSummary,
+  queryClient,
+  userId,
+}: {
+  activeProgramSummary: Awaited<ReturnType<typeof fetchActiveMesocycleSummary>>;
+  queryClient: QueryClient;
+  userId: string | undefined;
+}): Promise<{
+  activeProgram: ActiveMesocycleProgram;
+  nextSession: MesocycleSessionTemplate;
+} | null> => {
+  if (!activeProgramSummary || !userId) {
+    return null;
+  }
+
+  const activeProgram = await queryClient.fetchQuery({
+    queryKey: ["activeMesocycleProgram", userId],
+    queryFn: () => getActiveMesocycleProgram(userId),
+    staleTime: 60 * 1000,
+  });
+  const nextSession = activeProgram
+    ? findStartableProgramSession(activeProgram)
+    : null;
+
+  if (!activeProgram || !nextSession) {
+    return null;
+  }
+
+  return { activeProgram, nextSession };
 };

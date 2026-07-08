@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react-swc";
 import { VitePWA } from "vite-plugin-pwa";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import path from "path";
+import { getManualChunkName } from "./src/lib/build/manualChunks";
 
 const coachApiDevPlugin = (mode: string): Plugin => {
   const rawEnvironment = loadEnv(mode, process.cwd(), "");
@@ -121,26 +122,7 @@ export default defineConfig(({ mode }) => ({
   build: {
     rollupOptions: {
       output: {
-        manualChunks(id: string) {
-          if (!id.includes("node_modules")) return undefined;
-          if (
-            /node_modules\/(react|react-dom|react-router|react-router-dom|scheduler)\//.test(
-              id
-            )
-          ) {
-            return "react-vendor";
-          }
-          if (id.includes("@supabase")) return "supabase";
-          if (id.includes("@radix-ui")) return "radix";
-          if (
-            /node_modules\/(@reduxjs|react-redux|redux-persist|redux|@tanstack)\//.test(
-              id
-            )
-          ) {
-            return "state";
-          }
-          return undefined;
-        },
+        manualChunks: getManualChunkName,
       },
     },
   },

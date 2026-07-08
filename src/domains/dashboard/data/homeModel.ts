@@ -6,6 +6,7 @@ import type {
 import type { HabitRow } from "@/domains/habits/data/types";
 import type {
   ActiveMesocycleProgram,
+  ActiveMesocycleSummary,
   MesocycleSessionTemplate,
 } from "@/domains/periodization";
 import type { SessionFocus, Workout } from "@/lib/types/workout";
@@ -288,11 +289,13 @@ export interface HomeModelInputs {
   recentPrRows: CompletedWeightedSetForPr[];
   movementCompletionDates: string[];
   isLoadingSnapshot: boolean;
+  isLoadingProgramSummary: boolean;
   habits: HabitRow[];
   completions: Record<string, boolean>;
   pendingIds: Record<string, boolean>;
   isLoadingCompletions: boolean;
   activeProgram: ActiveMesocycleProgram | null;
+  activeProgramSummary: ActiveMesocycleSummary | null;
   currentWorkout: Workout | null;
 }
 
@@ -314,6 +317,7 @@ export interface HomeModel {
   lastSessionSummary: RecentWorkoutCardSummary | null;
   recentPr: RecentPrSummary | null;
   habitItems: HomeHabitItem[];
+  isLoadingTodayWorkout: boolean;
   isLoadingLastSession: boolean;
   isLoadingRecentPr: boolean;
   // Command inputs (the hook's effect and handlers read these).
@@ -337,11 +341,13 @@ export const buildHomeModel = (inputs: HomeModelInputs): HomeModel => {
     recentPrRows,
     movementCompletionDates,
     isLoadingSnapshot,
+    isLoadingProgramSummary,
     habits,
     completions,
     pendingIds,
     isLoadingCompletions,
     activeProgram,
+    activeProgramSummary,
     currentWorkout,
   } = inputs;
 
@@ -376,29 +382,44 @@ export const buildHomeModel = (inputs: HomeModelInputs): HomeModel => {
   const todayWorkoutExerciseNames = (nextSession?.exercises ?? [])
     .map(item => item.exercise?.name)
     .filter((value): value is string => !!value);
+  const summaryExerciseNames =
+    nextSession ? [] : activeProgramSummary?.next_session_exercise_names ?? [];
 
   const todayEstimatedMinutes = estimateSessionMinutes(
-    nextSession?.exercises.length ?? 0,
-    activeProgram?.mesocycle.protocol
+    nextSession?.exercises.length ??
+      activeProgramSummary?.next_session_exercise_count ??
+      0,
+    activeProgram?.mesocycle.protocol ?? activeProgramSummary?.mesocycle.protocol
   );
-  const hasGenericSessionName = isGenericSessionName(nextSession?.name);
-  const todayFocusLabel = activeProgram
-    ? formatSessionFocusLabel(activeProgram.mesocycle.goal_focus)
-    : null;
+  const displaySessionName =
+    nextSession?.name ?? activeProgramSummary?.next_session_name ?? null;
+  const hasGenericSessionName = isGenericSessionName(displaySessionName);
+  const summaryFocus = activeProgramSummary?.next_session_focus;
+  const todayFocusLabel =
+    activeProgram || activeProgramSummary
+      ? formatSessionFocusLabel(
+          activeProgram?.mesocycle.goal_focus ??
+            summaryFocus ??
+            activeProgramSummary?.mesocycle.goal_focus ??
+            "mixed"
+        )
+      : null;
 
   let todayWorkoutTitle: string;
-  if (nextSession?.name && !hasGenericSessionName) {
-    todayWorkoutTitle = nextSession.name;
+  if (displaySessionName && !hasGenericSessionName) {
+    todayWorkoutTitle = displaySessionName;
   } else if (todayWorkoutExerciseNames.length > 0) {
     todayWorkoutTitle = inferSessionLabel(todayWorkoutExerciseNames);
-  } else if (!activeProgram) {
+  } else if (summaryExerciseNames.length > 0) {
+    todayWorkoutTitle = inferSessionLabel(summaryExerciseNames);
+  } else if (!activeProgram && !activeProgramSummary) {
     todayWorkoutTitle = "Today's Session";
   } else {
-    todayWorkoutTitle = `${formatSessionFocusLabel(activeProgram.mesocycle.goal_focus)} Session`;
+    todayWorkoutTitle = `${todayFocusLabel ?? "Mixed"} Session`;
   }
 
   let todayWorkoutDetail: string;
-  if (!nextSession) {
+  if (!nextSession && !activeProgramSummary) {
     todayWorkoutDetail = "Ready when you are";
   } else {
     const parts: string[] = [];
@@ -455,6 +476,7 @@ export const buildHomeModel = (inputs: HomeModelInputs): HomeModel => {
       habitItem(meditationHabit, "Meditation", meditationDone),
       habitItem(writingHabit, "Writing", writingDone),
     ],
+    isLoadingTodayWorkout: isLoadingProgramSummary,
     isLoadingLastSession: isLoadingSnapshot,
     isLoadingRecentPr: isLoadingSnapshot,
     movementHabit,

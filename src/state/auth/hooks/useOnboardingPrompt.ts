@@ -33,6 +33,8 @@ export const useOnboardingPrompt = (user: User | null, authLoading: boolean) => 
     }
 
     let cancelled = false;
+    let timeoutId: number | null = null;
+    let idleCallbackId: number | null = null;
 
     const checkProfile = async () => {
       try {
@@ -49,10 +51,27 @@ export const useOnboardingPrompt = (user: User | null, authLoading: boolean) => 
       }
     };
 
-    void checkProfile();
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      idleCallbackId = window.requestIdleCallback(
+        () => void checkProfile(),
+        { timeout: 1500 }
+      );
+    } else {
+      timeoutId = window.setTimeout(() => void checkProfile(), 250);
+    }
 
     return () => {
       cancelled = true;
+      if (
+        idleCallbackId !== null &&
+        typeof window !== 'undefined' &&
+        'cancelIdleCallback' in window
+      ) {
+        window.cancelIdleCallback(idleCallbackId);
+      }
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
     };
   }, [authLoading, hasCheckedProfile, user]);
 

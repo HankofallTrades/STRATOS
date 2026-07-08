@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  createSupabaseBrowserClientCache,
   createSupabaseBrowserClientLoader,
+  getOrCreateSupabaseBrowserClient,
   type SupabaseCreateClient,
 } from "@/lib/integrations/supabase/browserClient";
 
@@ -37,5 +39,33 @@ describe("createSupabaseBrowserClientLoader", () => {
       "https://example.supabase.co",
       "anon-key"
     );
+  });
+
+  it("reuses a client created by the synchronous repository client", async () => {
+    const cache = createSupabaseBrowserClientCache();
+    const createdClient = { auth: { getSession: vi.fn() } };
+    const createClient = vi.fn<SupabaseCreateClient>().mockReturnValue(
+      createdClient as never
+    );
+    const importer = vi.fn().mockResolvedValue({ createClient });
+    const config = {
+      anonKey: "anon-key",
+      url: "https://example.supabase.co",
+    };
+
+    const syncClient = getOrCreateSupabaseBrowserClient(
+      config,
+      createClient,
+      cache
+    );
+    const loadClient = createSupabaseBrowserClientLoader(
+      config,
+      importer,
+      cache
+    );
+
+    await expect(loadClient()).resolves.toBe(syncClient);
+    expect(importer).not.toHaveBeenCalled();
+    expect(createClient).toHaveBeenCalledTimes(1);
   });
 });

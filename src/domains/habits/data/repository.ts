@@ -78,6 +78,25 @@ export const getHabitCompletionDates = async (
   return (data ?? []).map(row => row.date as string)
 }
 
+export const fetchMovementHabitCompletionDates = async (
+  userId: string,
+  limit: number = 365
+): Promise<string[]> => {
+  if (!userId) throw new Error('fetchMovementHabitCompletionDates requires userId')
+
+  const { data: movementHabit, error: habitError } = await supabase
+    .from('habits')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('title', 'Movement')
+    .maybeSingle()
+
+  if (habitError) throw habitError
+  if (!movementHabit?.id) return []
+
+  return getHabitCompletionDates(userId, movementHabit.id as string, limit)
+}
+
 export const setHabitCompletion = async (userId: string, habitId: string, date: string, completed: boolean): Promise<void> => {
   if (!userId || !habitId || !date) throw new Error('setHabitCompletion requires userId, habitId, and date')
 

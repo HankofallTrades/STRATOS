@@ -4,6 +4,7 @@ import { Plus, Search, Trash2 } from "lucide-react";
 import { Label } from "@/components/core/label";
 import { Input } from "@/components/core/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/core/Dialog";
+import { Skeleton } from "@/components/core/skeleton";
 import { Exercise, ExerciseCategory } from "@/lib/types/workout";
 import { cn } from "@/lib/utils/cn";
 import { Switch } from "@/components/core/switch";
@@ -68,6 +69,22 @@ const CATEGORY_BADGE_STYLES: Record<ExerciseCategory, string> = {
   stability: 'bg-violet-500/10 text-violet-400/70',
   breathwork: 'bg-teal-500/10 text-teal-400/70',
 };
+
+const ExerciseListSkeleton = () => (
+  <div className="space-y-1 p-1" aria-hidden="true">
+    {[0, 1, 2, 3, 4, 5].map(index => (
+      <div
+        key={index}
+        className="flex h-11 items-center gap-3 rounded-[14px] px-3"
+      >
+        <Skeleton className="h-4 flex-1 rounded-full" />
+        {index % 2 === 0 ? (
+          <Skeleton className="h-5 w-16 rounded-full" />
+        ) : null}
+      </div>
+    ))}
+  </div>
+);
 
 const ExerciseSelector = ({
   openOnMount = false,
@@ -282,7 +299,7 @@ const ExerciseSelector = ({
               )}
             >
               {isLoading ? (
-                <p className="py-4 text-center text-sm text-muted-foreground">Loading exercises...</p>
+                <ExerciseListSkeleton />
               ) : exercises.length > 0 ? (
                 exercises.map((exercise) => (
                   <Button

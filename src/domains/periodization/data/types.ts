@@ -59,6 +59,17 @@ export interface ActiveMesocycleProgram {
   next_session_name: string | null;
 }
 
+export interface ActiveMesocycleSummary {
+  mesocycle: Mesocycle;
+  current_week: number;
+  last_completed_session_id: string | null;
+  next_session_id: string | null;
+  next_session_name: string | null;
+  next_session_focus: SessionFocus | null;
+  next_session_exercise_count: number;
+  next_session_exercise_names: string[];
+}
+
 export interface CreateMesocycleInput {
   name: string;
   goal_focus: MesocycleGoalFocus;

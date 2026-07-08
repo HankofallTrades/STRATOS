@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/integrations/supabase/client';
 import type {
   ActiveMesocycleProgram,
+  ActiveMesocycleSummary,
   CreateCustomMesocycleSessionInput,
   CreateMesocycleInput,
   DraftedProgramInput,
@@ -482,6 +483,34 @@ const getNextSessionInRotation = (
   return sessions[(currentIndex + 1) % sessions.length];
 };
 
+const getNextSessionInSimpleRotation = (
+  sessions: MesocycleSession[],
+  lastCompletedSessionId: string | null
+): MesocycleSession | null => {
+  if (sessions.length === 0) return null;
+  if (!lastCompletedSessionId) return sessions[0];
+
+  const currentIndex = sessions.findIndex(session => session.id === lastCompletedSessionId);
+  if (currentIndex < 0) return sessions[0];
+
+  return sessions[(currentIndex + 1) % sessions.length];
+};
+
+const fetchSessionExerciseNames = async (sessionId: string): Promise<string[]> => {
+  const { data, error } = await supabase
+    .from('mesocycle_session_exercises' as never)
+    .select('exercises(name)')
+    .eq('mesocycle_session_id', sessionId)
+    .order('exercise_order', { ascending: true });
+
+  if (error) throw error;
+
+  const rows = (data ?? []) as Array<{ exercises?: { name?: string | null } | null }>;
+  return rows
+    .map(row => row.exercises?.name?.trim())
+    .filter((value): value is string => Boolean(value));
+};
+
 const upsertOccamsProtocolSession = async (
   userId: string,
   mesocycleId: string,
@@ -756,15 +785,7 @@ export const getActiveMesocycleProgram = async (userId: string): Promise<ActiveM
   if (!data) return null;
 
   const mesocycle = data as Mesocycle;
-  let sessions = await fetchSessionsForMesocycle(mesocycle.id);
-
-  if (mesocycle.protocol === 'occams') {
-    await ensureOccamsProtocolSessions(userId, mesocycle.id, sessions);
-    sessions = await fetchSessionsForMesocycle(mesocycle.id);
-  } else if (mesocycle.protocol === 'custom') {
-    await ensureCustomProtocolSessions(mesocycle.id, mesocycle.goal_focus, sessions);
-    sessions = await fetchSessionsForMesocycle(mesocycle.id);
-  }
+  const sessions = await fetchSessionsForMesocycle(mesocycle.id);
 
   const groupedExercises = await fetchSessionExercises(sessions.map(session => session.id));
   const lastCompletedSessionId = await fetchLastCompletedSessionId(userId, mesocycle.id);
@@ -783,6 +804,44 @@ export const getActiveMesocycleProgram = async (userId: string): Promise<ActiveM
     last_completed_session_id: lastCompletedSessionId,
     next_session_id: nextSession?.id ?? null,
     next_session_name: nextSession?.name ?? null,
+  };
+};
+
+export const fetchActiveMesocycleSummary = async (
+  userId: string
+): Promise<ActiveMesocycleSummary | null> => {
+  const { data, error } = await supabase
+    .from('mesocycles' as never)
+    .select('*')
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    if (isMissingPeriodizationTableError(error)) return null;
+    throw error;
+  }
+  if (!data) return null;
+
+  const mesocycle = data as Mesocycle;
+  const sessions = await fetchSessionsForMesocycle(mesocycle.id);
+  const lastCompletedSessionId = await fetchLastCompletedSessionId(userId, mesocycle.id);
+  const nextSession = getNextSessionInSimpleRotation(sessions, lastCompletedSessionId);
+  const nextSessionExerciseNames = nextSession
+    ? await fetchSessionExerciseNames(nextSession.id)
+    : [];
+
+  return {
+    mesocycle,
+    current_week: computeCurrentWeek(mesocycle.start_date, mesocycle.duration_weeks),
+    last_completed_session_id: lastCompletedSessionId,
+    next_session_id: nextSession?.id ?? null,
+    next_session_name: nextSession?.name ?? null,
+    next_session_focus: nextSession?.session_focus ?? null,
+    next_session_exercise_count: nextSessionExerciseNames.length,
+    next_session_exercise_names: nextSessionExerciseNames,
   };
 };
 

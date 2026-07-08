@@ -2,6 +2,7 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 import { readSupabaseBrowserConfig } from './env';
+import { getOrCreateSupabaseBrowserClient } from './browserClient';
 
 const supabaseConfig = readSupabaseBrowserConfig(import.meta.env);
 
@@ -10,17 +11,10 @@ export const hasSupabaseBrowserConfig = supabaseConfig !== null;
 let browserClient: ReturnType<typeof createClient<Database>> | null = null;
 
 export const getSupabaseBrowserClient = () => {
-  if (!supabaseConfig) {
-    return null;
-  }
-
-  if (!browserClient) {
-    browserClient = createClient<Database>(
-      supabaseConfig.url,
-      supabaseConfig.anonKey
-    );
-  }
-
+  browserClient = getOrCreateSupabaseBrowserClient(
+    supabaseConfig,
+    createClient
+  );
   return browserClient;
 };
 

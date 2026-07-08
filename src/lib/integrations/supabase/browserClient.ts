@@ -1,7 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/lib/integrations/supabase/types";
-import { readSupabaseBrowserConfig } from "@/lib/integrations/supabase/env";
+import {
+  readSupabaseBrowserConfig,
+  type SupabaseBrowserConfig,
+} from "@/lib/integrations/supabase/env";
 
 export type BrowserSupabaseClient = SupabaseClient<Database>;
 export type SupabaseCreateClient = (
@@ -14,6 +17,10 @@ type SupabaseModule = {
 };
 
 type SupabaseImporter = () => Promise<SupabaseModule>;
+type SupabaseBrowserClientCache = {
+  client: BrowserSupabaseClient | null;
+  clientPromise: Promise<BrowserSupabaseClient> | null;
+};
 
 const importSupabaseModule: SupabaseImporter = () =>
   import("@supabase/supabase-js");
@@ -21,24 +28,54 @@ const importSupabaseModule: SupabaseImporter = () =>
 export const supabaseBrowserConfig = readSupabaseBrowserConfig(import.meta.env);
 export const hasSupabaseBrowserConfig = supabaseBrowserConfig !== null;
 
+export const createSupabaseBrowserClientCache =
+  (): SupabaseBrowserClientCache => ({
+    client: null,
+    clientPromise: null,
+  });
+
+const defaultBrowserClientCache = createSupabaseBrowserClientCache();
+
+export const getOrCreateSupabaseBrowserClient = (
+  config: SupabaseBrowserConfig | null,
+  createClient: SupabaseCreateClient,
+  cache = defaultBrowserClientCache
+): BrowserSupabaseClient | null => {
+  if (!config) {
+    return null;
+  }
+
+  if (!cache.client) {
+    cache.client = createClient(config.url, config.anonKey);
+    cache.clientPromise = Promise.resolve(cache.client);
+  }
+
+  return cache.client;
+};
+
 export const createSupabaseBrowserClientLoader = (
   config = supabaseBrowserConfig,
-  importer: SupabaseImporter = importSupabaseModule
+  importer: SupabaseImporter = importSupabaseModule,
+  cache = defaultBrowserClientCache
 ) => {
-  let clientPromise: Promise<BrowserSupabaseClient> | null = null;
-
   return async (): Promise<BrowserSupabaseClient | null> => {
     if (!config) {
       return null;
     }
 
-    if (!clientPromise) {
-      clientPromise = importer().then(({ createClient }) =>
-        createClient(config.url, config.anonKey)
-      );
+    if (cache.client) {
+      return cache.client;
     }
 
-    return clientPromise;
+    if (!cache.clientPromise) {
+      cache.clientPromise = importer().then(({ createClient }) => {
+        const client = cache.client ?? createClient(config.url, config.anonKey);
+        cache.client = client;
+        return client;
+      });
+    }
+
+    return cache.clientPromise;
   };
 };
 

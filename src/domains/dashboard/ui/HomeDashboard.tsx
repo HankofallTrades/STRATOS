@@ -22,6 +22,7 @@ const HomeDashboard = () => {
   }, []);
   const {
     isLoadingLastSession,
+    isLoadingTodayWorkout,
     isLoadingRecentPr,
     displayName,
     greeting,
@@ -54,12 +55,21 @@ const HomeDashboard = () => {
             <div className="space-y-3">
               <div className="app-kicker">Today&apos;s Workout</div>
               <div className="space-y-2">
-                <h2 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
-                  {todayWorkoutTitle}
-                </h2>
-                <p className="text-sm text-muted-foreground md:text-base">
-                  {todayWorkoutDetail}
-                </p>
+                {isLoadingTodayWorkout ? (
+                  <>
+                    <Skeleton className="h-9 w-56 rounded-[16px]" />
+                    <Skeleton className="h-4 w-36 rounded-full" />
+                  </>
+                ) : (
+                  <>
+                    <h2 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
+                      {todayWorkoutTitle}
+                    </h2>
+                    <p className="text-sm text-muted-foreground md:text-base">
+                      {todayWorkoutDetail}
+                    </p>
+                  </>
+                )}
               </div>
             </div>
 

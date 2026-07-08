@@ -1,7 +1,7 @@
 import React, { ReactNode, useEffect } from 'react';
 import { useAuth } from '@/state/auth/AuthProvider';
-import { useNavigate } from 'react-router-dom';
-import AppScreenSkeleton from '@/components/loading/AppScreenSkeleton';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { RouteSkeleton } from '@/components/loading/RouteSkeletons';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -10,6 +10,7 @@ interface ProtectedRouteProps {
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { session, loading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     if (!loading && !session) {
@@ -18,7 +19,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   }, [session, loading, navigate]);
 
   if (loading) {
-    return <AppScreenSkeleton />;
+    return <RouteSkeleton pathname={location.pathname} />;
   }
 
   if (session) {

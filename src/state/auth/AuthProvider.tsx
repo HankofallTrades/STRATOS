@@ -1,17 +1,24 @@
 import React, {
+  Suspense,
   createContext,
+  lazy,
   useContext,
   useEffect,
   useState,
-  ReactNode,
+  type ReactNode,
 } from 'react';
-import { Session, User } from '@supabase/supabase-js';
+import type { Session, User } from '@supabase/supabase-js';
 import {
   hasSupabaseBrowserConfig,
   loadSupabaseBrowserClient,
 } from '@/lib/integrations/supabase/browserClient';
-import { OnboardingDialog } from '@/domains/account/ui/OnboardingDialog';
 import { useOnboardingPrompt } from '@/state/auth/hooks/useOnboardingPrompt';
+
+const OnboardingDialog = lazy(() =>
+  import('@/domains/account/ui/OnboardingDialog').then(module => ({
+    default: module.OnboardingDialog,
+  }))
+);
 
 type AuthContextType = {
   session: Session | null;
@@ -114,11 +121,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     >
       {children}
       {hasSupabaseBrowserConfig ? (
-        <OnboardingDialog
-          open={showOnboarding}
-          onOpenChange={setShowOnboarding}
-          onComplete={markOnboardingComplete}
-        />
+        <Suspense fallback={null}>
+          {showOnboarding ? (
+            <OnboardingDialog
+              open={showOnboarding}
+              onOpenChange={setShowOnboarding}
+              onComplete={markOnboardingComplete}
+            />
+          ) : null}
+        </Suspense>
       ) : null}
     </AuthContext.Provider>
   );

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { useAppDispatch, useAppSelector } from "@/hooks/redux";
 import { toast } from "@/hooks/use-toast";
@@ -13,6 +14,7 @@ import {
 import { useAuth } from "@/state/auth/AuthProvider";
 import { useWorkoutPersistence } from "@/domains/fitness/hooks/useWorkout";
 import type { SessionFocus } from "@/lib/types/workout";
+import { fetchExercises } from "@/domains/fitness/data/fitnessRepository";
 import { buildExercisesFromSessionTemplate } from "@/domains/fitness/data/workoutScreen";
 import {
   createBaseWorkoutStartPayload,
@@ -21,6 +23,7 @@ import {
 
 export const useWorkoutScreen = () => {
   const dispatch = useAppDispatch();
+  const queryClient = useQueryClient();
   const currentWorkout = useAppSelector(selectCurrentWorkout);
   const { user } = useAuth();
 
@@ -43,6 +46,40 @@ export const useWorkoutScreen = () => {
     isCreatingCustomSession,
   } = usePeriodization(user?.id);
   const { saveWorkout, discardWorkout } = useWorkoutPersistence();
+
+  useEffect(() => {
+    let timeoutId: number | null = null;
+    let idleCallbackId: number | null = null;
+
+    const prefetchExerciseCatalog = () => {
+      void queryClient.prefetchQuery({
+        queryKey: ["exercises"],
+        queryFn: fetchExercises,
+        staleTime: 5 * 60 * 1000,
+      });
+    };
+
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      idleCallbackId = window.requestIdleCallback(prefetchExerciseCatalog, {
+        timeout: 1500,
+      });
+    } else {
+      timeoutId = window.setTimeout(prefetchExerciseCatalog, 300);
+    }
+
+    return () => {
+      if (
+        idleCallbackId !== null &&
+        typeof window !== "undefined" &&
+        "cancelIdleCallback" in window
+      ) {
+        window.cancelIdleCallback(idleCallbackId);
+      }
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [queryClient]);
 
   const templatedSessions =
     activeProgram?.sessions.filter(session => session.exercises.length > 0) ?? [];
