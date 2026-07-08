@@ -48,6 +48,7 @@ const SummonSurface = ({
     setInput,
     send,
     isLoading,
+    isRuntimeLoading,
     statusMessage,
     configurationMessage,
     proactiveInsights,
@@ -236,10 +237,10 @@ const SummonSurface = ({
               return null;
             })
           )}
-          {!showChanges && !showDev && statusMessage ? (
+          {!showChanges && !showDev && (statusMessage || isRuntimeLoading) ? (
             <p className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
               <UnicodeSpinner className="app-accent-text text-sm" />
-              {statusMessage}
+              {statusMessage ?? "Loading Coach..."}
             </p>
           ) : null}
         </div>

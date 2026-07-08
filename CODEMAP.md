@@ -17,7 +17,7 @@ This file is the fast operational map for agents and future sessions. It is not 
 - Motion convention: CSS-first tokens in `tailwind.config.ts` (`motion-safe:animate-fade-rise` entrances, `motion-safe:animate-set-confirm` pulse); framer-motion is confined to workout interaction physics. `prefers-reduced-motion` is honored via the `motion-safe:` variant.
 - Loading convention: skeletons for known-layout loads; genuine in-flight waits use `src/components/core/UnicodeSpinner.tsx` (frames vendored from sindresorhus/cli-spinners, MIT).
 - Redux persistence rehydrates after the protected shell mounts; it does not blank first protected paint behind `PersistGate`.
-- The global Coach shell stays available on every protected route, while workout proposal planning loads only when the `propose_workout` client tool runs.
+- The global Coach presence shell stays available on every protected route, while the heavier Coach runtime (send loop, client tools, proactive gates, mutation application) is lazy-loaded after first paint/first Coach use. Workout proposal planning still loads only when the `propose_workout` client tool runs.
 
 ## Read Order
 
@@ -127,7 +127,7 @@ The workout flow is the main Redux-heavy area. Most other features should prefer
 
 ### Coach Presence
 
-- `src/domains/guidance/hooks/PresenceAgentProvider.tsx` owns the Coach conversation, send loop, and summon-surface open-state via React context (not Redux). It is mounted at the protected-shell root in `MainAppLayout`. State is ephemeral: it survives navigation but resets on reload (no persistence by design).
+- `src/domains/guidance/hooks/PresenceAgentProvider.tsx` owns the lightweight Coach presence controller and public context. `src/domains/guidance/hooks/PresenceAgentRuntime.tsx` lazy-loads the heavier send loop, client tools, proactive gates, and mutation application. It is mounted at the protected-shell root in `MainAppLayout`. State is ephemeral: it survives navigation but resets on reload (no persistence by design).
 
 ## Domain Map
 
@@ -254,7 +254,7 @@ This is still the most complex domain and the main place where UI, Redux, and Re
 
 - Purpose: Coach (presence/summon) and workout-generation guidance.
 - Presence surface + state entry:
-  - `hooks/PresenceAgentProvider.tsx` + `hooks/usePresenceAgent.ts` — app-root context owning the Coach conversation, send loop, and surface open-state. The send loop dispatches client tools through `hooks/useClientCoachToolRunners.ts` (the registry-typed runner map) instead of a switch, and exposes a single `applyArtifact(artifact)` that routes by `artifact.type` to the confirm-only handlers.
+  - `hooks/PresenceAgentProvider.tsx` + `hooks/usePresenceAgent.ts` — app-root presence context owning open/input/conversation state plus runtime loading. `hooks/PresenceAgentRuntime.tsx` lazy-loads after first paint/first Coach use and owns the send loop, client tool dispatch, proactive gates, and artifact application.
   - `hooks/useProposeWorkout.ts` keeps the constrained workout-proposal tool registered while dynamically loading the planner only when it executes.
   - `ui/SummonSurface.tsx` — the bottom-sheet command surface (opened by `PresenceMark`).
   - `ui/ArtifactRenderer.tsx` + `ui/artifacts/*` — the **artifact registry** (`Record<CoachArtifact["type"], renderer>`, a missing renderer is a compile error) and inline artifact renderers (`VolumeChartArtifact`, `WorkoutDraftArtifact`). Artifact UI calls `applyArtifact(artifact)`; it never names an apply handler.
@@ -273,7 +273,7 @@ This is still the most complex domain and the main place where UI, Redux, and Re
 
 Current Coach architecture:
 - Uses `/api/coach`.
-- Conversation state is ephemeral (lives in `PresenceAgentProvider`, persists across navigation, fresh each launch — no storage).
+- Conversation state is ephemeral (owned by `PresenceAgentProvider`, used by lazy `PresenceAgentRuntime`, persists across navigation, fresh each launch — no storage).
 - Each turn sends a read-only `ScreenContext` (route + screen + small focus hints); the runtime injects it into the system prompt. It grants no write access.
 - Tool results may carry a typed `CoachArtifact`; a client `ArtifactRenderer` registry renders them inline. Tool calls/results are surfaced in the summon surface (not dropped).
 - Supports both server-executable and client-executable tools.
@@ -291,7 +291,7 @@ Current Coach architecture:
 - Proactive layer (sub-project 4): deterministic gates run on app open / workout finished (`hooks/useProactiveEngine.ts` + pure `data/proactiveGates.ts`); insights are template-composed in code (no LLM call until the user engages), tiered `pulse` (orb glow) or `peek` (one-line chip `ui/PresencePeek.tsx`, mounted in `MainAppLayout`); engagement summons the surface and sends a seeded prompt; dismiss/engage cooldowns persist in localStorage (`data/proactiveCooldowns.ts`). Propose-only — the engine never mutates anything. The orb's attention state is conversation attention ∪ pending proactive insights. Insights persist in the surface until engaged/dismissed/replaced (they are no longer cleared on open); the active insight is surfaced inside `SummonSurface` as a solid-green starter (empty state) or a pinned row above the input (mid-conversation). Dev tools (a `Dev` tab in the surface, gated by `useIsDeveloper`/`profiles.role`) can force any insight in regardless of gate/cooldown and reset cooldowns (`useProactiveEngine` `devTriggerInsight`/`devResetCooldowns`, samples in `data/proactiveDevSamples.ts`, `data/proactiveCooldowns.ts` `clearCooldowns`).
 - Acting layer (sub-project 3): all mutations are confirm-only (explicit Apply) and recorded in `coach_change_log` with one-tap revert. Key seams:
   - `data/coachMutations.ts` — the **Coach mutation registry** (see CONTEXT.md): one command descriptor per `CoachChangeType` owning `apply`, `revert`, `canRevert`, and the zod payload schema both sides share (apply writes it, revert parses it — drift is a compile error, malformed legacy rows fail the parse cleanly). Unit-tested in `coachMutations.test.ts` (repo mocked).
-  - `hooks/useCoachMutations.ts` — the one apply path: `applyMutation(changeType, input)` runs the command then the shared tail (change-log insert, declared invalidations, toast). `applyArtifact` in `PresenceAgentProvider` routes program/workout artifacts here.
+  - `hooks/useCoachMutations.ts` — the one apply path: `applyMutation(changeType, input)` runs the command then the shared tail (change-log insert, declared invalidations, toast). `applyArtifact` in `PresenceAgentRuntime` routes program/workout artifacts here.
   - `hooks/useProgramActions.ts` — client propose/context tool implementations (I/O for the pure builders; no apply handlers anymore).
   - `hooks/useCoachChangeLog.ts` + `ui/ChangeLogPanel.tsx` — change list + revert (surface's "Changes" toggle); revert dispatches through the mutation registry.
   - `data/changeLogRepository.ts` — `coach_change_log` CRUD.
@@ -350,7 +350,8 @@ These are scaffold placeholders only. They currently expose empty `data/hooks/ui
   - `src/domains/dashboard/hooks/useHomeDashboard.ts`
 - Coach runtime:
   - `src/domains/guidance/agent/*` (typed message + tool + `ScreenContext` + `CoachArtifact` contracts; runtime injects read-only screen context and emits inline artifacts)
-  - `src/domains/guidance/hooks/PresenceAgentProvider.tsx` (client conversation/send-loop owner)
+  - `src/domains/guidance/hooks/PresenceAgentProvider.tsx` (client presence/context owner)
+  - `src/domains/guidance/hooks/PresenceAgentRuntime.tsx` (lazy client send-loop/tool/proactive owner)
   - `api/coach.ts`
 - Periodization:
   - `src/domains/periodization/hooks/usePeriodization.ts`
