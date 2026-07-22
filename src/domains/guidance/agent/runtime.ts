@@ -621,6 +621,17 @@ export const runCoachAgentTurn = async ({
   screenContext,
 }: RunCoachAgentTurnParams): Promise<CoachAgentResponse> => {
   try {
+    if (provider !== "local" && !apiKey) {
+      return createCoachErrorResponse(
+        "STRATOS Coach isn't connected to an AI provider yet. Add a provider and its API key in Settings → Coach to start the conversation."
+      );
+    }
+    if (provider === "local" && !env.localLlmUrl) {
+      return createCoachErrorResponse(
+        "STRATOS Coach needs a local model to talk to. Add a local model URL in Settings → Coach, or switch to a hosted provider with an API key."
+      );
+    }
+
     const serverContext = await createCoachServerDataContext(env, auth);
     const resolvedProviderApiKey = provider === "local" ? undefined : apiKey ?? undefined;
     const tools = createCoachAgentTools(serverContext);
@@ -667,9 +678,7 @@ export const runCoachAgentTurn = async ({
   } catch (error) {
     console.error("Coach agent runtime failed:", error);
     return createCoachErrorResponse(
-      `Sorry, STRATOS Coach hit an error: ${
-        error instanceof Error ? error.message : "Unknown error"
-      }.`
+      "Sorry, STRATOS Coach ran into a problem and couldn't respond. Please try again in a moment — if it keeps happening, check your provider settings in Settings → Coach."
     );
   }
 };
