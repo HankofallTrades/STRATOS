@@ -25,6 +25,7 @@ import type { ProfileUpdateData } from '../data/accountRepository';
 
 // Define Zod schema for validation
 const formSchema = z.object({
+  name: z.string().trim().max(40, "Keep it under 40 characters.").optional(),
   age: z.coerce.number().int().positive("Age must be a positive number.").min(13, "Must be at least 13 years old.").max(120),
   height: z.coerce.number().positive("Height must be a positive number."),
   weight: z.coerce.number().positive("Weight must be a positive number."),
@@ -48,6 +49,7 @@ export const OnboardingForm: React.FC<OnboardingFormProps> = ({ onSuccess }) => 
   const form = useForm<OnboardingFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      name: '',
       age: undefined,
       height: undefined,
       weight: undefined,
@@ -60,7 +62,13 @@ export const OnboardingForm: React.FC<OnboardingFormProps> = ({ onSuccess }) => 
 
   // Handle form submission
   async function onSubmit(values: OnboardingFormValues) {
-    const success = await submitOnboarding(values as ProfileUpdateData);
+    const { name, ...profileValues } = values;
+    const trimmedName = name?.trim();
+    const payload: ProfileUpdateData = {
+      ...profileValues,
+      ...(trimmedName ? { username: trimmedName } : {}),
+    };
+    const success = await submitOnboarding(payload);
     if (success) {
       onSuccess();
     }
@@ -69,6 +77,21 @@ export const OnboardingForm: React.FC<OnboardingFormProps> = ({ onSuccess }) => 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" id="onboarding-form">
+        {/* Name */}
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>What should we call you?</FormLabel>
+              <FormControl>
+                <Input type="text" placeholder="Your name" {...field} value={field.value ?? ''} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         {/* Age */}
         <FormField
           control={form.control}

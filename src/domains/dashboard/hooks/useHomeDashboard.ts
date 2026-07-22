@@ -179,11 +179,19 @@ export const useHomeDashboard = () => {
       return;
     }
 
+    // No active program: land on the idle Workout screen (Quick Start / block
+    // builder) so the user can choose how to begin, rather than auto-starting an
+    // empty workout that drops them straight into the raw exercise picker.
+    if (!activeProgramSummary) {
+      navigate("/workout");
+      return;
+    }
+
     dispatch(
       startWorkoutAction(
         createBaseWorkoutStartPayload({
           ownerUserId: user?.id ?? null,
-          sessionFocus: activeProgramSummary?.mesocycle.goal_focus,
+          sessionFocus: activeProgramSummary.mesocycle.goal_focus,
         })
       )
     );

@@ -368,10 +368,9 @@ const WorkoutScreen = () => {
         <div className="mt-4 flex items-center justify-end border-t stone-seam pt-4">
           <Button
             onClick={handleEndWorkout}
-            variant="ghost"
-            className="h-10 rounded-[10px] border-0 bg-transparent px-0 text-sm font-medium shadow-none hover:bg-transparent"
+            className="app-primary-action h-11 rounded-[16px] px-6 text-sm font-semibold"
           >
-            <span className="verdigris-text">Finish</span>
+            Finish workout
           </Button>
         </div>
       </div>

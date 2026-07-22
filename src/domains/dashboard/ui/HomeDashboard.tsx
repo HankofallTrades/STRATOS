@@ -149,10 +149,18 @@ const HomeDashboard = () => {
         </div>
 
         <section
-          className={`home-habit-grid ${entranceClass(animateEntrance)}`}
+          className={entranceClass(animateEntrance)}
           style={animateEntrance ? { animationDelay: "120ms" } : undefined}
           aria-label="Daily habits"
         >
+          <div className="mx-auto w-full max-w-[48rem] space-y-3">
+            <div className="space-y-1">
+              <div className="app-kicker">Daily practice</div>
+              <p className="text-sm text-muted-foreground">
+                Move, meditate, and write a little each day — tap each one as you finish to build your streak.
+              </p>
+            </div>
+            <div className="home-habit-grid">
           {habitItems.map(item => (
             <button
               key={item.label}
@@ -183,6 +191,8 @@ const HomeDashboard = () => {
               <span className={item.done ? "text-foreground" : ""}>{item.label}</span>
             </button>
           ))}
+            </div>
+          </div>
         </section>
       </main>
     </div>
