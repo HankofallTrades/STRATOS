@@ -24,8 +24,7 @@ This file is the fast operational map for agents and future sessions. It is not 
 
 1. `CODEMAP.md` for the current operational layout.
 2. `docs/overview.md` for intended architecture and guardrails.
-3. `docs/plan.md` for migration history and remaining roadmap items.
-4. `git status --short` before editing, because the repo may be intentionally dirty during refactors.
+3. `git status --short` before editing, because the repo may be intentionally dirty during refactors.
 
 ## Database Workflow
 
@@ -233,7 +232,6 @@ This is still the most complex domain and the main place where UI, Redux, and Re
   - `ui/BreathPacer.tsx`, `ui/ProtocolPicker.tsx`.
 - Entry points: **the standard `ExerciseSelector`** (breathwork protocols are catalogue exercises under the Breathwork category — added to any session like any other exercise, then run via the in-session card) and the summon-surface `Breathe` chip (`SummonSurfaceQuickActions.onBreathwork`, wired in `MainAppLayout`) for breathing outside a planned session. No dedicated footer button — the in-session path is the shared add-exercise flow.
 - Catalog dependency: relies on four seeded `exercise_category = 'breathwork'` rows (migration `20260703185237_add_breathwork_exercises.sql`, applied to the linked project). Without them the category filter is simply empty; there is no separate breathwork entry point to break.
-- See `docs/superpowers/specs/2026-07-03-breathwork-module-design.md`.
 
 ### `src/domains/analytics`
 
@@ -383,7 +381,7 @@ If you touch any of those, read the full file first. They are coordination seams
 
 - `goals` and `rpg` are still placeholders.
 - Some fitness UI is still more stateful than ideal.
-- `README.md` and `docs/plan.md` may lag implementation details after large refactors.
+- `README.md` may lag implementation details after large refactors.
 - Test coverage is an early foundation only: Vitest covers seven data seams (fitness recommendations, fitness workout commit, guidance proactive gates, guidance tool builders, guidance coach mutations, dashboard home model, analytics volume progress). Most domains, hooks, and UI have no tests.
 - Accepted Dependabot advisories (do not re-chase): after `npm audit fix`, ~14 remain, all dev-only or non-exploitable in the shipped browser bundle, none fixable without a breaking change:
   - **`@vercel/node` chain** (`tar`, `undici`, `tsx`, `path-to-regexp`, `@vercel/nft`, `@mapbox/node-pre-gyp`, `ajv`, `@vercel/static-config`): a serverless-build toolchain pulled in solely for the two type imports in `api/coach.ts`. Even `@vercel/node@5` still ships these vulnerable transitives, so the only fix is dropping the package — deliberately kept for deploy stability / standard typing.

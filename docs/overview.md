@@ -107,4 +107,4 @@ Migration rule:
 6. Keep RLS and RPCs updated in `supabase/migrations` when data shapes change.
 
 ## Roadmap snapshot
-See `docs/plan.md` for the active, checkable implementation plan (PR0–PR5), starting with the `habits` domain as the pilot.
+Active work is tracked in Linear (team `StratOS`, project `Stratos`). See `docs/agents/issue-tracker.md`.

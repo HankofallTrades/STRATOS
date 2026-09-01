@@ -71,8 +71,7 @@ Read `./CODEMAP.md` before doing substantial work in this repo.
 
 1. Read `./CODEMAP.md`.
 2. Read `./docs/overview.md` if the task touches architecture or boundaries.
-3. Read `./docs/plan.md` if it exists and the task is part of an ongoing refactor or a new domain rollout.
-4. Run `git status --short` before editing because this repo may be intentionally dirty during refactors.
+3. Run `git status --short` before editing because this repo may be intentionally dirty during refactors.
 
 ## Working Tree Hygiene
 
@@ -118,3 +117,17 @@ Update `./CODEMAP.md` in the same change whenever you alter:
 - expected verification baseline
 
 If a future session would make a wrong assumption without updated context, update the codemap.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in Linear (workspace `daimodus`, team `StratOS`, project `Stratos`), reached through the Linear MCP server, not GitHub Issues. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical triage roles, each label string equal to its name: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` at the repo root, ADRs under `docs/adr/`. See `docs/agents/domain.md`.
