@@ -429,12 +429,63 @@ First-time machine setup, in order:
 when the bundle already ships inside the binary, and its update flow fights Capacitor's.
 Nothing else about the build differs between targets.
 
+### Driving the app in the simulator
+
+UI verification is automated with **Maestro** (`e2e/ios-smoke.yaml`, run via
+`scripts/ios-smoke.sh`). Use it rather than reaching for AppleScript: `osascript`
+against System Events fails with `-1712` on this machine because the agent
+process has no Accessibility permission, and `simctl` has no `tap` or `type`.
+
+Maestro reads the WKWebView accessibility tree directly, so web selectors work:
+tap by the placeholder text (`you@domain.com`, `Your password`) and by button
+label. `maestro hierarchy` dumps the current screen's selectors.
+
+Two prerequisites, neither on `PATH` by default and both resolved inside
+`scripts/ios-smoke.sh`: the CLI at `~/.maestro/bin/maestro`, and a JDK
+(`brew install openjdk`, keg-only). Credentials come from `.env.e2e.local`,
+gitignored; `.env.e2e.example` is the template.
+
+The account in `.env.e2e.local` is a dedicated test user created through the
+app's own signup screen, plus-addressed onto Hank's Gmail so a confirmation mail
+would be reachable (signup auto-confirms today, so none was needed). Its
+onboarding is already filled in, which is why a `clearState` login lands on the
+home screen instead of the "Welcome to STRATOS" modal. If that modal ever
+reappears the account was reset; fill it in once by hand and the flow goes green
+again. Do not point this at a real user's account.
+
+Do **not** use Maestro's `hideKeyboard` on the login screen. It dismisses the
+keyboard by tapping a supposedly empty area, which here lands on "Continue with
+Google" and sends the app out to the system browser mid-flow. "Sign In" sits
+above the keyboard, so the tap is unnecessary.
+
+Where a control genuinely does sit behind the keyboard, as "Save" does in the
+onboarding modal, tap the keyboard accessory bar's own `Done` first. A
+`scrollUntilVisible` will report success there and still tap the keyboard rather
+than the button underneath it.
+
+`takeScreenshot` paths are sandboxed to the run's own output folder, so use bare
+names (`01-after-login`), not repo-relative paths. Screenshots land under
+`~/.maestro/tests/<timestamp>/`.
+
+**The Supabase project must be ACTIVE.** Paused Supabase projects lose their API
+hostname entirely — `fhkhpwoxedcytetcjnob.supabase.co` returns NXDOMAIN from
+every resolver, not just behind a VPN. The app surfaces this only as a terse
+"Load failed" under the Sign In button, which is easy to misread as bad
+credentials or a broken wrap. Check `list_projects` status before debugging a
+login failure.
+
 ### Known gaps in the wrap
 
 - The Coach calls `/api/coach` relatively. Under `capacitor://localhost` that resolves to
   the app's own scheme and will not reach the Vercel function. Owned by **I-14**.
 - `index.html` pulls Montserrat/Open Sans from Google Fonts over the network, so a cold
   offline first launch falls back to system fonts. Cosmetic, not scoped to the wrap ticket.
+- Top-of-screen content collides with the status bar. Confirmed on device: the home
+  greeting ("GOOD EVENING, ...") and the onboarding modal's title both render underneath
+  the clock and Dynamic Island. `ios.contentInset` is unset, so Capacitor's `automatic`
+  applies and the app's own safe-area CSS does not reserve enough top padding. The login
+  screen looks fine and is misleading — check the home screen, not the login screen, when
+  judging this. Owned by **I-16**.
 
 ## Known Debt / Hotspots
 

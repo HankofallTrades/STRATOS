@@ -1,0 +1,79 @@
+# iOS wrap smoke flow (I-10 acceptance criteria 2 and 3).
+#
+# Proves three things no desktop build can: that a Supabase login works inside
+# WKWebView, that the session survives a real process kill, and that the four
+# main routes render and navigate under Capacitor.
+#
+# Run with scripts/ios-smoke.sh, which loads credentials from .env.e2e.local.
+#
+# Requires the StratOS Supabase project to be ACTIVE. While it is paused its API
+# hostname NXDOMAINs, login cannot reach a backend, and this flow fails at the
+# first wait with the login screen still up and "Load failed" under the button.
+appId: com.daimodus.stratos
+---
+# Criterion 2, part 1: log in from a genuinely clean state.
+# clearState wipes the WKWebView store, so this cannot pass on a stale session.
+- launchApp:
+    clearState: true
+- assertVisible: "Sign In"
+- tapOn:
+    text: "you@domain.com"
+- inputText: ${E2E_EMAIL}
+- tapOn:
+    text: "Your password"
+- inputText: ${E2E_PASSWORD}
+
+# No hideKeyboard here, deliberately. Maestro's hideKeyboard taps a supposedly
+# empty area to dismiss the keyboard; on this screen that tap lands on
+# "Continue with Google", which sends the app out to the system browser for
+# OAuth and abandons the flow. "Sign In" sits above the keyboard anyway.
+- tapOn: "Sign In"
+
+# The login screen going away is the pass condition. Asserting the absence of
+# "Sign In" rather than the presence of some home-screen string keeps this from
+# breaking every time the home screen is redesigned.
+- extendedWaitUntil:
+    notVisible: "Sign In"
+    timeout: 30000
+- assertVisible: "TODAY'S WORKOUT"
+- takeScreenshot: 01-after-login
+
+# Criterion 2, part 2: a real process kill, not a backgrounding.
+# stopApp terminates the process; launchApp without clearState keeps the
+# WKWebView store. If the Supabase session did not survive in localStorage the
+# app returns to the login screen here and this step fails.
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    notVisible: "Sign In"
+    timeout: 30000
+- assertVisible: "TODAY'S WORKOUT"
+- takeScreenshot: 02-after-relaunch
+
+# Criterion 3: all four tabs load and navigate. Each assertion is on a string
+# owned by that route's own screen, not by the shared nav bar, so a tab that
+# fails to render cannot pass just because its button is still visible.
+- tapOn: "Workout"
+- extendedWaitUntil:
+    visible: "PROGRAM"
+    timeout: 15000
+- takeScreenshot: 03-workout
+
+- tapOn: "Analytics"
+- extendedWaitUntil:
+    visible: "Benchmarks"
+    timeout: 15000
+- takeScreenshot: 04-analytics
+
+- tapOn: "Profile"
+- extendedWaitUntil:
+    visible: "EQUIPMENT"
+    timeout: 15000
+- takeScreenshot: 05-profile
+
+# Back to Home last, so a passing run leaves the app in its default state.
+- tapOn: "Home"
+- extendedWaitUntil:
+    visible: "TODAY'S WORKOUT"
+    timeout: 15000
+- takeScreenshot: 06-home
