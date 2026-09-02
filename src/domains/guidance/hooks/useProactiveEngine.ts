@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Capacitor } from "@capacitor/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "react-router-dom";
 
@@ -131,6 +132,26 @@ export const useProactiveEngine = ({
     }
     previousPathRef.current = location.pathname;
   }, [location.pathname, runGates]);
+
+  // App open, the native sense of it. Treating a fresh mount as "app open" is
+  // right for a browser tab but wrong for a wrapped app: iOS suspends the
+  // webview instead of tearing it down, so a user returning days later never
+  // remounts and the gate would never run again after first launch. Foreground
+  // is the real signal there. Gated to native so the web target keeps the
+  // mount-and-navigate behaviour it has now; cooldowns keep this quiet exactly
+  // as they do for the navigate-to-home re-check above.
+  useEffect(() => {
+    if (!userId || !Capacitor.isNativePlatform()) return;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== "visible") return;
+      void runGates("app_open");
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [runGates, userId]);
 
   // Workout finished: fires once per distinct *saved* workout id. Discarded
   // workouts never dispatch workoutFinished, so they never reach here.

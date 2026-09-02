@@ -75,6 +75,31 @@ const coachApiDevPlugin = (mode: string): Plugin => {
  */
 const isNativeBuild = process.env.STRATOS_TARGET === "ios";
 
+/**
+ * Where the wrap reaches the Coach function. The bundled app has no same-origin
+ * `/api`, so a native build needs an absolute origin or every Coach turn dies
+ * inside `capacitor://localhost`. This is the stable production alias, not a
+ * per-deployment URL, so the binary keeps working as `main` redeploys.
+ *
+ * Whatever is set here must also be in the function's CORS allowlist — see
+ * `COACH_ALLOWED_ORIGINS` in `src/domains/guidance/agent/cors.ts`.
+ */
+const NATIVE_COACH_API_BASE_URL = "https://stratos-theta.vercel.app";
+
+/**
+ * `.env` wins so a session can point the wrap at a branch deployment; the
+ * production alias is only the fallback. The web target resolves to an empty
+ * base, which keeps its request on the relative same-origin path.
+ */
+const resolveCoachApiBaseUrl = (mode: string): string => {
+  const configured = loadEnv(mode, process.cwd(), "").VITE_COACH_API_BASE_URL;
+  if (configured?.trim()) {
+    return configured.trim();
+  }
+
+  return isNativeBuild ? NATIVE_COACH_API_BASE_URL : "";
+};
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
@@ -122,6 +147,11 @@ export default defineConfig(({ mode }) => ({
         },
       }),
   ].filter(Boolean),
+  define: {
+    "import.meta.env.VITE_COACH_API_BASE_URL": JSON.stringify(
+      resolveCoachApiBaseUrl(mode)
+    ),
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

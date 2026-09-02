@@ -1,4 +1,5 @@
 import type { LlmProviderPreference } from "@/domains/guidance/data/llmPreferences";
+import { resolveCoachApiUrl } from "@/domains/guidance/agent/apiBase";
 import { readProviderApiKey } from "@/domains/guidance/data/providerKeyStore";
 import {
   coachAgentResponseSchema,
@@ -24,7 +25,13 @@ export const sendCoachMessage = async ({
   screenContext,
 }: SendCoachMessageRequest): Promise<CoachAgentResponse> => {
   const apiKey = provider !== "local" ? readProviderApiKey(provider) ?? undefined : undefined;
-  const response = await fetch("/api/coach", {
+  // Referenced as a whole static expression on purpose: `vite.config.ts`
+  // substitutes this exact text at build time, and passing `import.meta.env`
+  // wholesale would defer the lookup to runtime, where the value is not there.
+  const coachApiUrl = resolveCoachApiUrl({
+    VITE_COACH_API_BASE_URL: import.meta.env.VITE_COACH_API_BASE_URL,
+  });
+  const response = await fetch(coachApiUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

@@ -7,7 +7,7 @@ This file is the fast operational map for agents and future sessions. It is not 
 - Architecture rename is complete: use `ui / hooks / data`, not `view / controller / model`.
 - `npm run build` passes.
 - `npm run lint` reports 8 warnings, no errors (`react-refresh/only-export-components` in shared providers/components — benign dev-HMR hints). The earlier 16 was this same set double-counted because `eslint .` was traversing the nested `.claude/worktrees/` checkout; `.claude` is now in the eslint `ignores`.
-- Unit tests run via Vitest (`npm test`, config in `vitest.config.ts`, node environment). The suites cover domain logic without React or live Supabase: fitness `recommendations`, fitness `setPlan` (session-wide Set Plan derivation), fitness `workoutCommit` (persist/queue/history settle), guidance `proactiveGates`, guidance `toolBuilders` (client Coach tool logic), guidance `coachMutations` (apply/revert payload round-trip, repo mocked), dashboard `homeModel` (home-screen derivation), dashboard `homeDashboard` loading orchestration (movement history + recent-workout reuse), periodization `repository` read-only loading, auth `protectedSessionGate`, analytics `volumeProgress`, breathwork `protocols` (step timeline/early-exit rule) and `logging` (workout-exercise build + catalog resolution), build `manualChunks`, and workout state `workoutSlice` (`lastFinishedWorkoutId` set on save/`workoutFinished`, untouched by discard's `clearWorkout`).
+- Unit tests run via Vitest (`npm test`, config in `vitest.config.ts`, node environment). The suites cover domain logic without React or live Supabase: fitness `recommendations`, fitness `setPlan` (session-wide Set Plan derivation), fitness `workoutCommit` (persist/queue/history settle), guidance `proactiveGates`, guidance `toolBuilders` (client Coach tool logic), guidance `coachMutations` (apply/revert payload round-trip, repo mocked), guidance `apiBase` (web stays relative / native goes absolute) and guidance `cors` (origin allowlist, never wildcarded), dashboard `homeModel` (home-screen derivation), dashboard `homeDashboard` loading orchestration (movement history + recent-workout reuse), periodization `repository` read-only loading, auth `protectedSessionGate`, analytics `volumeProgress`, breathwork `protocols` (step timeline/early-exit rule) and `logging` (workout-exercise build + catalog resolution), build `manualChunks`, and workout state `workoutSlice` (`lastFinishedWorkoutId` set on save/`workoutFinished`, untouched by discard's `clearWorkout`).
 - There are two build targets: `npm run build` (web, PWA included) and `npm run build:ios` (Capacitor wrap, PWA dropped). See **iOS Target**.
 - Do not run `npm run build` and `npm run lint` at the same time. Vite can create transient `vite.config.ts.timestamp-*.mjs` files that make ESLint fail with `ENOENT`.
 - Public routes do not load Redux persistence, app toasters/tooltips, or the protected shell up front; `App.tsx` routes protected paths through `ProtectedAppEntry`, which checks the stored Supabase session before importing the protected shell. The auth-check state renders a neutral dark shell, not a destination-shaped skeleton.
@@ -429,6 +429,49 @@ First-time machine setup, in order:
 when the bundle already ships inside the binary, and its update flow fights Capacitor's.
 Nothing else about the build differs between targets.
 
+### The Coach is the one thing the wrap calls over the network
+
+The bundle ships inside the binary, so `capacitor://localhost` has no same-origin
+`/api`. A relative `/api/coach` resolves to the app's own scheme and never leaves the
+device. Two halves fix it, and both must agree:
+
+- **Client.** `agent/apiBase.ts` (`resolveCoachApiUrl`) returns the relative path when
+  no base is configured and an absolute URL when one is. `vite.config.ts` supplies the
+  base: empty for the web target, so its request stays same-origin and unchanged, and
+  `https://stratos-theta.vercel.app` for `build:ios` — the **stable production alias**,
+  not a per-deployment URL, so the binary survives redeploys of `main`. Set
+  `VITE_COACH_API_BASE_URL` in `.env` to point a wrap at some other deployment.
+- **Server.** `agent/cors.ts` holds the allowlist and `api/coach.ts` applies it, answering
+  the `OPTIONS` preflight and echoing the granted origin. `capacitor://localhost` is
+  always allowed; `COACH_ALLOWED_ORIGINS` adds more. **Never widen this to `*`** — the
+  request body carries the caller's Supabase access token and their BYOK provider key.
+
+The client substitution is build-time text replacement, so `transport.ts` must reference
+`import.meta.env.VITE_COACH_API_BASE_URL` as a whole static expression. Passing
+`import.meta.env` wholesale (as the Supabase config reader does) defers the lookup to
+runtime and silently yields the relative path in the native bundle. To check a build,
+grep `dist/assets` for `VITE_COACH_API_BASE_URL:` — the web build shows `""` and the iOS
+build shows the absolute origin.
+
+BYOK provider keys live in `localStorage` (`data/providerKeyStore.ts`), the same store the
+Supabase session uses, so they persist across an app kill for the same reason it does.
+
+The Coach dev middleware in `vite.config.ts` has **no** CORS handling. It does not need
+any for the web target, which is same-origin, and a wrap cannot usefully point at it
+anyway: iOS App Transport Security blocks the cleartext `http://localhost` it serves.
+Verify the wrap's Coach against a deployed https origin, not the dev server.
+
+### Proactive insights fire differently in a wrapped app
+
+`useProactiveEngine` treats a fresh mount as `app_open`, which is right for a browser tab
+and wrong for a native shell: iOS suspends the webview rather than tearing it down, so a
+user returning days later never remounts. The hook therefore also re-runs the `app_open`
+gate on foreground (`visibilitychange`), gated behind `Capacitor.isNativePlatform()` so
+the web target keeps exactly the mount-and-navigate behaviour it had. Cooldowns keep it
+quiet. If foreground detection ever proves unreliable, `@capacitor/app`'s `resume` event
+is the heavier, purpose-built replacement — it was not used here because it adds a native
+plugin and `@capacitor/core` was already a dependency.
+
 ### Driving the app in the simulator
 
 UI verification is automated with **Maestro** (`e2e/ios-smoke.yaml`, run via
@@ -476,8 +519,6 @@ login failure.
 
 ### Known gaps in the wrap
 
-- The Coach calls `/api/coach` relatively. Under `capacitor://localhost` that resolves to
-  the app's own scheme and will not reach the Vercel function. Owned by **I-14**.
 - `index.html` pulls Montserrat/Open Sans from Google Fonts over the network, so a cold
   offline first launch falls back to system fonts. Cosmetic, not scoped to the wrap ticket.
 - Top-of-screen content collides with the status bar. Confirmed on device: the home
@@ -492,7 +533,7 @@ login failure.
 - `goals` and `rpg` are still placeholders.
 - Some fitness UI is still more stateful than ideal.
 - `README.md` may lag implementation details after large refactors.
-- Test coverage is an early foundation only: Vitest covers eight data seams (fitness recommendations, fitness set plan, fitness workout commit, guidance proactive gates, guidance tool builders, guidance coach mutations, dashboard home model, analytics volume progress). Most domains, hooks, and UI have no tests.
+- Test coverage is an early foundation only: Vitest covers nine data seams (fitness recommendations, fitness set plan, fitness workout commit, guidance proactive gates, guidance tool builders, guidance coach mutations, guidance Coach transport config, dashboard home model, analytics volume progress). Most domains, hooks, and UI have no tests.
 - Accepted Dependabot advisories (do not re-chase): after `npm audit fix`, ~14 remain, all dev-only or non-exploitable in the shipped browser bundle, none fixable without a breaking change:
   - **`@vercel/node` chain** (`tar`, `undici`, `tsx`, `path-to-regexp`, `@vercel/nft`, `@mapbox/node-pre-gyp`, `ajv`, `@vercel/static-config`): a serverless-build toolchain pulled in solely for the two type imports in `api/coach.ts`. Even `@vercel/node@5` still ships these vulnerable transitives, so the only fix is dropping the package — deliberately kept for deploy stability / standard typing.
   - **`esbuild`/`vite`**: the esbuild advisory affects only the dev server (`npm run dev`); fix is a `vite` 5→7 major (PWA/swc-plugin compat risk), deferred to its own pass.
