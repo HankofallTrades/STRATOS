@@ -68,6 +68,13 @@ const coachApiDevPlugin = (mode: string): Plugin => {
   };
 };
 
+/**
+ * The iOS wrap serves the bundle from inside the binary, so a service worker has
+ * nothing left to cache and its update flow fights Capacitor's. Only the web
+ * target gets the PWA plugin; `npm run build` is unchanged.
+ */
+const isNativeBuild = process.env.STRATOS_TARGET === "ios";
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
@@ -77,42 +84,43 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     coachApiDevPlugin(mode),
-    VitePWA({
-      includeAssets: ["favicon.ico", "icon-192.svg", "icon-512.svg"],
-      registerType: "autoUpdate",
-      workbox: {
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
-            handler: "CacheFirst",
-            options: {
-              cacheName: "google-fonts",
-              expiration: { maxEntries: 20, maxAgeSeconds: 365 * 24 * 60 * 60 },
+    !isNativeBuild &&
+      VitePWA({
+        includeAssets: ["favicon.ico", "icon-192.svg", "icon-512.svg"],
+        registerType: "autoUpdate",
+        workbox: {
+          globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+          runtimeCaching: [
+            {
+              urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
+              handler: "CacheFirst",
+              options: {
+                cacheName: "google-fonts",
+                expiration: { maxEntries: 20, maxAgeSeconds: 365 * 24 * 60 * 60 },
+              },
             },
-          },
-        ],
-      },
-      manifest: {
-        name: "STRATOS",
-        short_name: "STRATOS",
-        description: "Track your workouts, anywhere.",
-        theme_color: "#000000",
-        background_color: "#000000",
-        display: "standalone",
-        start_url: "/",
-        icons: [
-          { src: "/favicon.ico", sizes: "16x16 32x32", type: "image/x-icon" },
-          { src: "/icon-192.svg", sizes: "192x192", type: "image/svg+xml" },
-          {
-            src: "/icon-512.svg",
-            sizes: "512x512",
-            type: "image/svg+xml",
-            purpose: "any maskable",
-          },
-        ],
-      },
-    }),
+          ],
+        },
+        manifest: {
+          name: "STRATOS",
+          short_name: "STRATOS",
+          description: "Track your workouts, anywhere.",
+          theme_color: "#000000",
+          background_color: "#000000",
+          display: "standalone",
+          start_url: "/",
+          icons: [
+            { src: "/favicon.ico", sizes: "16x16 32x32", type: "image/x-icon" },
+            { src: "/icon-192.svg", sizes: "192x192", type: "image/svg+xml" },
+            {
+              src: "/icon-512.svg",
+              sizes: "512x512",
+              type: "image/svg+xml",
+              purpose: "any maskable",
+            },
+          ],
+        },
+      }),
   ].filter(Boolean),
   resolve: {
     alias: {

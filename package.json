@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",
+    "build:ios": "STRATOS_TARGET=ios vite build",
     "lint": "eslint .",
     "test": "vitest run",
     "preview": "vite preview",
@@ -14,13 +15,18 @@
     "supabase:stop": "supabase stop",
     "supabase:reset": "supabase db reset",
     "supabase:status": "supabase status -o env",
-    "gen:types": "supabase gen types typescript --linked > src/lib/integrations/supabase/types.ts"
+    "gen:types": "supabase gen types typescript --linked > src/lib/integrations/supabase/types.ts",
+    "ios:sync": "npm run build:ios && cap sync ios",
+    "ios:open": "cap open ios",
+    "ios:run": "npm run ios:sync && cap run ios"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.64",
     "@ai-sdk/google": "^3.0.53",
     "@ai-sdk/openai": "^3.0.48",
     "@ai-sdk/openai-compatible": "^2.0.35",
+    "@capacitor/core": "^8.5.1",
+    "@capacitor/ios": "^8.5.1",
     "@hookform/resolvers": "^3.9.0",
     "@phosphor-icons/react": "^2.1.7",
     "@radix-ui/react-accordion": "^1.2.0",
@@ -84,6 +90,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.1",
     "@eslint/js": "^9.9.0",
     "@types/node": "^20.12.7",
     "@types/react": "^18.2.66",

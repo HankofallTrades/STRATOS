@@ -8,6 +8,7 @@ This file is the fast operational map for agents and future sessions. It is not 
 - `npm run build` passes.
 - `npm run lint` reports 8 warnings, no errors (`react-refresh/only-export-components` in shared providers/components — benign dev-HMR hints). The earlier 16 was this same set double-counted because `eslint .` was traversing the nested `.claude/worktrees/` checkout; `.claude` is now in the eslint `ignores`.
 - Unit tests run via Vitest (`npm test`, config in `vitest.config.ts`, node environment). The suites cover domain logic without React or live Supabase: fitness `recommendations`, fitness `setPlan` (session-wide Set Plan derivation), fitness `workoutCommit` (persist/queue/history settle), guidance `proactiveGates`, guidance `toolBuilders` (client Coach tool logic), guidance `coachMutations` (apply/revert payload round-trip, repo mocked), dashboard `homeModel` (home-screen derivation), dashboard `homeDashboard` loading orchestration (movement history + recent-workout reuse), periodization `repository` read-only loading, auth `protectedSessionGate`, analytics `volumeProgress`, breathwork `protocols` (step timeline/early-exit rule) and `logging` (workout-exercise build + catalog resolution), build `manualChunks`, and workout state `workoutSlice` (`lastFinishedWorkoutId` set on save/`workoutFinished`, untouched by discard's `clearWorkout`).
+- There are two build targets: `npm run build` (web, PWA included) and `npm run build:ios` (Capacitor wrap, PWA dropped). See **iOS Target**.
 - Do not run `npm run build` and `npm run lint` at the same time. Vite can create transient `vite.config.ts.timestamp-*.mjs` files that make ESLint fail with `ENOENT`.
 - Public routes do not load Redux persistence, app toasters/tooltips, or the protected shell up front; `App.tsx` routes protected paths through `ProtectedAppEntry`, which checks the stored Supabase session before importing the protected shell. The auth-check state renders a neutral dark shell, not a destination-shaped skeleton.
 - Public auth routes are also lazy route chunks. `src/main.tsx` no longer mounts `AuthProvider` globally; auth boot now lives in the protected shell, so `/login` can render without pulling protected auth/state code into the entry bundle.
@@ -377,6 +378,52 @@ If you touch any of those, read the full file first. They are coordination seams
 - Migration history is reconciled: local `supabase/migrations` version prefixes now match the remote `schema_migrations` table exactly, and `user_provider_credentials` (dead since BYOK keys moved to localStorage) was dropped via migration `20260614065001`.
 - Migrations applied via the Supabase MCP `apply_migration` get an MCP-assigned timestamp version, not the local filename's version. To keep history aligned, after applying via MCP, rename the local migration file to the version MCP recorded (check `schema_migrations`). Drift is what previously broke `db push`.
 - Local `src/lib/integrations/supabase/types.ts` is hand-maintained and still lists the dropped `user_provider_credentials` table; regenerate it (e.g. `supabase gen types typescript --linked`) to remove the stale entry.
+
+## iOS Target
+
+STRATOS ships to iOS as a **Capacitor wrap of the same React SPA that ships to
+Vercel** — one codebase, two targets (ADR-0001, `docs/adr/0001-capacitor-wrap-single-codebase.md`).
+
+- `capacitor.config.ts` (repo root) — app id `com.daimodus.stratos`, `webDir: "dist"`.
+  There is deliberately **no `server.url`**: web assets are bundled into the binary so a
+  workout survives a dead network. OTA bundle updates are a later option, not v1.
+- `ios/` — the committed native Xcode project (`ios/App/App.xcodeproj`). Capacitor 8 uses
+  **Swift Package Manager**, not CocoaPods, so there is no Podfile and nothing to `pod install`.
+  Generated paths (`ios/App/App/public`, `capacitor.config.json`, `capacitor-cordova-ios-plugins/`)
+  are gitignored by `ios/.gitignore` and rebuilt by `cap sync`.
+- Minimum deployment target is **iOS 17** (`IPHONEOS_DEPLOYMENT_TARGET` in `project.pbxproj`),
+  set by the Live Activity requirement in the iOS v1 spec.
+
+### Build and run from a fresh clone
+
+```
+npm ci
+npm run ios:sync    # build:ios + cap sync ios
+npm run ios:open    # opens ios/App/App.xcodeproj in Xcode
+```
+
+Then pick a simulator or device in Xcode and Run. `npm run ios:run` does sync plus
+`cap run ios` if you would rather stay in the terminal. Re-run `npm run ios:sync` after
+**every** web change — the binary carries its own copy of the bundle, so an un-synced
+change simply is not in the app.
+
+First-time machine setup: Xcode installed, and `sudo xcodebuild -license accept` run once.
+Signing is a separate prerequisite (see I-12).
+
+### Web and native builds differ in exactly one way
+
+`npm run build` (web) is unchanged and keeps the full `vite-plugin-pwa` setup.
+`npm run build:ios` sets `STRATOS_TARGET=ios`, which is the **only** thing
+`vite.config.ts` branches on: it drops `VitePWA`. A service worker has nothing to cache
+when the bundle already ships inside the binary, and its update flow fights Capacitor's.
+Nothing else about the build differs between targets.
+
+### Known gaps in the wrap
+
+- The Coach calls `/api/coach` relatively. Under `capacitor://localhost` that resolves to
+  the app's own scheme and will not reach the Vercel function. Owned by **I-14**.
+- `index.html` pulls Montserrat/Open Sans from Google Fonts over the network, so a cold
+  offline first launch falls back to system fonts. Cosmetic, not scoped to the wrap ticket.
 
 ## Known Debt / Hotspots
 
