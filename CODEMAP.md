@@ -407,8 +407,19 @@ Then pick a simulator or device in Xcode and Run. `npm run ios:run` does sync pl
 **every** web change — the binary carries its own copy of the bundle, so an un-synced
 change simply is not in the app.
 
-First-time machine setup: Xcode installed, and `sudo xcodebuild -license accept` run once.
-Signing is a separate prerequisite (see I-12).
+First-time machine setup, in order:
+
+1. Xcode installed, and `sudo xcodebuild -license accept` run once.
+2. **The iOS platform downloaded** — Xcode → Settings → Components → iOS → Get.
+   Do not trust `xcodebuild -showsdks`: Xcode 26 lists `iphoneos26.5` and
+   `iphonesimulator26.5` while shipping only SDK *stubs*, so it looks installed when it is
+   not. `xcrun simctl list runtimes` is the honest check — empty means nothing can boot,
+   and every iOS destination fails with "iOS <version> is not installed". The CLI
+   equivalent (`xcodebuild -downloadPlatform iOS`) has been observed stalling silently
+   here: no output, no network, no error. Use the GUI, and disable any VPN if it stalls
+   there too.
+3. Signing, which is a separate prerequisite (see I-12) and only needed for a physical
+   device — the simulator does not require it.
 
 ### Web and native builds differ in exactly one way
 
