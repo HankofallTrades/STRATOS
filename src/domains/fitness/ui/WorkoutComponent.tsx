@@ -4,13 +4,19 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 import { useAppSelector } from "@/hooks/redux";
 import { useAuth } from "@/state/auth/AuthProvider";
-import { selectCurrentWorkout } from "@/state/workout/workoutSlice";
+import { selectCurrentWorkout, selectSessionFocus } from "@/state/workout/workoutSlice";
 import {
   buildWorkoutExerciseHistoryKey,
   fetchLastWorkoutExerciseInstances,
   fetchVariationsForExercises,
   getUserWeight,
 } from "@/domains/fitness/data/fitnessRepository";
+import {
+  areSetPlanRecommendationsEqual,
+  buildSetPlan,
+  getExerciseSetPlanRecommendations,
+  type ExerciseSetRecommendations,
+} from "@/domains/fitness/data/setPlan";
 
 import BreathworkExerciseCard from "@/domains/breathwork/ui/BreathworkExerciseCard";
 import { protocolForExerciseName } from "@/domains/breathwork/data/protocols";
@@ -20,11 +26,13 @@ import WorkoutExerciseContainer from "./WorkoutExerciseContainer";
 
 const EMPTY_VARIATIONS_BY_EXERCISE_ID: Awaited<ReturnType<typeof fetchVariationsForExercises>> = {};
 const EMPTY_HISTORY_BY_LOOKUP_KEY: Awaited<ReturnType<typeof fetchLastWorkoutExerciseInstances>> = {};
+const EMPTY_RECOMMENDATIONS: ExerciseSetRecommendations = {};
 
 interface WorkoutExerciseRowProps {
   exercise: NonNullable<ReturnType<typeof selectCurrentWorkout>>["exercises"][number];
   historyByLookupKey: Awaited<ReturnType<typeof fetchLastWorkoutExerciseInstances>>;
   isLookupDataLoading: boolean;
+  recommendedSetPerformances: ExerciseSetRecommendations;
   restStartTime: number | null;
   userWeightKg: number | null;
   variationsByExerciseId: Awaited<ReturnType<typeof fetchVariationsForExercises>>;
@@ -34,6 +42,7 @@ const WorkoutExerciseRow = memo(({
   exercise,
   historyByLookupKey,
   isLookupDataLoading,
+  recommendedSetPerformances,
   restStartTime,
   userWeightKg,
   variationsByExerciseId,
@@ -76,6 +85,7 @@ const WorkoutExerciseRow = memo(({
         <WorkoutExerciseContainer
           historicalSets={historyByLookupKey[historyKey] ?? null}
           isLookupsLoading={isLookupDataLoading}
+          recommendedSetPerformances={recommendedSetPerformances}
           workoutExercise={exercise}
           restStartTime={restStartTime}
           userWeight={userWeightKg}
@@ -147,6 +157,60 @@ const WorkoutComponent = () => {
   const isLookupDataLoading =
     isLoadingVariations || isLoadingHistory || isLoadingUserWeight;
 
+  const sessionFocus = useAppSelector(selectSessionFocus);
+
+  const historyByWorkoutExerciseId = useMemo(
+    () =>
+      Object.fromEntries(
+        workoutExercises.map(workoutExercise => [
+          workoutExercise.id,
+          historyByLookupKey[
+            buildWorkoutExerciseHistoryKey({
+              exerciseId: workoutExercise.exercise.id,
+              equipmentType: workoutExercise.equipmentType ?? null,
+              variation: workoutExercise.variation ?? null,
+            })
+          ] ?? null,
+        ])
+      ),
+    [historyByLookupKey, workoutExercises]
+  );
+
+  // The whole session's suggestions, derived in one pass. The lock screen needs
+  // every set up front, and deriving them here keeps both surfaces on one set
+  // of numbers instead of each recomputing its own.
+  const setPlan = useMemo(
+    () =>
+      buildSetPlan({
+        exercises: workoutExercises,
+        sessionFocus,
+        historyByWorkoutExerciseId,
+      }),
+    [historyByWorkoutExerciseId, sessionFocus, workoutExercises]
+  );
+
+  // Rows are memoised, and the plan is rebuilt on every workout change, most of
+  // which cannot move a suggestion. Hand a row the record it already has unless
+  // its numbers actually changed, so logging one set does not re-render the
+  // whole session.
+  const previousRecommendationsRef = useRef<Record<string, ExerciseSetRecommendations>>({});
+  const recommendationsByWorkoutExerciseId = useMemo(() => {
+    const nextRecommendations: Record<string, ExerciseSetRecommendations> = {};
+
+    for (const workoutExercise of workoutExercises) {
+      const recommendations = getExerciseSetPlanRecommendations(setPlan, workoutExercise.id);
+      const previous = previousRecommendationsRef.current[workoutExercise.id];
+
+      nextRecommendations[workoutExercise.id] =
+        previous && areSetPlanRecommendationsEqual(previous, recommendations)
+          ? previous
+          : recommendations;
+    }
+
+    previousRecommendationsRef.current = nextRecommendations;
+    return nextRecommendations;
+  }, [setPlan, workoutExercises]);
+
   useEffect(() => {
     if (!currentWorkout) return;
 
@@ -185,6 +249,9 @@ const WorkoutComponent = () => {
                   exercise={exercise}
                   historyByLookupKey={historyByLookupKey}
                   isLookupDataLoading={isLookupDataLoading}
+                  recommendedSetPerformances={
+                    recommendationsByWorkoutExerciseId[exercise.id] ?? EMPTY_RECOMMENDATIONS
+                  }
                   restStartTime={restTimerState?.exerciseId === exercise.id ? restTimerState.startTime : null}
                   userWeightKg={userWeight?.weight_kg ?? null}
                   variationsByExerciseId={variationsByExerciseId}

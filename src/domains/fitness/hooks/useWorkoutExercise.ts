@@ -1,13 +1,12 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { useAppDispatch, useAppSelector } from "@/hooks/redux";
+import { useAppDispatch } from "@/hooks/redux";
 import * as fitnessRepo from '../data/fitnessRepository';
-import { buildRecommendedStrengthSetPerformances } from '../data/recommendations';
+import type { ExerciseSetRecommendations } from '../data/setPlan';
 import {
     addSetToExercise as addSetAction,
     addCardioSetToExercise as addCardioSetAction,
-    selectSessionFocus,
     updateWorkoutExerciseEquipment as updateEquipmentAction,
     updateWorkoutExerciseVariation as updateVariationAction,
     deleteWorkoutExercise as deleteExerciseAction,
@@ -29,6 +28,8 @@ const DEFAULT_VARIATION = 'Standard';
 interface WorkoutExerciseLookups {
     historicalSets: LastWorkoutExerciseInstanceSet[] | null;
     isLoading: boolean;
+    /** This exercise's slice of the session's Set Plan. */
+    recommendedSetPerformances: ExerciseSetRecommendations;
     userWeight: number | null;
     variations: string[];
 }
@@ -38,7 +39,6 @@ export const useWorkoutExercise = (
     lookups: WorkoutExerciseLookups
 ) => {
     const dispatch = useAppDispatch();
-    const sessionFocus = useAppSelector(selectSessionFocus);
     const queryClient = useQueryClient();
     const exerciseId = workoutExercise.exercise.id;
 
@@ -79,17 +79,9 @@ export const useWorkoutExercise = (
         return performances;
     }, [historicalSets]);
 
-    const recommendedSetPerformances = useMemo(() => {
-        if (isCardioExercise(workoutExercise.exercise) || workoutExercise.exercise.is_static) {
-            return {};
-        }
-
-        return buildRecommendedStrengthSetPerformances({
-            focus: sessionFocus,
-            currentSetCount: workoutExercise.sets.length,
-            historicalSets,
-        });
-    }, [historicalSets, sessionFocus, workoutExercise.exercise, workoutExercise.sets.length]);
+    // Suggestions are derived once for the whole session, so the lock screen and
+    // this screen can never disagree about what the next set should be.
+    const recommendedSetPerformances = lookups.recommendedSetPerformances;
 
     const overallLastPerformance = useMemo(() => {
         if (!historicalSets || historicalSets.length === 0) return null;

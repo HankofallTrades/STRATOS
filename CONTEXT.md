@@ -91,3 +91,20 @@ renderer; `Record<CoachArtifact["type"], …>` keeps it in lockstep with the
 union. Applying an artifact goes through a single `applyArtifact(artifact)` on
 the presence context, which routes by `artifact.type` to the right confirm-only
 handler — artifact UI never names a handler.
+
+## Set Plan
+
+The precomputed list of every set in the active workout session — exercise,
+suggested reps, suggested weight — handed to the native layer when a workout
+starts. Derived once from the existing recommendation logic so the Live
+Activity can walk it without calling into the suspended webview.
+_Avoid_: workout snapshot, session plan
+
+## Activity Journal
+
+The natively-recorded sequence of lock-screen actions taken in the Live
+Activity (set completed, reps/weight adjusted). Replayed into Redux workout
+state when the app next foregrounds ("reconcile on reopen"); the journal is
+the source of truth for what happened while the webview was suspended, never
+a parallel workout state.
+_Avoid_: native event log, sync queue

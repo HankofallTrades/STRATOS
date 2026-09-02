@@ -2,6 +2,7 @@ import React from 'react';
 
 import { WorkoutExercise } from "@/lib/types/workout";
 import type { LastWorkoutExerciseInstanceSet } from "@/domains/fitness/data/fitnessRepository";
+import type { ExerciseSetRecommendations } from "@/domains/fitness/data/setPlan";
 
 import { useWorkoutExercise } from '../hooks/useWorkoutExercise';
 import { WorkoutExerciseView } from './WorkoutExerciseView';
@@ -9,6 +10,7 @@ import { WorkoutExerciseView } from './WorkoutExerciseView';
 interface WorkoutExerciseContainerProps {
   historicalSets: LastWorkoutExerciseInstanceSet[] | null;
   isLookupsLoading: boolean;
+  recommendedSetPerformances: ExerciseSetRecommendations;
   restStartTime?: number | null;
   userWeight: number | null;
   variations: string[];
@@ -18,6 +20,7 @@ interface WorkoutExerciseContainerProps {
 export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> = ({
   historicalSets,
   isLookupsLoading,
+  recommendedSetPerformances: setPlanRecommendations,
   restStartTime,
   userWeight,
   variations,
@@ -43,6 +46,7 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
   } = useWorkoutExercise(workoutExercise, {
     historicalSets,
     isLoading: isLookupsLoading,
+    recommendedSetPerformances: setPlanRecommendations,
     userWeight,
     variations,
   });
