@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   deriveProactiveInsights,
+  mergeProactiveInsights,
   type ProactiveGateSnapshot,
 } from "./proactiveGates";
 import type { DisplayArchetypeData } from "@/domains/analytics/data/volumeProgress";
@@ -141,5 +142,111 @@ describe("deriveProactiveInsights — app_open", () => {
       volumeProgress: [archetype("Pull", 3, 10)],
     });
     expect(deriveProactiveInsights(snap)).toEqual(deriveProactiveInsights(snap));
+  });
+});
+
+describe("mergeProactiveInsights", () => {
+  const derivedFor = (
+    trigger: ProactiveGateSnapshot["trigger"],
+    finishedWorkoutId?: string
+  ) => deriveProactiveInsights(snapshot({ trigger, finishedWorkoutId }));
+
+  it("keeps the post-session nudge when an app_open run lands after it", () => {
+    // Finishing a workout dispatches the finished id and then navigates home,
+    // and the navigation runs the app_open gate a few milliseconds behind the
+    // workout_finished one. An app_open run must not delete a nudge it was
+    // never in a position to derive.
+    const finished = derivedFor("workout_finished", "w-123");
+    expect(finished.map((i) => i.id)).toEqual(["workout_finished"]);
+
+    const merged = mergeProactiveInsights({
+      derived: [],
+      previous: finished,
+      trigger: "app_open",
+    });
+
+    expect(merged.map((i) => i.id)).toEqual(["workout_finished"]);
+  });
+
+  it("drops an app_open insight the latest app_open run no longer derives", () => {
+    // The other half of the rule: a run does own its own trigger's insights,
+    // so one whose condition has passed disappears rather than sticking.
+    const stale = deriveProactiveInsights(
+      snapshot({ activeProgram: null })
+    ).filter((i) => i.id === "no_active_program");
+    expect(stale).toHaveLength(1);
+
+    const merged = mergeProactiveInsights({
+      derived: [],
+      previous: stale,
+      trigger: "app_open",
+    });
+
+    expect(merged).toEqual([]);
+  });
+
+  it("puts the post-session nudge ahead of the ambient app_open set", () => {
+    // Only the first peek-tier insight is ever rendered, so order is what the
+    // user actually sees. A nudge about the session they finished seconds ago
+    // outranks the ambient set — and must do so whichever run settles last.
+    const openRun = deriveProactiveInsights(
+      snapshot({ activeProgram: program(8, 8) })
+    );
+    expect(openRun.some((i) => i.tier === "peek")).toBe(true);
+    const finishedRun = derivedFor("workout_finished", "w-123");
+
+    const firstPeek = (insights: ReturnType<typeof derivedFor>) =>
+      insights.find((i) => i.tier === "peek")?.id;
+
+    expect(
+      firstPeek(
+        mergeProactiveInsights({
+          derived: openRun,
+          previous: finishedRun,
+          trigger: "app_open",
+        })
+      )
+    ).toBe("workout_finished");
+    expect(
+      firstPeek(
+        mergeProactiveInsights({
+          derived: finishedRun,
+          previous: openRun,
+          trigger: "workout_finished",
+        })
+      )
+    ).toBe("workout_finished");
+  });
+
+  it("reaches the same surface whichever of the two runs settles last", () => {
+    // The two gate runs race, and which one wins is a timing accident of the
+    // platform — the wrap resolves them in the opposite order to the web. The
+    // surface must not depend on it.
+    const openRun = derivedFor("app_open");
+    const finishedRun = derivedFor("workout_finished", "w-123");
+
+    const openLast = mergeProactiveInsights({
+      derived: openRun,
+      previous: mergeProactiveInsights({
+        derived: finishedRun,
+        previous: [],
+        trigger: "workout_finished",
+      }),
+      trigger: "app_open",
+    });
+    const finishedLast = mergeProactiveInsights({
+      derived: finishedRun,
+      previous: mergeProactiveInsights({
+        derived: openRun,
+        previous: [],
+        trigger: "app_open",
+      }),
+      trigger: "workout_finished",
+    });
+
+    expect([...openLast].map((i) => i.id).sort()).toEqual(
+      [...finishedLast].map((i) => i.id).sort()
+    );
+    expect(openLast.map((i) => i.id)).toContain("workout_finished");
   });
 });

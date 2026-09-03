@@ -9,6 +9,7 @@ import type { ProactiveInsight } from "@/domains/guidance/data/proactiveGates";
 export const devProactiveSamples: ProactiveInsight[] = [
   {
     id: "program_ending",
+    trigger: "app_open",
     tier: "peek",
     line: "Your training block ends this week — want me to plan the next one?",
     seedPrompt:
@@ -17,6 +18,7 @@ export const devProactiveSamples: ProactiveInsight[] = [
   },
   {
     id: "missed_training",
+    trigger: "app_open",
     tier: "peek",
     line: "It's been 5 days since your last session — want a plan for today?",
     seedPrompt:
@@ -25,6 +27,7 @@ export const devProactiveSamples: ProactiveInsight[] = [
   },
   {
     id: "volume_gap_late_week",
+    trigger: "app_open",
     tier: "peek",
     line: "Push volume is behind this week (4/10 sets).",
     seedPrompt:
@@ -33,6 +36,7 @@ export const devProactiveSamples: ProactiveInsight[] = [
   },
   {
     id: "no_active_program",
+    trigger: "app_open",
     tier: "pulse",
     line: "No active program — ask the coach to build one.",
     seedPrompt: "Help me set up a training program.",
@@ -40,6 +44,7 @@ export const devProactiveSamples: ProactiveInsight[] = [
   },
   {
     id: "workout_finished",
+    trigger: "workout_finished",
     tier: "peek",
     line: "Session logged. Want a quick read on it?",
     seedPrompt:

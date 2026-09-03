@@ -16,6 +16,7 @@ import {
 } from "@/domains/guidance/data/proactiveCooldowns";
 import {
   deriveProactiveInsights,
+  mergeProactiveInsights,
   type ProactiveInsight,
   type ProactiveTrigger,
 } from "@/domains/guidance/data/proactiveGates";
@@ -97,15 +98,7 @@ export const useProactiveEngine = ({
         );
 
         setInsights((previous) =>
-          trigger === "app_open"
-            ? derived
-            : [
-                ...derived,
-                ...previous.filter(
-                  (existing) =>
-                    !derived.some((incoming) => incoming.id === existing.id)
-                ),
-              ]
+          mergeProactiveInsights({ derived, previous, trigger })
         );
       } catch {
         // Proactivity must never surface an error state.

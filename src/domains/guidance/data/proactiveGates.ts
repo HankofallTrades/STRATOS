@@ -9,6 +9,9 @@ export type ProactiveTrigger = "app_open" | "workout_finished";
 
 export interface ProactiveInsight {
   id: string;
+  // The gate run that produced this insight. Merging back onto the surface
+  // keys on it: see mergeProactiveInsights.
+  trigger: ProactiveTrigger;
   tier: ProactiveTier;
   line: string;
   seedPrompt: string;
@@ -60,6 +63,7 @@ export const deriveProactiveInsights = (
     return [
       {
         id: "workout_finished",
+        trigger,
         tier: "peek",
         line: "Session logged. Want a quick read on it?",
         seedPrompt:
@@ -70,7 +74,7 @@ export const deriveProactiveInsights = (
     ];
   }
 
-  const insights: ProactiveInsight[] = [];
+  const insights: Omit<ProactiveInsight, "trigger">[] = [];
 
   if (
     activeProgram &&
@@ -130,5 +134,44 @@ export const deriveProactiveInsights = (
     });
   }
 
-  return insights;
+  return insights.map((insight) => ({ ...insight, trigger }));
 };
+
+// A nudge about the session just finished outranks the ambient set: only the
+// first peek-tier insight is ever rendered, so this is the order the user sees.
+const TRIGGER_RANK: Record<ProactiveTrigger, number> = {
+  workout_finished: 0,
+  app_open: 1,
+};
+
+/**
+ * Fold one gate run's freshly derived insights into what is already on the
+ * surface. A run owns exactly the insights its own trigger produces: it
+ * replaces those wholesale, so one whose condition has passed disappears, and
+ * it leaves every other trigger's insights alone.
+ *
+ * Both halves guard the same race. Finishing a workout dispatches the finished
+ * id and then navigates home, and the navigation starts the app_open run a few
+ * milliseconds behind the workout_finished one. Which of the two settles last
+ * is a timing accident — cached queries resolve in a different order in the
+ * wrap than on the web. A run that replaced the whole surface would, half the
+ * time, delete the session nudge it was never in a position to derive; ranking
+ * by trigger rather than by arrival keeps the surviving nudge on top either way.
+ */
+export const mergeProactiveInsights = ({
+  derived,
+  previous,
+  trigger,
+}: {
+  derived: ProactiveInsight[];
+  previous: ProactiveInsight[];
+  trigger: ProactiveTrigger;
+}): ProactiveInsight[] =>
+  [
+    ...derived,
+    ...previous.filter(
+      (existing) =>
+        existing.trigger !== trigger &&
+        !derived.some((incoming) => incoming.id === existing.id)
+    ),
+  ].sort((left, right) => TRIGGER_RANK[left.trigger] - TRIGGER_RANK[right.trigger]);
