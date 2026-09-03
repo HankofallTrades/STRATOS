@@ -7,16 +7,13 @@ How the engineering skills should consume this repo's domain documentation when 
 ## Before exploring, read these
 
 - **`CONTEXT.md`** at the repo root — the STRATOS domain glossary. It exists; read it.
-- **`docs/adr/`**: read ADRs that touch the area you're about to work in. This
-  directory does not exist yet; `/domain-modeling` creates it when the first decision
-  is actually recorded.
+- **`docs/adr/`**: read ADRs that touch the area you're about to work in.
 
 If any of these files don't exist, **proceed silently**. Don't flag their absence; don't suggest creating them upfront. The `/domain-modeling` skill (reached via `/grill-with-docs` and `/improve-codebase-architecture`) creates them lazily when terms or decisions actually get resolved.
 
-`CONTEXT.md` is the *domain* vocabulary. It does not replace `CODEMAP.md`, which
-`AGENTS.md` requires you to read before substantial work — that one maps routes,
-domain entrypoints, state ownership, and architecture guardrails. Read both; they
-answer different questions.
+`CONTEXT.md` is the *domain* vocabulary — what the concepts mean. It is
+deliberately not a map of the code: routes, entrypoints and state ownership are
+read from the source, not from a document that has to be kept in step with it.
 
 ## File structure
 

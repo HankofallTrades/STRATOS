@@ -65,10 +65,30 @@ export type ProtectedGateState =
 
 /**
  * The entry gate resolves the session once per entry into the protected tree,
- * never again on navigation. Re-resolving would return the gate to "checking",
- * which unmounts ProtectedAppShell and every piece of shell-level state it
- * owns. Keeping a session valid over time is AuthProvider's job, not this
- * gate's.
+ * never again on navigation: this is keyed on gate state, deliberately not on
+ * location.pathname. Re-resolving sets the gate back to "checking", which
+ * renders a placeholder instead of ProtectedAppShell and so unmounts every
+ * piece of shell-level state below it — the Coach conversation, and the refs
+ * useProactiveEngine compares against to spot a transition like a workout
+ * finishing.
+ *
+ * The hazard is timing-dependent and does not reproduce on web. When
+ * getSession() resolves within a microtask (warm client, cached session) React
+ * batches the "checking" and "authenticated" updates into one render and the
+ * placeholder never commits. Measured on both the pre-fix and post-fix builds
+ * by holding a DOM node the shell owns and checking it stays attached across
+ * navigation and across a workout finish: attached in every case, and the
+ * workout_finished insight fired on the pre-fix build too.
+ *
+ * So this guardrail was NOT the cause of I-23, which remains open and looks
+ * wrap-specific. Do not cite it as that fix.
+ *
+ * It is still worth keeping: whenever the resolve is slower than a microtask —
+ * a cold client, a slow network, the dynamic import not yet cached — the
+ * placeholder does commit and the shell does remount. Keeping a session valid
+ * over time is AuthProvider's job anyway: it subscribes to onAuthStateChange,
+ * and ProtectedRoute redirects when the session goes away, which catches expiry
+ * immediately rather than on the next navigation.
  */
 export const shouldResolveProtectedSession = (
   state: ProtectedGateState
