@@ -2,22 +2,27 @@ import { Suspense, lazy, useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 
 import { RouteSkeleton } from "@/components/loading/RouteSkeletons";
-import { resolveProtectedSession } from "@/state/auth/protectedSessionGate";
+import {
+  resolveProtectedSession,
+  shouldResolveProtectedSession,
+  type ProtectedGateState,
+} from "@/state/auth/protectedSessionGate";
 
 const ProtectedAppShell = lazy(
   () => import("@/components/layout/ProtectedAppShell")
 );
 
-type GateState = "checking" | "authenticated" | "unauthenticated";
-
 const ProtectedAppEntry = () => {
   const location = useLocation();
-  const [gateState, setGateState] = useState<GateState>("checking");
+  const [gateState, setGateState] = useState<ProtectedGateState>("checking");
 
+  // Resolves once, on entry into the protected tree — deliberately not per
+  // navigation. See shouldResolveProtectedSession.
   useEffect(() => {
+    if (!shouldResolveProtectedSession(gateState)) return;
+
     let isActive = true;
 
-    setGateState("checking");
     void resolveProtectedSession()
       .then(result => {
         if (!isActive) return;
@@ -34,7 +39,7 @@ const ProtectedAppEntry = () => {
     return () => {
       isActive = false;
     };
-  }, [location.pathname]);
+  }, [gateState]);
 
   if (gateState === "unauthenticated") {
     return <Navigate to="/login" replace />;

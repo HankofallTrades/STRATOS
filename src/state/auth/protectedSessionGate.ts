@@ -33,3 +33,19 @@ export const resolveProtectedSession = async (
     status: "authenticated",
   };
 };
+
+export type ProtectedGateState =
+  | "checking"
+  | "authenticated"
+  | "unauthenticated";
+
+/**
+ * The entry gate resolves the session once per entry into the protected tree,
+ * never again on navigation. Re-resolving would return the gate to "checking",
+ * which unmounts ProtectedAppShell and every piece of shell-level state it
+ * owns. Keeping a session valid over time is AuthProvider's job, not this
+ * gate's.
+ */
+export const shouldResolveProtectedSession = (
+  state: ProtectedGateState
+): boolean => state === "checking";

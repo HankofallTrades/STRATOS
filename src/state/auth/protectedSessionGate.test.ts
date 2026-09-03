@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { resolveProtectedSession } from "@/state/auth/protectedSessionGate";
+import {
+  resolveProtectedSession,
+  shouldResolveProtectedSession,
+} from "@/state/auth/protectedSessionGate";
 
 describe("resolveProtectedSession", () => {
   it("treats missing Supabase config as unauthenticated", async () => {
@@ -25,5 +28,27 @@ describe("resolveProtectedSession", () => {
       session,
       status: "authenticated",
     });
+  });
+});
+
+describe("shouldResolveProtectedSession", () => {
+  it("resolves while the gate is still checking", () => {
+    expect(shouldResolveProtectedSession("checking")).toBe(true);
+  });
+
+  // The regression this guards: the gate used to re-resolve on every
+  // navigation, which returned it to "checking" and unmounted
+  // ProtectedAppShell. Everything the shell owns went with it — the Coach
+  // conversation, and the refs useProactiveEngine compares against to spot a
+  // transition, so finishing a workout never looked like a change and the
+  // workout_finished insight never fired (I-23).
+  it("never re-resolves once authenticated, so the shell is never unmounted", () => {
+    expect(shouldResolveProtectedSession("authenticated")).toBe(false);
+  });
+
+  // Bouncing to /login unmounts this component anyway; re-resolving here would
+  // only loop.
+  it("does not re-resolve once unauthenticated", () => {
+    expect(shouldResolveProtectedSession("unauthenticated")).toBe(false);
   });
 });
