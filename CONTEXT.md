@@ -1,110 +1,105 @@
 # CONTEXT — STRATOS domain glossary
 
 Shared vocabulary for the codebase. Architecture-review and design conversations
-should use these terms exactly so names stay stable across sessions. (Domain
-terms here; architecture terms like *module / interface / seam / deep / shallow*
-come from the architecture-review language, not this file.)
+should use these terms exactly so names stay stable across sessions.
+
+This file defines what the concepts *mean*. It deliberately holds no file paths,
+no implementation detail and no architectural decisions — read those from the
+code, from `AGENTS.md`, and from `docs/adr/`. Identifier names appear only where
+the name *is* the term.
 
 ## Coach
 
-The in-app LLM agent (presence orb + summon surface). Conversation state is
-ephemeral; each turn sends a read-only `ScreenContext`. Mutations are
-confirm-only and recorded in a change log with one-tap revert.
+The in-app LLM agent, reached through the presence orb and the summon surface.
+Conversation state is ephemeral. Each turn sends a read-only **ScreenContext**.
+Every change the Coach makes is confirm-only and lands in a change log with
+one-tap revert.
 
 ## Coach tool
 
-A capability the Coach can invoke during a turn. Each tool executes either on
-the **server** (Vercel function, Supabase-backed) or on the **client** (React
-hooks). Read tools return a message/data; propose tools return a draft
-**artifact** the user reviews and applies — they never save on their own.
+A capability the Coach can invoke during a turn. Each tool executes either on the
+**server** or on the **client**; that environment is part of the tool's
+declaration, not a separate decision made at call time.
+
+Two kinds, and the distinction matters: a **read tool** returns a message or
+data, while a **propose tool** returns a draft **artifact** for the user to
+review and apply. A propose tool never saves on its own.
 
 ## Coach tool registry
 
-`coachToolRegistry` in `src/domains/guidance/agent/tools.ts`: the single,
-environment-free spine of `CoachToolDescriptor`s (name, label, description,
-input schema, execution environment). It is the one place a tool is declared;
-the server runtime, the client send loop, and message replay all read from it
-instead of re-enumerating tools. `as const satisfies Record<CoachToolName, …>`
-makes a missing or extra tool a compile error, and the execution environment is
-single-sourced here (no parallel execution map).
+`coachToolRegistry` — the single, environment-free spine declaring every Coach
+tool: its name, label, description, input schema, and execution environment. It
+is the one place a tool is declared. The server runtime, the client send loop,
+and message replay all read from it rather than re-enumerating tools, and a
+missing or extra tool is a compile error rather than a runtime surprise.
 
 ## Tool builder
 
-A pure function in `src/domains/guidance/data/toolBuilders.ts` of the shape
-`buildX(validatedInput, injectedDeps) -> CoachToolResultPayload`, or it throws
-an `Error` whose message is shown back to the model (e.g. an unresolved exercise
-name, listing the catalog). Builders contain the client tools' logic and own the
-unit-test surface; React hooks (`useProgramActions`, `useProposeWorkout`) only
-fetch the catalog/program/workout deps and call the builder. No React,
-react-query, or Supabase inside a builder.
+A pure function holding one client tool's logic: it takes validated input plus
+injected dependencies and returns a result payload, or throws with a message
+shown back to the model (an unresolved exercise name, say, listing the catalog).
+Builders own the unit-test surface for client tools. Hooks around them only
+gather dependencies and call the builder — a builder itself stays free of React,
+react-query and Supabase.
 
 ## Client tool runner / runner map
 
-`useClientCoachToolRunners()` returns `CoachClientToolRunners` — the
-client-executed tools keyed by name. The send loop in `PresenceAgentProvider`
-looks a tool up here instead of switching on its name. Typed as a `Record` over
-the registry's client tools, so a client tool without a runner is a compile
-error.
+The set of client-executed tools keyed by name. The send loop looks a tool up
+here rather than switching on its name, and a client tool declared without a
+runner is a compile error.
 
 ## Home model
 
-Everything the home screen displays is derived by the pure
-`buildHomeModel(inputs)` in `src/domains/dashboard/data/homeModel.ts` —
-greeting, display name, today's-session card, movement streak, habit items,
-recent PR/workout summaries. `useHomeDashboard` only gathers the five sources
-(auth, redux workout, periodization, habits, snapshot query), feeds the model,
-and keeps effects and handlers. `data/homeDashboard.ts` is the I/O boundary
-(one batched snapshot fetch). Mirrors the analytics `volumeProgress.ts` seam.
+The pure derivation behind everything the home screen shows: greeting, display
+name, today's session card, movement streak, habit items, and recent PR and
+workout summaries. Its hook gathers the sources — auth, workout state,
+periodization, habits, snapshot query — and feeds the model; the model itself
+does no I/O.
 
 ## Workout commit
 
-Completing a workout crosses one interface: `commitFinalizedWorkout(snapshot,
-deps)` in `src/domains/fitness/data/workoutCommit.ts`, returning
-`saved | queued | failed`. It owns persist → offline-queue fallback → Redux
-history settle (history always carries the server id after a successful save).
-Online save (`useWorkoutPersistence`) and offline replay
-(`useOfflineWorkoutSync`) are the two adapters; they own only what genuinely
-differs — toasts, navigation, and cache-invalidation timing.
+Completing a workout crosses exactly one interface, `commitFinalizedWorkout`,
+which returns `saved`, `queued`, or `failed`. It owns the whole tail: persist,
+fall back to the offline queue, then settle workout history. Online save and
+offline replay are its two adapters, and they own only what genuinely differs
+between them — toasts, navigation, and cache-invalidation timing.
 
 ## Coach mutation / mutation registry
 
 A **Coach mutation** is a confirm-only change the Coach can make on the user's
-behalf (`program_created`, `program_edited`, `workout_edited` — the
-`CoachChangeType` union). The **mutation registry** (`coachMutationRegistry` in
-`src/domains/guidance/data/coachMutations.ts`) makes each one a command
-descriptor owning its forward op (`apply`), its inverse (`revert`), its
-revertibility rule (`canRevert`), and the zod schema of the change-log payload
-both sides share — apply writes it, revert parses it, so payload drift is a
-compile error and a malformed legacy row is a clean parse failure.
-`useCoachMutations().applyMutation(type, input)` is the one apply path (shared
-tail: change-log insert, invalidation, toast); `useCoachChangeLog` reverts
-through `revertCoachChange`/`canRevertCoachChange`. Neither hook inspects a
-payload itself.
+behalf: `program_created`, `program_edited`, `workout_edited`.
+
+The **mutation registry** makes each one a command that owns its forward
+operation, its inverse, its revertibility rule, and the schema of the change-log
+payload both directions share — so apply and revert cannot drift apart, and a
+malformed legacy row fails as a clean parse error. There is one apply path and
+one revert path; neither inspects a payload itself.
 
 ## Artifact / artifact registry
 
-A `CoachArtifact` is the typed, reviewable result a propose tool emits
-(`volume_chart`, `workout_draft`, `program_draft`, `program_edit`,
-`workout_edit`). The **artifact registry** in
-`src/domains/guidance/ui/ArtifactRenderer.tsx` maps each artifact type to its
-renderer; `Record<CoachArtifact["type"], …>` keeps it in lockstep with the
-union. Applying an artifact goes through a single `applyArtifact(artifact)` on
-the presence context, which routes by `artifact.type` to the right confirm-only
-handler — artifact UI never names a handler.
+A **CoachArtifact** is the typed, reviewable result a propose tool emits:
+`volume_chart`, `workout_draft`, `program_draft`, `program_edit`, `workout_edit`.
+
+The **artifact registry** maps each artifact type to its renderer, kept in
+lockstep with the union. Applying an artifact goes through a single entry point
+that routes by artifact type to the right confirm-only handler — artifact UI
+never names a handler directly.
 
 ## Set Plan
 
 The precomputed list of every set in the active workout session — exercise,
 suggested reps, suggested weight — handed to the native layer when a workout
-starts. Derived once from the existing recommendation logic so the Live
-Activity can walk it without calling into the suspended webview.
+starts. Derived once from the existing recommendation logic so the Live Activity
+can walk it without calling into the suspended webview.
+
 _Avoid_: workout snapshot, session plan
 
 ## Activity Journal
 
-The natively-recorded sequence of lock-screen actions taken in the Live
-Activity (set completed, reps/weight adjusted). Replayed into Redux workout
-state when the app next foregrounds ("reconcile on reopen"); the journal is
-the source of truth for what happened while the webview was suspended, never
-a parallel workout state.
+The natively-recorded sequence of lock-screen actions taken in the Live Activity
+(set completed, reps or weight adjusted). Replayed into workout state when the
+app next foregrounds — "reconcile on reopen". The journal is the source of truth
+for what happened while the webview was suspended. It is never a parallel workout
+state.
+
 _Avoid_: native event log, sync queue
