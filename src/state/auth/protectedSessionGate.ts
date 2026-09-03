@@ -10,9 +10,27 @@ export type ProtectedSessionState =
   | { status: "unauthenticated" };
 
 type LoadBrowserClient = () => Promise<BrowserSupabaseClient | null>;
+type RecoverSession = (
+  supabase: BrowserSupabaseClient
+) => Promise<Session | null>;
+
+/**
+ * Dev-only auto sign-in, reached through a dynamic import behind a static
+ * `import.meta.env.DEV` check so a production build eliminates the branch and
+ * never emits the chunk. See `@/lib/dev/devAutoLogin`.
+ */
+const recoverDevSession: RecoverSession = async supabase => {
+  if (!import.meta.env.DEV) {
+    return null;
+  }
+
+  const { attemptDevAutoLogin } = await import("@/lib/dev/devAutoLogin");
+  return attemptDevAutoLogin(supabase, import.meta.env);
+};
 
 export const resolveProtectedSession = async (
-  loadClient: LoadBrowserClient = loadSupabaseBrowserClient
+  loadClient: LoadBrowserClient = loadSupabaseBrowserClient,
+  recoverSession: RecoverSession = recoverDevSession
 ): Promise<ProtectedSessionState> => {
   const supabase = await loadClient();
 
@@ -25,6 +43,12 @@ export const resolveProtectedSession = async (
   } = await supabase.auth.getSession();
 
   if (!session) {
+    const recovered = await recoverSession(supabase);
+
+    if (recovered) {
+      return { session: recovered, status: "authenticated" };
+    }
+
     return { status: "unauthenticated" };
   }
 
