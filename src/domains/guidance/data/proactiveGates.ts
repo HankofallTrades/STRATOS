@@ -175,3 +175,92 @@ export const mergeProactiveInsights = ({
         !derived.some((incoming) => incoming.id === existing.id)
     ),
   ].sort((left, right) => TRIGGER_RANK[left.trigger] - TRIGGER_RANK[right.trigger]);
+
+/**
+ * Whether a gate run has to load anything before it can derive.
+ *
+ * `workout_finished` derives its nudge from the finished workout id alone, so
+ * it reads neither the active program nor weekly volume — see
+ * `deriveProactiveInsights`, which returns before it touches either. Keeping
+ * that rule stated here is what stops an unrelated query failure from taking
+ * down an insight that had everything it needed.
+ */
+export const gateNeedsTrainingContext = (trigger: ProactiveTrigger): boolean =>
+  trigger !== "workout_finished";
+
+export interface ProactiveGateRun {
+  trigger: ProactiveTrigger;
+  now: Date;
+  workoutHistory: Workout[];
+  finishedWorkoutId?: string | null;
+  loadActiveProgram: () => Promise<ActiveMesocycleProgram | null>;
+  loadVolumeProgress: () => Promise<DisplayArchetypeData[]>;
+  onFailure?: (error: unknown) => void;
+}
+
+/**
+ * Dev-only, because a failed gate run is not a user-facing event: proactivity
+ * that cannot say anything simply says nothing. It still has to be findable
+ * while developing, or "no nudge appeared" is indistinguishable from "nothing
+ * to nudge about".
+ */
+export const warnProactiveGateFailure = (error: unknown): void => {
+  if (!import.meta.env.DEV) return;
+  console.warn("[proactive] gate run failed and surfaced nothing", error);
+};
+
+/**
+ * Run one gate, loading only what that trigger actually reads.
+ *
+ * The load is inside the run rather than ahead of it so a failure can only
+ * cost the insights that depended on it. A run that needs nothing cannot fail
+ * on a query; a run that does need something and cannot get it yields nothing,
+ * which is a state the surface already handles, rather than an error the user
+ * would see.
+ *
+ * Total by construction: it resolves to an insight list whatever its inputs or
+ * loaders do. Callers fire it with `void`, so a rejection here would land as an
+ * unhandled one — which is exactly the user-visible failure the whole gate is
+ * written to avoid.
+ */
+export const runProactiveGates = async ({
+  trigger,
+  now,
+  workoutHistory,
+  finishedWorkoutId,
+  loadActiveProgram,
+  loadVolumeProgress,
+  onFailure = warnProactiveGateFailure,
+}: ProactiveGateRun): Promise<ProactiveInsight[]> => {
+  let activeProgram: ActiveMesocycleProgram | null = null;
+  let volumeProgress: DisplayArchetypeData[] = [];
+
+  if (gateNeedsTrainingContext(trigger)) {
+    try {
+      [activeProgram, volumeProgress] = await Promise.all([
+        loadActiveProgram(),
+        loadVolumeProgress(),
+      ]);
+    } catch (error) {
+      // Deriving from the empty defaults above would be worse than silence:
+      // "no active program" is a real insight, and a failed query is not
+      // evidence for it.
+      onFailure(error);
+      return [];
+    }
+  }
+
+  try {
+    return deriveProactiveInsights({
+      trigger,
+      now,
+      activeProgram,
+      workoutHistory,
+      volumeProgress,
+      finishedWorkoutId: finishedWorkoutId ?? null,
+    });
+  } catch (error) {
+    onFailure(error);
+    return [];
+  }
+};

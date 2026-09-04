@@ -15,8 +15,9 @@ import {
   suppress,
 } from "@/domains/guidance/data/proactiveCooldowns";
 import {
-  deriveProactiveInsights,
   mergeProactiveInsights,
+  runProactiveGates,
+  warnProactiveGateFailure,
   type ProactiveInsight,
   type ProactiveTrigger,
 } from "@/domains/guidance/data/proactiveGates";
@@ -64,35 +65,50 @@ export const useProactiveEngine = ({
   const runGates = useCallback(
     async (trigger: ProactiveTrigger, finishedWorkoutId?: string | null) => {
       if (!userId) return;
-      try {
-        const weekRange = getCurrentWeekRange();
-        const [activeProgram, weeklySets] = await Promise.all([
-          queryClient.ensureQueryData({
-            queryKey: ["activeMesocycleProgram", userId],
-            queryFn: () => getActiveMesocycleProgram(userId),
-            staleTime: 60 * 1000,
-          }),
-          queryClient.ensureQueryData({
-            queryKey: [
-              "weeklyArchetypeSets_v2",
-              userId,
-              weekRange.start,
-              weekRange.end,
-            ],
-            queryFn: () =>
-              fetchWeeklyArchetypeSets(userId, weekRange.start, weekRange.end),
-            staleTime: 5 * 60 * 1000,
-          }),
-        ]);
 
-        const derived = deriveProactiveInsights({
-          trigger,
-          now: new Date(),
-          activeProgram,
-          workoutHistory: workoutHistoryRef.current,
-          volumeProgress: buildVolumeProgressDisplayData(weeklySets),
-          finishedWorkoutId: finishedWorkoutId ?? null,
-        }).filter(
+      // The loaders are passed in unstarted: runProactiveGates calls only the
+      // ones the trigger it was given actually reads, and handles a failure
+      // there itself rather than losing the whole run to it.
+      //
+      // The catch is the same promise the empty one used to make — proactivity
+      // must never surface an error state, and every caller fires this with
+      // `void` — but it is no longer what hides a failed query. It now covers
+      // only cooldowns and the merge, and says so in a dev build.
+      try {
+        const derived = (
+          await runProactiveGates({
+            trigger,
+            now: new Date(),
+            workoutHistory: workoutHistoryRef.current,
+            finishedWorkoutId: finishedWorkoutId ?? null,
+            loadActiveProgram: () =>
+              queryClient.ensureQueryData({
+                queryKey: ["activeMesocycleProgram", userId],
+                queryFn: () => getActiveMesocycleProgram(userId),
+                staleTime: 60 * 1000,
+              }),
+            loadVolumeProgress: async () => {
+              const weekRange = getCurrentWeekRange();
+              return buildVolumeProgressDisplayData(
+                await queryClient.ensureQueryData({
+                  queryKey: [
+                    "weeklyArchetypeSets_v2",
+                    userId,
+                    weekRange.start,
+                    weekRange.end,
+                  ],
+                  queryFn: () =>
+                    fetchWeeklyArchetypeSets(
+                      userId,
+                      weekRange.start,
+                      weekRange.end
+                    ),
+                  staleTime: 5 * 60 * 1000,
+                })
+              );
+            },
+          })
+        ).filter(
           (insight) =>
             !isSuppressed(userId, cooldownKey(insight.id, insight.dedupeKey))
         );
@@ -100,8 +116,8 @@ export const useProactiveEngine = ({
         setInsights((previous) =>
           mergeProactiveInsights({ derived, previous, trigger })
         );
-      } catch {
-        // Proactivity must never surface an error state.
+      } catch (error) {
+        warnProactiveGateFailure(error);
       }
     },
     [queryClient, userId]

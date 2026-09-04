@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   deriveProactiveInsights,
   mergeProactiveInsights,
+  runProactiveGates,
   type ProactiveGateSnapshot,
 } from "./proactiveGates";
 import type { DisplayArchetypeData } from "@/domains/analytics/data/volumeProgress";
@@ -248,5 +249,104 @@ describe("mergeProactiveInsights", () => {
       [...finishedLast].map((i) => i.id).sort()
     );
     expect(openLast.map((i) => i.id)).toContain("workout_finished");
+  });
+});
+
+describe("runProactiveGates", () => {
+  const gateRun = (
+    overrides: Partial<Parameters<typeof runProactiveGates>[0]> = {}
+  ): Parameters<typeof runProactiveGates>[0] => ({
+    trigger: "app_open",
+    now: WEDNESDAY,
+    workoutHistory: [workoutOn("2026-06-09T12:00:00")],
+    finishedWorkoutId: null,
+    loadActiveProgram: vi.fn().mockResolvedValue(program(2, 8)),
+    loadVolumeProgress: vi.fn().mockResolvedValue([]),
+    onFailure: vi.fn(),
+    ...overrides,
+  });
+
+  const rejecting = (error: Error) => vi.fn().mockRejectedValue(error);
+
+  it("derives the post-session nudge without reading either query", async () => {
+    // The nudge comes from the finished workout id alone, so a run that fires
+    // it must not be able to fail on a query it never reads. Both loaders
+    // reject here and the insight still lands.
+    const loadActiveProgram = rejecting(new Error("program query failed"));
+    const loadVolumeProgress = rejecting(new Error("volume query failed"));
+
+    const insights = await runProactiveGates(
+      gateRun({
+        trigger: "workout_finished",
+        finishedWorkoutId: "w-123",
+        loadActiveProgram,
+        loadVolumeProgress,
+      })
+    );
+
+    expect(insights.map((i) => i.id)).toEqual(["workout_finished"]);
+    expect(loadActiveProgram).not.toHaveBeenCalled();
+    expect(loadVolumeProgress).not.toHaveBeenCalled();
+  });
+
+  it("surfaces nothing rather than rejecting when a query an app_open run needs fails", async () => {
+    // The ambient set genuinely depends on both queries, so a failed load ends
+    // the run — silently, because proactivity must never become an error
+    // state, and empty rather than deriving from a fabricated empty snapshot.
+    await expect(
+      runProactiveGates(
+        gateRun({
+          loadActiveProgram: rejecting(new Error("program query failed")),
+        })
+      )
+    ).resolves.toEqual([]);
+  });
+
+  it("reports the failure so a development build is not silent about it", async () => {
+    const error = new Error("volume query failed");
+    const onFailure = vi.fn();
+
+    await runProactiveGates(
+      gateRun({ loadVolumeProgress: rejecting(error), onFailure })
+    );
+
+    expect(onFailure).toHaveBeenCalledWith(error);
+  });
+
+
+  it("is total: a run that throws while deriving still resolves to no insights", async () => {
+    // Every caller fires this with `void`, so a rejection would land as an
+    // unhandled one — a real error state, which is the thing proactivity is
+    // built never to reach. A workout with an unreadable date stands in for
+    // any malformed history the derivation might choke on.
+    const unreadable = {
+      get date(): string {
+        throw new Error("workout row is malformed");
+      },
+    } as unknown as Workout;
+    const onFailure = vi.fn();
+
+    await expect(
+      runProactiveGates(
+        gateRun({ now: FRIDAY, workoutHistory: [unreadable], onFailure })
+      )
+    ).resolves.toEqual([]);
+    expect(onFailure).toHaveBeenCalled();
+  });
+
+  it("derives the ambient set from what it loaded", async () => {
+    const insights = await runProactiveGates(
+      gateRun({
+        now: FRIDAY,
+        loadActiveProgram: vi.fn().mockResolvedValue(null),
+        loadVolumeProgress: vi
+          .fn()
+          .mockResolvedValue([archetype("Pull", 3, 10)]),
+      })
+    );
+
+    expect(insights.map((i) => i.id)).toEqual(
+      expect.arrayContaining(["no_active_program", "volume_gap_late_week"])
+    );
   });
 });
