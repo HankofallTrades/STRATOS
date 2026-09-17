@@ -24,15 +24,25 @@ export const isLikelyNetworkError = (error: unknown): boolean => {
     return true;
   }
 
-  if (!(error instanceof Error)) {
+  // Supabase reports a failed fetch as a plain { message } object rather than
+  // an Error, so read the message off either shape.
+  const rawMessage =
+    error && typeof error === "object" && "message" in error
+      ? (error as { message: unknown }).message
+      : undefined;
+  if (typeof rawMessage !== "string") {
     return false;
   }
 
-  const message = error.message.toLowerCase();
+  const message = rawMessage.toLowerCase();
   return (
     message.includes("failed to fetch") ||
     message.includes("network") ||
-    message.includes("fetch")
+    message.includes("fetch") ||
+    // WebKit (Safari, the iOS wrap) words its fetch failures differently.
+    message.includes("load failed") ||
+    message.includes("internet connection appears to be offline") ||
+    message.includes("request timed out")
   );
 };
 

@@ -103,6 +103,53 @@ describe("commitFinalizedWorkout", () => {
     expect(dispatch).not.toHaveBeenCalled();
   });
 
+  // supabase-js never throws on a failed fetch: postgrest-js catches it and
+  // returns a plain { message, details, hint, code } object, which
+  // saveWorkoutToDb rethrows. The message is `${name}: ${message}` of the
+  // browser's fetch error, and WebKit's wording differs from Chromium's. With
+  // wifi up but no route out (a basement gym), navigator.onLine stays true, so
+  // the message is the only signal that this is connectivity.
+  it.each([
+    ["WebKit / iOS wrap", "TypeError: Load failed"],
+    ["WebKit, offline", "TypeError: The Internet connection appears to be offline."],
+    ["WebKit, dropped", "TypeError: The network connection was lost."],
+    ["WebKit, timed out", "TypeError: The request timed out."],
+    ["Chromium", "TypeError: Failed to fetch"],
+  ])(
+    "network failure surfaced as a Supabase error object (%s): queued, not failed",
+    async (_engine, message) => {
+      vi.mocked(saveWorkoutToDb).mockRejectedValue({
+        message,
+        details: "",
+        hint: "",
+        code: "",
+      });
+
+      const outcome = await commitFinalizedWorkout(snapshot, deps);
+
+      expect(outcome).toEqual({ status: "queued" });
+      expect(enqueueWorkout).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "local-1" })
+      );
+    }
+  );
+
+  it("database error surfaced as a Supabase error object: failed, not queued", async () => {
+    const error = {
+      message: 'new row violates row-level security policy for table "workouts"',
+      details: null,
+      hint: null,
+      code: "42501",
+    };
+    vi.mocked(saveWorkoutToDb).mockRejectedValue(error);
+
+    const outcome = await commitFinalizedWorkout(snapshot, deps);
+
+    // Queueing a workout the server will always reject would replay it forever.
+    expect(outcome).toEqual({ status: "failed", error });
+    expect(enqueueWorkout).not.toHaveBeenCalled();
+  });
+
   it("non-network failure: reports it and leaves queue and history untouched", async () => {
     const error = new Error("row violates row-level security policy");
     vi.mocked(saveWorkoutToDb).mockRejectedValue(error);
