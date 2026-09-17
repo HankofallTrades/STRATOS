@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import type { FormEvent } from "react";
 import { toast } from "sonner";
 
@@ -15,6 +15,16 @@ import {
   writeLlmProviderPreference,
   type LlmProviderPreference,
 } from "@/domains/guidance/data/llmPreferences";
+import {
+  readNotificationPreferences,
+  subscribeNotificationPreferences,
+  writeNotificationPreferences,
+} from "@/domains/guidance/data/notificationPreferences";
+import { isReminderTime } from "@/domains/guidance/data/notificationPlan";
+import {
+  isNotificationPermissionDenied,
+  notificationsAvailable,
+} from "@/domains/guidance/data/notificationScheduler";
 import {
   clearProviderApiKey,
   readProviderApiKey,
@@ -77,7 +87,29 @@ export const useSettingsScreen = () => {
     isCreatingMesocycle,
     resetMesocycle,
     isResettingMesocycle,
+    updateTrainingWeekdays,
+    isUpdatingTrainingWeekdays,
   } = usePeriodization(user?.id);
+  const notificationPreferences = useSyncExternalStore(
+    subscribeNotificationPreferences,
+    readNotificationPreferences
+  );
+
+  const [isNotificationPermissionBlocked, setIsNotificationPermissionBlocked] =
+    useState(false);
+
+  useEffect(() => {
+    if (!notificationsAvailable()) return;
+    let cancelled = false;
+    void isNotificationPermissionDenied()
+      .then(denied => {
+        if (!cancelled) setIsNotificationPermissionBlocked(denied);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [notificationPreferences, activeProgram]);
 
   const initialLlmPreferences = readLlmPreferences();
 
@@ -331,6 +363,36 @@ export const useSettingsScreen = () => {
     user,
   ]);
 
+  const handleToggleTrainingWeekday = useCallback(
+    async (weekday: number) => {
+      if (!activeProgram) return;
+      const current = activeProgram.mesocycle.training_weekdays;
+      const next = current.includes(weekday)
+        ? current.filter(day => day !== weekday)
+        : [...current, weekday];
+
+      try {
+        await updateTrainingWeekdays({
+          mesocycleId: activeProgram.mesocycle.id,
+          trainingWeekdays: next,
+        });
+      } catch (error) {
+        console.error("Error updating training days:", error);
+        toast.error("Failed to update your training days.");
+      }
+    },
+    [activeProgram, updateTrainingWeekdays]
+  );
+
+  const handleRemindersEnabledChange = (enabled: boolean) => {
+    writeNotificationPreferences({ ...notificationPreferences, enabled });
+  };
+
+  const handleReminderTimeChange = (reminderTime: string) => {
+    if (!isReminderTime(reminderTime)) return;
+    writeNotificationPreferences({ ...notificationPreferences, reminderTime });
+  };
+
   const isPeriodWorkoutInProgress = Boolean(
     currentWorkout && !currentWorkout.completed && currentWorkout.mesocycle_id
   );
@@ -349,7 +411,14 @@ export const useSettingsScreen = () => {
     handleUnitChange,
     handleUpdateBodyweight,
     handleClearProviderApiKey,
+    handleReminderTimeChange,
+    handleRemindersEnabledChange,
+    handleToggleTrainingWeekday,
     isLoadingActiveProgram,
+    isNotificationPermissionBlocked,
+    isUpdatingTrainingWeekdays,
+    notificationPreferences,
+    notificationsAvailable: notificationsAvailable(),
     isPeriodDialogOpen,
     isPeriodUpdating: isCreatingMesocycle || isResettingMesocycle,
     isPeriodWorkoutInProgress,

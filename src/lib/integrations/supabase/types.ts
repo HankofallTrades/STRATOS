@@ -595,6 +595,7 @@ export type Database = {
           protocol: string
           start_date: string
           status: string
+          training_weekdays: number[]
           updated_at: string
           user_id: string
         }
@@ -608,6 +609,7 @@ export type Database = {
           protocol: string
           start_date: string
           status?: string
+          training_weekdays?: number[]
           updated_at?: string
           user_id: string
         }
@@ -621,6 +623,7 @@ export type Database = {
           protocol?: string
           start_date?: string
           status?: string
+          training_weekdays?: number[]
           updated_at?: string
           user_id?: string
         }

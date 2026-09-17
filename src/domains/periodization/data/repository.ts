@@ -859,6 +859,43 @@ export const resetMesocycle = async (
   return createMesocycleWithPreviousStatus(userId, input, 'cancelled');
 };
 
+// Training days describe when the user trains, not a particular block, so a
+// new block starts on the schedule the one it replaces was on.
+const fetchActiveTrainingWeekdays = async (userId: string): Promise<number[]> => {
+  const { data, error } = await supabase
+    .from('mesocycles' as never)
+    .select('training_weekdays')
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    if (isMissingPeriodizationTableError(error)) return [];
+    throw error;
+  }
+  return ((data as { training_weekdays?: number[] } | null)?.training_weekdays) ?? [];
+};
+
+export const updateMesocycleTrainingWeekdays = async (
+  userId: string,
+  mesocycleId: string,
+  trainingWeekdays: number[]
+): Promise<void> => {
+  const normalized = [...new Set(trainingWeekdays)]
+    .filter(day => Number.isInteger(day) && day >= 1 && day <= 7)
+    .sort((a, b) => a - b);
+
+  const { error } = await supabase
+    .from('mesocycles' as never)
+    .update({ training_weekdays: normalized, updated_at: new Date().toISOString() } as never)
+    .eq('id', mesocycleId)
+    .eq('user_id', userId);
+
+  if (error) throw error;
+};
+
 const createMesocycleWithPreviousStatus = async (
   userId: string,
   input: CreateMesocycleInput,
@@ -867,6 +904,8 @@ const createMesocycleWithPreviousStatus = async (
   if (input.duration_weeks < 4 || input.duration_weeks > 12) {
     throw new Error('Mesocycles must be between 4 and 12 weeks.');
   }
+
+  const trainingWeekdays = await fetchActiveTrainingWeekdays(userId);
 
   const nowIso = new Date().toISOString();
   const { error: deactivateError } = await supabase
@@ -890,6 +929,7 @@ const createMesocycleWithPreviousStatus = async (
       duration_weeks: input.duration_weeks,
       status: 'active',
       notes: input.notes?.trim() ? input.notes.trim() : null,
+      training_weekdays: trainingWeekdays,
       updated_at: nowIso,
     })
     .select('*')
@@ -991,7 +1031,7 @@ export const saveDraftedProgram = async (
 
   const { data: currentActive, error: currentActiveError } = await supabase
     .from('mesocycles' as never)
-    .select('id')
+    .select('id, training_weekdays')
     .eq('user_id', userId)
     .eq('status', 'active')
     .order('created_at', { ascending: false })
@@ -1002,6 +1042,8 @@ export const saveDraftedProgram = async (
     throw currentActiveError;
   }
   const previousActiveMesocycleId = (currentActive?.id as string | undefined) ?? null;
+  const trainingWeekdays =
+    (currentActive as { training_weekdays?: number[] } | null)?.training_weekdays ?? [];
 
   const nowIso = new Date().toISOString();
   if (previousActiveMesocycleId) {
@@ -1024,6 +1066,7 @@ export const saveDraftedProgram = async (
       duration_weeks: draft.durationWeeks,
       status: 'active',
       notes: draft.notes?.trim() ? draft.notes.trim() : null,
+      training_weekdays: trainingWeekdays,
       updated_at: nowIso,
     })
     .select('*')

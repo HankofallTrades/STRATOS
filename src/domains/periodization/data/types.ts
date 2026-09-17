@@ -14,6 +14,8 @@ export interface Mesocycle {
   duration_weeks: number;
   status: MesocycleStatus;
   notes: string | null;
+  /** ISO weekdays (Monday = 1 … Sunday = 7) the block is trained on. Empty = no schedule. */
+  training_weekdays: number[];
   created_at: string;
   updated_at: string;
 }

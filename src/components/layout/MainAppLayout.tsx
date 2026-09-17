@@ -7,6 +7,7 @@ import { RouteSkeleton } from "@/components/loading/RouteSkeletons";
 import SummonSurface from "@/domains/guidance/ui/SummonSurface";
 import PresencePeek from "@/domains/guidance/ui/PresencePeek";
 import { PresenceAgentProvider } from "@/domains/guidance/hooks/PresenceAgentProvider";
+import { useNotificationPlanner } from "@/domains/guidance/hooks/useNotificationPlanner";
 import { SidebarInset, SidebarProvider } from "@/components/core/sidebar";
 import { useOfflineWorkoutSync } from "@/domains/fitness/hooks/useOfflineWorkoutSync";
 import { useQuickActions } from "@/domains/fitness/hooks/useQuickActions";
@@ -119,6 +120,7 @@ const NotFound = lazyWithRetry(() => import("@/pages/NotFound"));
 
 const MainAppLayout = () => {
   useOfflineWorkoutSync();
+  useNotificationPlanner();
   const location = useLocation();
   const {
     userId,

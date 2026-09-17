@@ -5,6 +5,7 @@ import {
   createMesocycle,
   getActiveMesocycleProgram,
   resetMesocycle,
+  updateMesocycleTrainingWeekdays,
 } from '@/domains/periodization/data/repository';
 import type {
   ActiveMesocycleProgram,
@@ -66,6 +67,17 @@ export const usePeriodization = (userId: string | null | undefined) => {
     },
   });
 
+  const updateTrainingWeekdaysMutation = useMutation({
+    mutationFn: async (input: { mesocycleId: string; trainingWeekdays: number[] }) => {
+      if (!userId) throw new Error('User is required to set training days.');
+      return updateMesocycleTrainingWeekdays(userId, input.mesocycleId, input.trainingWeekdays);
+    },
+    // Returned so the mutation stays pending until the refetch lands: the next
+    // toggle builds on training_weekdays, and a stale read would drop this one.
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: [ACTIVE_MESOCYCLE_QUERY_KEY, userId] }),
+  });
+
   const activeMesocycle = useMemo(() => activeProgramQuery.data?.mesocycle ?? null, [activeProgramQuery.data]);
 
   return {
@@ -84,5 +96,7 @@ export const usePeriodization = (userId: string | null | undefined) => {
     createCustomSession: createCustomSessionMutation.mutateAsync,
     isCreatingCustomSession: createCustomSessionMutation.isPending,
     createCustomSessionError: createCustomSessionMutation.error as Error | null,
+    updateTrainingWeekdays: updateTrainingWeekdaysMutation.mutateAsync,
+    isUpdatingTrainingWeekdays: updateTrainingWeekdaysMutation.isPending,
   };
 };

@@ -10,6 +10,7 @@ import {
 import { Input } from "@/components/core/input";
 import { Label } from "@/components/core/label";
 import { RadioGroup, RadioGroupItem } from "@/components/core/radio-group";
+import { Switch } from "@/components/core/switch";
 import {
   Select,
   SelectContent,
@@ -37,6 +38,17 @@ const FIELD_LABEL_CLASS =
   "text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground";
 const SECTION_CLASS = "stone-surface rounded-[24px] p-5 md:p-6";
 
+// ISO weekdays, Monday first.
+const weekdayOptions = [
+  { value: 1, label: "M", name: "Monday" },
+  { value: 2, label: "T", name: "Tuesday" },
+  { value: 3, label: "W", name: "Wednesday" },
+  { value: 4, label: "T", name: "Thursday" },
+  { value: 5, label: "F", name: "Friday" },
+  { value: 6, label: "S", name: "Saturday" },
+  { value: 7, label: "S", name: "Sunday" },
+] as const;
+
 const unitOptions = [
   { label: "kg", value: "kg" },
   { label: "lb", value: "lb" },
@@ -52,7 +64,10 @@ const SettingsScreen = () => {
     handleLlmModelChange,
     handleOpenPeriodDialog,
     handleProviderApiKeyChange,
+    handleReminderTimeChange,
+    handleRemindersEnabledChange,
     handleSaveProviderApiKey,
+    handleToggleTrainingWeekday,
     handleLlmProviderChange,
     handleSavePeriod,
     handleSignOut,
@@ -61,8 +76,12 @@ const SettingsScreen = () => {
     isPeriodDialogOpen,
     isPeriodUpdating,
     isPeriodWorkoutInProgress,
+    isNotificationPermissionBlocked,
     isSigningOut,
+    isUpdatingTrainingWeekdays,
     llmModelPref,
+    notificationPreferences,
+    notificationsAvailable,
     llmProviderPref,
     periodDurationWeeks,
     periodGoalFocus,
@@ -261,7 +280,74 @@ const SettingsScreen = () => {
                 Finish or discard the active block workout first.
               </p>
             ) : null}
+
+            {activeProgram ? (
+              <div className="mt-5 space-y-2">
+                <p className={FIELD_LABEL_CLASS}>Training days</p>
+                <div className="settings-segmented flex-wrap">
+                  {weekdayOptions.map(option => {
+                    const isActive =
+                      activeProgram.mesocycle.training_weekdays.includes(
+                        option.value
+                      );
+
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        aria-label={option.name}
+                        aria-pressed={isActive}
+                        disabled={isUpdatingTrainingWeekdays}
+                        onClick={() => void handleToggleTrainingWeekday(option.value)}
+                        className="settings-segment min-w-[2.5rem] px-0"
+                        data-active={isActive ? "true" : "false"}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
           </section>
+
+          {notificationsAvailable ? (
+            <section className={SECTION_CLASS}>
+              <div className="flex items-center justify-between gap-4">
+                <h2 className="text-xl font-semibold tracking-tight text-foreground">
+                  Reminders
+                </h2>
+                <Switch
+                  aria-label="Training reminders"
+                  checked={notificationPreferences.enabled}
+                  onCheckedChange={handleRemindersEnabledChange}
+                />
+              </div>
+
+              <div className="mt-5 space-y-2">
+                <Label htmlFor="reminder-time" className={FIELD_LABEL_CLASS}>
+                  Reminder time
+                </Label>
+                <Input
+                  id="reminder-time"
+                  type="time"
+                  value={notificationPreferences.reminderTime}
+                  disabled={!notificationPreferences.enabled}
+                  onChange={event => handleReminderTimeChange(event.target.value)}
+                  className="app-form-input h-12 w-40 rounded-[16px]"
+                />
+                <p className="text-xs text-muted-foreground">
+                  On training days, plus a nudge after two missed sessions.
+                </p>
+                {isNotificationPermissionBlocked ? (
+                  <p className="text-xs text-muted-foreground">
+                    Notifications are turned off for STRATOS in iOS Settings, so
+                    none will arrive until they are allowed there.
+                  </p>
+                ) : null}
+              </div>
+            </section>
+          ) : null}
 
           <section
             id="coach-settings"
