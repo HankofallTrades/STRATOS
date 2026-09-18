@@ -14,6 +14,7 @@ export const invalidateWorkoutDependentQueries = async (
     queryClient.invalidateQueries({ queryKey: ["weeklyZone2Cardio", userId] }),
     queryClient.invalidateQueries({ queryKey: ["analyticsRecoverySnapshot", userId] }),
     queryClient.invalidateQueries({ queryKey: ["lastSet", userId] }),
+    queryClient.invalidateQueries({ queryKey: ["workoutExercisePeakE1RM", userId] }),
     queryClient.invalidateQueries({
       queryKey: [ACTIVE_MESOCYCLE_QUERY_KEY, userId],
     }),

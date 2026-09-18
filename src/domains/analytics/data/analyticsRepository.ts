@@ -232,7 +232,9 @@ const firstOrSelf = <T,>(value: NestedRelationship<T>): T | null => {
 };
 
 export const fetchCompletedWeightedSetsForPr = async (
-    userId: string
+    userId: string,
+    /** Restrict to these exercises; omit for the user's whole history. */
+    exerciseIds?: string[]
 ): Promise<CompletedWeightedSetForPr[]> => {
     type WeightedSetRow = {
         weight: number | null;
@@ -250,7 +252,7 @@ export const fetchCompletedWeightedSetsForPr = async (
     let pageStart = 0;
 
     while (true) {
-        const { data, error } = await supabase
+        let query = supabase
             .from("exercise_sets")
             .select(`
                 weight,
@@ -265,8 +267,11 @@ export const fetchCompletedWeightedSetsForPr = async (
             .eq("completed", true)
             .gt("weight", 0)
             .gt("reps", 0)
-            .eq("workout_exercises.workouts.user_id", userId)
-            .range(pageStart, pageStart + pageSize - 1);
+            .eq("workout_exercises.workouts.user_id", userId);
+        if (exerciseIds) {
+            query = query.in("workout_exercises.exercise_id", exerciseIds);
+        }
+        const { data, error } = await query.range(pageStart, pageStart + pageSize - 1);
 
         if (error) {
             console.error("Error fetching weighted sets for PR analysis:", error);

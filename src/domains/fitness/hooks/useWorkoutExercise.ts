@@ -2,7 +2,9 @@ import { useState, useCallback, useMemo } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { useAppDispatch } from "@/hooks/redux";
+import { playSetCompletionHaptic } from "@/lib/native/haptics";
 import * as fitnessRepo from '../data/fitnessRepository';
+import { classifySetCompletion } from '../data/setCompletionFeedback';
 import type { ExerciseSetRecommendations } from '../data/setPlan';
 import {
     addSetToExercise as addSetAction,
@@ -14,6 +16,7 @@ import {
     updateCardioSet as updateCardioSetAction,
 } from "@/state/workout/workoutSlice";
 import {
+    ExerciseSet,
     WorkoutExercise,
     isCardioExercise,
     isCardioSet,
@@ -28,6 +31,8 @@ const DEFAULT_VARIATION = 'Standard';
 interface WorkoutExerciseLookups {
     historicalSets: LastWorkoutExerciseInstanceSet[] | null;
     isLoading: boolean;
+    /** The exercise's all-time best e1RM before this session; null if none. */
+    priorBestE1RM: number | null;
     /** This exercise's slice of the session's Set Plan. */
     recommendedSetPerformances: ExerciseSetRecommendations;
     userWeight: number | null;
@@ -220,6 +225,14 @@ export const useWorkoutExercise = (
         }
     }, [newVariationName, addVariationMutation]);
 
+    const priorBestE1RM = lookups.priorBestE1RM;
+    const exerciseSets = workoutExercise.sets;
+    const noteSetLogged = useCallback((set: ExerciseSet) => {
+        void playSetCompletionHaptic(
+            classifySetCompletion({ set, exerciseSets, priorBestE1RM })
+        );
+    }, [exerciseSets, priorBestE1RM]);
+
     return {
         variations,
         historicalSetPerformances,
@@ -238,6 +251,7 @@ export const useWorkoutExercise = (
         deleteExercise,
         updateLastSetField,
         copyCompletedValueToLatestSet,
+        noteSetLogged,
         handleSaveNewVariation,
     };
 };

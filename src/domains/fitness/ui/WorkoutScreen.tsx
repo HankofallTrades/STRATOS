@@ -33,6 +33,7 @@ import {
   sessionFocusOptions,
 } from "@/domains/fitness/data/workoutScreen";
 import { cn } from "@/lib/utils/cn";
+import { useKeepAwake } from "@/hooks/useKeepAwake";
 
 const builderLabelClassName =
   "text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground";
@@ -81,6 +82,10 @@ const WorkoutScreen = () => {
     handleStartWarmup,
     handleStopWarmup,
   } = useWorkoutScreen();
+
+  // Held for as long as a session is live on this screen. Finish and discard
+  // both clear the workout, and leaving the route unmounts; either releases.
+  useKeepAwake(currentWorkout !== null);
 
   if (!currentWorkout) {
     const usesProgramSessions = nextProgramSession !== null;

@@ -23,6 +23,8 @@ interface UseSetProps {
     previousPerformance: { weight: number; reps: number | null; time_seconds?: number | null; distance_km?: number | null } | null;
     recommendedPerformance: RecommendedStrengthSetPerformance | null;
     onComplete?: () => void;
+    /** Fires once each time this set is marked complete, with its saved values. */
+    onSetLogged?: (set: ExerciseSet) => void;
 }
 
 type StrengthSetUpdatePayload = {
@@ -43,6 +45,7 @@ export const useSet = ({
     previousPerformance,
     recommendedPerformance,
     onComplete,
+    onSetLogged,
 }: UseSetProps) => {
     const dispatch = useAppDispatch();
 
@@ -212,6 +215,7 @@ export const useSet = ({
                     variation: set.variation ?? undefined,
                     equipmentType: set.equipmentType ?? undefined,
                 };
+                let completedSet: ExerciseSet;
 
                 if (isStatic) {
                     if (isNaN(timeVal) && previousPerformance?.time_seconds) {
@@ -226,6 +230,7 @@ export const useSet = ({
                             time: secondsToTime(timeVal),
                         };
                         dispatch(updateSetAction(updatedSetData));
+                        completedSet = { ...set, weight: weightVal, reps: null, time: updatedSetData.time, completed: true };
                     } else {
                         setIsCompleted(false);
                         return;
@@ -243,12 +248,14 @@ export const useSet = ({
                             time: null,
                         };
                         dispatch(updateSetAction(updatedSetData));
+                        completedSet = { ...set, weight: weightVal, reps: repsVal, time: null, completed: true };
                     } else {
                         setIsCompleted(false);
                         return;
                     }
                 }
                 dispatch(completeSetAction({ workoutExerciseId, setId: set.id, completed: true }));
+                onSetLogged?.(completedSet);
                 onComplete?.();
             } else {
                 dispatch(completeSetAction({ workoutExerciseId, setId: set.id, completed: false }));
@@ -270,13 +277,16 @@ export const useSet = ({
                 }
 
                 if (durationVal > 0) {
+                    const time = secondsToTime(durationVal);
+                    const distance_km = distanceVal > 0 ? distanceVal : undefined;
                     dispatch(updateCardioSetAction({
                         workoutExerciseId,
                         setId: set.id,
-                        time: secondsToTime(durationVal),
-                        distance_km: distanceVal > 0 ? distanceVal : undefined,
+                        time,
+                        distance_km,
                     }));
                     dispatch(completeSetAction({ workoutExerciseId, setId: set.id, completed: true }));
+                    onSetLogged?.({ ...set, time, distance_km, completed: true });
                     onComplete?.();
                 } else {
                     setIsCompleted(false);
@@ -285,7 +295,7 @@ export const useSet = ({
                 dispatch(completeSetAction({ workoutExerciseId, setId: set.id, completed: false }));
             }
         }
-    }, [dispatch, workoutExerciseId, set, isStatic, localWeight, localReps, localTime, localDuration, localDistance, previousPerformance, onComplete]);
+    }, [dispatch, workoutExerciseId, set, isStatic, localWeight, localReps, localTime, localDuration, localDistance, previousPerformance, onComplete, onSetLogged]);
 
     const handleBlur = useCallback((field: 'weight' | 'reps' | 'time' | 'duration' | 'distance') => {
         if (isCompleted) return;

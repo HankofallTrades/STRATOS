@@ -1,6 +1,9 @@
 import { Exercise, Workout, WeightSuggestion, ExerciseSet } from '@/lib/types/workout';
 import { EquipmentType } from "@/lib/types/enums";
 
+/** How much an e1RM has to move before it counts as an improvement (a PR). */
+export const E1RM_IMPROVEMENT_EPSILON = 0.001;
+
 // Calculate one rep max using Brzycki formula
 export const calculateOneRepMax = (weight: number, reps: number): number => {
   if (reps === 1) return weight;

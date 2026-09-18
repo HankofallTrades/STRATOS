@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 
 import { Button } from "@/components/core/button";
+import { useKeepAwake } from "@/hooks/useKeepAwake";
 
 import type { BreathStep, BreathworkProtocol } from "../data/protocols";
 import { useBreathworkSession } from "../hooks/useBreathworkSession";
@@ -69,6 +70,8 @@ const BreathworkRunner = ({
   }, []);
 
   const { status, saveOnExit, elapsedSeconds, unitsCompleted } = session;
+  // A paused session still has someone mid-breath in front of the screen.
+  useKeepAwake(status !== "idle" && status !== "done");
   useEffect(() => {
     if (status !== "done" || firedRef.current) return;
     firedRef.current = true;

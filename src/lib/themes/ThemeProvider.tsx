@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import type { AppTheme, ThemeId } from './types'
 import { themes, defaultTheme } from './themes'
+import { statusBarStyleForBackground } from './statusBarStyle'
+import { applyStatusBarTextStyle } from '@/lib/native/statusBar'
 
 interface ThemeContextType {
   currentTheme: AppTheme
@@ -44,6 +46,12 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
       const cssVarName = `--${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`
       root.style.setProperty(cssVarName, value)
     })
+
+    // The native status bar overlays the page, so its text has to follow the
+    // theme's background or the clock disappears on the light theme.
+    void applyStatusBarTextStyle(
+      statusBarStyleForBackground(currentTheme.colors.background)
+    )
 
     // Apply font family
     if (currentTheme.brand.font) {

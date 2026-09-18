@@ -10,6 +10,7 @@ import { WorkoutExerciseView } from './WorkoutExerciseView';
 interface WorkoutExerciseContainerProps {
   historicalSets: LastWorkoutExerciseInstanceSet[] | null;
   isLookupsLoading: boolean;
+  priorBestE1RM: number | null;
   recommendedSetPerformances: ExerciseSetRecommendations;
   restStartTime?: number | null;
   userWeight: number | null;
@@ -20,6 +21,7 @@ interface WorkoutExerciseContainerProps {
 export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> = ({
   historicalSets,
   isLookupsLoading,
+  priorBestE1RM,
   recommendedSetPerformances: setPlanRecommendations,
   restStartTime,
   userWeight,
@@ -42,10 +44,12 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
     deleteExercise,
     updateLastSetField,
     copyCompletedValueToLatestSet,
+    noteSetLogged,
     handleSaveNewVariation,
   } = useWorkoutExercise(workoutExercise, {
     historicalSets,
     isLoading: isLookupsLoading,
+    priorBestE1RM,
     recommendedSetPerformances: setPlanRecommendations,
     userWeight,
     variations,
@@ -77,6 +81,7 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
       onCancelAddVariation={handleCancelAddVariation}
       onUpdateLastSet={updateLastSetField}
       onCopyCompletedValueToLatestSet={copyCompletedValueToLatestSet}
+      onSetLogged={noteSetLogged}
       restStartTime={restStartTime ?? null}
     />
   );

@@ -176,6 +176,44 @@ under the clock, and only the wrap shows it.
 value, the property definition, and the shells that opt in. The web target is
 unaffected: the insets are `0px` everywhere but a notched device.
 
+## Native polish: what only the wrap does
+
+Three plugins give the wrap a native feel, and none of them exists on the web
+target. Every bridge in `src/lib/native/` checks `Capacitor.isNativePlatform()`
+and is a silent no-op otherwise, so the PWA never sees a haptics or wake-lock
+call it did not have before.
+
+- **Haptics on set completion.** A Medium impact for a set, the Success
+  notification pattern (a distinct double tap) for a PR. Whether a set is a PR
+  is decided in `setCompletionFeedback.ts`, with the same rule as the home
+  screen's "Recent PR": the set's e1RM beats the exercise's all-time best, and
+  a first-ever exercise has nothing to beat, so it never rings PR. The baseline
+  is folded client-side from the exercise's completed weighted sets with the
+  app's own e1RM formula, not read from the e1RM RPC: that RPC uses Epley and
+  the app uses Brzycki, and a PR measured one way and shown the other misses
+  real ones. Cached for five minutes, invalidated when a workout saves.
+- **Keep-awake.** The screen stays on while a workout is active (the workout
+  screen holds it while `currentWorkout` is set) and while a breathwork session
+  is running or paused (the runner holds it until `done`). Holds are refcounted
+  by component instance, so a breathwork run inside a workout does not release
+  the workout's hold when it ends, and every hold is released on unmount:
+  leaving the route is enough, finish and discard are not special-cased.
+- **Status bar text.** Follows the theme's background lightness: light text on
+  the dark themes, dark text on the light "Stratos" theme. Applied from
+  `ThemeProvider` whenever the theme changes. The bar stays an overlay; the
+  space under it is still reserved by CSS (previous section).
+
+The launch screen and icon are the app's own, not Capacitor's placeholders:
+`LaunchScreen.storyboard` is painted black with the "S" mark, and the 1024px
+icon has no alpha channel because App Store Connect rejects one.
+`src/lib/build/launchScreen.test.ts` fails if the stock artwork comes back,
+which `cap add ios` or a careless merge can do without any build error.
+
+Checking on a device, since the simulator has no haptic engine and never
+sleeps: complete a set (tap), beat a lift's best e1RM (double tap), leave a
+workout open past the auto-lock interval (stays on), finish it (locks on
+schedule), and switch to the Stratos theme in Settings (the clock turns black).
+
 ## Proactive insights behave differently in a wrap
 
 `useProactiveEngine` treats a fresh mount as `app_open`, which is right for a

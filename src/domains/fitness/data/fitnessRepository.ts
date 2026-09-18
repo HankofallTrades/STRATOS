@@ -2,6 +2,8 @@ import { supabase } from '@/lib/integrations/supabase/client';
 import { Tables, TablesInsert } from '@/lib/integrations/supabase/types';
 import { Workout as WorkoutType, isStrengthSet, isCardioSet, timeToSeconds } from "@/lib/types/workout";
 import type { PersistedWorkoutType } from './workoutPersistence';
+import { fetchCompletedWeightedSetsForPr } from '@/domains/analytics/data/analyticsRepository';
+import { bestE1RMByExerciseId } from './setCompletionFeedback';
 
 // --- Types ---
 export type ExerciseRow = Tables<'exercises'>;
@@ -179,6 +181,16 @@ export const createEquipmentType = async (name: string): Promise<EquipmentTypeRo
 /**
  * Fetches the most recent set for a user and exercise.
  */
+/**
+ * The best e1RM the user has ever logged for each exercise, before the current
+ * session. The bar a set has to clear to count as a PR (setCompletionFeedback).
+ */
+export const fetchPriorBestE1RMByExerciseId = async (
+    userId: string,
+    exerciseIds: string[]
+): Promise<Record<string, number>> =>
+    bestE1RMByExerciseId(await fetchCompletedWeightedSetsForPr(userId, exerciseIds));
+
 export const fetchLastSetForExercise = async (userId: string, exerciseId: string): Promise<ExerciseSetRow | null> => {
     const { data, error } = await supabase
         .from('exercise_sets')

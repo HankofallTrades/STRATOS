@@ -10,14 +10,16 @@ import type {
   MesocycleSessionTemplate,
 } from "@/domains/periodization";
 import type { SessionFocus, Workout } from "@/lib/types/workout";
-import { calculateOneRepMax } from "@/lib/utils/workoutUtils";
+import {
+  E1RM_IMPROVEMENT_EPSILON,
+  calculateOneRepMax,
+} from "@/lib/utils/workoutUtils";
 
 // Pure home-screen model. `buildHomeModel(inputs)` derives everything the
 // dashboard displays from already-fetched inputs — no React, react-query,
 // Redux, or Supabase (mirrors analytics' volumeProgress.ts seam). The hook
 // (useHomeDashboard) fetches, feeds, and keeps only effects and handlers.
 
-const E1RM_IMPROVEMENT_EPSILON = 0.001;
 const GENERIC_SESSION_NAME_PATTERN = /^(workout|session|occam)\s+[a-z0-9]+$/i;
 
 export interface RecentPrSummary {

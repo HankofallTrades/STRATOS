@@ -8,6 +8,7 @@ import { selectCurrentWorkout, selectSessionFocus } from "@/state/workout/workou
 import {
   buildWorkoutExerciseHistoryKey,
   fetchLastWorkoutExerciseInstances,
+  fetchPriorBestE1RMByExerciseId,
   fetchVariationsForExercises,
   getUserWeight,
 } from "@/domains/fitness/data/fitnessRepository";
@@ -27,11 +28,13 @@ import WorkoutExerciseContainer from "./WorkoutExerciseContainer";
 const EMPTY_VARIATIONS_BY_EXERCISE_ID: Awaited<ReturnType<typeof fetchVariationsForExercises>> = {};
 const EMPTY_HISTORY_BY_LOOKUP_KEY: Awaited<ReturnType<typeof fetchLastWorkoutExerciseInstances>> = {};
 const EMPTY_RECOMMENDATIONS: ExerciseSetRecommendations = {};
+const EMPTY_PEAK_E1RM_BY_EXERCISE_ID: Record<string, number> = {};
 
 interface WorkoutExerciseRowProps {
   exercise: NonNullable<ReturnType<typeof selectCurrentWorkout>>["exercises"][number];
   historyByLookupKey: Awaited<ReturnType<typeof fetchLastWorkoutExerciseInstances>>;
   isLookupDataLoading: boolean;
+  priorBestE1RM: number | null;
   recommendedSetPerformances: ExerciseSetRecommendations;
   restStartTime: number | null;
   userWeightKg: number | null;
@@ -42,6 +45,7 @@ const WorkoutExerciseRow = memo(({
   exercise,
   historyByLookupKey,
   isLookupDataLoading,
+  priorBestE1RM,
   recommendedSetPerformances,
   restStartTime,
   userWeightKg,
@@ -85,6 +89,7 @@ const WorkoutExerciseRow = memo(({
         <WorkoutExerciseContainer
           historicalSets={historyByLookupKey[historyKey] ?? null}
           isLookupsLoading={isLookupDataLoading}
+          priorBestE1RM={priorBestE1RM}
           recommendedSetPerformances={recommendedSetPerformances}
           workoutExercise={exercise}
           restStartTime={restStartTime}
@@ -144,6 +149,16 @@ const WorkoutComponent = () => {
     queryKey: ['workoutExerciseHistory', userId, historyLookupSignature],
     queryFn: () => fetchLastWorkoutExerciseInstances(userId!, historyLookups),
     enabled: !!userId && historyLookups.length > 0,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // The bar each exercise has to clear for a set to count as a PR. Same rows
+  // and formula the home model's "Recent PR" reads, so the haptic and the card
+  // agree.
+  const { data: peakE1RMByExerciseId = EMPTY_PEAK_E1RM_BY_EXERCISE_ID } = useQuery({
+    queryKey: ['workoutExercisePeakE1RM', userId, variationExerciseIds],
+    queryFn: () => fetchPriorBestE1RMByExerciseId(userId!, variationExerciseIds),
+    enabled: !!userId && variationExerciseIds.length > 0,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -249,6 +264,7 @@ const WorkoutComponent = () => {
                   exercise={exercise}
                   historyByLookupKey={historyByLookupKey}
                   isLookupDataLoading={isLookupDataLoading}
+                  priorBestE1RM={peakE1RMByExerciseId[exercise.exercise.id] ?? null}
                   recommendedSetPerformances={
                     recommendationsByWorkoutExerciseId[exercise.id] ?? EMPTY_RECOMMENDATIONS
                   }
