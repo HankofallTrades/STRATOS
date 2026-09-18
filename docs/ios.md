@@ -34,6 +34,28 @@ First-time machine setup, in order:
 Capacitor 8 uses Swift Package Manager, not CocoaPods: there is no Podfile and
 nothing to `pod install`.
 
+## Installing on a physical device
+
+Xcode is not required for this. With the phone plugged in and unlocked:
+
+```sh
+xcrun devicectl list devices          # grab the identifier
+npm run ios:sync
+cd ios/App && xcodebuild -scheme App -configuration Debug \
+  -destination 'platform=iOS,id=<device-id>' \
+  -allowProvisioningUpdates DEVELOPMENT_TEAM=<team-id> build
+xcrun devicectl device install app --device <device-id> \
+  ~/Library/Developer/Xcode/DerivedData/App-*/Build/Products/Debug-iphoneos/App.app
+xcrun devicectl device process launch --device <device-id> com.daimodus.stratos
+```
+
+`DEVELOPMENT_TEAM` is passed on the command line on purpose and is **not** set
+in `project.pbxproj`: hardcoding one team id there breaks every other signer.
+
+The trap this exists to prevent: a device still running an older build looks
+exactly like a fix that did not work. Reinstall before concluding anything from
+a device test.
+
 ## Driving the app in the simulator
 
 UI verification is automated with **Maestro** (`e2e/ios-smoke.yaml`, run via
@@ -103,7 +125,8 @@ than the `appUrlOpen` listener. A non-auth link such as
 `com.daimodus.stratos://share/workout/12` must leave the screen untouched.
 
 Only a full sign-in still wants a device: that it returns to STRATOS, lands on
-the home screen, and survives a process kill and relaunch.
+the home screen, and survives a process kill and relaunch. Verified on an
+iPhone 12 Pro (iOS 26.6.2).
 
 ## Proactive insights behave differently in a wrap
 
