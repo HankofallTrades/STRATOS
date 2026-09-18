@@ -84,8 +84,26 @@ Configuration → Redirect URLs. Google Cloud's authorized redirect URI remains
 the Supabase `/auth/v1/callback` URL.
 
 After changing the web code or URL scheme, run `npm run ios:sync` and reinstall
-the app. Verify on a device that Google sign-in returns to STRATOS, the home
-screen appears, and a process kill and relaunch keep the session.
+the app.
+
+The callback half needs no device and no real Google account: feed the shell a
+URL the way iOS would. The error branch is the useful one, because it proves
+routing without needing live tokens.
+
+```sh
+xcrun simctl openurl booted \
+  'com.daimodus.stratos://auth/callback#error_description=Routed+to+the+shell'
+```
+
+The message must appear under the Google button in the app. If Safari opens
+instead, the scheme is not registered — check `CFBundleURLSchemes` in
+`Info.plist` survived the last `cap sync`. Terminate the app first and the same
+command covers the cold-start path, which arrives through `getLaunchUrl` rather
+than the `appUrlOpen` listener. A non-auth link such as
+`com.daimodus.stratos://share/workout/12` must leave the screen untouched.
+
+Only a full sign-in still wants a device: that it returns to STRATOS, lands on
+the home screen, and survives a process kill and relaunch.
 
 ## Proactive insights behave differently in a wrap
 
