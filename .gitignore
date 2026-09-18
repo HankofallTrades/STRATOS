@@ -6,6 +6,7 @@
 /dist-ssr/
 /coverage/
 /.vite/
+/build/
 vite.config.ts.timestamp-*.mjs
 *.tsbuildinfo
 .eslintcache

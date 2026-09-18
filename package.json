@@ -18,7 +18,8 @@
     "gen:types": "supabase gen types typescript --linked > src/lib/integrations/supabase/types.ts",
     "ios:sync": "npm run build:ios && cap sync ios",
     "ios:open": "cap open ios",
-    "ios:run": "npm run ios:sync && cap run ios"
+    "ios:run": "npm run ios:sync && cap run ios",
+    "ios:device": "scripts/ios-device-install.sh"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.64",

@@ -28,51 +28,55 @@ First-time machine setup, in order:
    installed". The CLI equivalent (`xcodebuild -downloadPlatform iOS`) has been
    observed stalling silently here: no output, no network, no error. Use the GUI,
    and disable any VPN if it stalls there too.
-3. Signing — a separate prerequisite, and only needed for a physical device. The
-   simulator does not require it.
+3. Signing — only needed for a physical device, and covered under "Installing
+   on a physical device" below. The simulator does not require it.
 
 Capacitor 8 uses Swift Package Manager, not CocoaPods: there is no Podfile and
 nothing to `pod install`.
 
 ## Installing on a physical device
 
-Xcode is not required for this. With the phone plugged in and unlocked:
+One command, no Xcode GUI, once the phone is set up:
 
 ```sh
-xcrun devicectl list devices          # grab the identifier
-npm run ios:sync
-cd ios/App && xcodebuild -scheme App -configuration Debug \
-  -destination 'platform=iOS,id=<device-id>' \
-  -allowProvisioningUpdates DEVELOPMENT_TEAM=<team-id> build
-xcrun devicectl device install app --device <device-id> \
-  ~/Library/Developer/Xcode/DerivedData/App-*/Build/Products/Debug-iphoneos/App.app
-xcrun devicectl device process launch --device <device-id> com.daimodus.stratos
+npm run ios:device    # scripts/ios-device-install.sh
 ```
 
-`DEVELOPMENT_TEAM` is passed on the command line on purpose and is **not** set
-in `project.pbxproj`: hardcoding one team id there breaks every other signer.
-So each person testing the wrap supplies their own. It is the `OU` field of your
-signing certificate:
+If it stops with an `ios:device:` message before syncing, the problem is the
+setup below, not the build. It prints the date the free-signing build stops
+launching; after that the app icon is there but will not open, and the fix is
+to run the command again.
 
-```sh
-security find-identity -v -p codesigning   # copy the certificate name
-security find-certificate -c "Apple Development: you@example.com" -p \
-  | openssl x509 -noout -subject
-# subject=UID=…, CN=Apple Development: you@example.com (…), OU=ABCDE12345, …
-#                                                            ^^^^^^^^^^ team id
-```
+The one-time setup it cannot do for you, in order:
 
-Read `OU`, not the parenthesised suffix in the certificate name — that one is the
-certificate's own id and will fail to sign. A free Apple ID is enough: the
-Personal Team signs for a device fine, the build just expires after seven days
-and needs reinstalling.
+1. Xcode → Settings → Accounts → **+** → sign in with an Apple ID. A free one is
+   enough: the Personal Team signs for a device fine, the build just expires
+   after seven days and needs reinstalling. Check from the terminal rather than
+   trusting the dialog: `security find-identity -v -p codesigning` must list an
+   "Apple Development" identity.
+2. Plug in the iPhone by USB, unlock it, tap **Trust This Computer**.
+3. On the phone: Settings → Privacy & Security → **Developer Mode** on. It
+   restarts. Check: `xcrun devicectl list devices` shows it `available (paired)`.
+4. After the first install: Settings → General → VPN & Device Management → trust
+   the developer certificate, or the app icon appears but will not open.
+5. Optional: Xcode → Window → Devices and Simulators → **Connect via network**,
+   after which the cable is only needed for step 2 again.
 
-Keep it out of the repo. If you tire of retyping it, export it from your shell
-profile and pass `DEVELOPMENT_TEAM=$STRATOS_TEAM_ID`.
+Team and device ids are never committed. `DEVELOPMENT_TEAM` goes on the
+`xcodebuild` command line and is **not** set in `project.pbxproj`, because
+hardcoding one team id there breaks every other signer. The script works both
+out for you: the team from the `OU` field of your "Apple Development"
+certificate, the device from the only paired one. Where that is ambiguous,
+copy `.env.ios.example` to `.env.ios.local` (gitignored) and set
+`IOS_DEVELOPMENT_TEAM` and/or `IOS_DEVICE_ID`. The team is the certificate's
+`OU`, not the parenthesised suffix in its name; the script's step 2 comment
+says how to read it.
 
 The trap this exists to prevent: a device still running an older build looks
 exactly like a fix that did not work. Reinstall before concluding anything from
-a device test.
+a device test. That includes a newly added native plugin (anything in
+`ios/App/CapApp-SPM/Package.swift`), which is not on the phone until the app
+is reinstalled.
 
 ## Driving the app in the simulator
 
