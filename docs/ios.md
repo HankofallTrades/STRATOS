@@ -51,6 +51,24 @@ xcrun devicectl device process launch --device <device-id> com.daimodus.stratos
 
 `DEVELOPMENT_TEAM` is passed on the command line on purpose and is **not** set
 in `project.pbxproj`: hardcoding one team id there breaks every other signer.
+So each person testing the wrap supplies their own. It is the `OU` field of your
+signing certificate:
+
+```sh
+security find-identity -v -p codesigning   # copy the certificate name
+security find-certificate -c "Apple Development: you@example.com" -p \
+  | openssl x509 -noout -subject
+# subject=UID=…, CN=Apple Development: you@example.com (…), OU=ABCDE12345, …
+#                                                            ^^^^^^^^^^ team id
+```
+
+Read `OU`, not the parenthesised suffix in the certificate name — that one is the
+certificate's own id and will fail to sign. A free Apple ID is enough: the
+Personal Team signs for a device fine, the build just expires after seven days
+and needs reinstalling.
+
+Keep it out of the repo. If you tire of retyping it, export it from your shell
+profile and pass `DEVELOPMENT_TEAM=$STRATOS_TEAM_ID`.
 
 The trap this exists to prevent: a device still running an older build looks
 exactly like a fix that did not work. Reinstall before concluding anything from
