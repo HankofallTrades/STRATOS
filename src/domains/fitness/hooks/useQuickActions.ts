@@ -2,15 +2,17 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 
-import { useAppDispatch } from "@/hooks/redux";
+import { useAppDispatch, useAppSelector } from "@/hooks/redux";
 import { useAuth } from "@/state/auth/AuthProvider";
-import { startWorkout as startWorkoutAction } from "@/state/workout/workoutSlice";
+import { selectCurrentWorkout } from "@/state/workout/workoutSlice";
 import { fetchLatestSingleExerciseLog } from "@/domains/fitness/data/fitnessRepository";
+import { startWorkoutSession } from "@/domains/fitness/data/workoutStart";
 
 export const useQuickActions = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { user } = useAuth();
+  const currentWorkout = useAppSelector(selectCurrentWorkout);
 
   const [isAddExerciseDialogOpen, setIsAddExerciseDialogOpen] = useState(false);
   const [isProteinModalOpen, setIsProteinModalOpen] = useState(false);
@@ -27,8 +29,16 @@ export const useQuickActions = () => {
     staleTime: 5 * 60 * 1000,
   });
 
-  const handleAddWorkout = () => {
-    dispatch(startWorkoutAction({ ownerUserId: user?.id ?? null }));
+  const handleAddWorkout = async () => {
+    // A workout already in progress is left alone; either way, go to it.
+    await startWorkoutSession(
+      { kind: "quick" },
+      {
+        dispatch,
+        ownerUserId: user?.id ?? null,
+        currentWorkoutId: currentWorkout?.id ?? null,
+      }
+    );
     navigate("/workout");
   };
 

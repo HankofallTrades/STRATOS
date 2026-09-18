@@ -56,6 +56,19 @@ workout summaries. Its hook gathers the sources — auth, workout state,
 periodization, habits, snapshot query — and feeds the model; the model itself
 does no I/O.
 
+## Workout start
+
+Beginning a workout crosses exactly one interface, `startWorkoutSession`, which
+takes an **intent** and returns `started`, `already-active`, or `failed`. The
+intents are `quick` (optionally with a session focus), `program-session` (a
+template session from the active program), `custom-session` (a new session row
+in the active block, created on the way in), and `plan` (a session someone else
+already planned: the generator or the Coach). The module derives the session's
+mesocycle fields, loads template exercises, and refuses to start over a workout
+in progress. Navigation and cache invalidation stay with the caller.
+
+_Avoid_: start payload, workout kickoff
+
 ## Workout commit
 
 Completing a workout crosses exactly one interface, `commitFinalizedWorkout`,

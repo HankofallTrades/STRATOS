@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Architecture review for stratos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+      mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
+    </script>
+    <style>
+      .seam { stroke-dasharray: 4 4; }
+      .leak { stroke: #dc2626; }
+      .deep { background: linear-gradient(135deg, #0f172a, #1e293b); }
+      .mod { border: 1.5px solid #64748b; border-radius: 6px; background: #fff; }
+      .mod-dead { border: 1.5px dashed #b91c1c; background: #fef2f2; }
+      .band { border-left: 4px solid #94a3b8; background: #fff; }
+      .band-thin { height: 2.25rem; }
+      .band-deep { border-left: 8px solid #0f172a; background: #0f172a; color: #e2e8f0; }
+      .lbl { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; }
+      .mermaid svg { max-height: 340px; }
+      .mass-iface { background: #fde68a; border: 1.5px solid #b45309; }
+      .mass-impl { background: #cbd5e1; border: 1.5px solid #475569; }
+      .mass-impl-deep { background: #1e293b; border: 1.5px solid #0f172a; color: #e2e8f0; }
+    </style>
+  </head>
+  <body class="bg-stone-50 text-slate-900 font-sans">
+    <main class="max-w-5xl mx-auto px-6 py-12 space-y-14">
+      <header class="space-y-3">
+        <h1 class="font-serif text-4xl">Architecture review · <span class="text-slate-500">stratos</span></h1>
+        <p class="text-sm text-slate-500">18 Sep 2026 · main @ b798c3c · hot spots weighted by 6-month commit frequency</p>
+        <div class="flex flex-wrap gap-4 text-xs text-slate-600 pt-2">
+          <span class="inline-flex items-center gap-2"><span class="inline-block w-5 h-3 mod"></span> module</span>
+          <span class="inline-flex items-center gap-2"><svg width="24" height="8"><line x1="0" y1="4" x2="24" y2="4" stroke="#475569" stroke-width="1.5" class="seam"/></svg> seam</span>
+          <span class="inline-flex items-center gap-2"><svg width="24" height="8"><line x1="0" y1="4" x2="24" y2="4" stroke="#dc2626" stroke-width="2"/></svg> leak</span>
+          <span class="inline-flex items-center gap-2"><span class="inline-block w-5 h-3 rounded-sm deep"></span> deep module</span>
+          <span class="inline-flex items-center gap-2"><span class="inline-block w-5 h-3 mod-dead"></span> dead code</span>
+          <span class="inline-flex items-center gap-2"><span class="inline-block w-5 h-3 mass-iface"></span> interface surface</span>
+          <span class="inline-flex items-center gap-2"><span class="inline-block w-5 h-3 mass-impl"></span> implementation</span>
+        </div>
+      </header>
+
+      <section id="candidates" class="space-y-12">
+
+        <!-- ───────────────────────── 1. Workout start ───────────────────────── -->
+        <article id="c1" class="rounded-xl border border-slate-200 bg-white p-8 space-y-6 shadow-sm">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="font-serif text-2xl">1 · One Workout start module behind nine dispatch sites</h2>
+            <div class="flex gap-2 shrink-0">
+              <span class="rounded-full bg-emerald-100 text-emerald-800 px-3 py-1 text-xs font-semibold">Strong</span>
+              <span class="rounded-full bg-slate-100 text-slate-700 px-3 py-1 text-xs">in-process</span>
+            </div>
+          </div>
+          <pre class="font-mono text-sm text-slate-600 leading-6">src/state/workout/workoutSlice.ts                 startWorkout reducer, StartWorkoutPayload (7 optional fields)
+src/domains/fitness/data/workoutStartPayload.ts   2 builders, untested
+src/domains/fitness/hooks/useWorkoutScreen.ts      3 start paths (quick, program session, custom session)
+src/domains/dashboard/hooks/useHomeDashboard.ts    2 start paths + private loadStartableProgram
+src/domains/fitness/hooks/useQuickActions.ts       1 start path
+src/domains/guidance/hooks/PresenceAgentRuntime.tsx 1 start path — `startWorkout(payload as never)`
+src/domains/guidance/hooks/useWorkoutGenerator.ts  1 start path (commitWorkoutPlan)
+src/domains/guidance/ui/WorkoutGeneratorButton.tsx 1 start path, 245 lines, zero importers</pre>
+
+          <div class="grid grid-cols-2 gap-6">
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-4">
+              <p class="lbl text-slate-500 mb-2">Before</p>
+              <pre class="mermaid">
+flowchart LR
+  QA[useQuickActions] --> S
+  WS[useWorkoutScreen<br/>×3 paths] --> S
+  HD[useHomeDashboard<br/>×2 paths] --> S
+  PR[PresenceAgentRuntime<br/>as never] -.-> S
+  WG[useWorkoutGenerator] --> S
+  GB[WorkoutGeneratorButton<br/>dead] -.-> S
+  WS --> P[workoutStartPayload]
+  HD --> P
+  WS --> T[buildExercisesFromSessionTemplate]
+  HD --> T
+  P --> S[(startWorkout reducer)]
+  T --> S
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  classDef dead stroke:#b91c1c,stroke-dasharray:4 4,fill:#fef2f2;
+  class PR leak
+  class GB dead
+              </pre>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-4">
+              <p class="lbl text-slate-500 mb-2">After</p>
+              <pre class="mermaid">
+flowchart LR
+  QA[useQuickActions] --> D
+  WS[useWorkoutScreen] --> D
+  HD[useHomeDashboard] --> D
+  PR[PresenceAgentRuntime] --> D
+  WG[useWorkoutGenerator] --> D
+  D[[Workout start<br/>intent → session]] --> S[(startWorkout reducer)]
+  classDef deep fill:#0f172a,color:#e2e8f0,stroke:#0f172a,stroke-width:3px;
+  class D deep
+              </pre>
+            </div>
+          </div>
+
+          <dl class="grid grid-cols-[7rem_1fr] gap-y-3 text-sm">
+            <dt class="font-semibold text-slate-700">Problem</dt>
+            <dd>Starting a workout is nine hand-assembled payloads in six files; the Coach path casts <code>as never</code> to get past the type, and the template-exercise fetch is repeated in two of them.</dd>
+            <dt class="font-semibold text-slate-700">Solution</dt>
+            <dd>One Workout start module in <code>fitness/data</code> that takes an intent (quick, focus, program session, custom session, plan) and owns payload derivation plus template loading; callers dispatch what it returns.</dd>
+            <dt class="font-semibold text-slate-700">Deletion test</dt>
+            <dd>Delete <code>workoutStartPayload.ts</code> today and its logic reappears in six callers — it is earning its keep but sits behind a shallow interface. Delete <code>WorkoutGeneratorButton.tsx</code> and nothing reappears.</dd>
+            <dt class="font-semibold text-slate-700">Wins</dt>
+            <dd>
+              <ul class="list-disc pl-5 space-y-1">
+                <li>leverage: one interface, nine call sites</li>
+                <li>locality: mesocycle fields derived once</li>
+                <li>tests: intent → payload table, no React</li>
+                <li>drops the <code>as never</code> cast</li>
+                <li>deletes 245 dead lines</li>
+                <li>unblocks candidate 6</li>
+              </ul>
+            </dd>
+          </dl>
+        </article>
+
+        <!-- ───────────────────────── 2. Set completion ───────────────────────── -->
+        <article id="c2" class="rounded-xl border border-slate-200 bg-white p-8 space-y-6 shadow-sm">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="font-serif text-2xl">2 · Set completion as one module, not a seven-hop relay</h2>
+            <div class="flex gap-2 shrink-0">
+              <span class="rounded-full bg-emerald-100 text-emerald-800 px-3 py-1 text-xs font-semibold">Strong</span>
+              <span class="rounded-full bg-slate-100 text-slate-700 px-3 py-1 text-xs">in-process</span>
+            </div>
+          </div>
+          <pre class="font-mono text-sm text-slate-600 leading-6">src/domains/fitness/hooks/useSet.ts                  430 lines · handleCompletionChange 107 lines · 8 sync effects · 0 tests
+src/domains/fitness/ui/SetComponent.tsx              390 lines · 13 props
+src/domains/fitness/ui/WorkoutExerciseView.tsx       921 lines · 22 props · relays onSetLogged
+src/domains/fitness/ui/WorkoutExerciseContainer.tsx  relays onSetLogged
+src/domains/fitness/hooks/useWorkoutExercise.ts      noteSetLogged → classifySetCompletion → haptic
+src/domains/fitness/ui/WorkoutComponent.tsx          effect diffs completed counts to start rest timer
+src/domains/fitness/data/setCompletionFeedback.ts    pure, tested — but only reached via the relay</pre>
+
+          <div class="grid grid-cols-2 gap-6">
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-4 space-y-1">
+              <p class="lbl text-slate-500 mb-2">Before · one tap crosses these</p>
+              <div class="band band-thin px-3 flex items-center text-xs">SetComponent · checkbox</div>
+              <div class="band band-thin px-3 flex items-center text-xs" style="border-left-color:#dc2626">useSet.handleCompletionChange · parse 5 local strings, auto-fill, 3 dispatches</div>
+              <div class="band band-thin px-3 flex items-center text-xs">workoutSlice · updateSet + completeSet</div>
+              <div class="band band-thin px-3 flex items-center text-xs" style="border-left-color:#dc2626">useSet · 8 effects copy redux back into local strings</div>
+              <div class="band band-thin px-3 flex items-center text-xs">onSetLogged ↑ SetComponent ↑ View ↑ Container</div>
+              <div class="band band-thin px-3 flex items-center text-xs">useWorkoutExercise.noteSetLogged → haptic</div>
+              <div class="band band-thin px-3 flex items-center text-xs" style="border-left-color:#dc2626">WorkoutComponent effect · diff completed counts → rest timer</div>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-4 space-y-2">
+              <p class="lbl text-slate-500 mb-2">After</p>
+              <div class="band band-thin px-3 flex items-center text-xs">SetComponent · checkbox</div>
+              <div class="band band-deep rounded px-3 py-3 text-xs space-y-1" style="min-height:8rem">
+                <p class="font-semibold">Set completion (pure)</p>
+                <p class="text-slate-400">draft + previous performance + set kind → <em>accepted</em> {updates, completedSet} | <em>rejected</em></p>
+                <p class="text-slate-400">auto-fill rules · static vs reps · cardio · bodyweight fill</p>
+              </div>
+              <div class="band band-thin px-3 flex items-center text-xs">workoutSlice · one <code>setCompleted</code> action</div>
+              <div class="grid grid-cols-2 gap-2">
+                <div class="mod px-3 py-2 text-xs">rest timer listens to slice</div>
+                <div class="mod px-3 py-2 text-xs">haptic listens to slice</div>
+              </div>
+            </div>
+          </div>
+
+          <dl class="grid grid-cols-[7rem_1fr] gap-y-3 text-sm">
+            <dt class="font-semibold text-slate-700">Problem</dt>
+            <dd>The rule for what counts as a logged set lives in a 107-line callback that reads five local strings, dispatches three actions, and is mirrored by eight effects; the reactions (rest timer, haptic) reach it through a four-level prop relay and a count-diffing effect. None of it is testable.</dd>
+            <dt class="font-semibold text-slate-700">Solution</dt>
+            <dd>A pure Set completion module that returns the accepted set or a rejection; the slice gets one completion action; rest timer and haptic subscribe to that action instead of being threaded up through props.</dd>
+            <dt class="font-semibold text-slate-700">Wins</dt>
+            <dd>
+              <ul class="list-disc pl-5 space-y-1">
+                <li>locality: completion rule in one place</li>
+                <li>tests: auto-fill and rejection cases in node</li>
+                <li>WorkoutExerciseView loses the relay props</li>
+                <li>rest timer stops diffing counts</li>
+                <li>Activity Journal replay reuses the same rule</li>
+              </ul>
+            </dd>
+          </dl>
+        </article>
+
+        <!-- ───────────────────────── 3. Coach turn ───────────────────────── -->
+        <article id="c3" class="rounded-xl border border-slate-200 bg-white p-8 space-y-6 shadow-sm">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="font-serif text-2xl">3 · Lift the Coach turn loop out of the React runtime</h2>
+            <div class="flex gap-2 shrink-0">
+              <span class="rounded-full bg-emerald-100 text-emerald-800 px-3 py-1 text-xs font-semibold">Strong</span>
+              <span class="rounded-full bg-slate-100 text-slate-700 px-3 py-1 text-xs">ports &amp; adapters</span>
+            </div>
+          </div>
+          <pre class="font-mono text-sm text-slate-600 leading-6">src/domains/guidance/hooks/PresenceAgentRuntime.tsx   send: 140-line useCallback, 13 deps · 0 tests
+src/domains/guidance/agent/transport.ts               sendCoachMessage (already an adapter)
+src/domains/guidance/hooks/useClientCoachToolRunners.ts runner map (already injectable)
+src/domains/guidance/agent/contracts.ts               message constructors, tested elsewhere</pre>
+
+          <div class="grid grid-cols-2 gap-6">
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-4">
+              <p class="lbl text-slate-500 mb-2">Before · interface ≈ implementation</p>
+              <div class="flex gap-3 items-end" style="height:300px">
+                <div class="flex flex-col justify-end flex-1 gap-1">
+                  <div class="mass-iface rounded p-2 text-xs" style="height:150px">
+                    <p class="font-semibold">what a caller must know</p>
+                    <p>isLoading · input · session · location · isWorkoutActive · currentWorkout · clientToolRunners · navigate · 5 setters · 4-step cap · client_tool_required · nextRoute side channel</p>
+                  </div>
+                  <div class="mass-impl rounded p-2 text-xs" style="height:140px">
+                    <p class="font-semibold">what it does</p>
+                    <p>loop → transport → filter tool calls → run runners → wrap errors → append results → status text → navigate</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-4">
+              <p class="lbl text-slate-500 mb-2">After · deep</p>
+              <div class="flex gap-3 items-end" style="height:300px">
+                <div class="flex flex-col justify-end flex-1 gap-1">
+                  <div class="mass-iface rounded p-2 text-xs" style="height:56px">
+                    <p class="font-semibold">runCoachTurn(conversation, text, ctx, {transport, runners, onProgress})</p>
+                    <p>→ {conversation, navigateTo}</p>
+                  </div>
+                  <div class="mass-impl-deep rounded p-2 text-xs" style="height:230px">
+                    <p class="font-semibold">Coach turn</p>
+                    <p class="text-slate-400">step cap · tool-call extraction · runner dispatch · error wrapping · result messages · navigation intent · progress events</p>
+                    <p class="text-slate-400 mt-2">adapters at the seam: HTTP transport in prod, scripted transport in tests</p>
+                  </div>
+                </div>
+                <div class="w-32 space-y-2 text-xs">
+                  <div class="mod p-2">PresenceAgentRuntime<br/><span class="text-slate-500">state + navigate</span></div>
+                  <div class="mod p-2">proactive engine<br/><span class="text-slate-500">calls send</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <dl class="grid grid-cols-[7rem_1fr] gap-y-3 text-sm">
+            <dt class="font-semibold text-slate-700">Problem</dt>
+            <dd>The client half of a Coach turn (the loop the tool registry doc promises "reads from the registry") is welded to React state setters and router, so the step cap, error wrapping and runner dispatch have no test and no interface.</dd>
+            <dt class="font-semibold text-slate-700">Solution</dt>
+            <dd>A Coach turn module in <code>guidance/data</code>, pure async over injected transport and runners, emitting progress; the runtime hook keeps only state and navigation.</dd>
+            <dt class="font-semibold text-slate-700">Wins</dt>
+            <dd>
+              <ul class="list-disc pl-5 space-y-1">
+                <li>two adapters justify the seam</li>
+                <li>tests: loop cap, missing runner, runner throw</li>
+                <li>locality: one loop for client tools</li>
+                <li>useCallback deps drop from 13 to ~4</li>
+                <li>makes candidate 5 shrink naturally</li>
+              </ul>
+            </dd>
+          </dl>
+        </article>
+
+        <!-- ───────────────────────── 4. Server codec ───────────────────────── -->
+        <article id="c4" class="rounded-xl border border-slate-200 bg-white p-8 space-y-6 shadow-sm">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="font-serif text-2xl">4 · Split the transcript codec out of the server runtime</h2>
+            <div class="flex gap-2 shrink-0">
+              <span class="rounded-full bg-amber-100 text-amber-800 px-3 py-1 text-xs font-semibold">Worth exploring</span>
+              <span class="rounded-full bg-slate-100 text-slate-700 px-3 py-1 text-xs">in-process</span>
+            </div>
+          </div>
+          <pre class="font-mono text-sm text-slate-600 leading-6">src/domains/guidance/agent/runtime.ts   684 lines · 0 tests
+  84–170   pure formatters (profile, recent workouts)
+  171–216  Supabase client + auth context
+  218–355  3 server executors (I/O) — re-shape queries analyticsRepository already shapes, `as never` ×2
+  375–612  pure codec: coach ⇄ model messages, tool-result parsing   ≈ 240 lines
+  614–684  runCoachAgentTurn</pre>
+
+          <div class="grid grid-cols-2 gap-6">
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-4 space-y-1">
+              <p class="lbl text-slate-500 mb-2">Before · one file, alternating bands</p>
+              <div class="band px-3 py-1 text-xs">formatters (pure)</div>
+              <div class="band px-3 py-1 text-xs" style="border-left-color:#dc2626">supabase client (I/O)</div>
+              <div class="band px-3 py-1 text-xs" style="border-left-color:#dc2626">server executors (I/O)</div>
+              <div class="band px-3 py-3 text-xs">coachMessages → modelMessages (pure)</div>
+              <div class="band px-3 py-3 text-xs">parseToolResultPayload (pure)</div>
+              <div class="band px-3 py-3 text-xs">responseMessages → coachMessages (pure)</div>
+              <div class="band px-3 py-1 text-xs" style="border-left-color:#dc2626">runCoachAgentTurn (I/O)</div>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-4 space-y-2">
+              <p class="lbl text-slate-500 mb-2">After</p>
+              <div class="band band-deep rounded px-3 py-3 text-xs" style="min-height:7rem">
+                <p class="font-semibold">Coach transcript codec (pure)</p>
+                <p class="text-slate-400">encode(conversation) → model messages · decode(response) → {messages, status, artifacts}</p>
+                <p class="text-slate-400">round-trip tests in node; ai-sdk types stay inside</p>
+              </div>
+              <div class="mod px-3 py-2 text-xs">server executors · read tools, own Supabase</div>
+              <div class="mod px-3 py-2 text-xs">runCoachAgentTurn · glue</div>
+            </div>
+          </div>
+
+          <dl class="grid grid-cols-[7rem_1fr] gap-y-3 text-sm">
+            <dt class="font-semibold text-slate-700">Problem</dt>
+            <dd>Two hundred and forty pure lines that decide how a tool result or artifact survives the trip through the model are untested because they share a file with Supabase and env setup, and the file is the one every Coach fix touches.</dd>
+            <dt class="font-semibold text-slate-700">Solution</dt>
+            <dd>Move the codec into its own module with encode and decode as the interface; executors and turn glue stay where they are.</dd>
+            <dt class="font-semibold text-slate-700">Wins</dt>
+            <dd>
+              <ul class="list-disc pl-5 space-y-1">
+                <li>tests: artifact round-trip, malformed result</li>
+                <li>locality: message shape changes hit one file</li>
+                <li>runtime.ts halves</li>
+              </ul>
+            </dd>
+          </dl>
+        </article>
+
+        <!-- ───────────────────────── 5. Presence bridge ───────────────────────── -->
+        <article id="c5" class="rounded-xl border border-slate-200 bg-white p-8 space-y-6 shadow-sm">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="font-serif text-2xl">5 · Shrink the presence runtime bridge</h2>
+            <div class="flex gap-2 shrink-0">
+              <span class="rounded-full bg-amber-100 text-amber-800 px-3 py-1 text-xs font-semibold">Worth exploring</span>
+              <span class="rounded-full bg-slate-100 text-slate-700 px-3 py-1 text-xs">in-process</span>
+            </div>
+          </div>
+          <pre class="font-mono text-sm text-slate-600 leading-6">src/domains/guidance/hooks/usePresenceAgent.ts        3 contexts: PresenceAgent (22 fields) · RuntimeBridge (16) · RuntimeApi (7)
+src/domains/guidance/hooks/PresenceAgentProvider.tsx  239 lines · re-wraps every api method as ensureRuntime(); api?.x()
+src/domains/guidance/hooks/PresenceAgentRuntime.tsx   300 lines · renders null · registers api via effect</pre>
+
+          <div class="grid grid-cols-2 gap-6">
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-4">
+              <p class="lbl text-slate-500 mb-2">Before · interface ≈ implementation</p>
+              <div class="flex gap-3 items-end" style="height:280px">
+                <div class="flex flex-col justify-end flex-1 gap-1">
+                  <div class="mass-iface rounded p-2 text-xs" style="height:170px">
+                    <p class="font-semibold">RuntimeBridge · 16 fields</p>
+                    <p>isOpen/setIsOpen · conversation/setConversation · input/setInput · isLoading/setIsLoading · statusMessage/setStatusMessage · hasAttention/setHasAttention · proactiveInsights/setProactiveInsights · register/clear</p>
+                  </div>
+                  <div class="mass-impl rounded p-2 text-xs" style="height:40px">pass-through</div>
+                </div>
+                <div class="flex flex-col justify-end flex-1 gap-1">
+                  <div class="mass-iface rounded p-2 text-xs" style="height:90px">
+                    <p class="font-semibold">RuntimeApi · 7</p>
+                    <p>send · applyArtifact · engage · dismiss · devTrigger · devReset · devToolsEnabled</p>
+                  </div>
+                  <div class="mass-impl rounded p-2 text-xs" style="height:120px">send loop · applier map · proactive engine</div>
+                </div>
+              </div>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-4">
+              <p class="lbl text-slate-500 mb-2">After · lazy seam kept, one state + one dispatch</p>
+              <div class="flex gap-3 items-end" style="height:280px">
+                <div class="flex flex-col justify-end flex-1 gap-1">
+                  <div class="mass-iface rounded p-2 text-xs" style="height:48px">
+                    <p class="font-semibold">Presence state · {state, dispatch}</p>
+                  </div>
+                  <div class="mass-impl-deep rounded p-2 text-xs" style="height:210px">
+                    <p class="font-semibold">Presence reducer (pure)</p>
+                    <p class="text-slate-400">open/close · attention (seen-count rule) · conversation append · status · insights</p>
+                    <p class="text-slate-400 mt-2">runtime chunk calls Coach turn (c3) and dispatches results; provider queues one pending send until it loads</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <dl class="grid grid-cols-[7rem_1fr] gap-y-3 text-sm">
+            <dt class="font-semibold text-slate-700">Problem</dt>
+            <dd>The lazy-load seam (kept for the startup win in d372346) is paid for with sixteen state-and-setter pairs handed across a context, and the attention rule lives in an effect nobody can test.</dd>
+            <dt class="font-semibold text-slate-700">Solution</dt>
+            <dd>One pure presence reducer owns the state transitions; the bridge carries state and a dispatch; the runtime chunk becomes an effect-only caller of the Coach turn module.</dd>
+            <dt class="font-semibold text-slate-700">Wins</dt>
+            <dd>
+              <ul class="list-disc pl-5 space-y-1">
+                <li>interface shrinks from 16 to 2</li>
+                <li>tests: attention and pending-send rules</li>
+                <li>locality: state transitions in one reducer</li>
+              </ul>
+            </dd>
+            <dt class="font-semibold text-slate-700">Note</dt>
+            <dd class="text-slate-600">Do this after candidate 3; on its own it moves plumbing without concentrating behaviour.</dd>
+          </dl>
+        </article>
+
+        <!-- ───────────────────────── 6. useWorkoutScreen ───────────────────────── -->
+        <article id="c6" class="rounded-xl border border-slate-200 bg-white p-8 space-y-6 shadow-sm">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="font-serif text-2xl">6 · Split the block builder out of the workout screen hook</h2>
+            <div class="flex gap-2 shrink-0">
+              <span class="rounded-full bg-amber-100 text-amber-800 px-3 py-1 text-xs font-semibold">Worth exploring</span>
+              <span class="rounded-full bg-slate-100 text-slate-700 px-3 py-1 text-xs">in-process</span>
+            </div>
+          </div>
+          <pre class="font-mono text-sm text-slate-600 leading-6">src/domains/fitness/hooks/useWorkoutScreen.ts   252 lines · returns 31 fields · 0 tests
+src/domains/fitness/ui/WorkoutScreen.tsx        416 lines · destructures all 31</pre>
+
+          <div class="grid grid-cols-2 gap-6">
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-4">
+              <p class="lbl text-slate-500 mb-2">Before · 31 returned fields</p>
+              <div class="grid grid-cols-4 gap-1 text-[10px]">
+                <span class="mod px-1 py-0.5" style="background:#fef3c7">mesocycleName</span><span class="mod px-1 py-0.5" style="background:#fef3c7">setMesocycleName</span><span class="mod px-1 py-0.5" style="background:#fef3c7">mesocycleDurationWeeks</span><span class="mod px-1 py-0.5" style="background:#fef3c7">setMesocycleDurationWeeks</span>
+                <span class="mod px-1 py-0.5" style="background:#fef3c7">mesocycleGoalFocus</span><span class="mod px-1 py-0.5" style="background:#fef3c7">setMesocycleGoalFocus</span><span class="mod px-1 py-0.5" style="background:#fef3c7">mesocycleNotes</span><span class="mod px-1 py-0.5" style="background:#fef3c7">setMesocycleNotes</span>
+                <span class="mod px-1 py-0.5" style="background:#fef3c7">showBlockBuilder</span><span class="mod px-1 py-0.5" style="background:#fef3c7">setShowBlockBuilder</span><span class="mod px-1 py-0.5" style="background:#fef3c7">handleCreateMesocycle</span><span class="mod px-1 py-0.5" style="background:#fef3c7">isCreatingMesocycle</span>
+                <span class="mod px-1 py-0.5" style="background:#e0e7ff">handleStartWorkout</span><span class="mod px-1 py-0.5" style="background:#e0e7ff">handleStartNextProtocolSession</span><span class="mod px-1 py-0.5" style="background:#e0e7ff">handleStartCustomMesocycleSession</span><span class="mod px-1 py-0.5" style="background:#e0e7ff">isCreatingCustomSession</span>
+                <span class="mod px-1 py-0.5" style="background:#e0e7ff">selectedFocus</span><span class="mod px-1 py-0.5" style="background:#e0e7ff">setSelectedFocus</span><span class="mod px-1 py-0.5" style="background:#e0e7ff">customSessionFocus</span><span class="mod px-1 py-0.5" style="background:#e0e7ff">setCustomSessionFocus</span>
+                <span class="mod px-1 py-0.5">currentWorkout</span><span class="mod px-1 py-0.5">activeProgram</span><span class="mod px-1 py-0.5">isLoadingMesocycle</span><span class="mod px-1 py-0.5">nextProgramSession</span>
+                <span class="mod px-1 py-0.5">periodProgressValue</span><span class="mod px-1 py-0.5">handleEndWorkout</span><span class="mod px-1 py-0.5">handleConfirmDiscard</span><span class="mod px-1 py-0.5">isDiscardConfirmOpen</span>
+                <span class="mod px-1 py-0.5">setIsDiscardConfirmOpen</span><span class="mod px-1 py-0.5">handleStartWarmup</span><span class="mod px-1 py-0.5">handleStopWarmup</span>
+              </div>
+              <p class="text-[10px] text-slate-500 mt-2">amber = block builder form · indigo = workout start (candidate 1) · white = screen</p>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-4 space-y-2">
+              <p class="lbl text-slate-500 mb-2">After</p>
+              <div class="mod p-3 text-xs" style="background:#fef3c7"><span class="font-semibold">useBlockBuilder</span> · form draft + validation (4–12 weeks) + submit · pure validator tested</div>
+              <div class="band band-deep rounded p-3 text-xs"><span class="font-semibold">Workout start</span> (candidate 1) · start(intent)</div>
+              <div class="mod p-3 text-xs"><span class="font-semibold">useWorkoutScreen</span> · currentWorkout · activeProgram · progress · end / discard / warmup · ≈ 10 fields</div>
+            </div>
+          </div>
+
+          <dl class="grid grid-cols-[7rem_1fr] gap-y-3 text-sm">
+            <dt class="font-semibold text-slate-700">Problem</dt>
+            <dd>The hook interface is thirty-one fields because a mesocycle form, three start paths, and the screen's own controls share one return object; the duration rule (4–12 weeks) is buried in a toast branch.</dd>
+            <dt class="font-semibold text-slate-700">Solution</dt>
+            <dd>The form becomes its own module with a pure validator; start paths go to candidate 1; the screen hook keeps what only the screen needs.</dd>
+            <dt class="font-semibold text-slate-700">Wins</dt>
+            <dd>
+              <ul class="list-disc pl-5 space-y-1">
+                <li>interface: 31 → ≈10</li>
+                <li>tests: mesocycle form validation</li>
+                <li>WorkoutScreen.tsx stops churning for form changes</li>
+              </ul>
+            </dd>
+          </dl>
+        </article>
+
+        <!-- ───────────────────────── 7. Periodization ───────────────────────── -->
+        <article id="c7" class="rounded-xl border border-slate-200 bg-white p-8 space-y-6 shadow-sm">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="font-serif text-2xl">7 · Pull protocol templates and rotation out of the periodization repository</h2>
+            <div class="flex gap-2 shrink-0">
+              <span class="rounded-full bg-amber-100 text-amber-800 px-3 py-1 text-xs font-semibold">Worth exploring</span>
+              <span class="rounded-full bg-slate-100 text-slate-700 px-3 py-1 text-xs">in-process</span>
+            </div>
+          </div>
+          <pre class="font-mono text-sm text-slate-600 leading-6">src/domains/periodization/data/repository.ts   1271 lines · 10 exports · 30 private helpers
+  57–266   OCCAMS / HYPERTROPHY / STRENGTH template definitions (≈210 lines of data)
+  285–310  computeCurrentWeek, getNextExerciseOrder (pure)
+  473–498  getNextSessionInRotation, getNextSessionInSimpleRotation (pure)
+  335–413  ensureCanonicalExerciseForUser, name matching (mixed)
+repository.test.ts   2 tests, both mock Supabase to reach the reads</pre>
+
+          <div class="grid grid-cols-2 gap-6">
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-4 space-y-1">
+              <p class="lbl text-slate-500 mb-2">Before</p>
+              <div class="band px-3 py-4 text-xs">protocol templates (data, 210 lines)</div>
+              <div class="band px-3 py-1 text-xs">week + rotation rules (pure)</div>
+              <div class="band px-3 py-1 text-xs" style="border-left-color:#dc2626">canonical exercise ensure (I/O)</div>
+              <div class="band px-3 py-1 text-xs" style="border-left-color:#dc2626">session upserts ×2 protocols (I/O)</div>
+              <div class="band px-3 py-1 text-xs" style="border-left-color:#dc2626">10 public reads/writes (I/O)</div>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-4 space-y-2">
+              <p class="lbl text-slate-500 mb-2">After</p>
+              <div class="band band-deep rounded px-3 py-3 text-xs">
+                <p class="font-semibold">Program protocol (pure)</p>
+                <p class="text-slate-400">templates · currentWeek(start, weeks, today) · nextSession(sessions, lastCompleted) · template → session rows</p>
+              </div>
+              <div class="mod px-3 py-2 text-xs">periodization repository · reads/writes only, calls the protocol module</div>
+            </div>
+          </div>
+
+          <dl class="grid grid-cols-[7rem_1fr] gap-y-3 text-sm">
+            <dt class="font-semibold text-slate-700">Problem</dt>
+            <dd>Which session comes next and which week the block is in are pure rules, but they can only be exercised through a mocked Supabase client because they live inside the I/O module.</dd>
+            <dt class="font-semibold text-slate-700">Solution</dt>
+            <dd>A Program protocol module holds templates and rotation rules; the repository shrinks to fetch and persist.</dd>
+            <dt class="font-semibold text-slate-700">Wins</dt>
+            <dd>
+              <ul class="list-disc pl-5 space-y-1">
+                <li>tests: rotation and week rules in node</li>
+                <li>locality: a new protocol touches one module</li>
+                <li>repository drops ~300 lines</li>
+              </ul>
+            </dd>
+          </dl>
+        </article>
+
+        <!-- ───────────────────────── 8. App lifecycle ───────────────────────── -->
+        <article id="c8" class="rounded-xl border border-slate-200 bg-white p-8 space-y-6 shadow-sm">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="font-serif text-2xl">8 · One app-lifecycle module for foreground, online and native-shell checks</h2>
+            <div class="flex gap-2 shrink-0">
+              <span class="rounded-full bg-slate-200 text-slate-700 px-3 py-1 text-xs font-semibold">Speculative</span>
+              <span class="rounded-full bg-slate-100 text-slate-700 px-3 py-1 text-xs">local-substitutable</span>
+            </div>
+          </div>
+          <pre class="font-mono text-sm text-slate-600 leading-6">src/domains/fitness/hooks/useOfflineWorkoutSync.ts    visibilitychange + online → replay queue
+src/domains/guidance/hooks/useNotificationPlanner.ts  visibilitychange → replan
+src/domains/guidance/hooks/useProactiveEngine.ts      visibilitychange, native-gated → app_open gate
+src/domains/account/ui/AuthForm.tsx                   Capacitor.isNativePlatform() ×3 — the only ui file touching the platform
+src/lib/native/*.ts                                   haptics, keepAwake, statusBar — each its own thin bridge (fine)</pre>
+
+          <div class="grid grid-cols-2 gap-6">
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-4">
+              <p class="lbl text-slate-500 mb-2">Before</p>
+              <pre class="mermaid">
+flowchart TB
+  D[(document.visibilitychange)] --> OS[useOfflineWorkoutSync]
+  D --> NP[useNotificationPlanner]
+  D --> PE[useProactiveEngine]
+  C[(Capacitor.isNativePlatform)] --> PE
+  C --> NS[notificationScheduler]
+  C -.-> AF[AuthForm.tsx · ui]
+  W[(window.online)] --> OS
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class AF leak
+              </pre>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-4">
+              <p class="lbl text-slate-500 mb-2">After</p>
+              <pre class="mermaid">
+flowchart TB
+  L[[App lifecycle<br/>onForeground · onOnline · isNativeShell]] --> OS[useOfflineWorkoutSync]
+  L --> NP[useNotificationPlanner]
+  L --> PE[useProactiveEngine]
+  L --> GA[account/data · google sign-in]
+  GA --> AF[AuthForm.tsx]
+  classDef deep fill:#0f172a,color:#e2e8f0,stroke:#0f172a,stroke-width:3px;
+  class L deep
+              </pre>
+            </div>
+          </div>
+
+          <dl class="grid grid-cols-[7rem_1fr] gap-y-3 text-sm">
+            <dt class="font-semibold text-slate-700">Problem</dt>
+            <dd>"The app came back to the foreground" is decided three times with three slightly different rules, and the auth screen is the one ui file that asks the platform directly.</dd>
+            <dt class="font-semibold text-slate-700">Solution</dt>
+            <dd>One lifecycle module owns the DOM and Capacitor listeners and exposes subscribe functions; the native sign-in branch moves behind the account data seam.</dd>
+            <dt class="font-semibold text-slate-700">Why speculative</dt>
+            <dd class="text-slate-600">One adapter today means a hypothetical seam. It becomes real the moment the Live Activity reconcile-on-reopen lands (ADR-0001), which needs the same foreground signal — do it then, not before.</dd>
+          </dl>
+        </article>
+      </section>
+
+      <!-- ───────────────────────── Checked, fine ───────────────────────── -->
+      <section class="rounded-xl border border-slate-200 bg-stone-100 p-6 text-sm space-y-2">
+        <h2 class="font-serif text-xl">Checked and left alone</h2>
+        <ul class="list-disc pl-5 space-y-1 text-slate-700">
+          <li>Workout commit, Coach mutation registry, tool registry + builders, Home model, Set Plan, notification plan: already deep, tested through their interface.</li>
+          <li>useOfflineWorkoutSync: thin adapter over Workout commit, exactly as CONTEXT.md describes.</li>
+          <li>lib/native bridges (haptics, keepAwake, statusBar): thin by design, no-op on web, keepAwake refcount tested.</li>
+          <li>fitnessRepository (46 exports): wide but each export is a real query; a grab bag, not a shallow module. Not worth a seam yet.</li>
+          <li>ADRs 0001–0003: no candidate above contradicts them.</li>
+        </ul>
+      </section>
+
+      <!-- ───────────────────────── Top recommendation ───────────────────────── -->
+      <section id="top-recommendation" class="rounded-xl deep text-slate-100 p-10 space-y-4 shadow-lg">
+        <p class="lbl text-slate-400">Top recommendation</p>
+        <h2 class="font-serif text-3xl"><a href="#c1" class="underline decoration-slate-500 hover:decoration-slate-200">1 · Workout start</a></h2>
+        <p class="text-slate-300 max-w-3xl">Smallest change with the widest reach: it touches four of the ten hottest files, removes the only <code>as never</code> on the workout path, deletes 245 dead lines, and hands candidate 6 half its win for free. Candidate 2 (Set completion) is where the bugs hide and should follow immediately after.</p>
+      </section>
+    </main>
+  </body>
+</html>

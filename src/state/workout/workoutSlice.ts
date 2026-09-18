@@ -15,7 +15,7 @@ interface WorkoutState {
   lastFinishedWorkoutId: string | null;
 }
 
-interface StartWorkoutPayload {
+export interface StartWorkoutPayload {
   sessionFocus?: SessionFocus;
   initialExercises?: WorkoutExercise[];
   mesocycleId?: string;

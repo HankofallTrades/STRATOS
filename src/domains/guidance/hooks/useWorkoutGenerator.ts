@@ -1,5 +1,4 @@
 import { differenceInDays, startOfDay } from "date-fns";
-import { useMemo } from "react";
 import type { QueryClient } from "@tanstack/react-query";
 
 import {
@@ -12,6 +11,7 @@ import {
 } from "@/domains/analytics/hooks/useVolumeChart";
 import type { DisplayArchetypeData } from "@/domains/analytics/hooks/useVolumeChart";
 import { buildExercisesFromSessionTemplate } from "@/domains/fitness/data/workoutScreen";
+import type { WorkoutPlanStart } from "@/domains/fitness/data/workoutStart";
 import type {
   ActiveMesocycleProgram,
   MesocycleSessionTemplate,
@@ -29,16 +29,11 @@ import { buildExerciseDraft } from "@/domains/guidance/data/workoutDraft";
 import type { CoachToolResultPayload } from "@/domains/guidance/agent/contracts";
 import { proposeWorkoutInputSchema } from "@/domains/guidance/agent/tools";
 import { getActiveMesocycleProgram } from "@/domains/periodization/data/repository";
-import { useAppDispatch, useAppSelector } from "@/hooks/redux";
 import type {
   Exercise,
   SessionFocus,
   Workout,
 } from "@/lib/types/workout";
-import { useAuth } from "@/state/auth/AuthProvider";
-import { selectWorkoutHistory } from "@/state/history/historySlice";
-import type { AppDispatch } from "@/state/store";
-import { startWorkout } from "@/state/workout/workoutSlice";
 
 const ARCHETYPE_TARGETS: Record<string, number> = {
   bend: 7,
@@ -119,10 +114,9 @@ export interface GeneratedWorkoutSummary {
   }>;
 }
 
-interface GenerateStrengthWorkoutParams {
+interface BuildWorkoutPlanParams {
   baseExercises: Exercise[];
   constraints?: WorkoutConstraints;
-  dispatch: AppDispatch;
   movementArchetypes: MovementArchetypeOption[];
   planningContext?: WorkoutGeneratorPlanningContext;
   primaryMuscleMap?: Record<string, string[]>;
@@ -472,58 +466,10 @@ const buildGeneratorMessage = ({
   return `Created a ${focusLabel.toLowerCase()} workout${mesocycleLabel}${sourceLabel}.${archetypeLabel}${exerciseLabel}`.trim();
 };
 
-export const useWorkoutGenerator = (
-  baseExercises: Exercise[] | undefined,
-  movementArchetypes: MovementArchetypeOption[] | undefined,
-  planningContext?: WorkoutGeneratorPlanningContext
-) => {
-  const dispatch = useAppDispatch();
-  const { user } = useAuth();
-  const workoutHistory = useAppSelector(selectWorkoutHistory);
-
-  const archetypeMap = useMemo(() => {
-    if (!movementArchetypes) {
-      return new Map<string, string>();
-    }
-
-    return new Map(movementArchetypes.map(archetype => [archetype.id, archetype.name]));
-  }, [movementArchetypes]);
-
-  const exercisesWithArchetypes = useMemo((): Exercise[] => {
-    if (!baseExercises) {
-      return [];
-    }
-
-    return baseExercises.filter(
-      exercise => exercise.archetype_id && archetypeMap.has(exercise.archetype_id)
-    );
-  }, [baseExercises, archetypeMap]);
-
-  const exerciseMap = useMemo(
-    (): Map<string, Exercise> =>
-      new Map(exercisesWithArchetypes.map(exercise => [exercise.id, exercise])),
-    [exercisesWithArchetypes]
-  );
-
-  const generateWorkout = async (): Promise<GeneratedWorkoutSummary> =>
-    generateStrengthWorkout({
-      baseExercises: exercisesWithArchetypes,
-      dispatch,
-      movementArchetypes: movementArchetypes ?? [],
-      planningContext,
-      userId: user?.id ?? null,
-      workoutHistory,
-    });
-
-  return {
-    generateWorkout,
-    isReady: exercisesWithArchetypes.length > 0 && !!movementArchetypes,
-  };
-};
-
 export interface WorkoutPlanResult {
   summary: GeneratedWorkoutSummary;
-  startWorkoutPayload: Parameters<typeof startWorkout>[0];
+  /** Handed to Workout start as a `plan` intent when the user applies it. */
+  plan: WorkoutPlanStart;
 }
 
 export const buildWorkoutPlan = async ({
@@ -534,7 +480,7 @@ export const buildWorkoutPlan = async ({
   primaryMuscleMap = {},
   userId,
   workoutHistory,
-}: Omit<GenerateStrengthWorkoutParams, "dispatch">): Promise<WorkoutPlanResult> => {
+}: BuildWorkoutPlanParams): Promise<WorkoutPlanResult> => {
   if (constraints?.focus === "recovery") {
     const recoveryExerciseCount =
       constraints?.durationMinutes != null
@@ -570,9 +516,8 @@ export const buildWorkoutPlan = async ({
     };
     return {
       summary,
-      startWorkoutPayload: {
+      plan: {
         initialExercises,
-        ownerUserId: userId,
         sessionFocus: "recovery",
       },
     };
@@ -716,13 +661,12 @@ export const buildWorkoutPlan = async ({
     throw new Error("Failed to select any exercises for the workout.");
   }
 
-  const startWorkoutPayload = {
+  const plan: WorkoutPlanStart = {
     initialExercises,
     mesocycleId: activeProgram?.mesocycle.id,
     mesocycleProtocol: activeProgram?.mesocycle.protocol,
     mesocycleSessionId: templateExerciseCount > 0 ? nextSession?.id : undefined,
     mesocycleWeek: activeProgram?.current_week,
-    ownerUserId: userId,
     sessionFocus,
   };
 
@@ -777,23 +721,7 @@ export const buildWorkoutPlan = async ({
     })),
   };
 
-  return { summary, startWorkoutPayload };
-};
-
-export const commitWorkoutPlan = (
-  dispatch: AppDispatch,
-  startWorkoutPayload: WorkoutPlanResult["startWorkoutPayload"]
-) => {
-  dispatch(startWorkout(startWorkoutPayload));
-};
-
-export const generateStrengthWorkout = async (
-  params: GenerateStrengthWorkoutParams
-): Promise<GeneratedWorkoutSummary> => {
-  const { dispatch, ...rest } = params;
-  const { summary, startWorkoutPayload } = await buildWorkoutPlan(rest);
-  commitWorkoutPlan(dispatch, startWorkoutPayload);
-  return summary;
+  return { summary, plan };
 };
 
 export const createWorkoutProposal = async ({
@@ -864,7 +792,7 @@ export const createWorkoutProposal = async ({
         : Promise.resolve([] as WeeklyArchetypeSetData[]),
     ]);
 
-  const { summary, startWorkoutPayload } = await buildWorkoutPlan({
+  const { summary, plan } = await buildWorkoutPlan({
     baseExercises,
     constraints,
     movementArchetypes,
@@ -886,9 +814,7 @@ export const createWorkoutProposal = async ({
       rationale: summary.message,
       sessionFocus: summary.sessionFocus,
       exercises: summary.selectedExercises.map((name) => ({ name, sets: 3 })),
-      apply: {
-        startWorkoutPayload: startWorkoutPayload as Record<string, unknown>,
-      },
+      apply: { plan },
     },
   };
 };

@@ -7,7 +7,6 @@ import { usePeriodization } from "@/domains/periodization";
 import type { MesocycleSessionTemplate } from "@/domains/periodization";
 import {
   selectCurrentWorkout,
-  startWorkout as startWorkoutAction,
   startWarmup,
   stopWarmup,
 } from "@/state/workout/workoutSlice";
@@ -15,11 +14,10 @@ import { useAuth } from "@/state/auth/AuthProvider";
 import { useWorkoutPersistence } from "@/domains/fitness/hooks/useWorkout";
 import type { SessionFocus } from "@/lib/types/workout";
 import { fetchExercises } from "@/domains/fitness/data/fitnessRepository";
-import { buildExercisesFromSessionTemplate } from "@/domains/fitness/data/workoutScreen";
 import {
-  createBaseWorkoutStartPayload,
-  createProgramWorkoutStartPayload,
-} from "@/domains/fitness/data/workoutStartPayload";
+  startWorkoutSession,
+  type WorkoutStartIntent,
+} from "@/domains/fitness/data/workoutStart";
 
 export const useWorkoutScreen = () => {
   const dispatch = useAppDispatch();
@@ -36,16 +34,22 @@ export const useWorkoutScreen = () => {
   const [mesocycleNotes, setMesocycleNotes] = useState("");
   const [showBlockBuilder, setShowBlockBuilder] = useState(false);
   const [isDiscardConfirmOpen, setIsDiscardConfirmOpen] = useState(false);
+  const [isCreatingCustomSession, setIsCreatingCustomSession] = useState(false);
 
   const {
     activeProgram,
     isLoading: isLoadingMesocycle,
     createMesocycle,
     isCreatingMesocycle,
-    createCustomSession,
-    isCreatingCustomSession,
   } = usePeriodization(user?.id);
   const { saveWorkout, discardWorkout } = useWorkoutPersistence();
+
+  const startSession = (intent: WorkoutStartIntent) =>
+    startWorkoutSession(intent, {
+      dispatch,
+      ownerUserId: user?.id ?? null,
+      currentWorkoutId: currentWorkout?.id ?? null,
+    });
 
   useEffect(() => {
     let timeoutId: number | null = null;
@@ -96,14 +100,7 @@ export const useWorkoutScreen = () => {
     : 0;
 
   const handleStartWorkout = () => {
-    dispatch(
-      startWorkoutAction(
-        createBaseWorkoutStartPayload({
-          ownerUserId: user?.id ?? null,
-          sessionFocus: selectedFocus || undefined,
-        })
-      )
-    );
+    void startSession({ kind: "quick", sessionFocus: selectedFocus || undefined });
   };
 
   const handleCreateMesocycle = async () => {
@@ -146,16 +143,21 @@ export const useWorkoutScreen = () => {
   ) => {
     if (!activeProgram) return;
 
-    dispatch(
-      startWorkoutAction(
-        createProgramWorkoutStartPayload({
-          ownerUserId: user?.id ?? null,
-          activeProgram,
-          sessionTemplate,
-          initialExercises: await buildExercisesFromSessionTemplate(sessionTemplate, user?.id ?? ""),
-        })
-      )
-    );
+    const outcome = await startSession({
+      kind: "program-session",
+      activeProgram,
+      sessionTemplate,
+    });
+    if (outcome.status === "failed") {
+      toast({
+        title: "Could not start session",
+        description:
+          outcome.error instanceof Error
+            ? outcome.error.message
+            : "Failed to load the session's exercises.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleStartNextProtocolSession = () => {
@@ -165,32 +167,30 @@ export const useWorkoutScreen = () => {
 
   const handleStartCustomMesocycleSession = async () => {
     if (!activeProgram) return;
-    const resolvedSessionFocus =
-      customSessionFocus ?? activeProgram.mesocycle.goal_focus;
 
-    try {
-      const createdSession = await createCustomSession({
-        mesocycleId: activeProgram.mesocycle.id,
-        sessionFocus: resolvedSessionFocus,
-      });
+    setIsCreatingCustomSession(true);
+    const outcome = await startSession({
+      kind: "custom-session",
+      activeProgram,
+      sessionFocus: customSessionFocus ?? undefined,
+    });
+    setIsCreatingCustomSession(false);
 
-      dispatch(
-        startWorkoutAction({
-          ownerUserId: user?.id ?? null,
-          sessionFocus: resolvedSessionFocus,
-          mesocycleId: activeProgram.mesocycle.id,
-          mesocycleSessionId: createdSession.id,
-          mesocycleWeek: activeProgram.current_week,
-          mesocycleProtocol: activeProgram.mesocycle.protocol,
-        })
-      );
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Failed to create custom session.";
+    if (outcome.status === "failed") {
       toast({
         title: "Could not start custom session",
-        description: message,
+        description:
+          outcome.error instanceof Error
+            ? outcome.error.message
+            : "Failed to create custom session.",
         variant: "destructive",
+      });
+      return;
+    }
+    if (outcome.status === "started" && outcome.createdSessionId) {
+      // The program now has one more session; refetch it.
+      void queryClient.invalidateQueries({
+        queryKey: ["activeMesocycleProgram", user?.id],
       });
     }
   };

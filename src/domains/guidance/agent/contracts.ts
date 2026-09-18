@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { WorkoutPlanStart } from "../../fitness/data/workoutStart.js";
 import { screenContextSchema, type ScreenContext } from "./screenContext.js";
 
 export const coachToolNames = [
@@ -47,7 +48,8 @@ export type CoachArtifact =
       rationale: string;
       sessionFocus: string;
       exercises: Array<{ name: string; sets: number }>;
-      apply: { startWorkoutPayload: Record<string, unknown> };
+      /** The session as planned; applying it is a Workout start with this plan. */
+      apply: { plan: WorkoutPlanStart };
     }
   | {
       type: "program_draft";
@@ -168,6 +170,34 @@ export interface CoachAgentResponse {
 const coachToolNameSchema = z.enum(coachToolNames);
 const coachToolExecutionSchema = z.enum(["client", "server"]);
 
+// Validates the plan's shape at the wire; the exercise rows keep whatever
+// extra fields the catalog gave them.
+const workoutPlanStartSchema = z.object({
+  sessionFocus: z.enum([
+    "strength",
+    "hypertrophy",
+    "zone2",
+    "zone5",
+    "speed",
+    "recovery",
+    "mixed",
+  ]),
+  initialExercises: z.array(
+    z
+      .object({
+        id: z.string(),
+        exerciseId: z.string(),
+        exercise: z.object({ id: z.string(), name: z.string() }).passthrough(),
+        sets: z.array(z.object({ id: z.string() }).passthrough()),
+      })
+      .passthrough()
+  ),
+  mesocycleId: z.string().optional(),
+  mesocycleSessionId: z.string().optional(),
+  mesocycleWeek: z.number().optional(),
+  mesocycleProtocol: z.enum(["occams", "custom", "coach"]).optional(),
+});
+
 const coachArtifactSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("volume_chart"),
@@ -189,7 +219,7 @@ const coachArtifactSchema = z.discriminatedUnion("type", [
     exercises: z.array(
       z.object({ name: z.string(), sets: z.number() })
     ),
-    apply: z.object({ startWorkoutPayload: z.record(z.string(), z.unknown()) }),
+    apply: z.object({ plan: workoutPlanStartSchema }),
   }),
   z.object({
     type: z.literal("program_draft"),

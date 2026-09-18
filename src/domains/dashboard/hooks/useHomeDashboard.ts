@@ -2,11 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 
-import { buildExercisesFromSessionTemplate } from "@/domains/fitness/data/workoutScreen";
-import {
-  createBaseWorkoutStartPayload,
-  createProgramWorkoutStartPayload,
-} from "@/domains/fitness/data/workoutStartPayload";
+import { startWorkoutSession } from "@/domains/fitness/data/workoutStart";
 import { useTriad, useHabitCompletions } from "@/domains/habits";
 import {
   fetchActiveMesocycleSummary,
@@ -18,10 +14,7 @@ import type {
 } from "@/domains/periodization";
 import { useAppDispatch, useAppSelector } from "@/hooks/redux";
 import { useAuth } from "@/state/auth/AuthProvider";
-import {
-  selectCurrentWorkout,
-  startWorkout as startWorkoutAction,
-} from "@/state/workout/workoutSlice";
+import { selectCurrentWorkout } from "@/state/workout/workoutSlice";
 import { fetchHomeDashboardSnapshot } from "@/domains/dashboard/data/homeDashboard";
 import {
   buildHomeModel,
@@ -163,17 +156,17 @@ export const useHomeDashboard = () => {
       userId,
     });
 
+    const startDeps = {
+      dispatch,
+      ownerUserId: user?.id ?? null,
+      currentWorkoutId: null,
+    };
+
     if (startableProgram) {
       const { activeProgram, nextSession } = startableProgram;
-      dispatch(
-        startWorkoutAction(
-          createProgramWorkoutStartPayload({
-            ownerUserId: user?.id ?? null,
-            activeProgram,
-            sessionTemplate: nextSession,
-            initialExercises: await buildExercisesFromSessionTemplate(nextSession, userId ?? ""),
-          })
-        )
+      await startWorkoutSession(
+        { kind: "program-session", activeProgram, sessionTemplate: nextSession },
+        startDeps
       );
       navigate("/workout");
       return;
@@ -187,13 +180,9 @@ export const useHomeDashboard = () => {
       return;
     }
 
-    dispatch(
-      startWorkoutAction(
-        createBaseWorkoutStartPayload({
-          ownerUserId: user?.id ?? null,
-          sessionFocus: activeProgramSummary.mesocycle.goal_focus,
-        })
-      )
+    await startWorkoutSession(
+      { kind: "quick", sessionFocus: activeProgramSummary.mesocycle.goal_focus },
+      startDeps
     );
     navigate("/workout");
   };

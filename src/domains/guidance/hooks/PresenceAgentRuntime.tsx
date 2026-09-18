@@ -26,12 +26,15 @@ import {
   readLlmPreferences,
 } from "@/domains/guidance/data/llmPreferences";
 import { readProviderApiKey } from "@/domains/guidance/data/providerKeyStore";
+import {
+  startWorkoutSession,
+  type WorkoutPlanStart,
+} from "@/domains/fitness/data/workoutStart";
 import { useAppDispatch, useAppSelector } from "@/hooks/redux";
 import { useAuth } from "@/state/auth/AuthProvider";
 import {
   selectCurrentWorkout,
   selectIsWorkoutActive,
-  startWorkout,
 } from "@/state/workout/workoutSlice";
 import {
   usePresenceAgentRuntimeBridge,
@@ -83,12 +86,20 @@ const PresenceAgentRuntime = () => {
   const { applyMutation } = useCoachMutations();
 
   const applyWorkoutDraft = useCallback(
-    (startWorkoutPayload: Record<string, unknown>) => {
-      dispatch(startWorkout(startWorkoutPayload as never));
+    async (plan: WorkoutPlanStart) => {
+      // A workout already in progress wins; the draft is not applied over it.
+      await startWorkoutSession(
+        { kind: "plan", plan },
+        {
+          dispatch,
+          ownerUserId: session?.user.id ?? null,
+          currentWorkoutId: currentWorkout?.id ?? null,
+        }
+      );
       setIsOpen(false);
       navigate("/workout");
     },
-    [dispatch, navigate, setIsOpen]
+    [currentWorkout?.id, dispatch, navigate, session?.user.id, setIsOpen]
   );
 
   const applyArtifact = useCallback(
@@ -99,7 +110,7 @@ const PresenceAgentRuntime = () => {
           | null;
       } = {
         volume_chart: null,
-        workout_draft: (a) => applyWorkoutDraft(a.apply.startWorkoutPayload),
+        workout_draft: (a) => applyWorkoutDraft(a.apply.plan),
         program_draft: (a) => applyMutation("program_created", a.apply),
         program_edit: (a) => applyMutation("program_edited", a.apply),
         workout_edit: (a) => applyMutation("workout_edited", a.apply),
