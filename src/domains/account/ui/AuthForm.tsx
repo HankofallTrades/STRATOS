@@ -157,7 +157,7 @@ export const AuthForm = () => {
 
   return (
     <div className="app-shell min-h-screen">
-      <div className="mx-auto flex min-h-screen w-full max-w-md items-center px-4 py-10 sm:px-6">
+      <div className="mx-auto flex min-h-screen w-full max-w-md items-center px-4 py-10 pt-[calc(2.5rem+var(--app-safe-top))] sm:px-6">
         <div className="w-full space-y-8">
           <div className="space-y-1.5 motion-safe:animate-fade-rise">
             <p className="app-kicker">Personal training OS</p>

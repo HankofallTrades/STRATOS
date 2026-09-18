@@ -87,7 +87,7 @@ const WorkoutScreen = () => {
 
     return (
       <div className="stone-workout-page min-h-svh w-full">
-        <div className="mx-auto flex min-h-svh w-full max-w-[72rem] flex-col px-4 pb-8 pt-5 sm:px-6 lg:px-8">
+        <div className="mx-auto flex min-h-svh w-full max-w-[72rem] flex-col px-4 pb-8 pt-[calc(1.25rem+var(--app-safe-top))] sm:px-6 lg:px-8">
           {isLoadingMesocycle ? (
             <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.92fr)]">
               <section className="stone-panel stone-panel-hero overflow-hidden rounded-[28px] p-5 md:p-6">

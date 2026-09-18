@@ -31,7 +31,9 @@ export const OnboardingDialog: React.FC<OnboardingDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="stone-panel rounded-[24px] border-white/10 sm:max-w-[425px]">
+      {/* Taller than the viewport on a phone, and the dialog is centred, so it
+          overflows past the status bar unless it is clamped to the safe area. */}
+      <DialogContent className="stone-panel max-h-[calc(100dvh-var(--app-safe-top)-env(safe-area-inset-bottom,0px)-2rem)] overflow-y-auto rounded-[24px] border-white/10 sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Welcome to STRATOS</DialogTitle>
           <DialogDescription>

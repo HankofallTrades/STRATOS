@@ -7,7 +7,7 @@ const SkeletonLine = ({ className }: { className: string }) => (
 );
 
 const LoginSkeleton = () => (
-  <div className="mx-auto flex min-h-screen w-full max-w-md items-center px-4 py-10 sm:px-6">
+  <div className="mx-auto flex min-h-screen w-full max-w-md items-center px-4 py-10 pt-[calc(2.5rem+var(--app-safe-top))] sm:px-6">
     <div className="w-full space-y-8">
       <div className="space-y-4">
         <SkeletonLine className="h-4 w-52" />
@@ -68,7 +68,7 @@ const HomeSkeleton = () => (
 
 const WorkoutSkeleton = () => (
   <div className="stone-workout-page min-h-svh w-full">
-    <div className="mx-auto flex min-h-svh w-full max-w-[72rem] flex-col px-4 pb-8 pt-5 sm:px-6 lg:px-8">
+    <div className="mx-auto flex min-h-svh w-full max-w-[72rem] flex-col px-4 pb-8 pt-[calc(1.25rem+var(--app-safe-top))] sm:px-6 lg:px-8">
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.92fr)]">
         <section className="stone-panel stone-panel-hero rounded-[28px] p-5 md:p-6">
           <div className="flex items-center gap-3">

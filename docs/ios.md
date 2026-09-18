@@ -146,6 +146,32 @@ Only a full sign-in still wants a device: that it returns to STRATOS, lands on
 the home screen, and survives a process kill and relaunch. Verified on an
 iPhone 12 Pro (iOS 26.6.2).
 
+## The status bar overlays the webview
+
+The wrap runs edge to edge, so nothing reserves room for the clock and the
+Dynamic Island on the app's behalf. Three pieces have to stay in agreement:
+
+- `index.html` sets `viewport-fit=cover` on the viewport meta. Without it every
+  `env(safe-area-inset-*)` reads as `0px` and the rest is dead code.
+- `capacitor.config.ts` sets `ios.contentInset: "never"`. This is what makes the
+  webview edge to edge: under the default `automatic` it is laid out inside the
+  safe area instead (`innerHeight` 778 against a 874pt screen), every inset
+  reads as `0px`, and the app has no way to reserve the space itself.
+- The CSS reserves it, through the `--app-safe-top` custom property so every
+  surface agrees on one value. `.app-page` covers most screens; the ones that
+  render their own full-height shell have to opt in by hand — the workout
+  screen, the login screen, their route skeletons, and the toast viewport. The
+  onboarding dialog is centred rather than top-anchored, so it is clamped to the
+  safe area instead of padded.
+
+If you add another screen that does not use `.app-page`, add
+`pt-[calc(<base>+var(--app-safe-top))]` to its shell. Forgetting puts the header
+under the clock, and only the wrap shows it.
+
+`src/lib/build/safeArea.test.ts` guards the viewport meta, the `contentInset`
+value, the property definition, and the shells that opt in. The web target is
+unaffected: the insets are `0px` everywhere but a notched device.
+
 ## Proactive insights behave differently in a wrap
 
 `useProactiveEngine` treats a fresh mount as `app_open`, which is right for a
@@ -164,7 +190,9 @@ Open, unticketed, and worth filing before the next wrap pass:
 
 - `index.html` pulls Montserrat/Open Sans from Google Fonts over the network, so
   a cold offline first launch falls back to system fonts. Cosmetic.
-- Top-of-screen content collides with the status bar. Confirmed on device: the
-  home greeting and the onboarding modal's title both render underneath the clock
-  and Dynamic Island. `ios.contentInset` is unset, so Capacitor's `automatic`
-  applies and the app's own safe-area CSS does not reserve enough top padding.
+- The top inset is dropped for the rest of the session after signing in, so the
+  home greeting sits under the clock until the app is relaunched. Verified in the
+  simulator: cold launch and post-relaunch are correct, the transition straight
+  off the login screen is not. The webview is full height either way, so this is
+  a stale safe-area inset in WebKit rather than the app's CSS — the login screen
+  is the only place that raises the keyboard.

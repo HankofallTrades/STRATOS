@@ -4,6 +4,10 @@
 
 @layer base {
   :root {
+    /* The status bar overlays the webview in the iOS wrap, so top-anchored
+       surfaces reserve it themselves. Zero everywhere else. See docs/ios.md. */
+    --app-safe-top: env(safe-area-inset-top, 0px);
+
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
 
@@ -254,14 +258,14 @@
     margin-right: auto;
     width: 100%;
     max-width: 72rem;
-    padding: 1.5rem 1rem 5rem;
+    padding: calc(1.5rem + var(--app-safe-top)) 1rem 5rem;
   }
 
   @media (min-width: 640px) {
     .app-page {
       padding-left: 1.5rem;
       padding-right: 1.5rem;
-      padding-top: 2rem;
+      padding-top: calc(2rem + var(--app-safe-top));
     }
   }
 
