@@ -22,8 +22,8 @@ const PresencePeek = () => {
   if (!peek || isOpen || isLoading || autoHidden) return null;
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-20 z-40 flex justify-center px-4 pb-[env(safe-area-inset-bottom)] md:bottom-6">
-      <div className="pointer-events-auto flex max-w-sm items-center gap-1 rounded-full border border-[#2f3a36] bg-[#161d1a]/96 py-1.5 pl-3.5 pr-1.5 shadow-[0_14px_36px_rgba(0,0,0,0.45)] motion-safe:animate-fade-rise">
+    <div className="pointer-events-none fixed inset-x-0 bottom-36 z-40 flex justify-center px-4 pb-[env(safe-area-inset-bottom)] md:bottom-24">
+      <div className="pointer-events-auto flex max-w-sm items-center gap-1 rounded-full border border-[#2f3a36] bg-[#161d1a] py-1.5 pl-3.5 pr-1.5 shadow-[0_14px_36px_rgba(0,0,0,0.45)] motion-safe:animate-fade-rise">
         <button
           type="button"
           onClick={() => engageInsight(peek)}

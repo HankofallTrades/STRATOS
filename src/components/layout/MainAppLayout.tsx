@@ -2,6 +2,7 @@ import { Component, Suspense, lazy, type ReactNode } from "react";
 import { Routes, Route, useLocation, Navigate } from "react-router-dom";
 import NavBar from "@/components/layout/NavBar";
 import BottomNav from "@/components/layout/BottomNav";
+import PresenceMark from "@/components/layout/PresenceMark";
 import { Button } from "@/components/core/button";
 import { RouteSkeleton } from "@/components/loading/RouteSkeletons";
 import SummonSurface from "@/domains/guidance/ui/SummonSurface";
@@ -162,6 +163,7 @@ const MainAppLayout = () => {
           </Suspense>
         </RouteErrorBoundary>
 
+        <PresenceMark />
         <SummonSurface
             quickActions={{
               onStartWorkout: handleAddWorkout,

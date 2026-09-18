@@ -67,9 +67,10 @@ interface PresenceMarkProps {
 }
 
 /**
- * Standalone circular presence button for the mobile bottom nav.
+ * Floating presence button, pinned bottom-right above the mobile bottom nav
+ * and in the bottom-right corner on desktop.
  */
-const PresenceMark = ({ size = 46, className }: PresenceMarkProps) => {
+const PresenceMark = ({ size = 56, className }: PresenceMarkProps) => {
   const { toggle, isOpen, hasAttention } = usePresenceAgent();
 
   return (
@@ -79,7 +80,9 @@ const PresenceMark = ({ size = 46, className }: PresenceMarkProps) => {
       aria-expanded={isOpen}
       onClick={toggle}
       className={cn(
-        "group rounded-full transition-transform duration-200 ease-out active:translate-y-px",
+        "group fixed right-5 z-40 rounded-full bg-[#161d1a] shadow-[0_14px_36px_rgba(0,0,0,0.45)]",
+        "bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] md:bottom-6",
+        "transition-transform duration-200 ease-out active:translate-y-px",
         className
       )}
     >
