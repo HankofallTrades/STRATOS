@@ -60,8 +60,8 @@ Gotchas that will cost you a run:
 
 - **Do not use Maestro's `hideKeyboard` on the login screen.** It dismisses the
   keyboard by tapping a supposedly empty area, which here lands on "Continue with
-  Google" and sends the app out to the system browser mid-flow. "Sign In" sits
-  above the keyboard, so the tap is unnecessary.
+  Google" and starts Google sign-in mid-flow. "Sign In" sits above the
+  keyboard, so the tap is unnecessary.
 - Where a control genuinely sits behind the keyboard, as "Save" does in the
   onboarding modal, tap the keyboard accessory bar's own `Done` first. A
   `scrollUntilVisible` will report success there and still tap the keyboard
@@ -75,6 +75,18 @@ Gotchas that will cost you a run:
   Sign In button, easy to misread as bad credentials or a broken wrap. Check
   project status before debugging a login failure.
 
+## Google sign-in
+
+The native Google button opens OAuth in a Safari view inside the app, then
+returns to the Capacitor shell through `com.daimodus.stratos://auth/callback`.
+Add that exact URL to the linked Supabase project's Authentication → URL
+Configuration → Redirect URLs. Google Cloud's authorized redirect URI remains
+the Supabase `/auth/v1/callback` URL.
+
+After changing the web code or URL scheme, run `npm run ios:sync` and reinstall
+the app. Verify on a device that Google sign-in returns to STRATOS, the home
+screen appears, and a process kill and relaunch keep the session.
+
 ## Proactive insights behave differently in a wrap
 
 `useProactiveEngine` treats a fresh mount as `app_open`, which is right for a
@@ -83,9 +95,9 @@ tearing it down, so a user returning days later never remounts. The hook also
 re-runs the `app_open` gate on foreground (`visibilitychange`), gated behind
 `Capacitor.isNativePlatform()` so the web target keeps exactly the
 mount-and-navigate behaviour it had. If foreground detection ever proves
-unreliable, `@capacitor/app`'s `resume` event is the heavier, purpose-built
-replacement — not used here because it adds a native plugin and
-`@capacitor/core` was already a dependency.
+unreliable, `@capacitor/app`'s `resume` event is the purpose-built replacement,
+and Google sign-in has since made `@capacitor/app` a dependency anyway. It is
+still not used here: `visibilitychange` has not misfired.
 
 ## Known gaps
 

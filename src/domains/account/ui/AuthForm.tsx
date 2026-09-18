@@ -1,5 +1,6 @@
 import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
+import { Capacitor } from "@capacitor/core";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -9,6 +10,10 @@ import {
   loadSupabaseBrowserClient,
 } from "@/lib/integrations/supabase/browserClient";
 import type { Database } from "@/lib/integrations/supabase/types";
+import {
+  listenForNativeGoogleSignIn,
+  startNativeGoogleSignIn,
+} from "@/domains/account/data/nativeGoogleAuth";
 
 const GOOGLE_PROVIDER_DISABLED_ERROR = "Unsupported provider";
 
@@ -41,6 +46,7 @@ const GoogleLogo = () => (
 export const AuthForm = () => {
   const navigate = useNavigate();
   const [googleError, setGoogleError] = useState<string | null>(null);
+  const [nativeGoogleReady, setNativeGoogleReady] = useState(false);
   const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
     null
   );
@@ -85,6 +91,32 @@ export const AuthForm = () => {
     };
   }, [navigate, supabase]);
 
+  useEffect(() => {
+    if (!supabase || !Capacitor.isNativePlatform()) return undefined;
+
+    let active = true;
+    let stopListening: (() => Promise<void>) | undefined;
+    void listenForNativeGoogleSignIn(supabase, setGoogleError)
+      .then((stop) => {
+        if (active) {
+          stopListening = stop;
+          setNativeGoogleReady(true);
+        } else {
+          void stop();
+        }
+      })
+      .catch((error) => {
+        if (active) {
+          setGoogleError(error instanceof Error ? error.message : "Google sign-in failed.");
+        }
+      });
+
+    return () => {
+      active = false;
+      void stopListening?.();
+    };
+  }, [supabase]);
+
   const handleGoogleSignIn = async () => {
     if (!supabase) {
       setGoogleError("Supabase auth is not configured for this environment.");
@@ -93,12 +125,21 @@ export const AuthForm = () => {
 
     setGoogleError(null);
 
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: window.location.origin,
-      },
-    });
+    let error: Error | null = null;
+    try {
+      if (Capacitor.isNativePlatform()) {
+        await startNativeGoogleSignIn(supabase);
+      } else {
+        ({ error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: {
+            redirectTo: window.location.origin,
+          },
+        }));
+      }
+    } catch (cause) {
+      error = cause instanceof Error ? cause : new Error("Google sign-in failed.");
+    }
 
     if (!error) {
       return;
@@ -226,7 +267,10 @@ export const AuthForm = () => {
             type="button"
             className="stratos-auth-button stratos-google-button"
             onClick={handleGoogleSignIn}
-            disabled={!hasSupabaseBrowserConfig}
+            disabled={
+              !hasSupabaseBrowserConfig ||
+              (Capacitor.isNativePlatform() && !nativeGoogleReady)
+            }
           >
             <GoogleLogo />
             <span>Continue with Google</span>
