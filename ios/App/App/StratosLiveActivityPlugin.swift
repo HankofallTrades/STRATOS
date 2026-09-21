@@ -1,21 +1,24 @@
-import ActivityKit
 import Capacitor
 import Foundation
 
-/// Starts, updates and ends the running-workout Live Activity.
+/// The bridge between the webview and the running-workout Live Activity.
 ///
-/// Whether an activity already exists is native state, so the webview does not
-/// get a start/update split to reason about: it syncs a state and this
-/// decides. Beyond that decision there is no logic here — what the lock screen
-/// says is settled in the fitness domain before it crosses the bridge.
+/// Marshalling only. The Set Plan arrives fully resolved, is stored for the Done
+/// button to walk while the webview is suspended, and the Activity Journal goes
+/// back the other way when the app wakes up. Deciding what any of it means
+/// belongs to the fitness domain on the web side.
 @objc(StratosLiveActivityPlugin)
 public class StratosLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "StratosLiveActivityPlugin"
     public let jsName = "StratosLiveActivity"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "sync", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "end", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "end", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "journal", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "clearJournal", returnType: CAPPluginReturnPromise)
     ]
+
+    private let store = StratosActivityStore()
 
     override public func load() {
         // A Live Activity outlives the process that started it, and nothing
@@ -23,82 +26,94 @@ public class StratosLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         // launch therefore clears the slate rather than risk the lock screen
         // showing a session that is over; a workout still in progress syncs a
         // new activity as soon as its screen mounts.
-        Task { await StratosSetActivityController.end() }
+        //
+        // Two things are deliberately *not* cleared. The journal, because
+        // surviving a kill is the whole point of it: those entries are sets the
+        // user logged and has not seen land yet. And the plan, because a Done
+        // tap launches this app in the background to run the intent — clearing
+        // the plan here would race that intent and leave it with nothing to log,
+        // which is precisely the first tap after a kill.
+        //
+        // A non-empty journal is also what tells us this activity is not stale
+        // at all: the user was pressing its button moments ago, so it stays up
+        // and the foreground replay settles it.
+        Task {
+            guard StratosActivityStore().journal().isEmpty else { return }
+            await StratosSetActivityController.end()
+        }
     }
 
     @objc func sync(_ call: CAPPluginCall) {
-        guard let payload = call.getObject("state"),
-              let state = StratosSetActivityAttributes.ContentState(payload: payload) else {
-            call.reject("StratosLiveActivity.sync needs a state")
+        guard let plan = decodePlan(call.options["plan"]) else {
+            call.reject("StratosLiveActivity.sync needs a plan")
             return
         }
 
+        store.save(plan: plan)
         Task {
-            await StratosSetActivityController.sync(state)
+            await StratosSetActivityController.refresh()
             call.resolve()
         }
     }
 
     @objc func end(_ call: CAPPluginCall) {
+        store.clearPlan()
         Task {
             await StratosSetActivityController.end()
             call.resolve()
         }
     }
-}
 
-enum StratosSetActivityController {
-    static func sync(_ state: StratosSetActivityAttributes.ContentState) async {
-        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+    @objc func journal(_ call: CAPPluginCall) {
+        call.resolve(["entries": store.journal().map(\.bridgePayload)])
+    }
 
-        if let activity = Activity<StratosSetActivityAttributes>.activities.first {
-            await activity.update(ActivityContent(state: state, staleDate: nil))
+    @objc func clearJournal(_ call: CAPPluginCall) {
+        guard let throughId = call.getString("throughId") else {
+            call.reject("StratosLiveActivity.clearJournal needs a throughId")
             return
         }
 
-        do {
-            _ = try Activity.request(
-                attributes: StratosSetActivityAttributes(),
-                content: ActivityContent(state: state, staleDate: nil),
-                pushType: nil
-            )
-        } catch {
-            CAPLog.print("StratosLiveActivity: could not start the activity — \(error)")
-        }
+        store.clearJournal(throughId: throughId)
+        call.resolve()
     }
 
-    static func end() async {
-        for activity in Activity<StratosSetActivityAttributes>.activities {
-            await activity.end(nil, dismissalPolicy: .immediate)
+    /// Reads the Set Plan off the bridge.
+    ///
+    /// Round-tripping through `JSONSerialization` rather than unpacking eleven
+    /// fields by hand: the plan is plain JSON on both sides, and a hand-written
+    /// guard here would be a fourth place to remember when a field is added. A
+    /// plan that does not decode is a programming error on the web side, so it
+    /// is refused rather than half-read into a lock screen that would then
+    /// present the gaps as real.
+    private func decodePlan(_ raw: Any?) -> [StratosPlannedSet]? {
+        guard let raw, JSONSerialization.isValidJSONObject(raw),
+              let data = try? JSONSerialization.data(withJSONObject: raw) else {
+            return nil
         }
+        return try? JSONDecoder().decode([StratosPlannedSet].self, from: data)
     }
 }
 
-private extension StratosSetActivityAttributes.ContentState {
-    /// Marshals one `LiveActivityState` off the bridge. Its fields are restated in
-    /// four places with no compiler link between them — the TypeScript type, its
-    /// equality check, `ContentState` above, and this guard — so a new field means
-    /// four edits. A missing required
-    /// field is a programming error on the web side, so it fails rather than
-    /// filling in a default the lock screen would then present as real.
-    init?(payload: JSObject) {
-        guard let exerciseName = payload["exerciseName"] as? String,
-              let kind = (payload["kind"] as? String).flatMap(Kind.init(rawValue:)),
-              let setNumber = (payload["setNumber"] as? NSNumber)?.intValue,
-              let position = (payload["position"] as? NSNumber)?.intValue,
-              let totalSets = (payload["totalSets"] as? NSNumber)?.intValue else {
-            return nil
-        }
-
-        self.init(
-            exerciseName: exerciseName,
-            kind: kind,
-            setNumber: setNumber,
-            position: position,
-            totalSets: totalSets,
-            suggestedReps: (payload["suggestedReps"] as? NSNumber)?.intValue,
-            suggestedWeight: (payload["suggestedWeight"] as? NSNumber)?.doubleValue,
-            suggestedTimeSeconds: (payload["suggestedTimeSeconds"] as? NSNumber)?.intValue
-        )
+private extension StratosActivityJournalEntry {
+    /// The entry as the webview's `ActivityJournalEntry` expects it.
+    ///
+    /// Built by hand so an absent target crosses as an explicit `null` rather
+    /// than a missing key: the replay's refusal rules turn on the difference
+    /// between "no target" and "a target of zero", and a dropped key would
+    /// quietly read as the former on a field that had the latter.
+    var bridgePayload: [String: Any] {
+        [
+            "id": id,
+            "kind": kind,
+            "setKind": setKind,
+            "setId": setId,
+            "workoutExerciseId": workoutExerciseId,
+            "at": at,
+            "reps": reps ?? NSNull(),
+            "weight": weight ?? NSNull(),
+            "timeSeconds": timeSeconds ?? NSNull(),
+            "distanceKm": distanceKm ?? NSNull()
+        ]
     }
 }

@@ -1,5 +1,10 @@
 import type { SessionFocus, WorkoutExercise } from "@/lib/types/workout";
-import { isCardioExercise, timeToSeconds } from "@/lib/types/workout";
+import {
+  isCardioExercise,
+  isCardioSet,
+  isStrengthSet,
+  timeToSeconds,
+} from "@/lib/types/workout";
 
 import {
   buildRecommendedStrengthSetPerformances,
@@ -29,6 +34,18 @@ export interface SetPlanEntry {
   suggestedWeight: number | null;
   suggestedReps: number | null;
   suggestedTimeSeconds: number | null;
+  /**
+   * What logging this set right now would record: the suggestion where there is
+   * one, and otherwise the set exactly as the workout already holds it.
+   *
+   * The suggestion alone is not enough for the lock screen. A set carried in
+   * from a program has its numbers already and no progression to recommend, and
+   * a Done button that logged a suggestion would have nothing to log for it.
+   */
+  targetWeight: number | null;
+  targetReps: number | null;
+  targetTimeSeconds: number | null;
+  targetDistanceKm: number | null;
   action: StrengthRecommendationAction;
   completed: boolean;
 }
@@ -99,6 +116,11 @@ export const buildSetPlan = ({
             ? timeToSeconds(plannedTime)
             : null;
 
+      const storedTimeSeconds = plannedTime ? timeToSeconds(plannedTime) : null;
+      const storedWeight = isStrengthSet(set) ? set.weight : null;
+      const storedReps = isStrengthSet(set) ? set.reps : null;
+      const storedDistanceKm = isCardioSet(set) ? set.distance_km ?? null : null;
+
       setPlan.push({
         setId: set.id,
         workoutExerciseId: workoutExercise.id,
@@ -110,6 +132,14 @@ export const buildSetPlan = ({
         suggestedWeight: kind === "strength" ? recommendation?.weight ?? null : null,
         suggestedReps: kind === "strength" ? recommendation?.reps ?? null : null,
         suggestedTimeSeconds,
+        targetWeight:
+          kind === "strength" ? recommendation?.weight ?? storedWeight : storedWeight,
+        targetReps: kind === "strength" ? recommendation?.reps ?? storedReps : null,
+        // Every target falls back to what the set already holds, time included:
+        // only the strength branch above can leave the suggestion empty while
+        // the set itself carries a duration.
+        targetTimeSeconds: suggestedTimeSeconds ?? storedTimeSeconds,
+        targetDistanceKm: storedDistanceKm,
         action: recommendation?.action ?? "none",
         completed: set.completed,
       });

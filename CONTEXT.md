@@ -121,6 +121,18 @@ suggested reps, suggested weight — handed to the native layer when a workout
 starts. Derived once from the existing recommendation logic so the Live Activity
 can walk it without calling into the suspended webview.
 
+Each entry carries both a **suggestion** and a **target**. The suggestion is what
+the progression rules recommend, and there may not be one. The target is what
+logging that set right now would record: the suggestion where there is one, and
+otherwise the set as the workout already holds it. The workout screen renders
+suggestions; the lock screen shows and logs targets, because a Done button needs
+a number for every set, not only the ones with a recommendation.
+
+Which entry is *current* — the first one still open, and the last one once they
+all are — is stated twice: `currentLiveActivitySet` on the web, and
+`StratosActivityCursor` in Swift, which has to walk it after a Done tap with no
+webview to ask. The two must agree.
+
 _Avoid_: workout snapshot, session plan
 
 ## Activity Journal
@@ -129,6 +141,13 @@ The natively-recorded sequence of lock-screen actions taken in the Live Activity
 (set completed, reps or weight adjusted). Replayed into workout state when the
 app next foregrounds — "reconcile on reopen". The journal is the source of truth
 for what happened while the webview was suspended. It is never a parallel workout
-state.
+state: it records that a button was pressed and what the lock screen was showing
+at the time, and `replayActivityJournal` decides what that is worth by running it
+through the same `completeSetFromDraft` rule the checkbox uses.
+
+Replay is pure and idempotent — a set the workout already has completed is
+skipped — so the journal is cleared only *after* its completions are dispatched,
+and only through the last entry that was read. Failing that way round replays an
+entry twice, which costs nothing; the other way round loses a logged set.
 
 _Avoid_: native event log, sync queue

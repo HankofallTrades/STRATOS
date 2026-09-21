@@ -1,16 +1,20 @@
 import { Capacitor, registerPlugin } from "@capacitor/core";
 
-import type { LiveActivityState } from "@/domains/fitness/data/liveActivityState";
+import type { ActivityJournalEntry } from "@/domains/fitness/data/activityJournal";
+import type { LiveActivityPlan } from "@/domains/fitness/data/liveActivityState";
 
-// Thin bridge over the StratosLiveActivity plugin. What the lock screen should
-// say is decided in the fitness domain (buildLiveActivityState); this only
-// carries it across. There is no start/update split here on purpose: whether an
-// activity exists yet is native state, so the native side answers it. A no-op
-// on the web, where the widget extension does not exist.
+// Thin bridge over the StratosLiveActivity plugin. What the lock screen shows
+// and what its Done button would log are both decided in the fitness domain
+// (buildLiveActivityPlan); this only carries them across. There is no
+// start/update split here on purpose: whether an activity exists yet is native
+// state, so the native side answers it. A no-op on the web, where the widget
+// extension does not exist.
 
 export interface LiveActivityPlugin {
-  sync(options: { state: LiveActivityState }): Promise<void>;
+  sync(options: { plan: LiveActivityPlan }): Promise<void>;
   end(): Promise<void>;
+  journal(): Promise<{ entries: ActivityJournalEntry[] }>;
+  clearJournal(options: { throughId: string }): Promise<void>;
 }
 
 const plugin = registerPlugin<LiveActivityPlugin>("StratosLiveActivity");
@@ -50,10 +54,10 @@ export const reportLiveActivityFailure = (operation: string, error: unknown): vo
   console.warn(`live activity: could not ${operation}`, error);
 };
 
-export const syncLiveActivity = async (state: LiveActivityState): Promise<void> => {
+export const syncLiveActivity = async (plan: LiveActivityPlan): Promise<void> => {
   if (!Capacitor.isNativePlatform()) return;
   try {
-    await plugin.sync({ state });
+    await plugin.sync({ plan });
   } catch (error) {
     reportLiveActivityFailure("sync", error);
   }
@@ -65,5 +69,39 @@ export const endLiveActivity = async (): Promise<void> => {
     await plugin.end();
   } catch (error) {
     reportLiveActivityFailure("end", error);
+  }
+};
+
+/**
+ * Everything the lock screen recorded while the webview was suspended.
+ *
+ * Reading does not clear: the entries stay until {@link clearActivityJournal}
+ * names the last one that was replayed, so a crash in between replays them
+ * again rather than losing them. Replay is idempotent precisely so that is the
+ * safe direction to fail in.
+ */
+export const readActivityJournal = async (): Promise<ActivityJournalEntry[]> => {
+  if (!Capacitor.isNativePlatform()) return [];
+  try {
+    const { entries } = await plugin.journal();
+    return entries ?? [];
+  } catch (error) {
+    reportLiveActivityFailure("read the activity journal", error);
+    return [];
+  }
+};
+
+/**
+ * Drops every entry up to and including `throughId`.
+ *
+ * Named rather than counted, because a Done tap can land between the read and
+ * the clear: anything the replay did not see stays for the next one.
+ */
+export const clearActivityJournal = async (throughId: string): Promise<void> => {
+  if (!Capacitor.isNativePlatform()) return;
+  try {
+    await plugin.clearJournal({ throughId });
+  } catch (error) {
+    reportLiveActivityFailure("clear the activity journal", error);
   }
 };

@@ -3,7 +3,7 @@ import SwiftUI
 import WidgetKit
 
 /// The running workout on the lock screen: which lift, which set of the
-/// session, and what to hit. Display only — the buttons come later.
+/// session, what to hit, and one tap to log it.
 struct StratosSetLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: StratosSetActivityAttributes.self) { context in
@@ -13,7 +13,7 @@ struct StratosSetLiveActivity: Widget {
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    Text(context.state.exerciseName)
+                    Text(context.state.current.exerciseName)
                         .font(.headline)
                         .foregroundStyle(Color.stratosMoss)
                 }
@@ -23,9 +23,13 @@ struct StratosSetLiveActivity: Widget {
                         .foregroundStyle(Color.stratosMuted)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    Text(context.state.target)
-                        .font(.title2.weight(.semibold).monospacedDigit())
-                        .foregroundStyle(Color.stratosMoss)
+                    HStack(alignment: .center) {
+                        Text(context.state.current.target)
+                            .font(.title2.weight(.semibold).monospacedDigit())
+                            .foregroundStyle(Color.stratosMoss)
+                        Spacer(minLength: 12)
+                        DoneButton(state: context.state)
+                    }
                 }
             } compactLeading: {
                 Image(systemName: "figure.strengthtraining.traditional")
@@ -46,44 +50,82 @@ private struct SetLockScreenView: View {
     let state: StratosSetActivityAttributes.ContentState
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(state.exerciseName)
-                    .font(.headline)
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(state.current.exerciseName)
+                        .font(.headline)
+                        .foregroundStyle(Color.stratosMoss)
+                        .lineLimit(1)
+                    Spacer(minLength: 12)
+                    Text(state.setCount)
+                        .font(.subheadline.monospacedDigit())
+                        .foregroundStyle(Color.stratosMuted)
+                }
+
+                Text(state.current.target)
+                    .font(.system(size: 34, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
                     .foregroundStyle(Color.stratosMoss)
-                    .lineLimit(1)
-                Spacer(minLength: 12)
-                Text(state.setCount)
-                    .font(.subheadline.monospacedDigit())
-                    .foregroundStyle(Color.stratosMuted)
             }
 
-            Text(state.target)
-                .font(.system(size: 34, weight: .semibold, design: .rounded))
-                .monospacedDigit()
-                .foregroundStyle(Color.stratosMoss)
+            DoneButton(state: state)
         }
         .padding(16)
+    }
+}
+
+/// One tap to log the set the lock screen is showing.
+///
+/// The button names the set it was drawn for rather than meaning "whatever is
+/// current", so a tap that lands on a render the activity has already moved
+/// past logs nothing instead of logging the next set by accident.
+///
+/// It disappears once the set is logged. Nothing redraws it into a second
+/// chance: the activity is updated from the app's process the moment the
+/// journal is written, so the gap between a tap and the button going is the
+/// only window, and a tap in it is refused by the set id anyway.
+private struct DoneButton: View {
+    let state: StratosSetActivityAttributes.ContentState
+
+    var body: some View {
+        if !state.isLogged && state.current.loggable {
+            Button(intent: StratosCompleteSetIntent(setId: state.current.setId)) {
+                Image(systemName: "checkmark")
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(Color.stratosStone)
+                    .frame(width: 56, height: 56)
+                    .background(Color.stratosAccent, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Log set \(state.current.position) of \(state.totalSets)")
+        }
     }
 }
 
 private extension StratosSetActivityAttributes.ContentState {
     /// "Set 7 of 12" for the session, not for the exercise — on a locked phone
     /// the useful question is how much of the workout is left.
-    var setCount: String { "Set \(position) of \(totalSets)" }
+    var setCount: String { "Set \(current.position) of \(totalSets)" }
+}
 
-    /// The suggestion as one line, or the set's own number when there is
-    /// nothing to suggest. Formatting only: the numbers arrive decided.
+private extension StratosPlannedSet {
+    /// What this set is aiming at, as one line, or its own number when there is
+    /// nothing to show. Formatting only: the numbers arrive decided.
     var target: String {
         switch kind {
-        case .strength:
-            let reps = suggestedReps.map { "\($0) reps" }
-            let weight = suggestedWeight.map { "\(formatWeight($0)) kg" }
+        case "strength":
+            let reps = targetReps.map { "\($0) reps" }
+            let weight = targetWeight.map { "\(formatWeight($0)) kg" }
             let parts = [reps, weight].compactMap { $0 }
             return parts.isEmpty ? "Set \(setNumber)" : parts.joined(separator: " × ")
-        case .time, .cardio:
-            guard let seconds = suggestedTimeSeconds else { return "Set \(setNumber)" }
+        case "time", "cardio":
+            guard let seconds = targetTimeSeconds else { return "Set \(setNumber)" }
             return formatDuration(seconds)
+        default:
+            // A kind this build does not know: an activity can outlive the app
+            // that started it. Say only what is certainly true.
+            return "Set \(setNumber)"
         }
     }
 }

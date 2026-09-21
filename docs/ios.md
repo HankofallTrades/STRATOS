@@ -227,8 +227,12 @@ app target's *Embed App Extensions* phase. It builds with the normal
   and so its own provisioning profile. `npm run ios:device` passes
   `DEVELOPMENT_TEAM` on the command line with `-allowProvisioningUpdates`,
   which covers both targets; a free Personal Team is enough.
-- `ios/App/Shared/StratosSetActivityAttributes.swift` is compiled into *both*
-  targets. It is the payload contract, so it must never be added to only one.
+- Everything in `ios/App/Shared/` is compiled into *both* targets, and must
+  never be added to only one: the payload contract, the journal and its store,
+  the activity controller, and the Done button's intent. The widget needs the
+  intent's *type* to build the button; only the app ever runs it. Add files with
+  the `xcodeproj` Ruby gem rather than by hand — editing the pbxproj by hand
+  corrupts it.
 - `NSSupportsLiveActivities` in the app's `Info.plist` is what makes iOS accept
   `Activity.request`. Without it the request throws and the bridge only warns.
 - The plugin is registered by hand in `ViewController.capacitorDidLoad`, which
@@ -239,11 +243,56 @@ app target's *Embed App Extensions* phase. It builds with the normal
   `registerPluginInstance` is the one path that ignores auto-registration.
   Another app-local plugin goes on the same line.
 
-The webview owns every decision. `buildLiveActivityState` derives what to show
-from the Set Plan, the bridge in `src/lib/native/liveActivity.ts` marshals it,
-and the plugin decides only whether that means starting an activity or updating
-the running one. No suggestion is computed in Swift, because once the phone is
-locked the webview is suspended and cannot be asked.
+The webview owns every decision. `buildLiveActivityPlan` projects the whole Set
+Plan — every set, with the target each would log — the bridge in
+`src/lib/native/liveActivity.ts` marshals it, and the plugin stores it. No
+number is computed in Swift, because once the phone is locked the webview is
+suspended and cannot be asked. The one thing Swift decides for itself is which
+entry of that plan is current, and it has to: a Done tap must advance with
+nothing to call. That walk is `StratosActivityCursor`, and `currentLiveActivitySet`
+states the same rule on the web, where it is what the app shows while awake.
+
+Only the current set is put into the activity's `ContentState`, not the plan.
+A `ContentState` crosses the system on every update and has a hard size limit
+that a thirty-set session would exceed; the plan stays in `StratosActivityStore`.
+
+## Logging a set from the lock screen
+
+The Done button is a `LiveActivityIntent`, which the system runs **in the app's
+own process**, launching the app in the background if it is not running. That is
+the entire reason a locked phone can log a set: the webview stays suspended, but
+native code with the app's storage gets to run. It is also why
+`StratosActivityStore` is plain `UserDefaults.standard` and not an App Group —
+it does not need to cross processes, and a free Personal Team cannot provision
+an App Group at all. If the button ever stops seeing the plan, check that
+assumption first.
+
+The intent appends to the **Activity Journal** and refreshes the activity.
+It logs nothing else: what a press is worth as a completed set is decided on the
+next foreground by `replayActivityJournal`, through the same rule the checkbox
+goes through. The button names the set it was drawn for, so a tap landing on a
+render the activity has already moved past is refused rather than logging the
+next set by accident, and it disappears once its set is logged.
+
+Because the intent background-launches the app, the plugin's `load()` is a trap.
+It must not clear the stored plan: that runs on the very launch the Done tap
+caused, and would leave the intent with nothing to log — the first tap after a
+kill, silently doing nothing. It also ends a stale activity only when the journal
+is empty, because a journal with entries in it means the user was pressing that
+button moments ago and the activity is not stale at all.
+
+The lock screen never shows a Done button it cannot honour. Whether a set has
+enough of a target to be logged is decided on the web (`loggable` in
+`buildLiveActivityPlan`, mirroring the refusals in `setCompletion.ts`) and
+carried across, because a tap that the replay then throws away would leave the
+two surfaces disagreeing with nothing on screen to explain it.
+
+`useWorkoutLiveActivity` replays on mount and on `visibilitychange`, dispatches
+the completions, then clears the journal through the last entry it read. That
+order is deliberate: a crash between the read and the clear replays an entry,
+which replay is idempotent against, instead of losing a set the user logged.
+The plugin's `load()` clears the stored plan but deliberately leaves the journal
+alone — surviving a kill is the whole point of it.
 
 Ending it is the part worth knowing. `useWorkoutLiveActivity` sits inside the
 workout screen's active branch, so finishing or discarding unmounts it rather
@@ -258,6 +307,14 @@ lock screen proves it): start a workout and lock the phone (the activity
 appears on the current set), complete a set while unlocked (it advances), then
 finish the workout and lock again (it is gone). Repeat the last step with
 discard. Force-quit mid-workout and relaunch: no stale activity survives.
+
+For the Done button, with the phone **actually locked** — not just the app
+backgrounded, because a foregrounded webview hides the whole problem: tap Done
+(the activity moves to the next set), tap it two or three more times, then open
+the app. The sets you logged are ticked, with the numbers the lock screen was
+showing, and nothing is double-logged. Then force-quit from the lock screen
+before reopening: the activity goes, but the journal does not, and the sets
+still land on the next launch.
 
 ## Proactive insights behave differently in a wrap
 
