@@ -178,10 +178,10 @@ unaffected: the insets are `0px` everywhere but a notched device.
 
 ## Native polish: what only the wrap does
 
-Three plugins give the wrap a native feel, and none of them exists on the web
+Four bridges give the wrap a native feel, and none of them exists on the web
 target. Every bridge in `src/lib/native/` checks `Capacitor.isNativePlatform()`
-and is a silent no-op otherwise, so the PWA never sees a haptics or wake-lock
-call it did not have before.
+and is a silent no-op otherwise, so the PWA never sees a haptics, wake-lock or
+Live Activity call it did not have before.
 
 - **Haptics on set completion.** A Medium impact for a set, the Success
   notification pattern (a distinct double tap) for a PR. Whether a set is a PR
@@ -198,6 +198,7 @@ call it did not have before.
   by component instance, so a breathwork run inside a workout does not release
   the workout's hold when it ends, and every hold is released on unmount:
   leaving the route is enough, finish and discard are not special-cased.
+- **Live Activity.** The running workout on the lock screen (next section).
 - **Status bar text.** Follows the theme's background lightness: light text on
   the dark themes, dark text on the light "Stratos" theme. Applied from
   `ThemeProvider` whenever the theme changes. The bar stays an overlay; the
@@ -213,6 +214,43 @@ Checking on a device, since the simulator has no haptic engine and never
 sleeps: complete a set (tap), beat a lift's best e1RM (double tap), leave a
 workout open past the auto-lock interval (stays on), finish it (locks on
 schedule), and switch to the Stratos theme in Settings (the clock turns black).
+
+## The Live Activity and its widget extension
+
+The lock screen shows the running workout: the current exercise, which set of
+the session it is, and the target. `StratosWidget` is a WidgetKit app extension
+target inside `ios/App/App.xcodeproj`, embedded into `App.app/PlugIns` by the
+app target's *Embed App Extensions* phase. It builds with the normal
+`npm run ios:sync` / `xcodebuild` path and needs no extra step, but note:
+
+- The extension has its own bundle id, `com.daimodus.stratos.StratosWidget`,
+  and so its own provisioning profile. `npm run ios:device` passes
+  `DEVELOPMENT_TEAM` on the command line with `-allowProvisioningUpdates`,
+  which covers both targets; a free Personal Team is enough.
+- `ios/App/Shared/StratosSetActivityAttributes.swift` is compiled into *both*
+  targets. It is the payload contract, so it must never be added to only one.
+- `NSSupportsLiveActivities` in the app's `Info.plist` is what makes iOS accept
+  `Activity.request`. Without it the request throws and the bridge only warns.
+
+The webview owns every decision. `buildLiveActivityState` derives what to show
+from the Set Plan, the bridge in `src/lib/native/liveActivity.ts` marshals it,
+and the plugin decides only whether that means starting an activity or updating
+the running one. No suggestion is computed in Swift, because once the phone is
+locked the webview is suspended and cannot be asked.
+
+Ending it is the part worth knowing. `useWorkoutLiveActivity` sits inside the
+workout screen's active branch, so finishing or discarding unmounts it rather
+than re-rendering it — clearing the workout is exactly what drops the screen to
+its no-workout view. The end therefore runs on teardown and re-reads the store,
+because navigating away mid-session unmounts the same way and must leave the
+lock screen up. A `load()` call in the plugin clears any activity that outlived
+a previous process, which is how an app kill stops leaving a stale session.
+
+Checking on a device (the simulator can show Live Activities, but only a real
+lock screen proves it): start a workout and lock the phone (the activity
+appears on the current set), complete a set while unlocked (it advances), then
+finish the workout and lock again (it is gone). Repeat the last step with
+discard. Force-quit mid-workout and relaunch: no stale activity survives.
 
 ## Proactive insights behave differently in a wrap
 
@@ -232,6 +270,10 @@ Open, unticketed, and worth filing before the next wrap pass:
 
 - `index.html` pulls Montserrat/Open Sans from Google Fonts over the network, so
   a cold offline first launch falls back to system fonts. Cosmetic.
+- A cold launch straight to Home mid-workout leaves no Live Activity: the
+  plugin clears the one that outlived the old process, and only the workout
+  screen syncs a new one. Adopting a surviving activity belongs with I-22's
+  reconcile-on-reopen, not here.
 - The top inset is dropped for the rest of the session after signing in, so the
   home greeting sits under the clock until the app is relaunched. Verified in the
   simulator: cold launch and post-relaunch are correct, the transition straight

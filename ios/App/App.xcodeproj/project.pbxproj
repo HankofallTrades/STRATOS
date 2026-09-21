@@ -7,7 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		06D5934FEC40B02D261456FF /* StratosLiveActivityPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBEB60A295A7C6C87E9BCEC0 /* StratosLiveActivityPlugin.swift */; };
+		242215875C6A2D4A1F97D7DC /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2BBB5382316C63EAE5371B4C /* Foundation.framework */; };
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
+		3005299B0A74743F4B095D1B /* StratosSetActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A518F444295697225AF573E1 /* StratosSetActivityAttributes.swift */; };
 		4D22ABE92AF431CB00220026 /* CapApp-SPM in Frameworks */ = {isa = PBXBuildFile; productRef = 4D22ABE82AF431CB00220026 /* CapApp-SPM */; };
 		50379B232058CBB4000EE86E /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
 		504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };
@@ -15,10 +18,40 @@
 		504EC30F1FED79650016851F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30E1FED79650016851F /* Assets.xcassets */; };
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
+		632D9ACF4D4A07D52A4AF770 /* StratosWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225E2705315B893493518B13 /* StratosWidgetBundle.swift */; };
+		67CDF1D19F24FE7B569AF705 /* StratosSetLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7D6EE5B4D8EBCF382EC5D4C /* StratosSetLiveActivity.swift */; };
+		7B197B3A0CE85444DD0CC8D1 /* StratosWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = E0E357A4FC060E6170B4216C /* StratosWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		8A2C7133B3A9A908857F0C2F /* StratosSetActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A518F444295697225AF573E1 /* StratosSetActivityAttributes.swift */; };
 		9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6822FE993A50072D4E8 /* SceneDelegate.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		07BD65A3F9D581C3E89FCF51 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 504EC2FC1FED79650016851F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 13F13F416F47E5058CF53F8C;
+			remoteInfo = StratosWidget;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		4A559EC66D4A3A1BD4049249 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				7B197B3A0CE85444DD0CC8D1 /* StratosWidget.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		225E2705315B893493518B13 /* StratosWidgetBundle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StratosWidgetBundle.swift; sourceTree = "<group>"; };
+		2BBB5382316C63EAE5371B4C /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
 		50379B222058CBB4000EE86E /* capacitor.config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
 		504EC3041FED79650016851F /* App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = App.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -30,6 +63,11 @@
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
 		9582B6822FE993A50072D4E8 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
+		A518F444295697225AF573E1 /* StratosSetActivityAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StratosSetActivityAttributes.swift; sourceTree = "<group>"; };
+		D7D6EE5B4D8EBCF382EC5D4C /* StratosSetLiveActivity.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StratosSetLiveActivity.swift; sourceTree = "<group>"; };
+		E0E357A4FC060E6170B4216C /* StratosWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = StratosWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		E6E0E902914DF42E45242FDA /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		FBEB60A295A7C6C87E9BCEC0 /* StratosLiveActivityPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StratosLiveActivityPlugin.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -41,15 +79,34 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		9A8A99EEEDE3ACC5C5668A4C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				242215875C6A2D4A1F97D7DC /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		03E787F722C51B786BFFB2ED /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				CBB61E42521A91B8BAB3B638 /* iOS */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		504EC2FB1FED79650016851F = {
 			isa = PBXGroup;
 			children = (
 				958DCC722DB07C7200EA8C5F /* debug.xcconfig */,
 				504EC3061FED79650016851F /* App */,
 				504EC3051FED79650016851F /* Products */,
+				03E787F722C51B786BFFB2ED /* Frameworks */,
+				5B1F1AD1B857E6F501B157DE /* Shared */,
+				AA124CDCE40E687294EA750E /* StratosWidget */,
 			);
 			sourceTree = "<group>";
 		};
@@ -57,6 +114,7 @@
 			isa = PBXGroup;
 			children = (
 				504EC3041FED79650016851F /* App.app */,
+				E0E357A4FC060E6170B4216C /* StratosWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -73,13 +131,59 @@
 				504EC3131FED79650016851F /* Info.plist */,
 				2FAD9762203C412B000D30F8 /* config.xml */,
 				50B271D01FEDC1A000F3C39B /* public */,
+				FBEB60A295A7C6C87E9BCEC0 /* StratosLiveActivityPlugin.swift */,
 			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		5B1F1AD1B857E6F501B157DE /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				A518F444295697225AF573E1 /* StratosSetActivityAttributes.swift */,
+			);
+			name = Shared;
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		AA124CDCE40E687294EA750E /* StratosWidget */ = {
+			isa = PBXGroup;
+			children = (
+				225E2705315B893493518B13 /* StratosWidgetBundle.swift */,
+				D7D6EE5B4D8EBCF382EC5D4C /* StratosSetLiveActivity.swift */,
+				E6E0E902914DF42E45242FDA /* Info.plist */,
+			);
+			name = StratosWidget;
+			path = StratosWidget;
+			sourceTree = "<group>";
+		};
+		CBB61E42521A91B8BAB3B638 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				2BBB5382316C63EAE5371B4C /* Foundation.framework */,
+			);
+			name = iOS;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		13F13F416F47E5058CF53F8C /* StratosWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FD62E6D1B8D5B0E3E65E179D /* Build configuration list for PBXNativeTarget "StratosWidget" */;
+			buildPhases = (
+				F35D4FC56DE11E7740FB33FD /* Sources */,
+				9A8A99EEEDE3ACC5C5668A4C /* Frameworks */,
+				18BDCEEFB13031E3B43FDF80 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = StratosWidget;
+			productName = StratosWidget;
+			productReference = E0E357A4FC060E6170B4216C /* StratosWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		504EC3031FED79650016851F /* App */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 504EC3161FED79650016851F /* Build configuration list for PBXNativeTarget "App" */;
@@ -87,10 +191,12 @@
 				504EC3001FED79650016851F /* Sources */,
 				504EC3011FED79650016851F /* Frameworks */,
 				504EC3021FED79650016851F /* Resources */,
+				4A559EC66D4A3A1BD4049249 /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				DD42C28E15D9368DCA236C7F /* PBXTargetDependency */,
 			);
 			name = App;
 			packageProductDependencies = (
@@ -133,11 +239,19 @@
 			projectRoot = "";
 			targets = (
 				504EC3031FED79650016851F /* App */,
+				13F13F416F47E5058CF53F8C /* StratosWidget */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		18BDCEEFB13031E3B43FDF80 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		504EC3021FED79650016851F /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -160,10 +274,31 @@
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
+				3005299B0A74743F4B095D1B /* StratosSetActivityAttributes.swift in Sources */,
+				06D5934FEC40B02D261456FF /* StratosLiveActivityPlugin.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F35D4FC56DE11E7740FB33FD /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8A2C7133B3A9A908857F0C2F /* StratosSetActivityAttributes.swift in Sources */,
+				632D9ACF4D4A07D52A4AF770 /* StratosWidgetBundle.swift in Sources */,
+				67CDF1D19F24FE7B569AF705 /* StratosSetLiveActivity.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		DD42C28E15D9368DCA236C7F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = StratosWidget;
+			target = 13F13F416F47E5058CF53F8C /* StratosWidget */;
+			targetProxy = 07BD65A3F9D581C3E89FCF51 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		504EC30B1FED79650016851F /* Main.storyboard */ = {
@@ -185,6 +320,31 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
+		318BE6F21AD996A3A8723CD9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = StratosWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.daimodus.stratos.StratosWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 		504EC3141FED79650016851F /* Debug */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 958DCC722DB07C7200EA8C5F /* debug.xcconfig */;
@@ -338,6 +498,32 @@
 			};
 			name = Release;
 		};
+		7576E3CCDD90FD1903FDBCB7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = StratosWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.daimodus.stratos.StratosWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -355,6 +541,15 @@
 			buildConfigurations = (
 				504EC3171FED79650016851F /* Debug */,
 				504EC3181FED79650016851F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FD62E6D1B8D5B0E3E65E179D /* Build configuration list for PBXNativeTarget "StratosWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7576E3CCDD90FD1903FDBCB7 /* Release */,
+				318BE6F21AD996A3A8723CD9 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

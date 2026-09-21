@@ -19,6 +19,7 @@ import {
   getExerciseSetPlanRecommendations,
   type ExerciseSetRecommendations,
 } from "@/domains/fitness/data/setPlan";
+import { useWorkoutLiveActivity } from "@/domains/fitness/hooks/useWorkoutLiveActivity";
 
 import BreathworkExerciseCard from "@/domains/breathwork/ui/BreathworkExerciseCard";
 import { protocolForExerciseName } from "@/domains/breathwork/data/protocols";
@@ -202,6 +203,8 @@ const WorkoutComponent = () => {
       }),
     [historyByWorkoutExerciseId, sessionFocus, workoutExercises]
   );
+
+  useWorkoutLiveActivity(setPlan);
 
   // Rows are memoised, and the plan is rebuilt on every workout change, most of
   // which cannot move a suggestion. Hand a row the record it already has unless
