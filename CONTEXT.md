@@ -69,6 +69,22 @@ in progress. Navigation and cache invalidation stay with the caller.
 
 _Avoid_: start payload, workout kickoff
 
+## Set completion
+
+Logging a set crosses exactly one interface, `completeSetFromDraft`, which takes
+the **draft** the user typed, the previous performance for that set number, and
+the **set kind** (`strength`, `time`, `cardio`), and returns either accepted —
+the draft fields to fill in plus the set as it should be stored — or rejected
+with a reason. It owns every auto-fill rule: carrying last session's numbers into
+blank fields, standing the user's bodyweight in for an unloaded movement with no
+history, and refusing a set with no reps, no hold, or no duration.
+
+It is pure, so the Activity Journal replays a lock-screen completion through the
+same rule. The store learns about it through one action, and rest timer and
+haptic feedback listen for that action rather than being handed a callback.
+
+_Avoid_: set save, completion handler
+
 ## Workout commit
 
 Completing a workout crosses exactly one interface, `commitFinalizedWorkout`,

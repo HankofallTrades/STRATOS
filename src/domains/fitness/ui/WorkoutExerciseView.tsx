@@ -76,7 +76,6 @@ interface WorkoutExerciseViewProps {
   onCancelAddVariation: () => void;
   onUpdateLastSet: (field: 'weight' | 'reps' | 'time' | 'distance', change: number) => void;
   onCopyCompletedValueToLatestSet: (field: 'weight' | 'reps', value: number) => void;
-  onSetLogged: (set: ExerciseSet) => void;
   restStartTime: number | null;
 }
 
@@ -177,7 +176,6 @@ export const WorkoutExerciseView = ({
   onCancelAddVariation,
   onUpdateLastSet, // Destructure new prop
   onCopyCompletedValueToLatestSet,
-  onSetLogged,
   restStartTime,
 }: WorkoutExerciseViewProps) => {
   // State for Popover open state
@@ -780,7 +778,6 @@ export const WorkoutExerciseView = ({
                             isStatic={isExerciseStatic}
                             isActive={firstIncompleteSetIndex === -1 ? index === workoutExercise.sets.length - 1 : index === firstIncompleteSetIndex}
                             onComplete={isLastSet ? handleAutoAddSetFromLastCompletion : undefined}
-                            onSetLogged={onSetLogged}
                             onSwipeCopyWeight={copyableWeight !== null
                               ? () => onCopyCompletedValueToLatestSet('weight', copyableWeight)
                               : undefined}

@@ -12,19 +12,23 @@ import {
     updateSet as updateSetAction,
     updateCardioSet as updateCardioSetAction,
     deleteSet as deleteSetAction,
-    completeSet as completeSetAction
+    setCompleted as setCompletedAction,
+    uncompleteSet as uncompleteSetAction
 } from "@/state/workout/workoutSlice";
+import {
+    bodyweightWeightFill,
+    completeSetFromDraft,
+    type PreviousSetPerformance,
+} from '../data/setCompletion';
 
 interface UseSetProps {
     workoutExerciseId: string;
     set: ExerciseSet;
     userBodyweight?: number | null;
     isStatic: boolean;
-    previousPerformance: { weight: number; reps: number | null; time_seconds?: number | null; distance_km?: number | null } | null;
+    previousPerformance: PreviousSetPerformance | null;
     recommendedPerformance: RecommendedStrengthSetPerformance | null;
     onComplete?: () => void;
-    /** Fires once each time this set is marked complete, with its saved values. */
-    onSetLogged?: (set: ExerciseSet) => void;
 }
 
 type StrengthSetUpdatePayload = {
@@ -45,12 +49,13 @@ export const useSet = ({
     previousPerformance,
     recommendedPerformance,
     onComplete,
-    onSetLogged,
 }: UseSetProps) => {
     const dispatch = useAppDispatch();
 
-    // Common State
-    const [isCompleted, setIsCompleted] = useState(set.completed);
+    // Completion is not draft state: the set is logged or it isn't, and Set
+    // completion decides which. Reading it straight from the workout keeps the
+    // checkbox from ever showing a tick the store refused.
+    const isCompleted = set.completed;
 
     // --- Strength Set State ---
     const strengthSet = isStrengthSet(set) ? set : null;
@@ -112,10 +117,12 @@ export const useSet = ({
     }, [cardioTimerRunning]);
 
     // --- Sync Effects ---
-    useEffect(() => {
-        setIsCompleted(set.completed);
-    }, [set.completed]);
-
+    // The draft holds what the user is typing, so it cannot simply mirror the
+    // store. These five stay because the stored set also changes from outside
+    // this row — the header's +/- stepper, a swipe-copy from an earlier set,
+    // and equipment or variation propagation all write values this row has to
+    // pick up. One effect per field on purpose: a combined effect would
+    // overwrite a half-typed weight when only the reps changed.
     useEffect(() => {
         if (strengthSetWeight !== undefined) {
             setLocalWeight(strengthSetWeight > 0 ? strengthSetWeight.toString() : '');
@@ -146,18 +153,19 @@ export const useSet = ({
         }
     }, [cardioSetDistanceKm]);
 
-    // Bodyweight auto-fill logic
+    // Bodyweight auto-fill: the rule lives with Set completion, which falls back
+    // on it too. Shown in the input up front so the user sees what will be logged.
     useEffect(() => {
-        if (
-            strengthSet &&
-            strengthSetEquipmentType === "Bodyweight" &&
-            userBodyweight &&
-            userBodyweight > 0 &&
-            !previousPerformance &&
-            !weightTouched &&
-            (!localWeight || parseFloat(localWeight) === 0)
-        ) {
-            setLocalWeight(String(userBodyweight));
+        if (!strengthSet) return;
+        const fill = bodyweightWeightFill({
+            equipmentType: strengthSetEquipmentType,
+            userBodyweight,
+            previousPerformance,
+            weight: localWeight,
+            weightTouched,
+        });
+        if (fill !== null) {
+            setLocalWeight(String(fill));
         }
     }, [strengthSet, strengthSetEquipmentType, userBodyweight, previousPerformance, weightTouched, localWeight]);
 
@@ -191,111 +199,39 @@ export const useSet = ({
     }, [dispatch, workoutExerciseId, set.id]);
 
     const handleCompletionChange = useCallback((checked: boolean | 'indeterminate') => {
-        const isNowCompleted = !!checked;
-        setIsCompleted(isNowCompleted);
-
-        if (isStrengthSet(set)) {
-            if (isNowCompleted) {
-                let weightVal = parseFloat(localWeight);
-                let repsVal = parseInt(localReps);
-                let timeVal = parseInt(localTime);
-
-                // Auto-fill logic
-                if (isNaN(weightVal) && previousPerformance) {
-                    weightVal = previousPerformance.weight;
-                    setLocalWeight(String(weightVal));
-                } else if (isNaN(weightVal)) {
-                    weightVal = 0;
-                }
-
-                const baseUpdatePayload = {
-                    workoutExerciseId,
-                    setId: set.id,
-                    weight: weightVal,
-                    variation: set.variation ?? undefined,
-                    equipmentType: set.equipmentType ?? undefined,
-                };
-                let completedSet: ExerciseSet;
-
-                if (isStatic) {
-                    if (isNaN(timeVal) && previousPerformance?.time_seconds) {
-                        timeVal = previousPerformance.time_seconds;
-                        setLocalTime(String(timeVal));
-                    }
-
-                    if (weightVal >= 0 && timeVal > 0) {
-                        const updatedSetData: StrengthSetUpdatePayload = {
-                            ...baseUpdatePayload,
-                            reps: null,
-                            time: secondsToTime(timeVal),
-                        };
-                        dispatch(updateSetAction(updatedSetData));
-                        completedSet = { ...set, weight: weightVal, reps: null, time: updatedSetData.time, completed: true };
-                    } else {
-                        setIsCompleted(false);
-                        return;
-                    }
-                } else {
-                    if (isNaN(repsVal) && previousPerformance?.reps) {
-                        repsVal = previousPerformance.reps;
-                        setLocalReps(String(repsVal));
-                    }
-
-                    if (weightVal >= 0 && repsVal > 0) {
-                        const updatedSetData: StrengthSetUpdatePayload = {
-                            ...baseUpdatePayload,
-                            reps: repsVal,
-                            time: null,
-                        };
-                        dispatch(updateSetAction(updatedSetData));
-                        completedSet = { ...set, weight: weightVal, reps: repsVal, time: null, completed: true };
-                    } else {
-                        setIsCompleted(false);
-                        return;
-                    }
-                }
-                dispatch(completeSetAction({ workoutExerciseId, setId: set.id, completed: true }));
-                onSetLogged?.(completedSet);
-                onComplete?.();
-            } else {
-                dispatch(completeSetAction({ workoutExerciseId, setId: set.id, completed: false }));
-            }
-        } else if (isCardioSet(set)) {
-            let durationVal = parseInt(localDuration);
-            let distanceVal = parseFloat(localDistance);
-
-            if (isNowCompleted) {
-                // Auto-fill logic
-                if (isNaN(durationVal) && previousPerformance?.time_seconds) {
-                    durationVal = previousPerformance.time_seconds;
-                    setLocalDuration(String(durationVal));
-                }
-
-                if (isNaN(distanceVal) && previousPerformance && 'distance_km' in previousPerformance && previousPerformance.distance_km) {
-                    distanceVal = previousPerformance.distance_km;
-                    setLocalDistance(String(distanceVal));
-                }
-
-                if (durationVal > 0) {
-                    const time = secondsToTime(durationVal);
-                    const distance_km = distanceVal > 0 ? distanceVal : undefined;
-                    dispatch(updateCardioSetAction({
-                        workoutExerciseId,
-                        setId: set.id,
-                        time,
-                        distance_km,
-                    }));
-                    dispatch(completeSetAction({ workoutExerciseId, setId: set.id, completed: true }));
-                    onSetLogged?.({ ...set, time, distance_km, completed: true });
-                    onComplete?.();
-                } else {
-                    setIsCompleted(false);
-                }
-            } else {
-                dispatch(completeSetAction({ workoutExerciseId, setId: set.id, completed: false }));
-            }
+        if (!checked) {
+            dispatch(uncompleteSetAction({ workoutExerciseId, setId: set.id }));
+            return;
         }
-    }, [dispatch, workoutExerciseId, set, isStatic, localWeight, localReps, localTime, localDuration, localDistance, previousPerformance, onComplete, onSetLogged]);
+
+        const result = completeSetFromDraft({
+            set,
+            kind: isCardioSet(set) ? 'cardio' : isStatic ? 'time' : 'strength',
+            draft: {
+                weight: localWeight,
+                reps: localReps,
+                time: localTime,
+                duration: localDuration,
+                distance: localDistance,
+            },
+            previousPerformance,
+            userBodyweight,
+            weightTouched,
+        });
+
+        // A refusal leaves the row exactly as it was — no tick, no dispatch.
+        if (result.status === 'rejected') return;
+
+        const { updates } = result;
+        if (updates.weight !== undefined) setLocalWeight(updates.weight);
+        if (updates.reps !== undefined) setLocalReps(updates.reps);
+        if (updates.time !== undefined) setLocalTime(updates.time);
+        if (updates.duration !== undefined) setLocalDuration(updates.duration);
+        if (updates.distance !== undefined) setLocalDistance(updates.distance);
+
+        dispatch(setCompletedAction({ workoutExerciseId, completedSet: result.completedSet }));
+        onComplete?.();
+    }, [dispatch, workoutExerciseId, set, isStatic, localWeight, localReps, localTime, localDuration, localDistance, previousPerformance, userBodyweight, weightTouched, onComplete]);
 
     const handleBlur = useCallback((field: 'weight' | 'reps' | 'time' | 'duration' | 'distance') => {
         if (isCompleted) return;

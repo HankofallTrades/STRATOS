@@ -25,7 +25,6 @@ interface SetComponentProps extends MotionProps {
   isStatic: boolean;
   isActive?: boolean;
   onComplete?: () => void;
-  onSetLogged?: (set: ExerciseSet) => void;
   onSwipeCopyWeight?: () => void;
   onSwipeCopyReps?: () => void;
   contentInitialY?: number;
@@ -44,7 +43,6 @@ const SetComponent: React.FC<SetComponentProps> = ({
   isStatic,
   isActive = false,
   onComplete,
-  onSetLogged,
   onSwipeCopyWeight,
   onSwipeCopyReps,
   contentInitialY = 0,
@@ -79,7 +77,6 @@ const SetComponent: React.FC<SetComponentProps> = ({
     previousPerformance,
     recommendedPerformance,
     onComplete,
-    onSetLogged,
   });
   const [justCompleted, setJustCompleted] = React.useState(false);
   const handleCompletionPress = () => {

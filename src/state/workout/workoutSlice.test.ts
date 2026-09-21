@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest";
 
+import type { StrengthSet, WorkoutExercise } from "@/lib/types/workout";
+
 import workoutReducer, {
   clearWorkout,
+  setCompleted,
+  startWarmup,
   startWorkout,
+  uncompleteSet,
+  updateWorkoutExerciseEquipment,
   workoutFinished,
 } from "./workoutSlice";
 
@@ -47,5 +53,119 @@ describe("workoutSlice — lastFinishedWorkoutId", () => {
     state = workoutReducer(state, clearWorkout());
 
     expect(state.lastFinishedWorkoutId).toBe(savedId);
+  });
+});
+
+const pendingSet: StrengthSet = {
+  id: "set-1",
+  exerciseId: "ex-1",
+  weight: 0,
+  reps: 0,
+  time: null,
+  completed: false,
+};
+
+const exercise: WorkoutExercise = {
+  id: "we-1",
+  exercise: { id: "ex-1", name: "Squat" },
+  sets: [pendingSet],
+};
+
+const startedWorkout = () =>
+  workoutReducer(undefined, startWorkout({ initialExercises: [exercise] }));
+
+describe("workoutSlice — set completion", () => {
+  // Set completion decides the values and the tick in one go, so the reducer
+  // stores them together. Splitting them would let a set be marked done while
+  // still holding the zeros it was created with.
+  it("stores the logged values and the completion as one change", () => {
+    const state = workoutReducer(
+      startedWorkout(),
+      setCompleted({
+        workoutExerciseId: "we-1",
+        completedSet: { ...pendingSet, weight: 80, reps: 5, completed: true },
+      })
+    );
+
+    expect(state.currentWorkout!.exercises[0].sets[0]).toMatchObject({
+      weight: 80,
+      reps: 5,
+      completed: true,
+    });
+  });
+
+  // The completed set is built from the row as it last rendered. Writing it
+  // back wholesale would revert anything changed since — an equipment switch
+  // propagated to the set, say — so only the logged values are written.
+  it("writes the logged values without reverting the rest of the set", () => {
+    let state = workoutReducer(
+      startedWorkout(),
+      updateWorkoutExerciseEquipment({ workoutExerciseId: "we-1", equipmentType: "Dumbbell" })
+    );
+
+    state = workoutReducer(
+      state,
+      setCompleted({
+        workoutExerciseId: "we-1",
+        completedSet: { ...pendingSet, weight: 80, reps: 5, equipmentType: "Barbell", completed: true },
+      })
+    );
+
+    expect(state.currentWorkout!.exercises[0].sets[0]).toMatchObject({
+      weight: 80,
+      reps: 5,
+      completed: true,
+      equipmentType: "Dumbbell",
+    });
+  });
+
+  it("ignores a completion for a set that is not in the workout", () => {
+    const state = workoutReducer(
+      startedWorkout(),
+      setCompleted({
+        workoutExerciseId: "we-1",
+        completedSet: { ...pendingSet, id: "set-gone", completed: true },
+      })
+    );
+
+    expect(state.currentWorkout!.exercises[0].sets).toHaveLength(1);
+    expect(state.currentWorkout!.exercises[0].sets[0].completed).toBe(false);
+  });
+
+  // Warming up ends the moment the first set is logged; the elapsed time is
+  // banked then, because nothing later in the session can tell where the
+  // warmup stopped.
+  it("closes the warmup on the first logged set", () => {
+    let state = workoutReducer(startedWorkout(), startWarmup());
+    expect(state.warmupStartTime).not.toBeNull();
+
+    state = workoutReducer(
+      state,
+      setCompleted({
+        workoutExerciseId: "we-1",
+        completedSet: { ...pendingSet, weight: 80, reps: 5, completed: true },
+      })
+    );
+
+    expect(state.warmupStartTime).toBeNull();
+    expect(state.currentWorkout!.warmup_seconds).toBeGreaterThanOrEqual(0);
+  });
+
+  it("clears the tick without touching the logged values", () => {
+    let state = workoutReducer(
+      startedWorkout(),
+      setCompleted({
+        workoutExerciseId: "we-1",
+        completedSet: { ...pendingSet, weight: 80, reps: 5, completed: true },
+      })
+    );
+
+    state = workoutReducer(state, uncompleteSet({ workoutExerciseId: "we-1", setId: "set-1" }));
+
+    expect(state.currentWorkout!.exercises[0].sets[0]).toMatchObject({
+      weight: 80,
+      reps: 5,
+      completed: false,
+    });
   });
 });

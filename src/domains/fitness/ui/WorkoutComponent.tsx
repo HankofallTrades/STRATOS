@@ -1,10 +1,11 @@
-import React, { memo, useState, useRef, useEffect, useMemo } from 'react';
+import React, { memo, useState, useRef, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 
+import { useActionListener } from "@/hooks/useActionListener";
 import { useAppSelector } from "@/hooks/redux";
 import { useAuth } from "@/state/auth/AuthProvider";
-import { selectCurrentWorkout, selectSessionFocus } from "@/state/workout/workoutSlice";
+import { selectCurrentWorkout, selectSessionFocus, setCompleted } from "@/state/workout/workoutSlice";
 import {
   buildWorkoutExerciseHistoryKey,
   fetchLastWorkoutExerciseInstances,
@@ -109,8 +110,6 @@ const WorkoutComponent = () => {
   const userId = user?.id ?? null;
 
   const [restTimerState, setRestTimerState] = useState<{ exerciseId: string; startTime: number } | null>(null);
-  const isInitializedRef = useRef(false);
-  const prevCompletedCountsRef = useRef<Record<string, number>>({});
 
   const workoutExercises = useMemo(
     () => currentWorkout?.exercises ?? [],
@@ -226,27 +225,11 @@ const WorkoutComponent = () => {
     return nextRecommendations;
   }, [setPlan, workoutExercises]);
 
-  useEffect(() => {
-    if (!currentWorkout) return;
-
-    if (!isInitializedRef.current) {
-      isInitializedRef.current = true;
-      for (const exercise of currentWorkout.exercises) {
-        prevCompletedCountsRef.current[exercise.id] = exercise.sets.filter(s => s.completed).length;
-      }
-      return;
-    }
-
-    for (const exercise of currentWorkout.exercises) {
-      const completedCount = exercise.sets.filter(s => s.completed).length;
-      const prevCount = prevCompletedCountsRef.current[exercise.id] ?? 0;
-
-      if (completedCount > prevCount) {
-        setRestTimerState({ exerciseId: exercise.id, startTime: Date.now() });
-      }
-      prevCompletedCountsRef.current[exercise.id] = completedCount;
-    }
-  }, [currentWorkout]);
+  // Rest starts when a set is logged, so the timer listens for the completion
+  // rather than watching completed counts for one to go up.
+  useActionListener(setCompleted, ({ workoutExerciseId }) => {
+    setRestTimerState({ exerciseId: workoutExerciseId, startTime: Date.now() });
+  });
 
   if (!currentWorkout) {
     return null;

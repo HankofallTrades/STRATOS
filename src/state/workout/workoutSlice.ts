@@ -235,7 +235,41 @@ const workoutSlice = createSlice({
             workoutExercise.sets = workoutExercise.sets.filter((s) => s.id !== action.payload.setId);
         }
     },
-    completeSet(state, action: PayloadAction<{ workoutExerciseId: string; setId: string; completed: boolean }>) {
+    /**
+     * A set was logged: its values and its completion land together, because
+     * "what was logged" is one decision (Set completion) rather than a value
+     * edit that happens to be followed by a tick. Rest timer and haptic
+     * feedback listen for this action rather than being handed down as props.
+     */
+    setCompleted(state, action: PayloadAction<{ workoutExerciseId: string; completedSet: ExerciseSet }>) {
+        if (!state.currentWorkout) return;
+        const workoutExercise = state.currentWorkout.exercises.find(
+            (ex) => ex.id === action.payload.workoutExerciseId
+        );
+        if (!workoutExercise) return;
+        const stored = workoutExercise.sets.find((s) => s.id === action.payload.completedSet.id);
+        if (!stored) return;
+        // Only the fields completion decided are written. Variation, equipment
+        // and the rest stay as the workout holds them, so a tick can never
+        // revert an edit made since this row last rendered.
+        const { completedSet } = action.payload;
+        if (isCardioSet(stored) && isCardioSet(completedSet)) {
+            stored.time = completedSet.time;
+            stored.distance_km = completedSet.distance_km;
+        } else if (isStrengthSet(stored) && isStrengthSet(completedSet)) {
+            stored.weight = completedSet.weight;
+            stored.reps = completedSet.reps;
+            stored.time = completedSet.time;
+        } else {
+            return;
+        }
+        stored.completed = true;
+        if (state.warmupStartTime) {
+            state.currentWorkout.warmup_seconds = Math.round((Date.now() - state.warmupStartTime) / 1000);
+            state.warmupStartTime = null;
+        }
+    },
+    uncompleteSet(state, action: PayloadAction<{ workoutExerciseId: string; setId: string }>) {
         if (!state.currentWorkout) return;
         const workoutExercise = state.currentWorkout.exercises.find(
             (ex) => ex.id === action.payload.workoutExerciseId
@@ -243,11 +277,7 @@ const workoutSlice = createSlice({
         if (!workoutExercise) return;
         const set = workoutExercise.sets.find((s) => s.id === action.payload.setId);
         if (set) {
-            set.completed = action.payload.completed;
-            if (action.payload.completed && state.warmupStartTime) {
-                state.currentWorkout.warmup_seconds = Math.round((Date.now() - state.warmupStartTime) / 1000);
-                state.warmupStartTime = null;
-            }
+            set.completed = false;
         }
     },
     updateWorkoutExerciseEquipment(state, action: PayloadAction<{ workoutExerciseId: string; equipmentType: string }>) {
@@ -308,7 +338,8 @@ export const {
   updateSet,
   updateCardioSet,
   deleteSet,
-  completeSet,
+  setCompleted,
+  uncompleteSet,
   updateWorkoutExerciseEquipment,
   updateWorkoutExerciseVariation,
   deleteWorkoutExercise,

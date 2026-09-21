@@ -3,6 +3,7 @@ import { persistStore, persistReducer, createTransform, FLUSH, REHYDRATE, PAUSE,
 import storage from 'redux-persist/lib/storage'; // defaults to localStorage for web
 
 // Import slice reducers here
+import { listenerMiddleware } from './listenerMiddleware';
 import workoutReducer from './workout/workoutSlice';
 import exerciseReducer from './exercise/exerciseSlice';
 import historyReducer from './history/historySlice';
@@ -60,7 +61,7 @@ export const store = configureStore({
       serializableCheck: {
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER], // Ignore redux-persist actions
       },
-    }),
+    }).prepend(listenerMiddleware.middleware),
 });
 
 export const persistor = persistStore(store);

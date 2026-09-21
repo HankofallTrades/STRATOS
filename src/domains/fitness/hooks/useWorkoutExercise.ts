@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+import { useActionListener } from "@/hooks/useActionListener";
 import { useAppDispatch } from "@/hooks/redux";
 import { playSetCompletionHaptic } from "@/lib/native/haptics";
 import * as fitnessRepo from '../data/fitnessRepository';
@@ -14,9 +15,9 @@ import {
     deleteWorkoutExercise as deleteExerciseAction,
     updateSet as updateSetAction,
     updateCardioSet as updateCardioSetAction,
+    setCompleted,
 } from "@/state/workout/workoutSlice";
 import {
-    ExerciseSet,
     WorkoutExercise,
     isCardioExercise,
     isCardioSet,
@@ -225,13 +226,17 @@ export const useWorkoutExercise = (
         }
     }, [newVariationName, addVariationMutation]);
 
+    // Haptic feedback listens for the completion itself rather than being
+    // handed down to the checkbox, so what a set is worth stays where the
+    // exercise's history already is.
     const priorBestE1RM = lookups.priorBestE1RM;
     const exerciseSets = workoutExercise.sets;
-    const noteSetLogged = useCallback((set: ExerciseSet) => {
+    useActionListener(setCompleted, ({ workoutExerciseId, completedSet }) => {
+        if (workoutExerciseId !== workoutExercise.id) return;
         void playSetCompletionHaptic(
-            classifySetCompletion({ set, exerciseSets, priorBestE1RM })
+            classifySetCompletion({ set: completedSet, exerciseSets, priorBestE1RM })
         );
-    }, [exerciseSets, priorBestE1RM]);
+    });
 
     return {
         variations,
@@ -251,7 +256,6 @@ export const useWorkoutExercise = (
         deleteExercise,
         updateLastSetField,
         copyCompletedValueToLatestSet,
-        noteSetLogged,
         handleSaveNewVariation,
     };
 };
