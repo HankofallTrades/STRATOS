@@ -231,6 +231,13 @@ app target's *Embed App Extensions* phase. It builds with the normal
   targets. It is the payload contract, so it must never be added to only one.
 - `NSSupportsLiveActivities` in the app's `Info.plist` is what makes iOS accept
   `Activity.request`. Without it the request throws and the bridge only warns.
+- The plugin is registered by hand in `ViewController.capacitorDidLoad`, which
+  `SceneDelegate` builds as the root controller. Capacitor 8 loads only the
+  classes in the generated `capacitor.config.json`, and `cap sync` rebuilds that
+  list from the installed npm packages, so a plugin living in the app target is
+  never in it — every call rejects `UNIMPLEMENTED` with nothing said natively.
+  `registerPluginInstance` is the one path that ignores auto-registration.
+  Another app-local plugin goes on the same line.
 
 The webview owns every decision. `buildLiveActivityState` derives what to show
 from the Set Plan, the bridge in `src/lib/native/liveActivity.ts` marshals it,
