@@ -1,5 +1,7 @@
 import { useNavigate } from 'react-router-dom';
+import { useStore } from 'react-redux';
 import { useAppSelector, useAppDispatch } from "@/hooks/redux";
+import type { RootState } from "@/state/store";
 import {
     selectCurrentWorkout,
     selectWorkoutStartTime,
@@ -10,12 +12,14 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/state/auth/AuthProvider';
+import { reconciledWorkoutForFinish } from '../data/activityJournalReplay';
 import { commitFinalizedWorkout } from '../data/workoutCommit';
 import { finalizeWorkout } from '../data/workoutPersistence';
 import { invalidateWorkoutDependentQueries } from '../data/queryInvalidation';
 
 export const useWorkoutPersistence = () => {
     const navigate = useNavigate();
+    const store = useStore<RootState>();
     const dispatch = useAppDispatch();
     const queryClient = useQueryClient();
     const { user } = useAuth();
@@ -26,7 +30,17 @@ export const useWorkoutPersistence = () => {
     const saveWorkout = async () => {
         if (!currentWorkout) return;
 
-        const hasCompletedSets = currentWorkout.exercises.some(ex =>
+        // Finish is tappable while a journal replay is in flight, and the last
+        // set of a session is often the one logged from the lock screen. The
+        // workout is re-read here because waiting for that replay is exactly
+        // what makes the rendered one stale (I-39).
+        const workout = await reconciledWorkoutForFinish({
+            dispatch,
+            getState: store.getState,
+        });
+        if (!workout) return;
+
+        const hasCompletedSets = workout.exercises.some(ex =>
             ex.sets.some(set => set.completed)
         );
 
@@ -46,7 +60,7 @@ export const useWorkoutPersistence = () => {
         }
 
         const finalized = finalizeWorkout({
-            workout: currentWorkout,
+            workout,
             endTime: Date.now(),
             workoutStartTime,
             warmupStartTime,
@@ -58,7 +72,7 @@ export const useWorkoutPersistence = () => {
         });
 
         if (outcome.status === "saved") {
-            dispatch(workoutFinished(currentWorkout.id));
+            dispatch(workoutFinished(workout.id));
             dispatch(clearWorkout());
             navigate('/', { replace: true });
             await invalidateWorkoutDependentQueries(queryClient, user.id);
@@ -70,7 +84,7 @@ export const useWorkoutPersistence = () => {
         }
 
         if (outcome.status === "queued") {
-            dispatch(workoutFinished(currentWorkout.id));
+            dispatch(workoutFinished(workout.id));
             dispatch(clearWorkout());
             navigate('/', { replace: true });
             toast({

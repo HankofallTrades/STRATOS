@@ -201,6 +201,14 @@ skipped — so the journal is cleared only *after* its completions are dispatche
 and only through the last entry that was read. Failing that way round replays an
 entry twice, which costs nothing; the other way round loses a logged set.
 
+Replay is also what Finish waits for. A set logged on the lock screen reaches the
+workout one bridge round trip after the app foregrounds, and Finish is tappable
+throughout, so the commit takes its snapshot on the far side of a replay rather
+than racing it — and so does the question of whether the session has anything
+worth saving, which would otherwise offer to discard a workout whose only logged
+set was still in the journal. Passes are queued rather than dropped, because
+"one is already running" is the answer Finish must not accept.
+
 A replayed adjustment is written into the set itself, and the Set Plan targets a
 set's own numbers ahead of any suggestion, so the whole journal is cleared once
 it has been replayed. Neither surface is the authority on an adjusted set: the

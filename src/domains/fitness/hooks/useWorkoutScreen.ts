@@ -196,16 +196,17 @@ export const useWorkoutScreen = () => {
   };
 
   const handleEndWorkout = async () => {
-    const hasCompletedSets = currentWorkout?.exercises.some(exercise =>
-      exercise.sets.some(set => set.completed)
-    );
+    // Whether the session has anything worth saving is not asked here, because
+    // the answer is only true once the Activity Journal has been replayed: the
+    // last set of a session is often the one logged from the lock screen, and
+    // the rendered workout does not have it yet. Asking here offered to discard
+    // exactly that session (I-39). `saveWorkout` decides on the far side of the
+    // replay and says so.
+    const outcome = await saveWorkout();
 
-    if (!hasCompletedSets) {
+    if (outcome && "reason" in outcome && outcome.reason === "no_completed_sets") {
       setIsDiscardConfirmOpen(true);
-      return;
     }
-
-    await saveWorkout();
   };
 
   const handleConfirmDiscard = () => {
