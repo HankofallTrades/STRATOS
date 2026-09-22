@@ -168,13 +168,23 @@ Dynamic Island on the app's behalf. Three pieces have to stay in agreement:
   onboarding dialog is centred rather than top-anchored, so it is clamped to the
   safe area instead of padded.
 
+- On native, `src/lib/native/safeTopLatch.ts` then overrides that property with
+  the last inset the webview honestly reported. WebKit drops
+  `env(safe-area-inset-top)` to `0px` for the rest of the session once the login
+  keyboard has been raised, while the webview stays full height, which put the
+  home greeting back under the clock until the next launch. A portrait zero is
+  therefore ignored; a landscape zero is taken as read, because there the status
+  bar really is gone. `env()` itself is untouched, so the hidden probe keeps
+  reading the live value.
+
 If you add another screen that does not use `.app-page`, add
 `pt-[calc(<base>+var(--app-safe-top))]` to its shell. Forgetting puts the header
 under the clock, and only the wrap shows it.
 
 `src/lib/build/safeArea.test.ts` guards the viewport meta, the `contentInset`
-value, the property definition, and the shells that opt in. The web target is
-unaffected: the insets are `0px` everywhere but a notched device.
+value, the property definition, the shells that opt in, and that the latch
+starts at boot. The web target is unaffected: the insets are `0px` everywhere
+but a notched device.
 
 ## Native polish: what only the wrap does
 
@@ -338,9 +348,10 @@ Open, unticketed, and worth filing before the next wrap pass:
   plugin clears the one that outlived the old process, and only the workout
   screen syncs a new one. Adopting a surviving activity belongs with I-22's
   reconcile-on-reopen, not here.
-- The top inset is dropped for the rest of the session after signing in, so the
-  home greeting sits under the clock until the app is relaunched. Verified in the
-  simulator: cold launch and post-relaunch are correct, the transition straight
-  off the login screen is not. The webview is full height either way, so this is
-  a stale safe-area inset in WebKit rather than the app's CSS — the login screen
-  is the only place that raises the keyboard.
+- WebKit drops the top inset for the rest of the session after signing in. The
+  latch in `src/lib/native/safeTopLatch.ts` holds the last real measurement
+  instead, so the symptom is gone, but the stale inset underneath is not: a
+  screen that reads `env(safe-area-inset-top)` directly rather than
+  `--app-safe-top` will still lose it. The latch also reads orientation from the
+  window's aspect, so an iPad in a narrow Split View column counts as portrait.
+  Irrelevant on the one phone this ships to, wrong the day it isn't.

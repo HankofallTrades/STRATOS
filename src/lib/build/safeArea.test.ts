@@ -64,4 +64,12 @@ describe("iOS safe-area contract", () => {
       expect(read(shell)).toContain("var(--app-safe-top)");
     }
   });
+
+  /**
+   * The CSS value alone is not enough in the wrap; see the latch's own note in
+   * `src/lib/native/safeTopLatch.ts` for what WebKit does to it.
+   */
+  it("starts the inset latch before the app renders", () => {
+    expect(read("src/main.tsx")).toContain("startSafeTopLatch()");
+  });
 });
