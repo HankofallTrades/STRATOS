@@ -87,6 +87,20 @@ struct StratosActivityStore {
     private static let planKey = StratosActivityStoredShape.plan
     private static let journalKey = StratosActivityStoredShape.journal
 
+    /// Serialises the journal's read-modify-write pairs.
+    ///
+    /// A `LiveActivityIntent` runs in the app's own process, but nothing
+    /// promises the system runs two of them one after the other, and each
+    /// append is a whole decode-append-encode cycle. Two that overlap both read
+    /// the same journal and the second write wins, which loses a set the user
+    /// watched the lock screen accept. Static because the store is a struct
+    /// built wherever it is needed: a per-instance queue would serialise
+    /// nothing.
+    ///
+    /// Plain reads stay off it. They cannot lose anything, and a `plan()` from
+    /// the widget has no business waiting behind a Done tap.
+    private static let writes = DispatchQueue(label: "com.stratos.activityStore.writes")
+
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
@@ -110,7 +124,9 @@ struct StratosActivityStore {
     }
 
     func append(_ entry: StratosActivityJournalEntry) {
-        encode(journal() + [entry], forKey: Self.journalKey)
+        Self.writes.sync {
+            encode(journal() + [entry], forKey: Self.journalKey)
+        }
     }
 
     /// Drops every entry up to and including `id`, and keeps the rest.
@@ -124,11 +140,17 @@ struct StratosActivityStore {
     /// any suggestion, so the next sync carries them back here (I-44). Holding
     /// the entry past the clear would instead make the lock screen outrank an
     /// in-app edit to the same set.
+    /// Runs on the write queue with the read, so an append that lands
+    /// mid-clear is either wholly before it — and named by the replay, so
+    /// dropped on purpose — or wholly after, and survives it. Read outside the
+    /// queue, the clear would write back a journal that never saw the append.
     func clearJournal(throughId id: String) {
-        let entries = journal()
-        guard let index = entries.firstIndex(where: { $0.id == id }) else { return }
+        Self.writes.sync {
+            let entries = journal()
+            guard let index = entries.firstIndex(where: { $0.id == id }) else { return }
 
-        encode(Array(entries[entries.index(after: index)...]), forKey: Self.journalKey)
+            encode(Array(entries[entries.index(after: index)...]), forKey: Self.journalKey)
+        }
     }
 
     private func decode<Value: Decodable>(_ key: String) -> [Value] {
