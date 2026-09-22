@@ -8,6 +8,12 @@ struct StratosSetLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: StratosSetActivityAttributes.self) { context in
             SetLockScreenView(state: context.state)
+                // No implicit animation on a content update. The system
+                // crossfades a changed Live Activity by default, which on a
+                // stepper reads as the number taking a moment to decide — the
+                // tap is already the feedback, and the number should simply be
+                // the new one.
+                .transaction { $0.animation = nil }
                 .activityBackgroundTint(Color.stratosStone)
                 .activitySystemActionForegroundColor(Color.stratosMoss)
         } dynamicIsland: { context in
@@ -62,6 +68,10 @@ private struct SetLockScreenView: View {
 
             HStack(alignment: .center, spacing: 12) {
                 TargetControls(state: state)
+                    // The numbers and their buttons get the width first; the
+                    // Done button is a fixed 56 and needs no share of what is
+                    // left over.
+                    .layoutPriority(1)
                 Spacer(minLength: 8)
                 DoneButton(state: state)
             }
@@ -88,7 +98,7 @@ private struct TargetControls: View {
                 .monospacedDigit()
                 .foregroundStyle(Color.stratosMoss)
         } else {
-            VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .top, spacing: 26) {
                 ForEach(fields) { field in
                     TargetStepper(setId: state.current.setId, field: field)
                 }
@@ -97,7 +107,12 @@ private struct TargetControls: View {
     }
 }
 
-/// One adjustable number, with a tap either side of it.
+/// One adjustable number, with its two taps beneath it.
+///
+/// Value over controls rather than value between them: a lock screen is read at
+/// a glance and tapped with a thumb, and stacking this way lets the numbers sit
+/// side by side to be compared while giving each button a full row of its own
+/// to be hit in.
 ///
 /// The buttons carry a direction and not a number: how far a tap moves the
 /// value is the app's rule, resolved into the plan long before the phone was
@@ -107,12 +122,10 @@ private struct TargetStepper: View {
     let field: StepperField
 
     var body: some View {
-        HStack(spacing: 8) {
-            StepButton(setId: setId, field: field, direction: -1, symbol: "minus")
-
+        VStack(spacing: 6) {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(field.text)
-                    .font(.system(size: 26, weight: .semibold, design: .rounded))
+                    .font(.system(size: 28, weight: .semibold, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(Color.stratosMoss)
                 if !field.unit.isEmpty {
@@ -121,9 +134,16 @@ private struct TargetStepper: View {
                         .foregroundStyle(Color.stratosMuted)
                 }
             }
-            .frame(minWidth: 80, alignment: .leading)
+            // Never truncated. Two digits of reps is normal, and the unit
+            // eliding to "..." is the row giving up its width to the Done
+            // button rather than there being no room for it.
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
 
-            StepButton(setId: setId, field: field, direction: 1, symbol: "plus")
+            HStack(spacing: 8) {
+                StepButton(setId: setId, field: field, direction: -1, symbol: "minus")
+                StepButton(setId: setId, field: field, direction: 1, symbol: "plus")
+            }
         }
     }
 }

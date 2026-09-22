@@ -364,6 +364,22 @@ showing, and nothing is double-logged. Then force-quit from the lock screen
 before reopening: the activity goes, but the journal does not, and the sets
 still land on the next launch.
 
+Two things about how a stepper tap *feels*, both measured on the device rather
+than guessed at. The work in `adjustSet` is about 10ms end to end — 3ms to write
+the journal, 5-8ms for `activity.update` to return — so nothing in this codebase
+is what makes a tap feel slow. What did make it feel slow was the implicit
+animation: the system crossfades a Live Activity whose content changed, which on
+a stepper reads as the number hesitating before committing. `SetLockScreenView`
+carries `.transaction { $0.animation = nil }` to turn that off. If a tap ever
+feels laggy again, measure before optimising anything here; the remaining wait is
+iOS dispatching the intent into the app process, which is not ours to shorten.
+
+To measure it: `Logger` output does **not** reach `devicectl --console`, which
+only carries stdout, so temporary timing has to go through `print`. Attach with
+`xcrun devicectl device process launch --device <id> --console --terminate-existing
+com.daimodus.stratos`; `log stream` has no `--device` option on current macOS,
+and zsh has its own `log` builtin that shadows `/usr/bin/log`.
+
 For the steppers, also locked: tap minus on reps a few times (the number moves
 on the activity straight away, and stops rather than going to zero), tap plus on
 weight, then Done. Open the app: the set is ticked with the numbers you stepped
