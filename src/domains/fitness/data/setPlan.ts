@@ -12,6 +12,7 @@ import {
   type RecommendedStrengthSetPerformance,
   type StrengthRecommendationAction,
 } from "./recommendations";
+import type { SetTarget } from "./setTarget";
 
 /**
  * How a planned set is performed, which decides what a suggestion can even mean.
@@ -42,10 +43,7 @@ export interface SetPlanEntry {
    * from a program has its numbers already and no progression to recommend, and
    * a Done button that logged a suggestion would have nothing to log for it.
    */
-  targetWeight: number | null;
-  targetReps: number | null;
-  targetTimeSeconds: number | null;
-  targetDistanceKm: number | null;
+  target: SetTarget;
   action: StrengthRecommendationAction;
   completed: boolean;
 }
@@ -132,14 +130,16 @@ export const buildSetPlan = ({
         suggestedWeight: kind === "strength" ? recommendation?.weight ?? null : null,
         suggestedReps: kind === "strength" ? recommendation?.reps ?? null : null,
         suggestedTimeSeconds,
-        targetWeight:
-          kind === "strength" ? recommendation?.weight ?? storedWeight : storedWeight,
-        targetReps: kind === "strength" ? recommendation?.reps ?? storedReps : null,
-        // Every target falls back to what the set already holds, time included:
-        // only the strength branch above can leave the suggestion empty while
-        // the set itself carries a duration.
-        targetTimeSeconds: suggestedTimeSeconds ?? storedTimeSeconds,
-        targetDistanceKm: storedDistanceKm,
+        target: {
+          weight:
+            kind === "strength" ? recommendation?.weight ?? storedWeight : storedWeight,
+          reps: kind === "strength" ? recommendation?.reps ?? storedReps : null,
+          // Every target falls back to what the set already holds, time
+          // included: only the strength branch above can leave the suggestion
+          // empty while the set itself carries a duration.
+          timeSeconds: suggestedTimeSeconds ?? storedTimeSeconds,
+          distanceKm: storedDistanceKm,
+        },
         action: recommendation?.action ?? "none",
         completed: set.completed,
       });

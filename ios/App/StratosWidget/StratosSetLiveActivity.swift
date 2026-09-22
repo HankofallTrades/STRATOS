@@ -24,7 +24,7 @@ struct StratosSetLiveActivity: Widget {
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     HStack(alignment: .center) {
-                        Text(context.state.current.target)
+                        Text(context.state.current.targetLine)
                             .font(.title2.weight(.semibold).monospacedDigit())
                             .foregroundStyle(Color.stratosMoss)
                         Spacer(minLength: 12)
@@ -63,7 +63,7 @@ private struct SetLockScreenView: View {
                         .foregroundStyle(Color.stratosMuted)
                 }
 
-                Text(state.current.target)
+                Text(state.current.targetLine)
                     .font(.system(size: 34, weight: .semibold, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(Color.stratosMoss)
@@ -112,15 +112,15 @@ private extension StratosSetActivityAttributes.ContentState {
 private extension StratosPlannedSet {
     /// What this set is aiming at, as one line, or its own number when there is
     /// nothing to show. Formatting only: the numbers arrive decided.
-    var target: String {
+    var targetLine: String {
         switch kind {
         case "strength":
-            let reps = targetReps.map { "\($0) reps" }
-            let weight = targetWeight.map { "\(formatWeight($0)) kg" }
+            let reps = target.reps.map { "\($0) reps" }
+            let weight = target.weight.map { "\(formatWeight($0)) kg" }
             let parts = [reps, weight].compactMap { $0 }
             return parts.isEmpty ? "Set \(setNumber)" : parts.joined(separator: " × ")
         case "time", "cardio":
-            guard let seconds = targetTimeSeconds else { return "Set \(setNumber)" }
+            guard let seconds = target.timeSeconds else { return "Set \(setNumber)" }
             return formatDuration(seconds)
         default:
             // A kind this build does not know: an activity can outlive the app

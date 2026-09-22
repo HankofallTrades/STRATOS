@@ -1,6 +1,45 @@
 import ActivityKit
 import Foundation
 
+/// What logging a set right now would record. Mirrors `SetTarget` in
+/// `src/domains/fitness/data/setTarget.ts`, and is the one place these four
+/// numbers are named on this side of the bridge: the plan carries it in, the
+/// journal carries it back out.
+///
+/// No compiler spans the two languages, so `setTargetContract.test.ts` reads
+/// this declaration and fails when the field sets disagree. Keep the stored
+/// properties one per line for it.
+struct StratosSetTarget: Codable, Hashable {
+    let reps: Int?
+    let weight: Double?
+    let timeSeconds: Int?
+    let distanceKm: Double?
+
+    /// Written out by hand so an absent target crosses as an explicit `null`
+    /// rather than a missing key. The synthesised encoding uses
+    /// `encodeIfPresent` and would drop it, and the replay's refusal rules turn
+    /// on the difference between "no target" and "a target of zero" — a dropped
+    /// key reads as the former on a field that held the latter.
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeExplicit(reps, forKey: .reps)
+        try container.encodeExplicit(weight, forKey: .weight)
+        try container.encodeExplicit(timeSeconds, forKey: .timeSeconds)
+        try container.encodeExplicit(distanceKm, forKey: .distanceKm)
+    }
+}
+
+private extension KeyedEncodingContainer {
+    /// `encode`, but `nil` becomes a null rather than nothing at all.
+    mutating func encodeExplicit<Value: Encodable>(_ value: Value?, forKey key: Key) throws {
+        if let value {
+            try encode(value, forKey: key)
+        } else {
+            try encodeNil(forKey: key)
+        }
+    }
+}
+
 /// One set of the session as the lock screen sees it: what to show, and what a
 /// Done button would log. Mirrors `LiveActivitySet` in
 /// `src/domains/fitness/data/liveActivityState.ts`.
@@ -19,10 +58,8 @@ struct StratosPlannedSet: Codable, Hashable {
     let setNumber: Int
     /// 1-based index across the whole session — the "7" in "set 7 of 12".
     let position: Int
-    let targetReps: Int?
-    let targetWeight: Double?
-    let targetTimeSeconds: Int?
-    let targetDistanceKm: Double?
+    /// What a Done tap would log, resolved on the web before it got here.
+    let target: StratosSetTarget
     let completed: Bool
     /// Whether the set has enough of a target to be logged at all. Decided on
     /// the web, by the rule that would refuse it on reopen — a Done button the

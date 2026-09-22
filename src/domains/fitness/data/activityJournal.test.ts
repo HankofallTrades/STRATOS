@@ -4,6 +4,7 @@ import type { CardioSet, StrengthSet, Workout, WorkoutExercise } from "@/lib/typ
 import workoutReducer, { setCompleted, startWorkout } from "@/state/workout/workoutSlice";
 
 import { replayActivityJournal, type ActivityJournalEntry } from "./activityJournal";
+import type { SetTarget } from "./setTarget";
 
 // Replay is the seam the whole lock screen rests on: what the phone recorded
 // while the webview was asleep becomes what the workout screen shows. These
@@ -27,19 +28,28 @@ const squat = (sets: StrengthSet[]): WorkoutExercise => ({
   sets,
 });
 
-const entry = (overrides: Partial<ActivityJournalEntry> = {}): ActivityJournalEntry => ({
-  id: "journal-1",
-  kind: "set-completed",
-  setKind: "strength",
-  setId: "set-1",
-  workoutExerciseId: "we-1",
-  at: "2026-09-21T10:00:00.000Z",
-  reps: 5,
-  weight: 100,
-  timeSeconds: null,
-  distanceKm: null,
-  ...overrides,
-});
+/** Targets are given flat here, since every test is about one or two of them. */
+const entry = (
+  overrides: Partial<Omit<ActivityJournalEntry, "target">> & Partial<SetTarget> = {}
+): ActivityJournalEntry => {
+  const { reps, weight, timeSeconds, distanceKm, ...rest } = overrides;
+
+  return {
+    id: "journal-1",
+    kind: "set-completed",
+    setKind: "strength",
+    setId: "set-1",
+    workoutExerciseId: "we-1",
+    at: "2026-09-21T10:00:00.000Z",
+    target: {
+      reps: reps === undefined ? 5 : reps,
+      weight: weight === undefined ? 100 : weight,
+      timeSeconds: timeSeconds ?? null,
+      distanceKm: distanceKm ?? null,
+    },
+    ...rest,
+  };
+};
 
 /** Run a journal the way the app does: replay, then dispatch what it decided. */
 const workoutAfterReplay = (

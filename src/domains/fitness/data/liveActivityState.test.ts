@@ -1,30 +1,41 @@
 import { describe, expect, it } from "vitest";
 
 import type { SetPlan, SetPlanEntry } from "./setPlan";
+import type { SetTarget } from "./setTarget";
 import {
   areLiveActivityPlansEqual,
   buildLiveActivityPlan,
   currentLiveActivitySet,
 } from "./liveActivityState";
 
-const entry = (overrides: Partial<SetPlanEntry> & { position: number }): SetPlanEntry => ({
-  setId: `set-${overrides.position}`,
-  workoutExerciseId: "we-1",
-  exerciseId: "ex-1",
-  exerciseName: "Bench Press",
-  kind: "strength",
-  setNumber: overrides.position,
-  suggestedWeight: 80,
-  suggestedReps: 8,
-  suggestedTimeSeconds: null,
-  targetWeight: 80,
-  targetReps: 8,
-  targetTimeSeconds: null,
-  targetDistanceKm: null,
-  action: "none",
-  completed: false,
-  ...overrides,
-});
+/** Targets are given flat here, since every test is about one or two of them. */
+type EntryOverrides = Partial<Omit<SetPlanEntry, "target">> &
+  Partial<SetTarget> & { position: number };
+
+const entry = (overrides: EntryOverrides): SetPlanEntry => {
+  const { reps, weight, timeSeconds, distanceKm, ...rest } = overrides;
+
+  return {
+    setId: `set-${overrides.position}`,
+    workoutExerciseId: "we-1",
+    exerciseId: "ex-1",
+    exerciseName: "Bench Press",
+    kind: "strength",
+    setNumber: overrides.position,
+    suggestedWeight: 80,
+    suggestedReps: 8,
+    suggestedTimeSeconds: null,
+    action: "none",
+    completed: false,
+    ...rest,
+    target: {
+      weight: weight === undefined ? 80 : weight,
+      reps: reps === undefined ? 8 : reps,
+      timeSeconds: timeSeconds ?? null,
+      distanceKm: distanceKm ?? null,
+    },
+  };
+};
 
 const plan = (...entries: SetPlanEntry[]): SetPlan => entries;
 
@@ -47,8 +58,8 @@ describe("buildLiveActivityPlan", () => {
           exerciseName: "Romanian Deadlift",
           suggestedWeight: null,
           suggestedReps: null,
-          targetWeight: 100,
-          targetReps: 6,
+          weight: 100,
+          reps: 6,
         })
       )
     );
@@ -60,10 +71,7 @@ describe("buildLiveActivityPlan", () => {
       kind: "strength",
       setNumber: 1,
       position: 1,
-      targetReps: 6,
-      targetWeight: 100,
-      targetTimeSeconds: null,
-      targetDistanceKm: null,
+      target: { reps: 6, weight: 100, timeSeconds: null, distanceKm: null },
       completed: false,
       loggable: true,
     });
@@ -76,14 +84,14 @@ describe("buildLiveActivityPlan", () => {
           position: 1,
           kind: "time",
           exerciseName: "Plank",
-          targetReps: null,
-          targetWeight: 0,
-          targetTimeSeconds: 60,
+          reps: null,
+          weight: 0,
+          timeSeconds: 60,
         })
       )
     );
 
-    expect(set).toMatchObject({ kind: "time", targetReps: null, targetTimeSeconds: 60 });
+    expect(set).toMatchObject({ kind: "time", target: { reps: null, timeSeconds: 60 } });
   });
 });
 
@@ -95,27 +103,27 @@ describe("buildLiveActivityPlan — what can be logged", () => {
     buildLiveActivityPlan(plan(entry({ position: 1, ...overrides })))[0].loggable;
 
   it("offers a strength set with reps behind it", () => {
-    expect(loggable({ targetReps: 8 })).toBe(true);
+    expect(loggable({ reps: 8 })).toBe(true);
   });
 
   it("refuses a strength set with no reps, so a fresh unprogrammed set has no button", () => {
-    expect(loggable({ targetReps: null })).toBe(false);
-    expect(loggable({ targetReps: 0 })).toBe(false);
+    expect(loggable({ reps: null })).toBe(false);
+    expect(loggable({ reps: 0 })).toBe(false);
   });
 
   it("offers a strength set with reps but no weight — an unloaded set is a real set", () => {
-    expect(loggable({ targetReps: 8, targetWeight: null })).toBe(true);
+    expect(loggable({ reps: 8, weight: null })).toBe(true);
   });
 
   it("turns on the hold for a timed set, not on its reps", () => {
-    expect(loggable({ kind: "time", targetReps: null, targetTimeSeconds: 45 })).toBe(true);
-    expect(loggable({ kind: "time", targetReps: 8, targetTimeSeconds: null })).toBe(false);
-    expect(loggable({ kind: "time", targetReps: null, targetTimeSeconds: 0 })).toBe(false);
+    expect(loggable({ kind: "time", reps: null, timeSeconds: 45 })).toBe(true);
+    expect(loggable({ kind: "time", reps: 8, timeSeconds: null })).toBe(false);
+    expect(loggable({ kind: "time", reps: null, timeSeconds: 0 })).toBe(false);
   });
 
   it("turns on the duration for a cardio set", () => {
-    expect(loggable({ kind: "cardio", targetReps: null, targetTimeSeconds: 600 })).toBe(true);
-    expect(loggable({ kind: "cardio", targetReps: null, targetTimeSeconds: null })).toBe(false);
+    expect(loggable({ kind: "cardio", reps: null, timeSeconds: 600 })).toBe(true);
+    expect(loggable({ kind: "cardio", reps: null, timeSeconds: null })).toBe(false);
   });
 });
 
@@ -150,8 +158,8 @@ describe("currentLiveActivitySet", () => {
           setNumber: 1,
           exerciseName: "Romanian Deadlift",
           workoutExerciseId: "we-2",
-          targetWeight: 100,
-          targetReps: 6,
+          weight: 100,
+          reps: 6,
         })
       )
     );
@@ -160,8 +168,7 @@ describe("currentLiveActivitySet", () => {
       exerciseName: "Romanian Deadlift",
       setNumber: 1,
       position: 3,
-      targetWeight: 100,
-      targetReps: 6,
+      target: { weight: 100, reps: 6 },
     });
   });
 
@@ -202,7 +209,7 @@ describe("areLiveActivityPlansEqual", () => {
 
   it("sees a moved target as a change even when the set has not", () => {
     const reweighted = buildLiveActivityPlan(
-      plan(entry({ position: 1, targetWeight: 82.5 }), entry({ position: 2 }))
+      plan(entry({ position: 1, weight: 82.5 }), entry({ position: 2 }))
     );
 
     expect(areLiveActivityPlansEqual(base, reweighted)).toBe(false);

@@ -5,6 +5,7 @@ import {
   type CompletedSetKind,
   type SetCompletionRejection,
 } from "./setCompletion";
+import type { SetTarget } from "./setTarget";
 
 // The Activity Journal: what the user did on the lock screen while the webview
 // was suspended, recorded natively and replayed here when the app comes back.
@@ -29,14 +30,11 @@ export interface ActivityJournalEntry {
   /** When the button was pressed, ISO-8601. */
   at: string;
   /**
-   * The targets the lock screen was showing when it was pressed. What the user
+   * The target the lock screen was showing when it was pressed. What the user
    * saw is what gets logged: the app may have moved on since, but it was asleep
    * and the journal was not.
    */
-  reps: number | null;
-  weight: number | null;
-  timeSeconds: number | null;
-  distanceKm: number | null;
+  target: SetTarget;
 }
 
 /** One completion to apply, in the shape the `setCompleted` action takes. */
@@ -130,11 +128,11 @@ export const replayActivityJournal = ({
       set,
       kind: entry.setKind,
       draft: {
-        weight: entry.weight,
-        reps: entry.reps,
-        time: entry.timeSeconds,
-        duration: entry.timeSeconds,
-        distance: entry.distanceKm,
+        weight: entry.target.weight,
+        reps: entry.target.reps,
+        time: entry.target.timeSeconds,
+        duration: entry.target.timeSeconds,
+        distance: entry.target.distanceKm,
       },
       previousPerformance: null,
     });

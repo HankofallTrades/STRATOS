@@ -65,7 +65,7 @@ public class StratosLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func journal(_ call: CAPPluginCall) {
-        call.resolve(["entries": store.journal().map(\.bridgePayload)])
+        call.resolve(["entries": store.journal().compactMap(\.bridgePayload)])
     }
 
     @objc func clearJournal(_ call: CAPPluginCall) {
@@ -80,9 +80,9 @@ public class StratosLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
 
     /// Reads the Set Plan off the bridge.
     ///
-    /// Round-tripping through `JSONSerialization` rather than unpacking eleven
+    /// Round-tripping through `JSONSerialization` rather than unpacking the
     /// fields by hand: the plan is plain JSON on both sides, and a hand-written
-    /// guard here would be a fourth place to remember when a field is added. A
+    /// guard here would be one more place to remember when a field is added. A
     /// plan that does not decode is a programming error on the web side, so it
     /// is refused rather than half-read into a lock screen that would then
     /// present the gaps as real.
@@ -98,22 +98,20 @@ public class StratosLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
 private extension StratosActivityJournalEntry {
     /// The entry as the webview's `ActivityJournalEntry` expects it.
     ///
-    /// Built by hand so an absent target crosses as an explicit `null` rather
-    /// than a missing key: the replay's refusal rules turn on the difference
-    /// between "no target" and "a target of zero", and a dropped key would
-    /// quietly read as the former on a field that had the latter.
-    var bridgePayload: [String: Any] {
-        [
-            "id": id,
-            "kind": kind,
-            "setKind": setKind,
-            "setId": setId,
-            "workoutExerciseId": workoutExerciseId,
-            "at": at,
-            "reps": reps ?? NSNull(),
-            "weight": weight ?? NSNull(),
-            "timeSeconds": timeSeconds ?? NSNull(),
-            "distanceKm": distanceKm ?? NSNull()
-        ]
+    /// The mirror of `decodePlan`: one encode rather than a field list, so
+    /// adding a field to the entry cannot leave a hand-written line behind that
+    /// silently drops it. Absent targets still cross as explicit nulls —
+    /// `StratosSetTarget` encodes them that way, which is what the replay's
+    /// refusal rules need.
+    ///
+    /// An entry that will not encode is dropped rather than half-sent: a
+    /// partial entry would replay as a set logged with numbers the user never
+    /// saw.
+    var bridgePayload: [String: Any]? {
+        guard let data = try? JSONEncoder().encode(self),
+              let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+        return payload
     }
 }

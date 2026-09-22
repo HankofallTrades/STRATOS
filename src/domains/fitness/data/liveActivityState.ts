@@ -1,4 +1,5 @@
 import type { SetPlan, SetPlanEntry, SetPlanEntryKind } from "./setPlan";
+import { areSetTargetsEqual, type SetTarget } from "./setTarget";
 
 /**
  * One set of the session as the lock screen sees it: what to show, and what a
@@ -17,10 +18,8 @@ export interface LiveActivitySet {
   setNumber: number;
   /** 1-based index across the whole session — the "7" in "set 7 of 12". */
   position: number;
-  targetReps: number | null;
-  targetWeight: number | null;
-  targetTimeSeconds: number | null;
-  targetDistanceKm: number | null;
+  /** What a Done tap would log, carried over from the Set Plan unchanged. */
+  target: SetTarget;
   completed: boolean;
   /**
    * Whether this set has enough of a target to be logged at all.
@@ -49,8 +48,8 @@ const isLoggableTarget = (value: number | null): boolean => value !== null && va
  */
 const isLoggable = (entry: SetPlanEntry): boolean =>
   entry.kind === "strength"
-    ? isLoggableTarget(entry.targetReps)
-    : isLoggableTarget(entry.targetTimeSeconds);
+    ? isLoggableTarget(entry.target.reps)
+    : isLoggableTarget(entry.target.timeSeconds);
 
 /**
  * The whole session, handed over rather than one set at a time.
@@ -70,10 +69,7 @@ export const buildLiveActivityPlan = (setPlan: SetPlan): LiveActivityPlan =>
     kind: entry.kind,
     setNumber: entry.setNumber,
     position: entry.position,
-    targetReps: entry.targetReps,
-    targetWeight: entry.targetWeight,
-    targetTimeSeconds: entry.targetTimeSeconds,
-    targetDistanceKm: entry.targetDistanceKm,
+    target: entry.target,
     completed: entry.completed,
     loggable: isLoggable(entry),
   }));
@@ -121,10 +117,7 @@ export const areLiveActivityPlansEqual = (
       entry.kind === other.kind &&
       entry.setNumber === other.setNumber &&
       entry.position === other.position &&
-      entry.targetReps === other.targetReps &&
-      entry.targetWeight === other.targetWeight &&
-      entry.targetTimeSeconds === other.targetTimeSeconds &&
-      entry.targetDistanceKm === other.targetDistanceKm &&
+      areSetTargetsEqual(entry.target, other.target) &&
       entry.completed === other.completed &&
       entry.loggable === other.loggable
     );

@@ -17,10 +17,8 @@ struct StratosActivityJournalEntry: Codable, Hashable {
     let workoutExerciseId: String
     /// When the button was pressed, ISO-8601.
     let at: String
-    let reps: Int?
-    let weight: Double?
-    let timeSeconds: Int?
-    let distanceKm: Double?
+    /// What the lock screen was showing when the button was pressed.
+    let target: StratosSetTarget
 
     init(completing set: StratosPlannedSet, at date: Date = Date()) {
         self.id = UUID().uuidString
@@ -29,10 +27,7 @@ struct StratosActivityJournalEntry: Codable, Hashable {
         self.setId = set.setId
         self.workoutExerciseId = set.workoutExerciseId
         self.at = ISO8601DateFormatter().string(from: date)
-        self.reps = set.targetReps
-        self.weight = set.targetWeight
-        self.timeSeconds = set.targetTimeSeconds
-        self.distanceKm = set.targetDistanceKm
+        self.target = set.target
     }
 }
 

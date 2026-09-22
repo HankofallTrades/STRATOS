@@ -128,6 +128,15 @@ otherwise the set as the workout already holds it. The workout screen renders
 suggestions; the lock screen shows and logs targets, because a Done button needs
 a number for every set, not only the ones with a recommendation.
 
+The target is one type, **`SetTarget`** (reps, weight, time, distance), embedded
+rather than restated by every hop it makes: the Set Plan entry, the Live Activity
+plan, the Activity Journal entry, and `StratosSetTarget` in Swift. Nothing in a
+target is optional in the "may be missing" sense — a field the plan resolved
+nothing for is an explicit `null`, and stays one across the bridge, because the
+completion rules read "no target" and "a target of zero" differently. No compiler
+spans the two languages, so `setTargetContract.test.ts` reads the Swift
+declaration and fails when the field sets drift apart.
+
 Which entry is *current* — the first one still open, and the last one once they
 all are — is stated twice: `currentLiveActivitySet` on the web, and
 `StratosActivityCursor` in Swift, which has to walk it after a Done tap with no
