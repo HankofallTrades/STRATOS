@@ -24,9 +24,7 @@ struct StratosSetLiveActivity: Widget {
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     HStack(alignment: .center) {
-                        Text(context.state.current.targetLine)
-                            .font(.title2.weight(.semibold).monospacedDigit())
-                            .foregroundStyle(Color.stratosMoss)
+                        TargetControls(state: context.state)
                         Spacer(minLength: 12)
                         DoneButton(state: context.state)
                     }
@@ -50,29 +48,122 @@ private struct SetLockScreenView: View {
     let state: StratosSetActivityAttributes.ContentState
 
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(state.current.exerciseName)
-                        .font(.headline)
-                        .foregroundStyle(Color.stratosMoss)
-                        .lineLimit(1)
-                    Spacer(minLength: 12)
-                    Text(state.setCount)
-                        .font(.subheadline.monospacedDigit())
-                        .foregroundStyle(Color.stratosMuted)
-                }
-
-                Text(state.current.targetLine)
-                    .font(.system(size: 34, weight: .semibold, design: .rounded))
-                    .monospacedDigit()
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(state.current.exerciseName)
+                    .font(.headline)
                     .foregroundStyle(Color.stratosMoss)
+                    .lineLimit(1)
+                Spacer(minLength: 12)
+                Text(state.setCount)
+                    .font(.subheadline.monospacedDigit())
+                    .foregroundStyle(Color.stratosMuted)
             }
 
-            DoneButton(state: state)
+            HStack(alignment: .center, spacing: 12) {
+                TargetControls(state: state)
+                Spacer(minLength: 8)
+                DoneButton(state: state)
+            }
         }
         .padding(16)
     }
+}
+
+/// What the set is aiming at: steppers while it can still be changed, one line
+/// once it cannot.
+///
+/// The two are the same information, so they are not shown together. A set that
+/// is logged, or that has no target worth logging, has nothing to step — and on
+/// a lock screen a control that does nothing is worse than no control.
+private struct TargetControls: View {
+    let state: StratosSetActivityAttributes.ContentState
+
+    var body: some View {
+        let fields = state.stepperFields
+
+        if fields.isEmpty {
+            Text(state.targetLine)
+                .font(.system(size: 34, weight: .semibold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(Color.stratosMoss)
+        } else {
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(fields) { field in
+                    TargetStepper(setId: state.current.setId, field: field)
+                }
+            }
+        }
+    }
+}
+
+/// One adjustable number, with a tap either side of it.
+///
+/// The buttons carry a direction and not a number: how far a tap moves the
+/// value is the app's rule, resolved into the plan long before the phone was
+/// locked.
+private struct TargetStepper: View {
+    let setId: String
+    let field: StepperField
+
+    var body: some View {
+        HStack(spacing: 8) {
+            StepButton(setId: setId, field: field, direction: -1, symbol: "minus")
+
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text(field.text)
+                    .font(.system(size: 26, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(Color.stratosMoss)
+                if !field.unit.isEmpty {
+                    Text(field.unit)
+                        .font(.caption)
+                        .foregroundStyle(Color.stratosMuted)
+                }
+            }
+            .frame(minWidth: 80, alignment: .leading)
+
+            StepButton(setId: setId, field: field, direction: 1, symbol: "plus")
+        }
+    }
+}
+
+private struct StepButton: View {
+    let setId: String
+    let field: StepperField
+    let direction: Int
+    let symbol: String
+
+    var body: some View {
+        Button(
+            intent: StratosAdjustSetIntent(
+                setId: setId,
+                field: field.field,
+                direction: direction
+            )
+        ) {
+            Image(systemName: symbol)
+                .font(.footnote.weight(.bold))
+                .foregroundStyle(Color.stratosMoss)
+                .frame(width: 34, height: 34)
+                .background(Color.stratosMoss.opacity(0.12), in: Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(
+            "\(direction > 0 ? "Increase" : "Decrease") \(field.accessibilityName)"
+        )
+    }
+}
+
+/// One stepper's worth of the current target, ready to draw.
+private struct StepperField: Identifiable {
+    /// A `SetTarget` field name, which is what the intent carries.
+    let field: String
+    let text: String
+    let unit: String
+    let accessibilityName: String
+
+    var id: String { field }
 }
 
 /// One tap to log the set the lock screen is showing.
@@ -107,26 +198,70 @@ private extension StratosSetActivityAttributes.ContentState {
     /// "Set 7 of 12" for the session, not for the exercise — on a locked phone
     /// the useful question is how much of the workout is left.
     var setCount: String { "Set \(current.position) of \(totalSets)" }
-}
 
-private extension StratosPlannedSet {
     /// What this set is aiming at, as one line, or its own number when there is
     /// nothing to show. Formatting only: the numbers arrive decided.
     var targetLine: String {
-        switch kind {
+        switch current.kind {
         case "strength":
             let reps = target.reps.map { "\($0) reps" }
             let weight = target.weight.map { "\(formatWeight($0)) kg" }
             let parts = [reps, weight].compactMap { $0 }
-            return parts.isEmpty ? "Set \(setNumber)" : parts.joined(separator: " × ")
+            return parts.isEmpty ? "Set \(current.setNumber)" : parts.joined(separator: " × ")
         case "time", "cardio":
-            guard let seconds = target.timeSeconds else { return "Set \(setNumber)" }
+            guard let seconds = target.timeSeconds else { return "Set \(current.setNumber)" }
             return formatDuration(seconds)
         default:
             // A kind this build does not know: an activity can outlive the app
             // that started it. Say only what is certainly true.
-            return "Set \(setNumber)"
+            return "Set \(current.setNumber)"
         }
+    }
+
+    /// The steppers to draw, in reading order, and none at all for a set that
+    /// cannot be changed any more.
+    ///
+    /// A field appears only when the plan gave it a step *and* the set has a
+    /// number to step from. Both halves matter: a hold has no reps to move, and
+    /// a set with no weight resolved would otherwise gain one out of nowhere.
+    var stepperFields: [StepperField] {
+        guard !isLogged, current.loggable else { return [] }
+
+        let step = current.adjustment.step
+        var fields: [StepperField] = []
+
+        if let reps = target.reps, step.reps != nil {
+            fields.append(
+                StepperField(
+                    field: StratosSetTargetField.reps,
+                    text: "\(reps)",
+                    unit: "reps",
+                    accessibilityName: "reps"
+                )
+            )
+        }
+        if let weight = target.weight, step.weight != nil {
+            fields.append(
+                StepperField(
+                    field: StratosSetTargetField.weight,
+                    text: formatWeight(weight),
+                    unit: "kg",
+                    accessibilityName: "weight"
+                )
+            )
+        }
+        if let seconds = target.timeSeconds, step.timeSeconds != nil {
+            fields.append(
+                StepperField(
+                    field: StratosSetTargetField.timeSeconds,
+                    text: formatDuration(seconds),
+                    unit: "",
+                    accessibilityName: current.kind == "cardio" ? "duration" : "hold time"
+                )
+            )
+        }
+
+        return fields
     }
 }
 

@@ -133,10 +133,18 @@ thing wherever a set goes. A number it could not resolve is absent rather than
 zero, and the two mean different things — a set with no reps cannot be logged at
 all, a set of zero reps is a number someone chose.
 
+An entry also carries a **`SetAdjustment`**: how far one lock-screen stepper tap
+moves each field of the target, and how far down it may go. Both halves are
+resolved on the web, because the step a tap produces is the app's rule about how
+weight and reps move — the same one the in-app stepper obeys — and the floor is
+the loggability rule seen from the other end: a set must not be steppable into
+something a Done tap would then fail to log.
+
 Which entry is *current* — the first one still open, and the last one once they
 all are — is stated twice: `currentLiveActivitySet` on the web, and
 `StratosActivityCursor` in Swift, which has to walk it after a Done tap with no
-webview to ask. The two must agree.
+webview to ask. The two must agree. So is the stepper arithmetic:
+`adjustSetTarget` on the web, `StratosSetAdjustment.applied` in Swift.
 
 _Avoid_: workout snapshot, session plan
 
@@ -150,9 +158,26 @@ state: it records that a button was pressed and what the lock screen was showing
 at the time, and `replayActivityJournal` decides what that is worth by running it
 through the same `completeSetFromDraft` rule the checkbox uses.
 
+An entry is either a **completion** or an **adjustment**, and the difference is
+only what the press was for: an adjustment replays as a value edit and leaves the
+set open, a completion logs it. A run of stepper taps on one set is one decision
+arrived at in stages, so replay keeps the last of them and drops it entirely when
+a completion followed, which already carries the same numbers.
+
 Replay is pure and idempotent — a set the workout already has completed is
 skipped — so the journal is cleared only *after* its completions are dispatched,
 and only through the last entry that was read. Failing that way round replays an
 entry twice, which costs nothing; the other way round loses a logged set.
+
+An adjustment to a set that has not been logged yet outlives the clear. It has
+to: the plan cannot carry it, because the web rebuilds a target from the
+suggestion on every workout change, so a cleared adjustment would put the
+suggested numbers back under a Done button the user has set to something else.
+It is dropped when its set is logged, or when the set leaves the plan.
+
+That makes the lock screen the authority on an adjusted, unlogged set: replay
+re-applies it on every foreground until the workout holds those numbers, so an
+in-app edit to such a set is overwritten on the next return. Logging the set,
+from either surface, ends it.
 
 _Avoid_: native event log, sync queue

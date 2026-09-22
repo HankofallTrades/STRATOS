@@ -9,7 +9,7 @@ import Foundation
 /// not a second workout state and must never start deciding.
 struct StratosActivityJournalEntry: Codable, Hashable {
     let id: String
-    /// `set-completed`. Adjusting reps and weight (I-20) joins this later.
+    /// `set-completed` or `set-adjusted`, per `StratosActivityJournalKind`.
     let kind: String
     /// How the set is performed, carried from the plan entry it was logged from.
     let setKind: String
@@ -20,15 +20,44 @@ struct StratosActivityJournalEntry: Codable, Hashable {
     /// What the lock screen was showing when the button was pressed.
     let target: StratosSetTarget
 
-    init(completing set: StratosPlannedSet, at date: Date = Date()) {
+    init(completing set: StratosPlannedSet, target: StratosSetTarget, at date: Date = Date()) {
+        self.init(kind: StratosActivityJournalKind.completed, set: set, target: target, at: date)
+    }
+
+    /// A stepper tap. It records where the numbers were left, not how far they
+    /// moved: the user agreed to a target, and a delta would have to be applied
+    /// to something on the far side to mean anything.
+    init(adjusting set: StratosPlannedSet, to target: StratosSetTarget, at date: Date = Date()) {
+        self.init(kind: StratosActivityJournalKind.adjusted, set: set, target: target, at: date)
+    }
+
+    private init(
+        kind: String,
+        set: StratosPlannedSet,
+        target: StratosSetTarget,
+        at date: Date
+    ) {
         self.id = UUID().uuidString
-        self.kind = "set-completed"
+        self.kind = kind
         self.setKind = set.kind
         self.setId = set.setId
         self.workoutExerciseId = set.workoutExerciseId
         self.at = ISO8601DateFormatter().string(from: date)
-        self.target = set.target
+        self.target = target
     }
+
+    /// Whether this entry says the set was logged, as opposed to merely
+    /// re-numbered. Every "has this set been dealt with" question turns on it,
+    /// and reading it as "the journal mentions this set" would make the first
+    /// stepper tap spend the Done button.
+    var isCompletion: Bool { kind == StratosActivityJournalKind.completed }
+}
+
+/// What a journal entry can be. Mirrors `ActivityJournalEntryKind` in
+/// `src/domains/fitness/data/activityJournal.ts`.
+enum StratosActivityJournalKind {
+    static let completed = "set-completed"
+    static let adjusted = "set-adjusted"
 }
 
 /// The keys carry the shape they were written in. Changing a stored type is
@@ -39,9 +68,10 @@ struct StratosActivityJournalEntry: Codable, Hashable {
 /// at most the sets logged on a lock screen that was never reopened before the
 /// update.
 private enum StratosActivityStoredShape {
-    /// v2: the four set targets moved into a nested `target` (I-41).
-    static let plan = "stratos.liveActivity.setPlan.v2"
-    static let journal = "stratos.liveActivity.journal.v2"
+    /// v3: the plan entry gained an `adjustment` the Done button cannot do
+    /// without, and the journal gained adjustment entries (I-20).
+    static let plan = "stratos.liveActivity.setPlan.v3"
+    static let journal = "stratos.liveActivity.journal.v3"
 }
 
 /// Where the Set Plan and the Activity Journal live between a locked phone and
@@ -88,10 +118,25 @@ struct StratosActivityStore {
     /// The web names the last entry it replayed rather than clearing the lot,
     /// because a Done tap can land between the read and the clear. An `id` that
     /// is no longer here has already been cleared, so nothing happens.
+    ///
+    /// One exception outlives the clear: an adjustment to a set that has not
+    /// been logged yet. It is what the lock screen shows that set as, and the
+    /// plan cannot carry it — the web rebuilds a target from the suggestion
+    /// every time the workout changes, so a cleared adjustment means the next
+    /// sync quietly puts the suggested numbers back under a Done button the
+    /// user thinks says 8. It is dropped as soon as its set is logged, and
+    /// dropped with the session when the set leaves the plan.
     func clearJournal(throughId id: String) {
         let entries = journal()
         guard let index = entries.firstIndex(where: { $0.id == id }) else { return }
-        encode(Array(entries[entries.index(after: index)...]), forKey: Self.journalKey)
+
+        let logged = Set(entries.filter(\.isCompletion).map(\.setId))
+        let open = Set(plan().filter { !$0.completed }.map(\.setId))
+        let held = entries[...index].filter {
+            !$0.isCompletion && open.contains($0.setId) && !logged.contains($0.setId)
+        }
+
+        encode(held + Array(entries[entries.index(after: index)...]), forKey: Self.journalKey)
     }
 
     private func decode<Value: Decodable>(_ key: String) -> [Value] {
@@ -128,11 +173,25 @@ enum StratosActivityCursor {
         journal: [StratosActivityJournalEntry]
     ) -> StratosPlannedSet? {
         guard !plan.isEmpty else { return nil }
-        let logged = Set(journal.map(\.setId))
+        let logged = Set(journal.filter(\.isCompletion).map(\.setId))
         // The fallback can hand back a set that *is* logged. That is the point
         // — the lock screen holds on the last set rather than going blank — so
         // callers must not read "current" as "still open".
         return plan.first { !$0.completed && !logged.contains($0.setId) } ?? plan.last
+    }
+
+    /// The numbers the lock screen should be showing for a set: what the plan
+    /// resolved, moved by whatever its steppers have been tapped to since.
+    ///
+    /// The last entry naming the set wins, because each one records where the
+    /// numbers were left rather than how far they moved. A completion is read
+    /// the same way as an adjustment here — it too is a record of what was on
+    /// screen — so a logged set goes on showing what was logged.
+    static func target(
+        for set: StratosPlannedSet,
+        journal: [StratosActivityJournalEntry]
+    ) -> StratosSetTarget {
+        journal.last { $0.setId == set.setId }?.target ?? set.target
     }
 
     static func contentState(
@@ -143,8 +202,10 @@ enum StratosActivityCursor {
 
         return .init(
             current: current,
+            target: target(for: current, journal: journal),
             totalSets: plan.count,
-            isLogged: current.completed || journal.contains { $0.setId == current.setId }
+            isLogged: current.completed
+                || journal.contains { $0.setId == current.setId && $0.isCompletion }
         )
     }
 }

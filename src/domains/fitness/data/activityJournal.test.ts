@@ -1,7 +1,18 @@
 import { describe, expect, it } from "vitest";
 
-import type { CardioSet, StrengthSet, Workout, WorkoutExercise } from "@/lib/types/workout";
-import workoutReducer, { setCompleted, startWorkout } from "@/state/workout/workoutSlice";
+import {
+  isCardioSet,
+  type CardioSet,
+  type StrengthSet,
+  type Workout,
+  type WorkoutExercise,
+} from "@/lib/types/workout";
+import workoutReducer, {
+  setCompleted,
+  startWorkout,
+  updateCardioSet,
+  updateSet,
+} from "@/state/workout/workoutSlice";
 
 import { replayActivityJournal, type ActivityJournalEntry } from "./activityJournal";
 import type { SetTarget } from "./setTarget";
@@ -58,13 +69,36 @@ const workoutAfterReplay = (
 ): Workout => {
   let state = workoutReducer(undefined, startWorkout({ initialExercises: exercises }));
 
-  const { completions } = replayActivityJournal({
+  const { completions, adjustments } = replayActivityJournal({
     entries,
     workout: state.currentWorkout,
   });
 
   for (const completion of completions) {
     state = workoutReducer(state, setCompleted(completion));
+  }
+
+  // The same two dispatches `useWorkoutLiveActivity` makes, in the same order:
+  // an adjustment is a value edit, so it goes through the ordinary update
+  // actions rather than anything the lock screen owns.
+  for (const { workoutExerciseId, adjustedSet } of adjustments) {
+    state = workoutReducer(
+      state,
+      isCardioSet(adjustedSet)
+        ? updateCardioSet({
+            workoutExerciseId,
+            setId: adjustedSet.id,
+            time: adjustedSet.time,
+            distance_km: adjustedSet.distance_km,
+          })
+        : updateSet({
+            workoutExerciseId,
+            setId: adjustedSet.id,
+            weight: adjustedSet.weight,
+            reps: adjustedSet.reps,
+            time: adjustedSet.time,
+          })
+    );
   }
 
   return state.currentWorkout!;
@@ -255,5 +289,130 @@ describe("replayActivityJournal", () => {
     });
 
     expect(replay.completions).toEqual([]);
+  });
+
+  // The steppers are the other half of the lock screen: a set logged at the
+  // numbers the plan suggested is the easy case, and the one that matters is
+  // the set where the bar felt heavy and eight reps was what happened.
+  it("logs the adjusted numbers when the set was stepped and then completed", () => {
+    const workout = workoutAfterReplay(
+      [
+        entry({ id: "journal-1", kind: "set-adjusted", reps: 9, weight: 100 }),
+        entry({ id: "journal-2", kind: "set-adjusted", reps: 8, weight: 100 }),
+        entry({ id: "journal-3", kind: "set-completed", reps: 8, weight: 100 }),
+      ],
+      [squat([squatSet("set-1")])]
+    );
+
+    expect(workout.exercises[0].sets[0]).toMatchObject({
+      reps: 8,
+      weight: 100,
+      completed: true,
+    });
+  });
+
+  it("does not edit a set twice when its adjustment was followed by a Done", () => {
+    const replay = replayActivityJournal({
+      entries: [
+        entry({ id: "journal-1", kind: "set-adjusted", reps: 8 }),
+        entry({ id: "journal-2", kind: "set-completed", reps: 8 }),
+      ],
+      workout: workoutReducer(
+        undefined,
+        startWorkout({ initialExercises: [squat([squatSet("set-1")])] })
+      ).currentWorkout,
+    });
+
+    expect(replay.completions).toHaveLength(1);
+    expect(replay.adjustments).toEqual([]);
+  });
+
+  it("keeps the numbers of a set that was stepped and never logged", () => {
+    const workout = workoutAfterReplay(
+      [entry({ kind: "set-adjusted", reps: 12, weight: 92.5 })],
+      [squat([squatSet("set-1")])]
+    );
+
+    expect(workout.exercises[0].sets[0]).toMatchObject({
+      reps: 12,
+      weight: 92.5,
+      completed: false,
+    });
+  });
+
+  it("keeps the last of a run of stepper taps, not each of them", () => {
+    const replay = replayActivityJournal({
+      entries: [
+        entry({ id: "journal-1", kind: "set-adjusted", weight: 100 }),
+        entry({ id: "journal-2", kind: "set-adjusted", weight: 101 }),
+        entry({ id: "journal-3", kind: "set-adjusted", weight: 102 }),
+      ],
+      workout: workoutReducer(
+        undefined,
+        startWorkout({ initialExercises: [squat([squatSet("set-1")])] })
+      ).currentWorkout,
+    });
+
+    expect(replay.adjustments).toHaveLength(1);
+    expect(replay.adjustments[0].adjustedSet).toMatchObject({ weight: 102 });
+  });
+
+  it("keeps an adjusted hold uncompleted, with the time it was left at", () => {
+    const workout = workoutAfterReplay(
+      [entry({ kind: "set-adjusted", setKind: "time", reps: null, weight: 0, timeSeconds: 50 })],
+      [squat([squatSet("set-1")])]
+    );
+
+    expect(workout.exercises[0].sets[0]).toMatchObject({
+      time: { hours: 0, minutes: 0, seconds: 50 },
+      completed: false,
+    });
+  });
+
+  // The user stepped a set the app had meanwhile logged. The logged numbers are
+  // the ones that were agreed to; an adjustment cannot quietly overwrite them.
+  it("leaves a set the app already logged alone when an adjustment names it", () => {
+    const replay = replayActivityJournal({
+      entries: [entry({ kind: "set-adjusted", reps: 3 })],
+      workout: workoutReducer(
+        undefined,
+        startWorkout({
+          initialExercises: [squat([{ ...squatSet("set-1", true), weight: 80, reps: 8 }])],
+        })
+      ).currentWorkout,
+    });
+
+    expect(replay.adjustments).toEqual([]);
+    expect(replay.skipped[0].reason).toBe("already-completed");
+  });
+
+  // An adjustment outlives the clear, because it is what the lock screen shows
+  // the set as until the set is logged. So it is replayed on every foreground,
+  // and has to settle: once the workout holds those numbers there is nothing
+  // left to say, and re-dispatching would churn the screen on every return.
+  it("stops re-applying an adjustment once the workout holds its numbers", () => {
+    const entries = [entry({ kind: "set-adjusted", reps: 7, weight: 90 })];
+    const exercises = [squat([squatSet("set-1")])];
+
+    const first = workoutAfterReplay(entries, exercises);
+    expect(first.exercises[0].sets[0]).toMatchObject({
+      reps: 7,
+      weight: 90,
+      completed: false,
+    });
+
+    const second = replayActivityJournal({
+      entries,
+      workout: workoutReducer(
+        undefined,
+        startWorkout({
+          initialExercises: [
+            { ...exercises[0], sets: [first.exercises[0].sets[0] as StrengthSet] },
+          ],
+        })
+      ).currentWorkout,
+    });
+
+    expect(second.adjustments).toEqual([]);
   });
 });

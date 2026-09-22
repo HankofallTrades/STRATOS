@@ -239,8 +239,9 @@ app target's *Embed App Extensions* phase. It builds with the normal
   which covers both targets; a free Personal Team is enough.
 - Everything in `ios/App/Shared/` is compiled into *both* targets, and must
   never be added to only one: the payload contract, the journal and its store,
-  the activity controller, and the Done button's intent. The widget needs the
-  intent's *type* to build the button; only the app ever runs it. Add files with
+  the activity controller, and the intents behind the Done button and the
+  steppers. The widget needs an intent's *type* to build the button; only the
+  app ever runs it. Add files with
   the `xcodeproj` Ruby gem rather than by hand — editing the pbxproj by hand
   corrupts it.
 - `NSSupportsLiveActivities` in the app's `Info.plist` is what makes iOS accept
@@ -318,6 +319,43 @@ appears on the current set), complete a set while unlocked (it advances), then
 finish the workout and lock again (it is gone). Repeat the last step with
 discard. Force-quit mid-workout and relaunch: no stale activity survives.
 
+## Adjusting a set from the lock screen
+
+The +/- steppers are the same mechanism as the Done button — a
+`LiveActivityIntent` run in the app's process, appending to the journal — and
+differ in two things. The entry is a `set-adjusted` rather than a
+`set-completed`, which replay applies as a value edit that leaves the set open;
+and the button carries only a field name and a direction, never a number. How
+far a tap moves a value is the app's rule (`setAdjustmentForKind`), resolved
+into the plan alongside the target, so the lock screen produces the same numbers
+the in-app stepper would. The arithmetic itself is stated twice —
+`adjustSetTarget` on the web, where it is tested, and
+`StratosSetAdjustment.applied` in Swift, where it has to run with the webview
+asleep. The two must agree.
+
+Every "has this set been dealt with" check therefore filters on
+`isCompletion`. Reading them as "the journal mentions this set" would make the
+first stepper tap spend the Done button.
+
+A stepper cannot walk a set into a state the replay would refuse: the floor for
+the field that decides the kind is one step, so reps stop at 1 and a hold at a
+second. A tap that would change nothing is not journalled at all, or a finger
+resting on the minus button would fill the journal at the floor.
+
+An adjustment to an unlogged set is **not** dropped by `clearJournal`, unlike
+every other entry. This is the subtle part. The plan cannot carry an adjustment:
+`buildSetPlan` resolves a strength target as `recommendation ?? stored`, so the
+next sync would put the suggestion back — and a Done tap would then log 10 over
+the 8 the user had set, silently, which is the whole feature defeated. Holding
+the entry keeps `StratosActivityCursor.target` answering with the user's number.
+It goes when its set is logged, or when the set leaves the plan.
+
+The cost, knowingly taken: for as long as a set is adjusted and unlogged, the
+lock screen is the authority on it. Replay re-applies the adjustment on each
+foreground until the workout holds those numbers (`holdsTheSameValues` stops it
+churning after that), so editing that set *in the app* is overwritten on the
+next return. Logging the set, from either surface, settles it.
+
 For the Done button, with the phone **actually locked** — not just the app
 backgrounded, because a foregrounded webview hides the whole problem: tap Done
 (the activity moves to the next set), tap it two or three more times, then open
@@ -325,6 +363,12 @@ the app. The sets you logged are ticked, with the numbers the lock screen was
 showing, and nothing is double-logged. Then force-quit from the lock screen
 before reopening: the activity goes, but the journal does not, and the sets
 still land on the next launch.
+
+For the steppers, also locked: tap minus on reps a few times (the number moves
+on the activity straight away, and stops rather than going to zero), tap plus on
+weight, then Done. Open the app: the set is ticked with the numbers you stepped
+to, not the suggested ones. Repeat without pressing Done — the set is untouched
+but carries the adjusted numbers.
 
 ## Proactive insights behave differently in a wrap
 

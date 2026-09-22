@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		04052992CEDEEB657DE78BB9 /* StratosAdjustSetIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = F962BD9E73503A63ACC4AA4B /* StratosAdjustSetIntent.swift */; };
 		06D5934FEC40B02D261456FF /* StratosLiveActivityPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBEB60A295A7C6C87E9BCEC0 /* StratosLiveActivityPlugin.swift */; };
 		1C8EB04B7F79976C29C701D8 /* StratosSetActivityController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8592577C9CEAE72EF9D3F6A0 /* StratosSetActivityController.swift */; };
 		242215875C6A2D4A1F97D7DC /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2BBB5382316C63EAE5371B4C /* Foundation.framework */; };
@@ -30,6 +31,7 @@
 		9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6822FE993A50072D4E8 /* SceneDelegate.swift */; };
 		9830886D8B062C03F7966729 /* StratosSetActivityController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8592577C9CEAE72EF9D3F6A0 /* StratosSetActivityController.swift */; };
 		B4D01E55B2479928087423F0 /* StratosActivityJournal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C746597E53EA73580E05770 /* StratosActivityJournal.swift */; };
+		F9224ADCC5D2B2056CFC07DF /* StratosAdjustSetIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = F962BD9E73503A63ACC4AA4B /* StratosAdjustSetIntent.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -78,6 +80,7 @@
 		D7D6EE5B4D8EBCF382EC5D4C /* StratosSetLiveActivity.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StratosSetLiveActivity.swift; sourceTree = "<group>"; };
 		E0E357A4FC060E6170B4216C /* StratosWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = StratosWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		E6E0E902914DF42E45242FDA /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		F962BD9E73503A63ACC4AA4B /* StratosAdjustSetIntent.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StratosAdjustSetIntent.swift; sourceTree = "<group>"; };
 		FBEB60A295A7C6C87E9BCEC0 /* StratosLiveActivityPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StratosLiveActivityPlugin.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -155,6 +158,7 @@
 				0C746597E53EA73580E05770 /* StratosActivityJournal.swift */,
 				8592577C9CEAE72EF9D3F6A0 /* StratosSetActivityController.swift */,
 				700156A1AC8D95B2D47A0DA0 /* StratosCompleteSetIntent.swift */,
+				F962BD9E73503A63ACC4AA4B /* StratosAdjustSetIntent.swift */,
 			);
 			name = Shared;
 			path = Shared;
@@ -295,6 +299,7 @@
 				B4D01E55B2479928087423F0 /* StratosActivityJournal.swift in Sources */,
 				9830886D8B062C03F7966729 /* StratosSetActivityController.swift in Sources */,
 				2F0065665CA22D0EBE5F2A6D /* StratosCompleteSetIntent.swift in Sources */,
+				F9224ADCC5D2B2056CFC07DF /* StratosAdjustSetIntent.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -308,6 +313,7 @@
 				39836E1BB4B975091D84E712 /* StratosActivityJournal.swift in Sources */,
 				1C8EB04B7F79976C29C701D8 /* StratosSetActivityController.swift in Sources */,
 				940799AAE426EEEF09DEAEAA /* StratosCompleteSetIntent.swift in Sources */,
+				04052992CEDEEB657DE78BB9 /* StratosAdjustSetIntent.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

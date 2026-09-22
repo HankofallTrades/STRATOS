@@ -2,11 +2,14 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useStore } from "react-redux";
 
 import { useAppDispatch, useAppSelector } from "@/hooks/redux";
+import { isCardioSet } from "@/lib/types/workout";
 import type { RootState } from "@/state/store";
 import {
   selectCurrentWorkout,
   selectIsWorkoutActive,
   setCompleted,
+  updateCardioSet,
+  updateSet,
 } from "@/state/workout/workoutSlice";
 import {
   clearActivityJournal,
@@ -69,13 +72,40 @@ export const useWorkoutLiveActivity = (setPlan: SetPlan): void => {
       const entries = await readActivityJournal();
       if (entries.length === 0) return;
 
-      const { completions, skipped } = replayActivityJournal({
+      const { completions, adjustments, skipped } = replayActivityJournal({
         entries,
         workout: selectCurrentWorkout(store.getState()),
       });
 
       for (const completion of completions) {
         dispatch(setCompleted(completion));
+      }
+
+      // Numbers the user changed on the lock screen and did not log. They are
+      // value edits and nothing more: no completion, and so none of the things
+      // that listen for one — the rest timer, the haptic — fire for them.
+      for (const { workoutExerciseId, adjustedSet } of adjustments) {
+        if (isCardioSet(adjustedSet)) {
+          dispatch(
+            updateCardioSet({
+              workoutExerciseId,
+              setId: adjustedSet.id,
+              time: adjustedSet.time,
+              distance_km: adjustedSet.distance_km,
+            })
+          );
+          continue;
+        }
+
+        dispatch(
+          updateSet({
+            workoutExerciseId,
+            setId: adjustedSet.id,
+            weight: adjustedSet.weight,
+            reps: adjustedSet.reps,
+            time: adjustedSet.time,
+          })
+        );
       }
 
       // Every skip is the lock screen and the workout disagreeing about a set

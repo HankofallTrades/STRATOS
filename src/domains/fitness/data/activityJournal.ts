@@ -1,4 +1,4 @@
-import type { ExerciseSet, Workout } from "@/lib/types/workout";
+import { isCardioSet, type ExerciseSet, type Workout } from "@/lib/types/workout";
 
 import {
   completeSetFromDraft,
@@ -16,8 +16,30 @@ import type { SetTarget } from "./setTarget";
 // is worth as a logged set happens here, through the same completion rule the
 // checkbox uses.
 
-/** A lock-screen action. Adjusting reps and weight (I-20) joins this later. */
-export type ActivityJournalEntryKind = "set-completed";
+/**
+ * A lock-screen action.
+ *
+ * Both record the same thing — a button was pressed, and this is what the lock
+ * screen was showing — and differ only in what the press was for. A stepper tap
+ * is journalled rather than folded into the next completion because it is worth
+ * something on its own: the user changed the number and may never press Done.
+ */
+export type ActivityJournalEntryKind = "set-completed" | "set-adjusted";
+
+/**
+ * The kinds as data. The native side writes these strings and nothing checks
+ * them at either compiler, so the contract test holds this list against
+ * `StratosActivityJournalKind`: a kind added on one side and not the other is
+ * an entry that replays as nothing.
+ */
+const entryKinds: Record<ActivityJournalEntryKind, true> = {
+  "set-completed": true,
+  "set-adjusted": true,
+};
+
+export const ACTIVITY_JOURNAL_ENTRY_KINDS = Object.keys(
+  entryKinds
+) as ActivityJournalEntryKind[];
 
 export interface ActivityJournalEntry {
   /** Native-assigned and unique — it is what the clear names once replayed. */
@@ -44,6 +66,19 @@ export interface ActivityJournalCompletion {
 }
 
 /**
+ * One set whose numbers were changed on the lock screen and then left there.
+ *
+ * Only the sets that were not also completed: where Done followed the steppers
+ * the completion carries the same numbers and says more, so applying both would
+ * be one edit too many.
+ */
+export interface ActivityJournalAdjustment {
+  workoutExerciseId: string;
+  /** The set with the adjusted values, still uncompleted. */
+  adjustedSet: ExerciseSet;
+}
+
+/**
  * Why an entry logged nothing. Every one of these leaves the lock screen a set
  * ahead of the workout, so they are reported rather than swallowed.
  */
@@ -61,6 +96,7 @@ export interface ActivityJournalSkip {
 
 export interface ActivityJournalReplay {
   completions: ActivityJournalCompletion[];
+  adjustments: ActivityJournalAdjustment[];
   skipped: ActivityJournalSkip[];
 }
 
@@ -84,6 +120,26 @@ const draftFromTarget = (target: SetTarget) => {
     duration: timeSeconds,
     distance: distanceKm,
   };
+};
+
+/**
+ * Whether a set already holds the numbers an adjustment would write.
+ *
+ * A retained adjustment is replayed on every foreground — it stays in the
+ * journal until its set is logged, so the lock screen keeps showing it — and
+ * re-dispatching the same values each time would churn the workout screen for
+ * nothing. Only the fields completion writes are compared; an adjustment never
+ * touches the rest.
+ */
+const holdsTheSameValues = (set: ExerciseSet, adjusted: ExerciseSet): boolean => {
+  const time = JSON.stringify(set.time ?? null) === JSON.stringify(adjusted.time ?? null);
+
+  if (isCardioSet(set) && isCardioSet(adjusted)) {
+    return time && set.distance_km === adjusted.distance_km;
+  }
+  if (isCardioSet(set) || isCardioSet(adjusted)) return false;
+
+  return time && set.weight === adjusted.weight && set.reps === adjusted.reps;
 };
 
 const findSet = (
@@ -111,6 +167,11 @@ const findSet = (
  * the lock screen displayed, and those are the whole of what the user agreed
  * to. An entry with nothing to log is refused by the completion rule exactly as
  * an empty row would be, and lands in `skipped`.
+ *
+ * Adjustments go through that same rule, because the question they ask is the
+ * same one: what would logging these numbers record? The only difference is
+ * that the set stays open afterwards. Keyed by set and applied last-wins, since
+ * a run of stepper taps is one decision arrived at in stages, not eight edits.
  */
 export const replayActivityJournal = ({
   entries,
@@ -122,6 +183,7 @@ export const replayActivityJournal = ({
   const completions: ActivityJournalCompletion[] = [];
   const skipped: ActivityJournalSkip[] = [];
   const completedInThisPass = new Set<string>();
+  const adjustmentsBySetId = new Map<string, ActivityJournalAdjustment>();
 
   for (const entry of entries) {
     const skip = (reason: ActivityJournalSkipReason) =>
@@ -158,12 +220,34 @@ export const replayActivityJournal = ({
       continue;
     }
 
+    if (entry.kind === "set-adjusted") {
+      // What completing would have stored, minus the completing. Going through
+      // the completion rule rather than writing the fields here is what keeps
+      // an adjustment from being able to produce a set a tick never could.
+      const adjustedSet = { ...result.completedSet, completed: false };
+
+      if (holdsTheSameValues(set, adjustedSet)) {
+        adjustmentsBySetId.delete(set.id);
+        continue;
+      }
+
+      adjustmentsBySetId.set(set.id, {
+        workoutExerciseId: entry.workoutExerciseId,
+        adjustedSet,
+      });
+      continue;
+    }
+
     completedInThisPass.add(set.id);
+    // The completion carries the adjusted numbers itself — the lock screen was
+    // showing them when Done was pressed — so a pending adjustment for this set
+    // has already been said, and saying it again would be a second edit.
+    adjustmentsBySetId.delete(set.id);
     completions.push({
       workoutExerciseId: entry.workoutExerciseId,
       completedSet: result.completedSet,
     });
   }
 
-  return { completions, skipped };
+  return { completions, adjustments: [...adjustmentsBySetId.values()], skipped };
 };

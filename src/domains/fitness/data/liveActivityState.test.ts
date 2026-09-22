@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { setAdjustmentForKind } from "./setAdjustment";
 import type { SetPlan, SetPlanEntry } from "./setPlan";
 import type { SetTarget } from "./setTarget";
 import {
@@ -72,6 +73,7 @@ describe("buildLiveActivityPlan", () => {
       setNumber: 1,
       position: 1,
       target: { reps: 6, weight: 100, timeSeconds: null, distanceKm: null },
+      adjustment: setAdjustmentForKind("strength"),
       completed: false,
       loggable: true,
     });

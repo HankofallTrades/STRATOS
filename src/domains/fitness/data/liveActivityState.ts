@@ -1,3 +1,4 @@
+import { setAdjustmentForKind, type SetAdjustment } from "./setAdjustment";
 import type { SetPlan, SetPlanEntry, SetPlanEntryKind } from "./setPlan";
 import { areSetTargetsEqual, type SetTarget } from "./setTarget";
 
@@ -20,6 +21,15 @@ export interface LiveActivitySet {
   position: number;
   /** What a Done tap would log, carried over from the Set Plan unchanged. */
   target: SetTarget;
+  /**
+   * What the steppers may do to that target.
+   *
+   * Sent rather than assumed, because the step a tap produces is the app's rule
+   * about how weight and reps move, not the lock screen's. A native constant
+   * here would be a second answer to a question the workout screen already
+   * answers.
+   */
+  adjustment: SetAdjustment;
   completed: boolean;
   /**
    * Whether this set has enough of a target to be logged at all.
@@ -70,6 +80,7 @@ export const buildLiveActivityPlan = (setPlan: SetPlan): LiveActivityPlan =>
     setNumber: entry.setNumber,
     position: entry.position,
     target: entry.target,
+    adjustment: setAdjustmentForKind(entry.kind),
     completed: entry.completed,
     loggable: isLoggable(entry),
   }));
@@ -118,6 +129,10 @@ export const areLiveActivityPlansEqual = (
       entry.setNumber === other.setNumber &&
       entry.position === other.position &&
       areSetTargetsEqual(entry.target, other.target) &&
+      // The adjustment follows from the kind, which is compared above, so this
+      // can only differ when the rule itself changed under a running app.
+      areSetTargetsEqual(entry.adjustment.step, other.adjustment.step) &&
+      areSetTargetsEqual(entry.adjustment.floor, other.adjustment.floor) &&
       entry.completed === other.completed &&
       entry.loggable === other.loggable
     );
