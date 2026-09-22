@@ -123,15 +123,22 @@ can walk it without calling into the suspended webview.
 
 Each entry carries both a **suggestion** and a **target**. The suggestion is what
 the progression rules recommend, and there may not be one. The target is what
-logging that set right now would record: the suggestion where there is one, and
-otherwise the set as the workout already holds it. The workout screen renders
-suggestions; the lock screen shows and logs targets, because a Done button needs
-a number for every set, not only the ones with a recommendation.
+logging that set right now would record: the set's own numbers where it has
+them, and the suggestion for the fields it leaves blank. A suggestion is offered,
+never imposed — it cannot outrank a number the user has already put on the set,
+from the workout row or from the lock screen's steppers. Weight says so on the
+set itself (`weightChosen`), because zero weight is an unloaded lift rather than
+a blank and the two are otherwise the same number. The workout screen
+renders suggestions; the lock screen shows and logs targets, because a Done
+button needs a number for every set, not only the ones with a recommendation.
 
 A target is a **`SetTarget`**: reps, weight, time, distance, travelling as one
 thing wherever a set goes. A number it could not resolve is absent rather than
-zero, and the two mean different things — a set with no reps cannot be logged at
-all, a set of zero reps is a number someone chose.
+zero, and the two can mean different things — zero weight is a bodyweight lift,
+not a weight nobody supplied. Where Set completion refuses zero as well as none,
+as it does for reps and for a hold, zero is instead the blank an untouched set
+carries, and the Set Plan fills it from the suggestion rather than reading it as
+a choice.
 
 An entry also carries a **`SetAdjustment`**: how far one lock-screen stepper tap
 moves each field of the target, and how far down it may go. Both halves are
@@ -169,15 +176,10 @@ skipped — so the journal is cleared only *after* its completions are dispatche
 and only through the last entry that was read. Failing that way round replays an
 entry twice, which costs nothing; the other way round loses a logged set.
 
-An adjustment to a set that has not been logged yet outlives the clear. It has
-to: the plan cannot carry it, because the web rebuilds a target from the
-suggestion on every workout change, so a cleared adjustment would put the
-suggested numbers back under a Done button the user has set to something else.
-It is dropped when its set is logged, or when the set leaves the plan.
-
-That makes the lock screen the authority on an adjusted, unlogged set: replay
-re-applies it on every foreground until the workout holds those numbers, so an
-in-app edit to such a set is overwritten on the next return. Logging the set,
-from either surface, ends it.
+A replayed adjustment is written into the set itself, and the Set Plan targets a
+set's own numbers ahead of any suggestion, so the whole journal is cleared once
+it has been replayed. Neither surface is the authority on an adjusted set: the
+numbers are on the set, and an edit from either side is the last word until the
+other edits it.
 
 _Avoid_: native event log, sync queue

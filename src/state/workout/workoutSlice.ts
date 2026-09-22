@@ -196,6 +196,11 @@ const workoutSlice = createSlice({
       const set = workoutExercise.sets.find((s) => s.id === action.payload.setId);
       if (set && isStrengthSet(set)) {
         set.weight = action.payload.weight;
+        // Every caller of this is a person setting a number: a row edit, a
+        // stepper, a swipe-copy, an applied suggestion, or a lock-screen
+        // adjustment replayed back in. So the weight is now chosen, zero
+        // included, and the Set Plan stops offering a suggestion over it.
+        set.weightChosen = true;
         set.reps = action.payload.reps;
         set.time = action.payload.time; // Assign time structure
         if (action.payload.variation !== undefined) {

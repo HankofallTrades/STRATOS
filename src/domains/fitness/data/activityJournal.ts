@@ -125,11 +125,11 @@ const draftFromTarget = (target: SetTarget) => {
 /**
  * Whether a set already holds the numbers an adjustment would write.
  *
- * A retained adjustment is replayed on every foreground — it stays in the
- * journal until its set is logged, so the lock screen keeps showing it — and
- * re-dispatching the same values each time would churn the workout screen for
- * nothing. Only the fields completion writes are compared; an adjustment never
- * touches the rest.
+ * Replay runs before the journal is cleared and a crash between the two replays
+ * it again, so the same adjustment can arrive at a set that already holds its
+ * numbers. Re-dispatching them would churn the workout screen for nothing. Only
+ * the fields completion writes are compared; an adjustment never touches the
+ * rest.
  */
 const holdsTheSameValues = (set: ExerciseSet, adjusted: ExerciseSet): boolean => {
   const time = JSON.stringify(set.time ?? null) === JSON.stringify(adjusted.time ?? null);

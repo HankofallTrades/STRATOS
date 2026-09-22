@@ -8,6 +8,7 @@ import workoutReducer, {
   startWarmup,
   startWorkout,
   uncompleteSet,
+  updateSet,
   updateWorkoutExerciseEquipment,
   workoutFinished,
 } from "./workoutSlice";
@@ -73,6 +74,30 @@ const exercise: WorkoutExercise = {
 
 const startedWorkout = () =>
   workoutReducer(undefined, startWorkout({ initialExercises: [exercise] }));
+
+describe("workoutSlice — chosen weights", () => {
+  // Zero weight is a real lift, so the Set Plan cannot tell a weight of zero
+  // someone picked from the zero a new set is born with. The reducer marks it,
+  // because every caller of updateSet is a person setting a number.
+  it("marks the weight as chosen, even when the number is zero", () => {
+    const state = workoutReducer(
+      startedWorkout(),
+      updateSet({ workoutExerciseId: "we-1", setId: "set-1", weight: 0, reps: 8 })
+    );
+
+    expect(state.currentWorkout!.exercises[0].sets[0]).toMatchObject({
+      weight: 0,
+      weightChosen: true,
+    });
+  });
+
+  it("leaves an untouched set unmarked, so a suggestion can still fill it", () => {
+    const set = startedWorkout().currentWorkout!.exercises[0].sets[0];
+
+    expect(set).toMatchObject({ weight: 0 });
+    expect((set as StrengthSet).weightChosen).toBeUndefined();
+  });
+});
 
 describe("workoutSlice — set completion", () => {
   // Set completion decides the values and the tick in one go, so the reducer

@@ -119,24 +119,16 @@ struct StratosActivityStore {
     /// because a Done tap can land between the read and the clear. An `id` that
     /// is no longer here has already been cleared, so nothing happens.
     ///
-    /// One exception outlives the clear: an adjustment to a set that has not
-    /// been logged yet. It is what the lock screen shows that set as, and the
-    /// plan cannot carry it — the web rebuilds a target from the suggestion
-    /// every time the workout changes, so a cleared adjustment means the next
-    /// sync quietly puts the suggested numbers back under a Done button the
-    /// user thinks says 8. It is dropped as soon as its set is logged, and
-    /// dropped with the session when the set leaves the plan.
+    /// Adjustments go with the rest. A replayed adjustment is written into the
+    /// set itself, and `buildSetPlan` targets the set's own numbers ahead of
+    /// any suggestion, so the next sync carries them back here (I-44). Holding
+    /// the entry past the clear would instead make the lock screen outrank an
+    /// in-app edit to the same set.
     func clearJournal(throughId id: String) {
         let entries = journal()
         guard let index = entries.firstIndex(where: { $0.id == id }) else { return }
 
-        let logged = Set(entries.filter(\.isCompletion).map(\.setId))
-        let open = Set(plan().filter { !$0.completed }.map(\.setId))
-        let held = entries[...index].filter {
-            !$0.isCompletion && open.contains($0.setId) && !logged.contains($0.setId)
-        }
-
-        encode(held + Array(entries[entries.index(after: index)...]), forKey: Self.journalKey)
+        encode(Array(entries[entries.index(after: index)...]), forKey: Self.journalKey)
     }
 
     private func decode<Value: Decodable>(_ key: String) -> [Value] {

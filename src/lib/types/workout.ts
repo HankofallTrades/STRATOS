@@ -91,6 +91,17 @@ export interface StrengthSet {
   completed: boolean;
   equipmentType?: string; // Changed to string
   variation?: string; // Variation used for *this specific set*
+  /**
+   * Whether the weight is a number someone put here, rather than the zero a new
+   * set starts life with.
+   *
+   * Weight is the one field where those two cannot be told apart by value. An
+   * unloaded lift is a real lift — the lock screen's weight stepper floors at
+   * zero for exactly that reason — while zero reps and a zero hold are refused
+   * by Set completion and so can only mean "blank". The Set Plan needs the
+   * difference to know whether a suggestion is allowed to fill the field.
+   */
+  weightChosen?: boolean;
 }
 
 /**

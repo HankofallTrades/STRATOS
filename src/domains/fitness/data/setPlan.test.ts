@@ -16,13 +16,18 @@ const exercise = (overrides: Partial<Exercise> & { id: string; name: string }): 
   ...overrides,
 });
 
-const strengthSet = (id: string, exerciseId: string): ExerciseSet => ({
+const strengthSet = (
+  id: string,
+  exerciseId: string,
+  overrides: Partial<{ weight: number; weightChosen: boolean; reps: number | null }> = {}
+): ExerciseSet => ({
   id,
   exerciseId,
   weight: 0,
   reps: 0,
   time: null,
   completed: false,
+  ...overrides,
 });
 
 const timedSet = (id: string, exerciseId: string, seconds: number): ExerciseSet => ({
@@ -149,6 +154,110 @@ describe("buildSetPlan", () => {
     expect(setPlan[0].action).toBe("none");
   });
 
+  it("targets the suggestion where the set carries no numbers of its own", () => {
+    // The blank set is what a suggestion is for: nothing has been chosen, so
+    // the lock screen offers the progression and Done logs it.
+    const bench = exercise({ id: "bench", name: "Bench Press" });
+    const historicalSets = [history(1, 100, 16)];
+
+    const setPlan = buildSetPlan({
+      exercises: [workoutExercise("we-bench", bench, [strengthSet("s1", "bench")])],
+      sessionFocus: "hypertrophy",
+      historyByWorkoutExerciseId: { "we-bench": historicalSets },
+    });
+
+    const suggested = buildRecommendedStrengthSetPerformances({
+      focus: "hypertrophy",
+      currentSetCount: 1,
+      historicalSets,
+    })[1];
+
+    expect(suggested?.weight).toBeGreaterThan(0);
+    expect(setPlan[0].target.weight).toBe(suggested?.weight);
+    expect(setPlan[0].target.reps).toBe(suggested?.reps);
+  });
+
+  it("targets the user's numbers over the suggestion once the set carries them", () => {
+    // The set the user set to 60 is logged as 60 from either surface. The
+    // suggestion is still offered — the row's indicator applies it — but it
+    // does not outrank a choice already made.
+    const bench = exercise({ id: "bench", name: "Bench Press" });
+
+    const setPlan = buildSetPlan({
+      exercises: [
+        workoutExercise("we-bench", bench, [
+          strengthSet("s1", "bench", { weight: 60, reps: 8 }),
+        ]),
+      ],
+      sessionFocus: "hypertrophy",
+      historyByWorkoutExerciseId: { "we-bench": [history(1, 100, 16)] },
+    });
+
+    expect(setPlan[0].target.weight).toBe(60);
+    expect(setPlan[0].target.reps).toBe(8);
+    // The suggestion is still there to be offered; it just lost.
+    expect(setPlan[0].suggestedWeight).toBe(110);
+  });
+
+  it("keeps a weight the user took down to zero", () => {
+    // An unloaded lift is a real lift, and the lock screen's stepper floors at
+    // zero to allow it. Reading that zero as a blank would hand the suggestion
+    // back and log 110kg under a Done button showing none.
+    const bench = exercise({ id: "bench", name: "Bench Press" });
+
+    const setPlan = buildSetPlan({
+      exercises: [
+        workoutExercise("we-bench", bench, [
+          strengthSet("s1", "bench", { weight: 0, weightChosen: true, reps: 8 }),
+        ]),
+      ],
+      sessionFocus: "hypertrophy",
+      historyByWorkoutExerciseId: { "we-bench": [history(1, 100, 16)] },
+    });
+
+    expect(setPlan[0].suggestedWeight).toBe(110);
+    expect(setPlan[0].target.weight).toBe(0);
+  });
+
+  it("targets the blank a set with no suggestion has, rather than inventing one", () => {
+    // A first-time lift with an untouched set has nothing to log, and the lock
+    // screen has to be able to say so.
+    const squat = exercise({ id: "squat", name: "Back Squat" });
+
+    const setPlan = buildSetPlan({
+      exercises: [workoutExercise("s1-we", squat, [strengthSet("s1", "squat")])],
+      sessionFocus: "strength",
+      historyByWorkoutExerciseId: {},
+    });
+
+    expect(setPlan[0].target.weight).toBe(0);
+    expect(setPlan[0].target.reps).toBe(0);
+  });
+
+  it("fills only the numbers the user left blank", () => {
+    // Precedence is per field. A set given reps and no weight keeps the reps
+    // and still gets a weight to aim at.
+    const bench = exercise({ id: "bench", name: "Bench Press" });
+    const historicalSets = [history(1, 100, 16)];
+
+    const setPlan = buildSetPlan({
+      exercises: [
+        workoutExercise("we-bench", bench, [strengthSet("s1", "bench", { reps: 8 })]),
+      ],
+      sessionFocus: "hypertrophy",
+      historyByWorkoutExerciseId: { "we-bench": historicalSets },
+    });
+
+    const suggested = buildRecommendedStrengthSetPerformances({
+      focus: "hypertrophy",
+      currentSetCount: 1,
+      historicalSets,
+    })[1];
+
+    expect(setPlan[0].target.reps).toBe(8);
+    expect(setPlan[0].target.weight).toBe(suggested?.weight);
+  });
+
   it("plans a time-only exercise as a duration, never as reps and weight", () => {
     // A plank has no rep target. Handing one to the lock screen would render a
     // set the user cannot perform as described.
@@ -235,6 +344,37 @@ describe("getExerciseSetPlanRecommendations", () => {
 
     // Timed exercises got an empty record before this change, and still do.
     expect(getExerciseSetPlanRecommendations(setPlan, "we-plank")).toEqual({});
+  });
+
+  it("leaves the row showing the same numbers the lock screen targets", () => {
+    // The row renders the set's own numbers and falls back to the suggestion
+    // where it has none. Deriving the same thing from the plan's target is what
+    // stops the two surfaces from disagreeing about what Done would log.
+    const bench = exercise({ id: "bench", name: "Bench Press" });
+    const setPlan = buildSetPlan({
+      exercises: [
+        workoutExercise("we-bench", bench, [
+          strengthSet("s1", "bench"),
+          strengthSet("s2", "bench", { weight: 60, reps: 8 }),
+        ]),
+      ],
+      sessionFocus: "hypertrophy",
+      historyByWorkoutExerciseId: { "we-bench": [history(1, 100, 16)] },
+    });
+
+    const recommendations = getExerciseSetPlanRecommendations(setPlan, "we-bench");
+
+    // The blank set: the row shows the suggestion as its indicator, and the
+    // lock screen targets that same 110.
+    expect(recommendations[1]?.weight).toBe(110);
+    expect(setPlan[0].target.weight).toBe(110);
+
+    // The set the user gave numbers to: the row shows 60 because that is what
+    // the set holds, and the lock screen now targets 60 too, not the 110 it
+    // still offers.
+    expect(recommendations[2]?.weight).toBe(110);
+    expect(setPlan[1].target.weight).toBe(60);
+    expect(setPlan[1].target.reps).toBe(8);
   });
 
   it("returns an empty record when there is no history to progress from", () => {

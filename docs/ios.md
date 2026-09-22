@@ -342,19 +342,15 @@ the field that decides the kind is one step, so reps stop at 1 and a hold at a
 second. A tap that would change nothing is not journalled at all, or a finger
 resting on the minus button would fill the journal at the floor.
 
-An adjustment to an unlogged set is **not** dropped by `clearJournal`, unlike
-every other entry. This is the subtle part. The plan cannot carry an adjustment:
-`buildSetPlan` resolves a strength target as `recommendation ?? stored`, so the
-next sync would put the suggestion back — and a Done tap would then log 10 over
-the 8 the user had set, silently, which is the whole feature defeated. Holding
-the entry keeps `StratosActivityCursor.target` answering with the user's number.
-It goes when its set is logged, or when the set leaves the plan.
-
-The cost, knowingly taken: for as long as a set is adjusted and unlogged, the
-lock screen is the authority on it. Replay re-applies the adjustment on each
-foreground until the workout holds those numbers (`holdsTheSameValues` stops it
-churning after that), so editing that set *in the app* is overwritten on the
-next return. Logging the set, from either surface, settles it.
+Adjustments are cleared with every other entry, and the plan is what carries
+them afterwards: replay writes the adjusted numbers onto the set, and
+`buildSetPlan` targets a set's own numbers ahead of any suggestion, so the next
+sync sends those numbers back to the lock screen rather than the suggested ones.
+Before I-44 the target was `recommendation ?? stored` and the entry had to be
+held past the clear to stop a Done tap logging 10 over the user's 8 — which made
+the lock screen the authority on that set and overwrote in-app edits to it on
+every foreground. Neither holds now: whichever surface edited the set last is
+what both of them show.
 
 For the Done button, with the phone **actually locked** — not just the app
 backgrounded, because a foregrounded webview hides the whole problem: tap Done
@@ -384,7 +380,9 @@ For the steppers, also locked: tap minus on reps a few times (the number moves
 on the activity straight away, and stops rather than going to zero), tap plus on
 weight, then Done. Open the app: the set is ticked with the numbers you stepped
 to, not the suggested ones. Repeat without pressing Done — the set is untouched
-but carries the adjusted numbers.
+but carries the adjusted numbers. Then edit that same set in the app and lock
+the phone again: the lock screen shows what you typed, which is what it would
+log.
 
 ## Proactive insights behave differently in a wrap
 

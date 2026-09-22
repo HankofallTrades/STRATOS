@@ -36,12 +36,14 @@ export interface SetPlanEntry {
   suggestedReps: number | null;
   suggestedTimeSeconds: number | null;
   /**
-   * What logging this set right now would record: the suggestion where there is
-   * one, and otherwise the set exactly as the workout already holds it.
+   * What logging this set right now would record: the set's own numbers where
+   * it has them, and the suggestion for the fields it leaves blank.
    *
-   * The suggestion alone is not enough for the lock screen. A set carried in
-   * from a program has its numbers already and no progression to recommend, and
-   * a Done button that logged a suggestion would have nothing to log for it.
+   * That order is the whole of it. A suggestion is something offered — the row
+   * shows it as an indicator to apply — so it must not outrank numbers the user
+   * has already put on the set, from the row or from the lock screen's
+   * steppers. Logging 10 over a set the user stepped to 8, with nothing on
+   * screen to say so, is the failure this ordering exists to prevent.
    */
   target: SetTarget;
   action: StrengthRecommendationAction;
@@ -78,6 +80,33 @@ const getSetPlanEntryKind = (
   if (exercise.is_static) return "time";
   return "strength";
 };
+
+/**
+ * The reps to target: the set's own where it has some, else the suggestion.
+ *
+ * Zero reps is not a choice anyone can make — Set completion refuses it — so an
+ * untouched set reads as blank and the suggestion fills it. Where there is no
+ * suggestion either, the blank stands rather than being invented into a number:
+ * the lock screen shows such a set as having nothing to log, which is true.
+ */
+const targetReps = (
+  stored: number | null,
+  suggested: number | null | undefined
+): number | null => (stored && stored > 0 ? stored : suggested ?? stored);
+
+/**
+ * The weight to target: the set's own where it has one, else the suggestion.
+ *
+ * Unlike reps, zero can be the answer. An unloaded lift is a real lift, so a
+ * weight the user stepped down to zero has to survive the next plan rebuild
+ * intact — which is why the set says whether its weight was chosen rather than
+ * the number being read for it.
+ */
+const targetWeight = (
+  set: { weight: number; weightChosen?: boolean },
+  suggested: number | null | undefined
+): number | null =>
+  set.weightChosen || set.weight > 0 ? set.weight : suggested ?? set.weight;
 
 export const buildSetPlan = ({
   exercises,
@@ -132,8 +161,10 @@ export const buildSetPlan = ({
         suggestedTimeSeconds,
         target: {
           weight:
-            kind === "strength" ? recommendation?.weight ?? storedWeight : storedWeight,
-          reps: kind === "strength" ? recommendation?.reps ?? storedReps : null,
+            kind === "strength" && isStrengthSet(set)
+              ? targetWeight(set, recommendation?.weight)
+              : storedWeight,
+          reps: kind === "strength" ? targetReps(storedReps, recommendation?.reps) : null,
           // Every target falls back to what the set already holds, time
           // included: only the strength branch above can leave the suggestion
           // empty while the set itself carries a duration.
