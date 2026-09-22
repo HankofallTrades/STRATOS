@@ -27,6 +27,14 @@ export interface ShouldAutoAddSetInput {
    * per set, which is the count to match. Empty or absent means no history.
    */
   previousSets: readonly unknown[] | null | undefined;
+  /**
+   * Whether that history has finished loading.
+   *
+   * Needed because an exercise that has never been trained and one whose
+   * history is still in flight both arrive here as nothing at all, and they
+   * call for opposite answers.
+   */
+  previousSetsLoaded: boolean;
 }
 
 /**
@@ -35,5 +43,16 @@ export interface ShouldAutoAddSetInput {
 export const shouldAutoAddSet = ({
   setCount,
   previousSets,
-}: ShouldAutoAddSetInput): boolean =>
-  setCount < (previousSets?.length || DEFAULT_AUTO_ADD_SET_COUNT);
+  previousSetsLoaded,
+}: ShouldAutoAddSetInput): boolean => {
+  // With no history in hand and more still coming, how long this exercise runs
+  // is not yet knowable, and the question does not come round again: the
+  // decision is only ever made at the moment a set is completed, so capping a
+  // five-set exercise at three here would stand for the rest of the session.
+  // While it is in flight the rule errs towards opening. A set the user did not
+  // need is a blank row they can ignore; one they did need strands them on Add
+  // Set, which is the flow this rule exists to protect.
+  if (!previousSetsLoaded && !previousSets?.length) return true;
+
+  return setCount < (previousSets?.length || DEFAULT_AUTO_ADD_SET_COUNT);
+};

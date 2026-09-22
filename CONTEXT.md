@@ -103,6 +103,11 @@ Stopping is not a ceiling: Add Set still opens an extra set whenever the user
 wants one, and an exercise the user cuts short simply leaves its last set
 unlogged.
 
+History is fetched, so "never trained" and "not arrived yet" reach the rule as
+the same nothing. While it is still loading the rule opens a set rather than
+stopping, because the question is only ever asked at the moment a set is
+completed: a cap guessed too early would stand for the rest of the session.
+
 _Avoid_: set cap, auto-create
 
 ## Workout commit
