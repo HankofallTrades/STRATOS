@@ -99,7 +99,7 @@ describe("buildLiveActivityPlan", () => {
 // the replay would throw away must not offer a button at all. These mirror the
 // refusal rules in setCompletion.ts.
 describe("buildLiveActivityPlan — what can be logged", () => {
-  const loggable = (overrides: Partial<SetPlanEntry>) =>
+  const loggable = (overrides: Omit<EntryOverrides, "position">) =>
     buildLiveActivityPlan(plan(entry({ position: 1, ...overrides })))[0].loggable;
 
   it("offers a strength set with reps behind it", () => {

@@ -36,7 +36,25 @@ describe("SetTarget and its Swift mirror", () => {
   );
 
   it("names the same fields on both sides", () => {
-    expect(target.map(field => field.name)).toEqual(SET_TARGET_FIELDS);
+    // Sorted, because declaration order is not part of the contract — JSON is
+    // keyed. A test that failed on a reordering would be testing the layout.
+    expect(target.map(field => field.name).sort()).toEqual([...SET_TARGET_FIELDS].sort());
+  });
+
+  it("writes every one of them out, so none can be added and left unencoded", () => {
+    // `encode(to:)` is hand-written, because the synthesised encoding drops
+    // absent targets instead of nulling them. That hand-written list is exactly
+    // the kind of thing this issue exists to stop: a field added to the struct
+    // and not added here still compiles, still decodes, and arrives at the
+    // webview as `undefined`.
+    const body = swiftSource("ios/App/Shared/StratosSetActivityAttributes.swift").match(
+      /func encode\(to encoder: Encoder\) throws \{([\s\S]*?)\n {4}\}/
+    );
+    if (!body) throw new Error("no encode(to:) to read");
+
+    const encoded = [...body[1].matchAll(/forKey: \.(\w+)\)/g)].map(([, name]) => name);
+
+    expect(encoded.sort()).toEqual([...SET_TARGET_FIELDS].sort());
   });
 
   it("leaves every one of them able to be absent, because `number | null` is", () => {

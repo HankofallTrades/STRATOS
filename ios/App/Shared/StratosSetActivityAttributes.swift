@@ -28,18 +28,6 @@ struct StratosSetTarget: Codable, Hashable {
         try container.encodeExplicit(distanceKm, forKey: .distanceKm)
     }
 }
-
-private extension KeyedEncodingContainer {
-    /// `encode`, but `nil` becomes a null rather than nothing at all.
-    mutating func encodeExplicit<Value: Encodable>(_ value: Value?, forKey key: Key) throws {
-        if let value {
-            try encode(value, forKey: key)
-        } else {
-            try encodeNil(forKey: key)
-        }
-    }
-}
-
 /// One set of the session as the lock screen sees it: what to show, and what a
 /// Done button would log. Mirrors `LiveActivitySet` in
 /// `src/domains/fitness/data/liveActivityState.ts`.
@@ -84,5 +72,16 @@ struct StratosSetActivityAttributes: ActivityAttributes {
         /// and the journal half cannot be read off `current.completed`, which
         /// is only as fresh as the last time the app was awake to sync.
         var isLogged: Bool
+    }
+}
+
+private extension KeyedEncodingContainer {
+    /// `encode`, but `nil` becomes a null rather than nothing at all.
+    mutating func encodeExplicit<Value: Encodable>(_ value: Value?, forKey key: Key) throws {
+        if let value {
+            try encode(value, forKey: key)
+        } else {
+            try encodeNil(forKey: key)
+        }
     }
 }

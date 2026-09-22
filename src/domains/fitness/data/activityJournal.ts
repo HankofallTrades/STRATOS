@@ -64,6 +64,28 @@ export interface ActivityJournalReplay {
   skipped: ActivityJournalSkip[];
 }
 
+/**
+ * A target as the completion rule wants it, which names the same numbers
+ * differently: `time` and `duration` are one target read by two set kinds.
+ *
+ * The destructure is the point. A field added to `SetTarget` and not placed
+ * here lands in `unmapped`, which cannot be assigned to an empty record — so it
+ * is a compile error rather than a number that silently never reaches the set.
+ */
+const draftFromTarget = (target: SetTarget) => {
+  const { reps, weight, timeSeconds, distanceKm, ...unmapped } = target;
+  const everyFieldIsSpent: Record<string, never> = unmapped;
+  void everyFieldIsSpent;
+
+  return {
+    weight,
+    reps,
+    time: timeSeconds,
+    duration: timeSeconds,
+    distance: distanceKm,
+  };
+};
+
 const findSet = (
   workout: Workout,
   workoutExerciseId: string,
@@ -127,13 +149,7 @@ export const replayActivityJournal = ({
     const result = completeSetFromDraft({
       set,
       kind: entry.setKind,
-      draft: {
-        weight: entry.target.weight,
-        reps: entry.target.reps,
-        time: entry.target.timeSeconds,
-        duration: entry.target.timeSeconds,
-        distance: entry.target.distanceKm,
-      },
+      draft: draftFromTarget(entry.target),
       previousPerformance: null,
     });
 

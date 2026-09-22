@@ -65,7 +65,22 @@ public class StratosLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func journal(_ call: CAPPluginCall) {
-        call.resolve(["entries": store.journal().compactMap(\.bridgePayload)])
+        let entries = store.journal()
+        let payloads = entries.compactMap(\.bridgePayload)
+
+        // All of them or none. Handing back the ones that encoded would be the
+        // worst outcome available: the web clears the journal through the last
+        // entry it was given, so a quietly omitted entry is a set the user
+        // logged and then watched disappear. Refusing leaves everything where
+        // it is for the next foreground to try again.
+        guard payloads.count == entries.count else {
+            call.reject(
+                "StratosLiveActivity.journal could not encode \(entries.count - payloads.count) of \(entries.count) entries"
+            )
+            return
+        }
+
+        call.resolve(["entries": payloads])
     }
 
     @objc func clearJournal(_ call: CAPPluginCall) {
@@ -104,9 +119,9 @@ private extension StratosActivityJournalEntry {
     /// `StratosSetTarget` encodes them that way, which is what the replay's
     /// refusal rules need.
     ///
-    /// An entry that will not encode is dropped rather than half-sent: a
-    /// partial entry would replay as a set logged with numbers the user never
-    /// saw.
+    /// `nil` rather than a partial dictionary when it will not encode, which
+    /// the caller turns into a refusal: a half-sent entry would replay as a set
+    /// logged with numbers the user never saw.
     var bridgePayload: [String: Any]? {
         guard let data = try? JSONEncoder().encode(self),
               let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {

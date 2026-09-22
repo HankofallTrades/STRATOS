@@ -31,6 +31,19 @@ struct StratosActivityJournalEntry: Codable, Hashable {
     }
 }
 
+/// The keys carry the shape they were written in. Changing a stored type is
+/// therefore a key bump, because the alternative is worse: a decode of the old
+/// shape fails whole, the store reads as empty, and an un-replayed Done tap is
+/// gone with nothing said. Bumping loses the same data but loses it on purpose,
+/// on a build that knows why. There is one user and one device, so the cost is
+/// at most the sets logged on a lock screen that was never reopened before the
+/// update.
+private enum StratosActivityStoredShape {
+    /// v2: the four set targets moved into a nested `target` (I-41).
+    static let plan = "stratos.liveActivity.setPlan.v2"
+    static let journal = "stratos.liveActivity.journal.v2"
+}
+
 /// Where the Set Plan and the Activity Journal live between a locked phone and
 /// the next time the webview is awake.
 ///
@@ -41,8 +54,8 @@ struct StratosActivityJournalEntry: Codable, Hashable {
 /// cannot provision an App Group at all (see docs/ios.md). If the button ever
 /// stops seeing the plan, this assumption is the first thing to check.
 struct StratosActivityStore {
-    private static let planKey = "stratos.liveActivity.setPlan"
-    private static let journalKey = "stratos.liveActivity.journal"
+    private static let planKey = StratosActivityStoredShape.plan
+    private static let journalKey = StratosActivityStoredShape.journal
 
     private let defaults: UserDefaults
 

@@ -41,13 +41,13 @@ const entry = (
     setId: "set-1",
     workoutExerciseId: "we-1",
     at: "2026-09-21T10:00:00.000Z",
+    ...rest,
     target: {
       reps: reps === undefined ? 5 : reps,
       weight: weight === undefined ? 100 : weight,
       timeSeconds: timeSeconds ?? null,
       distanceKm: distanceKm ?? null,
     },
-    ...rest,
   };
 };
 
