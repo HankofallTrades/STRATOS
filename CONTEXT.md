@@ -85,6 +85,26 @@ haptic feedback listen for that action rather than being handed a callback.
 
 _Avoid_: set save, completion handler
 
+## Auto-add
+
+Completing the **last** set of an exercise opens a fresh one, so a set is always
+waiting without anyone reaching for Add Set. `shouldAutoAddSet` owns when that
+stops: an exercise stops opening sets once it holds as many as it performed the
+last time it was trained, or three where it has no history to match.
+
+The stopping is the point. Auto-add that never stops leaves every exercise
+holding one open set forever, and since the Set Plan's current entry is the
+first set still open, the lock screen would stay on the first exercise of the
+session no matter how much of the workout was done. Matching last session is
+what lets an exercise be finished, and history is already what the suggestions
+are built from, so the two cannot disagree about how long an exercise is.
+
+Stopping is not a ceiling: Add Set still opens an extra set whenever the user
+wants one, and an exercise the user cuts short simply leaves its last set
+unlogged.
+
+_Avoid_: set cap, auto-create
+
 ## Workout commit
 
 Completing a workout crosses exactly one interface, `commitFinalizedWorkout`,

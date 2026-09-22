@@ -31,6 +31,7 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
   const DEFAULT_VARIATION = 'Standard';
   const {
     historicalSetPerformances,
+    autoAddsAnotherSet,
     recommendedSetPerformances,
     isAddingVariation,
     newVariationName,
@@ -63,6 +64,7 @@ export const WorkoutExerciseContainer: React.FC<WorkoutExerciseContainerProps> =
     <WorkoutExerciseView
       workoutExercise={workoutExercise}
       historicalSetPerformances={historicalSetPerformances}
+      autoAddsAnotherSet={autoAddsAnotherSet}
       recommendedSetPerformances={recommendedSetPerformances}
       userBodyweight={userWeight}
       onAddSet={addSet}

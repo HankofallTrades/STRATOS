@@ -59,6 +59,8 @@ interface WorkoutExerciseViewProps {
   };
   historicalSetPerformances: Record<number, { weight: number; reps: number | null; time_seconds?: number | null } | null>; // Updated for time
   recommendedSetPerformances: Record<number, RecommendedStrengthSetPerformance | null>;
+  /** Whether completing the last set should open another one. */
+  autoAddsAnotherSet: boolean;
   userBodyweight?: number | null; // Add user bodyweight prop
   onAddSet: () => void;
   onEquipmentChange: (value: string) => void; // Changed signature to accept string
@@ -159,6 +161,7 @@ export const WorkoutExerciseView = ({
   workoutExercise,
   historicalSetPerformances,
   recommendedSetPerformances,
+  autoAddsAnotherSet,
   userBodyweight, // Destructure userBodyweight
   onAddSet,
   onEquipmentChange,
@@ -777,7 +780,7 @@ export const WorkoutExerciseView = ({
                             userBodyweight={userBodyweight}
                             isStatic={isExerciseStatic}
                             isActive={firstIncompleteSetIndex === -1 ? index === workoutExercise.sets.length - 1 : index === firstIncompleteSetIndex}
-                            onComplete={isLastSet ? handleAutoAddSetFromLastCompletion : undefined}
+                            onComplete={isLastSet && autoAddsAnotherSet ? handleAutoAddSetFromLastCompletion : undefined}
                             onSwipeCopyWeight={copyableWeight !== null
                               ? () => onCopyCompletedValueToLatestSet('weight', copyableWeight)
                               : undefined}

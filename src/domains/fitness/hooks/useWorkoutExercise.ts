@@ -6,6 +6,7 @@ import { useAppDispatch } from "@/hooks/redux";
 import { playSetCompletionHaptic } from "@/lib/native/haptics";
 import * as fitnessRepo from '../data/fitnessRepository';
 import { classifySetCompletion } from '../data/setCompletionFeedback';
+import { shouldAutoAddSet } from '../data/setAutoAdd';
 import type { ExerciseSetRecommendations } from '../data/setPlan';
 import {
     addSetToExercise as addSetAction,
@@ -88,6 +89,18 @@ export const useWorkoutExercise = (
     // Suggestions are derived once for the whole session, so the lock screen and
     // this screen can never disagree about what the next set should be.
     const recommendedSetPerformances = lookups.recommendedSetPerformances;
+
+    // Once the exercise has matched last session, the last completion is the end
+    // of it: no new set opens, and the Set Plan's current entry moves on to the
+    // next exercise.
+    const autoAddsAnotherSet = useMemo(
+        () =>
+            shouldAutoAddSet({
+                setCount: workoutExercise.sets.length,
+                previousSets: historicalSets,
+            }),
+        [workoutExercise.sets.length, historicalSets]
+    );
 
     const overallLastPerformance = useMemo(() => {
         if (!historicalSets || historicalSets.length === 0) return null;
@@ -242,6 +255,7 @@ export const useWorkoutExercise = (
         variations,
         historicalSetPerformances,
         recommendedSetPerformances,
+        autoAddsAnotherSet,
         overallLastPerformance,
         userWeight,
         isAddingVariation,
