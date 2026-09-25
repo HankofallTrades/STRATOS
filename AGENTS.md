@@ -15,6 +15,7 @@ Package manager is **npm** (`package-lock.json` is the real lockfile; the stray
 | `npm run build` | web build, PWA included |
 | `npm run build:ios` | wrap build; the *only* difference is that PWA is dropped |
 | `npm run lint` | expected baseline: **8 warnings, 0 errors** |
+| `npm run typecheck` | expected baseline: **74 errors** (exits non-zero at baseline) |
 | `npm test` | Vitest, node environment, no React or live Supabase |
 
 **Do not run `build` and `lint` at the same time.** Vite writes transient
@@ -24,6 +25,14 @@ them sequentially. `npm test` is safe to run alongside either.
 The 8 lint warnings are all `react-refresh/only-export-components` in vendored
 shadcn components and in providers that export their hook. Left as-is on purpose;
 a 9th warning means you added one.
+
+`npm run typecheck` is the only thing that checks types. `build` strips them
+without checking, `lint` has no type-aware rules, and a bare `npx tsc --noEmit`
+checks an empty program because the root `tsconfig.json` only holds references.
+The 74 errors were standing when the command landed, so judge a change by the count
+(`npm run typecheck | grep -c "error TS"`), not by the exit code: a 75th error
+means you added one. It covers `src` only; `tsconfig.node.json` and `api/` are
+not checked.
 
 `npm run dev` auto-signs-in from `.env.development.local` in dev builds only
 (template: `.env.development.example`). Use the e2e test account, never a real user.

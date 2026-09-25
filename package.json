@@ -9,6 +9,7 @@
     "build:dev": "vite build --mode development",
     "build:ios": "STRATOS_TARGET=ios vite build",
     "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.app.json --noEmit",
     "test": "vitest run",
     "preview": "vite preview",
     "supabase:start": "supabase start",
