@@ -17,252 +17,19 @@ import type {
   SessionExerciseSnapshotRow,
 } from './types';
 import type { Exercise, SessionFocus } from '@/lib/types/workout';
-
-interface OccamsSessionTemplateDefinition {
-  name: string;
-  sessionFocus: SessionFocus;
-  setsPerExercise: number;
-  repRange: string;
-  progressionRule: string;
-  exercises: Array<{
-    canonicalName: string;
-    targetSets: number;
-    targetReps: string;
-    targetEquipmentType: string;
-    targetVariation: string;
-    loadIncrementKg: number;
-    notes: string;
-  }>;
-}
-
-interface ExistingExerciseTemplateDefinition {
-  candidateNames: string[];
-  presetEquipmentType?: string | null;
-  presetVariation?: string | null;
-  targetSets: number | null;
-  targetReps: string | null;
-  loadIncrementKg: number | null;
-  notes: string | null;
-}
-
-interface CustomSessionTemplateDefinition {
-  name: string;
-  sessionFocus: SessionFocus | null;
-  setsPerExercise: number;
-  repRange: string | null;
-  progressionRule: string | null;
-  exercises: ExistingExerciseTemplateDefinition[];
-}
-
-const OCCAMS_TEMPLATE: OccamsSessionTemplateDefinition[] = [
-  {
-    name: 'Occam A',
-    sessionFocus: 'hypertrophy',
-    setsPerExercise: 1,
-    repRange: '7-12',
-    progressionRule:
-      'One all-out work set per exercise to technical failure at 5s up / 5s down. If you hit >=7 reps with clean tempo, increase next session by about max(10 lb, 10%). If below minimum reps, keep load and add rest days. Optional accessories: myotatic crunches or vacuum breathing work.',
-    exercises: [
-      {
-        canonicalName: 'Pulldown',
-        targetSets: 1,
-        targetReps: '7-12',
-        targetEquipmentType: 'Machine',
-        targetVariation: 'Supinated',
-        loadIncrementKg: 4.54,
-        notes: '5s up / 5s down tempo, one set to technical failure.',
-      },
-      {
-        canonicalName: 'Overhead Press',
-        targetSets: 1,
-        targetReps: '7-12',
-        targetEquipmentType: 'Machine',
-        targetVariation: 'Standard',
-        loadIncrementKg: 4.54,
-        notes: '5s up / 5s down tempo, one set to technical failure.',
-      },
-    ],
-  },
-  {
-    name: 'Occam B',
-    sessionFocus: 'hypertrophy',
-    setsPerExercise: 1,
-    repRange: '7-12 (Leg Press: 10-12)',
-    progressionRule:
-      'One all-out work set per exercise to technical failure at 5s up / 5s down. For leg press use 10-12 reps minimum. Increase load by about max(10 lb, 10%) when minimum reps are met. Optional posterior-chain finisher: high-rep swings.',
-    exercises: [
-      {
-        canonicalName: 'Bench Press',
-        targetSets: 1,
-        targetReps: '7-12',
-        targetEquipmentType: 'Machine',
-        targetVariation: 'Incline',
-        loadIncrementKg: 4.54,
-        notes: '5s up / 5s down tempo, one set to technical failure.',
-      },
-      {
-        canonicalName: 'Leg Press',
-        targetSets: 1,
-        targetReps: '10-12',
-        targetEquipmentType: 'Machine',
-        targetVariation: 'Standard',
-        loadIncrementKg: 9.07,
-        notes: '5s up / 5s down tempo, one set to technical failure.',
-      },
-    ],
-  },
-];
-
-const HYPERTROPHY_TEMPLATE: CustomSessionTemplateDefinition[] = [
-  {
-    name: 'Workout A',
-    sessionFocus: null,
-    setsPerExercise: 1,
-    repRange: null,
-    progressionRule: null,
-    exercises: [
-      {
-        candidateNames: ['Squat', 'Back Squat'],
-        presetEquipmentType: null,
-        presetVariation: null,
-        targetSets: null,
-        targetReps: null,
-        loadIncrementKg: null,
-        notes: null,
-      },
-      {
-        candidateNames: ['Bench Press'],
-        presetEquipmentType: null,
-        presetVariation: null,
-        targetSets: null,
-        targetReps: null,
-        loadIncrementKg: null,
-        notes: null,
-      },
-      {
-        candidateNames: ['Row'],
-        presetEquipmentType: null,
-        presetVariation: null,
-        targetSets: null,
-        targetReps: null,
-        loadIncrementKg: null,
-        notes: null,
-      },
-    ],
-  },
-  {
-    name: 'Workout B',
-    sessionFocus: null,
-    setsPerExercise: 1,
-    repRange: null,
-    progressionRule: null,
-    exercises: [
-      {
-        candidateNames: ['Back Extension'],
-        presetEquipmentType: null,
-        presetVariation: null,
-        targetSets: null,
-        targetReps: null,
-        loadIncrementKg: null,
-        notes: null,
-      },
-      {
-        candidateNames: ['Overhead Press'],
-        presetEquipmentType: null,
-        presetVariation: null,
-        targetSets: null,
-        targetReps: null,
-        loadIncrementKg: null,
-        notes: null,
-      },
-      {
-        candidateNames: ['Pull-up', 'Pull Up', 'Pullups', 'Pull-Ups'],
-        presetEquipmentType: null,
-        presetVariation: null,
-        targetSets: null,
-        targetReps: null,
-        loadIncrementKg: null,
-        notes: null,
-      },
-    ],
-  },
-  {
-    name: 'Workout C',
-    sessionFocus: null,
-    setsPerExercise: 1,
-    repRange: null,
-    progressionRule: null,
-    exercises: [
-      {
-        candidateNames: ['Split Squat', 'Bulgarian Split Squat'],
-        presetEquipmentType: null,
-        presetVariation: null,
-        targetSets: null,
-        targetReps: null,
-        loadIncrementKg: null,
-        notes: null,
-      },
-      {
-        candidateNames: ['Bench Press'],
-        presetEquipmentType: 'Barbell',
-        presetVariation: 'Incline',
-        targetSets: null,
-        targetReps: null,
-        loadIncrementKg: null,
-        notes: null,
-      },
-      {
-        candidateNames: ['Wood Chop', 'Cable Wood Chop'],
-        presetEquipmentType: null,
-        presetVariation: null,
-        targetSets: null,
-        targetReps: null,
-        loadIncrementKg: null,
-        notes: null,
-      },
-    ],
-  },
-];
-
-
-const STRENGTH_TEMPLATE: CustomSessionTemplateDefinition[] = [
-  {
-    name: 'Workout A',
-    sessionFocus: 'strength',
-    setsPerExercise: 3,
-    repRange: '3-5',
-    progressionRule: 'Add load when all sets hit 5 reps with clean technique and bar speed.',
-    exercises: [
-      { candidateNames: ['Squat', 'Back Squat'], targetSets: 3, targetReps: '3-5', loadIncrementKg: 2.5, notes: 'Primary lower-body strength lift.', presetEquipmentType: null, presetVariation: null },
-      { candidateNames: ['Bench Press'], targetSets: 3, targetReps: '3-5', loadIncrementKg: 2.5, notes: 'Primary horizontal press.', presetEquipmentType: null, presetVariation: null },
-      { candidateNames: ['Row'], targetSets: 3, targetReps: '5-8', loadIncrementKg: 2.5, notes: 'Heavy pull assistance.', presetEquipmentType: null, presetVariation: null },
-    ],
-  },
-  {
-    name: 'Workout B',
-    sessionFocus: 'strength',
-    setsPerExercise: 3,
-    repRange: '3-5',
-    progressionRule: 'Hold load until all primary sets reach top reps, then increase next exposure.',
-    exercises: [
-      { candidateNames: ['Deadlift', 'Romanian Deadlift'], targetSets: 3, targetReps: '3-5', loadIncrementKg: 5, notes: 'Primary hinge strength lift.', presetEquipmentType: null, presetVariation: null },
-      { candidateNames: ['Overhead Press'], targetSets: 3, targetReps: '3-5', loadIncrementKg: 2.5, notes: 'Primary vertical press.', presetEquipmentType: null, presetVariation: null },
-      { candidateNames: ['Pull-up', 'Pull Up', 'Pullups', 'Pull-Ups'], targetSets: 3, targetReps: '3-6', loadIncrementKg: 2.5, notes: 'Weighted if possible.', presetEquipmentType: null, presetVariation: null },
-    ],
-  },
-  {
-    name: 'Workout C',
-    sessionFocus: 'strength',
-    setsPerExercise: 3,
-    repRange: '3-5',
-    progressionRule: 'Use this day to reinforce weak points while keeping heavy intent.',
-    exercises: [
-      { candidateNames: ['Split Squat', 'Bulgarian Split Squat'], targetSets: 3, targetReps: '5-8', loadIncrementKg: 2.5, notes: 'Single-leg strength assistance.', presetEquipmentType: null, presetVariation: null },
-      { candidateNames: ['Bench Press'], targetSets: 3, targetReps: '3-5', loadIncrementKg: 2.5, notes: 'Secondary bench exposure.', presetEquipmentType: 'Barbell', presetVariation: 'Incline' },
-      { candidateNames: ['Wood Chop', 'Cable Wood Chop'], targetSets: 3, targetReps: '6-10', loadIncrementKg: 2.5, notes: 'Core strength and bracing.', presetEquipmentType: null, presetVariation: null },
-    ],
-  },
-];
+import {
+  computeCurrentWeek,
+  customProtocolTemplate,
+  customSessionExerciseRows,
+  getNextSessionInRotation,
+  normalizeName,
+  OCCAMS_TEMPLATE,
+  occamsSessionExerciseRows,
+  templateSessionRow,
+  type CustomSessionTemplateDefinition,
+  type OccamsSessionTemplateDefinition,
+  type SessionExerciseRowPayload,
+} from './programProtocol';
 
 const PERIODIZATION_TABLES_MISSING_ERROR_CODES = new Set(['PGRST205', '42P01']);
 
@@ -277,18 +44,8 @@ const isMissingPeriodizationTableError = (error: unknown): boolean => {
   );
 };
 
-const normalizeName = (value: string) => value.trim().toLowerCase();
-
 const EXERCISE_SELECT_COLUMNS =
   'id, name, order, exercise_type, archetype_id, default_equipment_type, created_by_user_id, is_static';
-
-const computeCurrentWeek = (startDateIso: string, durationWeeks: number): number => {
-  const start = new Date(startDateIso);
-  const now = new Date();
-  const elapsedMs = now.getTime() - start.getTime();
-  const elapsedWeeks = Math.floor(Math.max(0, elapsedMs) / (7 * 24 * 60 * 60 * 1000));
-  return Math.min(durationWeeks, elapsedWeeks + 1);
-};
 
 const fetchExerciseCatalog = async (): Promise<Exercise[]> => {
   const { data, error } = await supabase
@@ -371,47 +128,6 @@ const ensureCanonicalExerciseForUser = async (
   return createdExercise;
 };
 
-const findExistingExerciseByCandidateNames = (
-  exerciseCatalog: Exercise[],
-  candidateNames: string[]
-): Exercise | null => {
-  for (const candidateName of candidateNames) {
-    const normalizedCandidateName = normalizeName(candidateName);
-    const match = exerciseCatalog.find(
-      exercise => normalizeName(exercise.name) === normalizedCandidateName
-    );
-
-    if (match) {
-      return match;
-    }
-  }
-
-  return null;
-};
-
-const buildTemplateExerciseNotes = (
-  templateExercise: ExistingExerciseTemplateDefinition
-): string | null => {
-  const preset: Record<string, string> = {};
-
-  if (templateExercise.presetEquipmentType) {
-    preset.equipmentType = templateExercise.presetEquipmentType;
-  }
-
-  if (templateExercise.presetVariation) {
-    preset.variation = templateExercise.presetVariation;
-  }
-
-  const presetLine =
-    Object.keys(preset).length > 0
-      ? `__preset__:${JSON.stringify(preset)}`
-      : null;
-
-  return [templateExercise.notes?.trim() || null, presetLine]
-    .filter((value): value is string => Boolean(value))
-    .join('\n') || null;
-};
-
 const fetchSessionsForMesocycle = async (mesocycleId: string): Promise<MesocycleSession[]> => {
   const { data, error } = await supabase
     .from('mesocycle_sessions' as never)
@@ -470,32 +186,6 @@ const fetchLastCompletedSessionId = async (
   return (data?.mesocycle_session_id as string | null) ?? null;
 };
 
-const getNextSessionInRotation = (
-  sessions: MesocycleSessionTemplate[],
-  lastCompletedSessionId: string | null
-): MesocycleSessionTemplate | null => {
-  if (sessions.length === 0) return null;
-  if (!lastCompletedSessionId) return sessions[0];
-
-  const currentIndex = sessions.findIndex(session => session.id === lastCompletedSessionId);
-  if (currentIndex < 0) return sessions[0];
-
-  return sessions[(currentIndex + 1) % sessions.length];
-};
-
-const getNextSessionInSimpleRotation = (
-  sessions: MesocycleSession[],
-  lastCompletedSessionId: string | null
-): MesocycleSession | null => {
-  if (sessions.length === 0) return null;
-  if (!lastCompletedSessionId) return sessions[0];
-
-  const currentIndex = sessions.findIndex(session => session.id === lastCompletedSessionId);
-  if (currentIndex < 0) return sessions[0];
-
-  return sessions[(currentIndex + 1) % sessions.length];
-};
-
 const fetchSessionExerciseNames = async (sessionId: string): Promise<string[]> => {
   const { data, error } = await supabase
     .from('mesocycle_session_exercises' as never)
@@ -521,15 +211,7 @@ const upsertOccamsProtocolSession = async (
 ): Promise<void> => {
   let sessionId = existingSession?.id ?? null;
 
-  const sessionPayload = {
-    mesocycle_id: mesocycleId,
-    name: definition.name,
-    session_order: sessionOrder,
-    session_focus: definition.sessionFocus,
-    sets_per_exercise: definition.setsPerExercise,
-    rep_range: definition.repRange,
-    progression_rule: definition.progressionRule,
-  };
+  const sessionPayload = templateSessionRow(mesocycleId, sessionOrder, definition);
 
   if (!sessionId) {
     const { data: insertedSession, error: insertSessionError } = await supabase
@@ -552,50 +234,24 @@ const upsertOccamsProtocolSession = async (
     if (updateSessionError) throw updateSessionError;
   }
 
-  const desiredSessionExercises = definition.exercises
-    .map(async (templateExercise, exerciseIndex) => {
-      const resolved = await ensureCanonicalExerciseForUser(
+  const resolvedExercises = await Promise.all(
+    definition.exercises.map(templateExercise =>
+      ensureCanonicalExerciseForUser(
         userId,
         exerciseCatalog,
         templateExercise.canonicalName,
         templateExercise.targetEquipmentType,
         templateExercise.targetVariation
-      );
-
-      return resolved ? {
-        mesocycle_session_id: sessionId as string,
-        exercise_id: resolved.id,
-        exercise_order: exerciseIndex + 1,
-        target_sets: templateExercise.targetSets,
-        target_reps: templateExercise.targetReps,
-        load_increment_kg: templateExercise.loadIncrementKg,
-        notes: buildTemplateExerciseNotes({
-          candidateNames: [templateExercise.canonicalName],
-          presetEquipmentType: templateExercise.targetEquipmentType,
-          presetVariation: templateExercise.targetVariation,
-          targetSets: templateExercise.targetSets,
-          targetReps: templateExercise.targetReps,
-          loadIncrementKg: templateExercise.loadIncrementKg,
-          notes: templateExercise.notes,
-        }),
-      } : null;
-    });
-
-  const resolvedSessionExercises = await Promise.all(desiredSessionExercises);
-  const desiredSessionExerciseRows = resolvedSessionExercises
-      .filter((value): value is NonNullable<typeof value> => value !== null);
+      )
+    )
+  );
+  const desiredSessionExerciseRows = occamsSessionExerciseRows(
+    sessionId,
+    definition,
+    resolvedExercises.map(exercise => exercise.id)
+  );
 
   await syncSessionExercises(sessionId, desiredSessionExerciseRows);
-};
-
-type SessionExerciseRowPayload = {
-  mesocycle_session_id: string;
-  exercise_id: string;
-  exercise_order: number;
-  target_sets: number | null;
-  target_reps: string | null;
-  load_increment_kg: number | null;
-  notes: string | null;
 };
 
 const syncSessionExercises = async (
@@ -667,15 +323,7 @@ const upsertCustomProtocolSession = async (
 ): Promise<void> => {
   let sessionId = existingSession?.id ?? null;
 
-  const sessionPayload = {
-    mesocycle_id: mesocycleId,
-    name: definition.name,
-    session_order: sessionOrder,
-    session_focus: definition.sessionFocus,
-    sets_per_exercise: definition.setsPerExercise,
-    rep_range: definition.repRange,
-    progression_rule: definition.progressionRule,
-  };
+  const sessionPayload = templateSessionRow(mesocycleId, sessionOrder, definition);
 
   if (!sessionId) {
     const { data: insertedSession, error: insertSessionError } = await supabase
@@ -698,29 +346,10 @@ const upsertCustomProtocolSession = async (
     if (updateSessionError) throw updateSessionError;
   }
 
-  const desiredSessionExerciseRows = definition.exercises.map(
-    (templateExercise, exerciseIndex) => {
-      const resolvedExercise = findExistingExerciseByCandidateNames(
-        exerciseCatalog,
-        templateExercise.candidateNames
-      );
-
-      if (!resolvedExercise) {
-        throw new Error(
-          `Missing exercise for ${definition.name}: ${templateExercise.candidateNames.join(' / ')}`
-        );
-      }
-
-      return {
-        mesocycle_session_id: sessionId as string,
-        exercise_id: resolvedExercise.id,
-        exercise_order: exerciseIndex + 1,
-        target_sets: templateExercise.targetSets,
-        target_reps: templateExercise.targetReps,
-        load_increment_kg: templateExercise.loadIncrementKg,
-        notes: buildTemplateExerciseNotes(templateExercise),
-      };
-    }
+  const desiredSessionExerciseRows = customSessionExerciseRows(
+    sessionId,
+    definition,
+    exerciseCatalog
   );
 
   await syncSessionExercises(sessionId, desiredSessionExerciseRows);
@@ -754,7 +383,7 @@ const ensureCustomProtocolSessions = async (
 ): Promise<void> => {
   const exercises = await fetchExerciseCatalog();
   const existingByName = new Map(existingSessions.map(session => [normalizeName(session.name), session]));
-  const template = goalFocus === "strength" ? STRENGTH_TEMPLATE : HYPERTROPHY_TEMPLATE;
+  const template = customProtocolTemplate(goalFocus);
 
   for (let index = 0; index < template.length; index += 1) {
     const definition = template[index];
@@ -800,7 +429,7 @@ export const getActiveMesocycleProgram = async (userId: string): Promise<ActiveM
   return {
     mesocycle,
     sessions: sessionTemplates,
-    current_week: computeCurrentWeek(mesocycle.start_date, mesocycle.duration_weeks),
+    current_week: computeCurrentWeek(mesocycle.start_date, mesocycle.duration_weeks, new Date()),
     last_completed_session_id: lastCompletedSessionId,
     next_session_id: nextSession?.id ?? null,
     next_session_name: nextSession?.name ?? null,
@@ -828,14 +457,14 @@ export const fetchActiveMesocycleSummary = async (
   const mesocycle = data as Mesocycle;
   const sessions = await fetchSessionsForMesocycle(mesocycle.id);
   const lastCompletedSessionId = await fetchLastCompletedSessionId(userId, mesocycle.id);
-  const nextSession = getNextSessionInSimpleRotation(sessions, lastCompletedSessionId);
+  const nextSession = getNextSessionInRotation(sessions, lastCompletedSessionId);
   const nextSessionExerciseNames = nextSession
     ? await fetchSessionExerciseNames(nextSession.id)
     : [];
 
   return {
     mesocycle,
-    current_week: computeCurrentWeek(mesocycle.start_date, mesocycle.duration_weeks),
+    current_week: computeCurrentWeek(mesocycle.start_date, mesocycle.duration_weeks, new Date()),
     last_completed_session_id: lastCompletedSessionId,
     next_session_id: nextSession?.id ?? null,
     next_session_name: nextSession?.name ?? null,

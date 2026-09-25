@@ -56,6 +56,23 @@ workout summaries. Its hook gathers the sources — auth, workout state,
 periodization, habits, snapshot query — and feeds the model; the model itself
 does no I/O.
 
+## Program protocol
+
+The template a program follows: `occams`, `custom` (strength or hypertrophy
+sessions, by the block's focus), or `coach` (the Coach built it, or an edit took
+it off its fixed template). Along with the templates come the rules: the week of
+the block today falls in (week 1 from the start date, still week 1 before it,
+the final week once the block has run past its end), the next session in
+rotation (sessions in order, wrapping around, starting over when nothing is
+completed or the last completed session is no longer in the program), and the
+program sessions a template generates.
+
+"Protocol" is the template; a session in the program is a **program session**,
+the name the `program-session` start intent already uses. Calling the session a
+protocol session blurs it with the template it came from.
+
+_Avoid_: protocol session
+
 ## Workout start
 
 Beginning a workout crosses exactly one interface, `startWorkoutSession`, which
