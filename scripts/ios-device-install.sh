@@ -79,6 +79,9 @@ xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
   -allowProvisioningUpdates DEVELOPMENT_TEAM="$IOS_DEVELOPMENT_TEAM" build
 
 xcrun devicectl device install app --device "$IOS_DEVICE_ID" "$APP"
+# ios-renew.sh reads this to tell how old the build on the phone is, and points
+# it back at the main checkout when it builds from its own worktree.
+date +%s > "${IOS_INSTALL_STAMP:-$DERIVED_DATA/last-install}"
 xcrun devicectl device process launch --device "$IOS_DEVICE_ID" "$BUNDLE_ID"
 
 # 8. A free Personal Team's profile stops launching after seven days.

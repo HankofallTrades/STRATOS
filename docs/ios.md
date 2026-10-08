@@ -47,6 +47,15 @@ setup below, not the build. It prints the date the free-signing build stops
 launching; after that the app icon is there but will not open, and the fix is
 to run the command again.
 
+`scripts/ios-renew.sh` does that on a schedule: it reinstalls once the last
+install is five days old and the phone is reachable, and posts a macOS
+notification if it cannot. It builds the tip of `main` in its own worktree
+(`~/Library/Caches/stratos-ios-renew/worktree`), never the working tree. Run it
+daily with a launchd agent in `~/Library/LaunchAgents/` (`ProgramArguments` the
+script, `StartCalendarInterval` at noon, output to
+`~/Library/Logs/stratos-ios-renew.log`), loaded with
+`launchctl bootstrap gui/$(id -u) <plist>`.
+
 The one-time setup it cannot do for you, in order:
 
 1. Xcode → Settings → Accounts → **+** → sign in with an Apple ID. A free one is
