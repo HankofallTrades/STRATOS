@@ -49,7 +49,8 @@ to run the command again.
 
 `scripts/ios-renew.sh` does that on a schedule: it reinstalls once the last
 install is five days old and the phone is reachable, and posts a macOS
-notification if it cannot. It builds the tip of `main` in its own worktree
+notification if it cannot. It fetches and builds the tip of `origin/main`, so
+pushes from any machine reach the phone, in its own worktree
 (`~/Library/Caches/stratos-ios-renew/worktree`), never the working tree. Run it
 daily with a launchd agent in `~/Library/LaunchAgents/` (`ProgramArguments` the
 script, `StartCalendarInterval` at noon, output to
