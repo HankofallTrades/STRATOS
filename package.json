@@ -10,6 +10,7 @@
     "build:ios": "STRATOS_TARGET=ios vite build",
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
+    "typecheck:ci": "node scripts/typecheck-baseline.mjs",
     "test": "vitest run",
     "preview": "vite preview",
     "supabase:start": "supabase start",

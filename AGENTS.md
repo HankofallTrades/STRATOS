@@ -16,6 +16,7 @@ Package manager is **npm** (`package-lock.json` is the real lockfile; the stray
 | `npm run build:ios` | wrap build; the *only* difference is that PWA is dropped |
 | `npm run lint` | expected baseline: **8 warnings, 0 errors** |
 | `npm run typecheck` | expected baseline: **74 errors** (exits non-zero at baseline) |
+| `npm run typecheck:ci` | CI guard: fails above 74 errors or if the compiler fails to run |
 | `npm test` | Vitest, node environment, no React or live Supabase |
 
 **Do not run `build` and `lint` at the same time.** Vite writes transient
@@ -33,6 +34,9 @@ The 74 errors were standing when the command landed, so judge a change by the co
 (`npm run typecheck | grep -c "error TS"`), not by the exit code: a 75th error
 means you added one. It covers `src` only; `tsconfig.node.json` and `api/` are
 not checked.
+
+GitHub Actions runs `typecheck:ci` on pushes and pull requests. Its allowed
+baseline lives in `scripts/typecheck-baseline.mjs`; lower it when errors are fixed.
 
 `npm run dev` auto-signs-in from `.env.development.local` in dev builds only
 (template: `.env.development.example`). Use the e2e test account, never a real user.
