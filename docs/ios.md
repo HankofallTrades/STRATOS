@@ -237,6 +237,11 @@ schedule), and switch to the Stratos theme in Settings (the clock turns black).
 
 ## The Live Activity and its widget extension
 
+The native Set Plan cursor has a Foundation-only Swift package test seam:
+`swift test --package-path ios`. It compiles the same shared cursor and payload
+files the app and widget use, and checks superset order, out-of-order gaps and
+adjustments. Run it alongside the web Set Plan tests when changing ordering.
+
 The lock screen shows the running workout: the current exercise, which set of
 the session it is, and the target. `StratosWidget` is a WidgetKit app extension
 target inside `ios/App/App.xcodeproj`, embedded into `App.app/PlugIns` by the

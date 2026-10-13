@@ -9,6 +9,8 @@
 /build/
 vite.config.ts.timestamp-*.mjs
 *.tsbuildinfo
+ios/.build/
+ios/.swiftpm/
 .eslintcache
 
 # Logs

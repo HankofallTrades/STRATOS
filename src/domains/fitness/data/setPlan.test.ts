@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import type { Exercise, ExerciseSet, WorkoutExercise } from "@/lib/types/workout";
 import { secondsToTime } from "@/lib/types/workout";
+import workoutReducer, { startWorkout, pairWorkoutExercises, addSetToExercise, breakSuperset, deleteWorkoutExercise } from "@/state/workout/workoutSlice";
+import { buildLiveActivityPlan, currentLiveActivitySet } from "./liveActivityState";
 
 import { buildRecommendedStrengthSetPerformances } from "./recommendations";
 import type { HistoricalStrengthSetPerformance } from "./recommendations";
@@ -62,6 +64,69 @@ const history = (
 });
 
 describe("buildSetPlan", () => {
+  it("opens shared rounds before locking, even when the members began with unequal counts", () => {
+    const bench = exercise({ id: "bench", name: "Bench" });
+    const row = exercise({ id: "row", name: "Row" });
+    let state = workoutReducer(undefined, startWorkout({ initialExercises: [
+      workoutExercise("a", bench, [strengthSet("a1", "bench")]),
+      workoutExercise("b", row, [strengthSet("b1", "row"), strengthSet("b2", "row")]),
+    ] }));
+    state = workoutReducer(state, pairWorkoutExercises({ firstId: "a", secondId: "b", roundCount: 4 }));
+    // Reloading uses JSON; membership and pre-opened rounds must survive it.
+    const exercises: WorkoutExercise[] = JSON.parse(JSON.stringify(state.currentWorkout?.exercises));
+    const plan = buildSetPlan({ exercises, sessionFocus: "hypertrophy", historyByWorkoutExerciseId: {} });
+    expect(plan.map(entry => [entry.workoutExerciseId, entry.setNumber]))
+      .toEqual([["a", 1], ["b", 1], ["a", 2], ["b", 2], ["a", 3], ["b", 3], ["a", 4], ["b", 4]]);
+    const livePlan = buildLiveActivityPlan(plan);
+    const visited: string[] = [];
+    for (let index = 0; index < livePlan.length; index++) {
+      const current = currentLiveActivitySet(livePlan)!;
+      visited.push(`${current.workoutExerciseId}${current.setNumber}`);
+      current.completed = true;
+    }
+    expect(visited).toEqual(["a1", "b1", "a2", "b2", "a3", "b3", "a4", "b4"]);
+    expect(currentLiveActivitySet(livePlan)?.setNumber).toBe(4);
+  });
+
+  it("Add Set extends both members; breaking apart restores exercise order", () => {
+    const bench = exercise({ id: "bench", name: "Bench" });
+    const row = exercise({ id: "row", name: "Row" });
+    let state = workoutReducer(undefined, startWorkout({ initialExercises: [
+      workoutExercise("a", bench, [strengthSet("a1", "bench")]),
+      workoutExercise("b", row, [strengthSet("b1", "row")]),
+    ] }));
+    state = workoutReducer(state, pairWorkoutExercises({ firstId: "a", secondId: "b", roundCount: 1 }));
+    state = workoutReducer(state, addSetToExercise({ workoutExerciseId: "b", exerciseId: "row", isStatic: false }));
+    const build = () => buildSetPlan({ exercises: state.currentWorkout!.exercises, sessionFocus: "hypertrophy", historyByWorkoutExerciseId: {} });
+    expect(build().map(entry => [entry.workoutExerciseId, entry.setNumber]))
+      .toEqual([["a", 1], ["b", 1], ["a", 2], ["b", 2]]);
+    state = workoutReducer(state, breakSuperset(state.currentWorkout!.exercises[0].supersetId!));
+    expect(build().map(entry => [entry.workoutExerciseId, entry.setNumber]))
+      .toEqual([["a", 1], ["a", 2], ["b", 1], ["b", 2]]);
+    state = workoutReducer(state, pairWorkoutExercises({ firstId: "a", secondId: "b", roundCount: 2 }));
+    state = workoutReducer(state, deleteWorkoutExercise("a"));
+    expect(state.currentWorkout!.exercises[0].supersetId).toBeNull();
+    expect(build().map(entry => entry.workoutExerciseId)).toEqual(["b", "b"]);
+  });
+
+  it("alternates paired exercises by round without moving ungrouped sets", () => {
+    const bench = exercise({ id: "bench", name: "Bench Press" });
+    const row = exercise({ id: "row", name: "Row" });
+    const squat = exercise({ id: "squat", name: "Squat" });
+    const paired = [
+      { ...workoutExercise("a", bench, [strengthSet("a1", "bench"), strengthSet("a2", "bench")]), supersetId: "pair" },
+      { ...workoutExercise("b", row, [strengthSet("b1", "row"), strengthSet("b2", "row")]), supersetId: "pair" },
+    ];
+    const plan = buildSetPlan({
+      exercises: [workoutExercise("s", squat, [strengthSet("s1", "squat"), strengthSet("s2", "squat")]), ...paired],
+      sessionFocus: "hypertrophy",
+      historyByWorkoutExerciseId: {},
+    });
+    expect(plan.map(entry => entry.setId)).toEqual(["s1", "s2", "a1", "b1", "a2", "b2"]);
+    expect(plan.map(entry => entry.position)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(plan.map(entry => entry.setNumber)).toEqual([1, 2, 1, 1, 2, 2]);
+  });
+
   it("returns no entries for an empty workout", () => {
     // A session with nothing in it must not hand the lock screen a phantom set.
     expect(

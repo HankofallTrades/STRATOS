@@ -183,6 +183,7 @@ export interface WorkoutExercise {
   exercise: Exercise; // Embed the core exercise details (using updated Exercise type)
   equipmentType?: string; // Changed to string
   variation?: string; // Variation used for *this workout instance*
+  supersetId?: string | null; // Shared by an adjacent, ordered A/B pair
   sets: ExerciseSet[];
 }
 

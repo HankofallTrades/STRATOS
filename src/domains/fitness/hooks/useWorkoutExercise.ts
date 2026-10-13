@@ -95,7 +95,7 @@ export const useWorkoutExercise = (
     // next exercise.
     const autoAddsAnotherSet = useMemo(
         () =>
-            shouldAutoAddSet({
+            !workoutExercise.supersetId && shouldAutoAddSet({
                 setCount: workoutExercise.sets.length,
                 previousSets: historicalSets,
                 // Covers the variation and bodyweight lookups as well as
@@ -103,7 +103,7 @@ export const useWorkoutExercise = (
                 // It errs towards opening a set, which is the safe side.
                 previousSetsLoaded: !lookups.isLoading,
             }),
-        [workoutExercise.sets.length, historicalSets, lookups.isLoading]
+        [workoutExercise.supersetId, workoutExercise.sets.length, historicalSets, lookups.isLoading]
     );
 
     const overallLastPerformance = useMemo(() => {

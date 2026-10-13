@@ -156,6 +156,17 @@ lockstep with the union. Applying an artifact goes through a single entry point
 that routes by artifact type to the right confirm-only handler — artifact UI
 never names a handler directly.
 
+## Superset
+
+A fixed, ordered pair of workout exercises, A and B. One **round** is A's set
+followed by B's set at the same set number. The pair stays adjacent in workout
+order and shares a superset id. Breaking it up, or deleting a member, leaves
+the surviving exercises ungrouped.
+
+The members share a round count. Rest follows completion of both sets of a
+round, including out-of-order completion. The Set Plan walks A1, B1, A2, B2;
+ungrouped exercises keep their exercise order.
+
 ## Set Plan
 
 The precomputed list of every set in the active workout session — exercise,

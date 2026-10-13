@@ -56,6 +56,7 @@ interface WorkoutExerciseViewProps {
     exercise: Exercise & { is_static?: boolean | null }; // Ensure is_static is available
     sets: ExerciseSet[];
     equipmentType?: string
+    supersetId?: string | null;
   };
   historicalSetPerformances: Record<number, { weight: number; reps: number | null; time_seconds?: number | null } | null>; // Updated for time
   recommendedSetPerformances: Record<number, RecommendedStrengthSetPerformance | null>;
@@ -809,7 +810,8 @@ export const WorkoutExerciseView = ({
                               size="sm"
                               onClick={onAddSet}
                               className="h-8 rounded-[10px] border-0 bg-transparent px-2 text-[13px] font-medium text-foreground/72 shadow-none hover:bg-transparent hover:text-foreground"
-                              aria-label="Add set"
+                              aria-label={workoutExercise.supersetId ? "Add round to both exercises" : "Add set"}
+                              title={workoutExercise.supersetId ? "Add round to both exercises" : "Add set"}
                             >
                               <Plus size={15} />
                             </Button>

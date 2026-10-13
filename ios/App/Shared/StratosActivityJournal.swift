@@ -177,7 +177,9 @@ struct StratosActivityStore {
 /// The rule is stated on the web too, in `currentLiveActivitySet`, which is what
 /// the app shows while it is awake. The two must agree.
 enum StratosActivityCursor {
-    /// The first set still open. Sets can be logged out of order, so it is the
+    /// Walk the delivered order: supersets arrive A1, B1, A2, B2 and must never
+    /// be regrouped by exercise here. The first set still open is current.
+    /// Sets can be logged out of order, so it is the
     /// first gap rather than one past the last completed. When every set is
     /// logged the last one stands: the activity's life is tied to the workout,
     /// not to the plan running out, and going blank mid-session would read as

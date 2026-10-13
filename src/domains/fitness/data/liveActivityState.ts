@@ -88,7 +88,8 @@ export const buildLiveActivityPlan = (setPlan: SetPlan): LiveActivityPlan =>
 /**
  * The set the lock screen is on, or `null` when there is nothing to show.
  *
- * The current set is the first one still open. Sets can be logged out of order,
+ * Walk the delivered order: supersets arrive A1, B1, A2, B2 rather than being
+ * regrouped by exercise. The current set is the first one still open. Sets can be logged out of order,
  * so it is the first gap rather than one past the last completed set. When
  * every planned set is logged the last set stands, because the activity's life
  * is tied to the workout and not to the plan running out: the user can still

@@ -4,9 +4,10 @@ Issues and specs for this repo live in **Linear**, workspace `daimodus`, team **
 (key `I`, id `0e2ffda0-5e9d-4581-bbb7-c74df50fd586`), project **Stratos**
 (`https://linear.app/daimodus/project/stratos-cb8a882a5679`).
 
-Access is through the **Linear MCP server** (`mcp__*__linear__*` tools), not a CLI.
-If the MCP server is not connected in the current session, say so and stop rather
-than falling back to `gh` — GitHub Issues is not used for this repo.
+Access Linear through **Executor MCP**. Read Executor's `execute` guide, then
+discover tools with `tools.search({ namespace: "linear_app", query: "…" })` and
+inspect their inputs with `tools.describe.tool({ path })`. Call the discovered
+connection address through Executor. GitHub Issues is not used for this repo.
 
 Every issue this repo's skills create must set:
 

@@ -1,11 +1,17 @@
 import React, { memo, useState, useRef, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useStore } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { useActionListener } from "@/hooks/useActionListener";
-import { useAppSelector } from "@/hooks/redux";
+import { useAppDispatch, useAppSelector } from "@/hooks/redux";
+import type { RootState } from "@/state/store";
 import { useAuth } from "@/state/auth/AuthProvider";
-import { selectCurrentWorkout, selectSessionFocus, setCompleted } from "@/state/workout/workoutSlice";
+import { selectCurrentWorkout, selectSessionFocus, setCompleted, pairWorkoutExercises, breakSuperset } from "@/state/workout/workoutSlice";
+import { startsRestAfterSet, workoutExerciseGroups } from "@/domains/fitness/data/supersets";
+import { DEFAULT_AUTO_ADD_SET_COUNT } from "@/domains/fitness/data/setAutoAdd";
+import { Button } from "@/components/core/button";
+import RestTimer from "./RestTimer";
 import {
   buildWorkoutExerciseHistoryKey,
   fetchLastWorkoutExerciseInstances,
@@ -106,6 +112,8 @@ const WorkoutExerciseRow = memo(({
 WorkoutExerciseRow.displayName = "WorkoutExerciseRow";
 
 const WorkoutComponent = () => {
+  const dispatch = useAppDispatch();
+  const store = useStore<RootState>();
   const currentWorkout = useAppSelector(selectCurrentWorkout);
   const { user } = useAuth();
   const userId = user?.id ?? null;
@@ -230,8 +238,14 @@ const WorkoutComponent = () => {
 
   // Rest starts when a set is logged, so the timer listens for the completion
   // rather than watching completed counts for one to go up.
-  useActionListener(setCompleted, ({ workoutExerciseId }) => {
-    setRestTimerState({ exerciseId: workoutExerciseId, startTime: Date.now() });
+  useActionListener(setCompleted, ({ workoutExerciseId, completedSet }) => {
+    const exercises = selectCurrentWorkout(store.getState())?.exercises ?? [];
+    const group = workoutExerciseGroups(exercises).find(members => members.some(member => member.id === workoutExerciseId));
+    if (startsRestAfterSet(exercises, workoutExerciseId, completedSet.id)) {
+      setRestTimerState({ exerciseId: group?.[0].id ?? workoutExerciseId, startTime: Date.now() });
+    } else {
+      setRestTimerState(null);
+    }
   });
 
   if (!currentWorkout) {
@@ -244,21 +258,56 @@ const WorkoutComponent = () => {
         {currentWorkout.exercises.length > 0 ? (
           <div className="space-y-8 [overflow-x:clip] pb-8">
             <AnimatePresence initial={false}>
-              {currentWorkout.exercises.map((exercise) => (
-                <WorkoutExerciseRow
-                  key={exercise.id}
-                  exercise={exercise}
-                  historyByLookupKey={historyByLookupKey}
-                  isLookupDataLoading={isLookupDataLoading}
-                  priorBestE1RM={peakE1RMByExerciseId[exercise.exercise.id] ?? null}
-                  recommendedSetPerformances={
-                    recommendationsByWorkoutExerciseId[exercise.id] ?? EMPTY_RECOMMENDATIONS
-                  }
-                  restStartTime={restTimerState?.exerciseId === exercise.id ? restTimerState.startTime : null}
-                  userWeightKg={userWeight?.weight_kg ?? null}
-                  variationsByExerciseId={variationsByExerciseId}
-                />
-              ))}
+              {workoutExerciseGroups(workoutExercises).map((group, groupIndex, groups) => {
+                const paired = group.length === 2;
+                const next = groups[groupIndex + 1];
+                const candidates = next?.length === 1 ? [group[0], next[0]] : [];
+                const canPair = !paired && candidates.length === 2 && candidates.every(exercise =>
+                  !exercise.supersetId && exercise.exercise.exercise_type !== 'cardio' && exercise.exercise.exercise_category !== 'breathwork'
+                );
+                return (
+                  <div key={group[0].id} className={paired ? "stone-panel rounded-[24px] border border-primary/20 p-4 space-y-4" : "space-y-2"}>
+                    {paired && (
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-3">
+                          <span className="app-kicker tabular-nums">Superset · {group[0].sets.length} rounds</span>
+                          {restTimerState?.exerciseId === group[0].id && <RestTimer startTime={restTimerState.startTime} />}
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={() => {
+                          dispatch(breakSuperset(group[0].supersetId!));
+                          setRestTimerState(null);
+                        }}>Break apart</Button>
+                      </div>
+                    )}
+                    {group.map((exercise, memberIndex) => (
+                      <div key={exercise.id}>
+                        {paired && <p className="mb-2 text-xs font-semibold text-muted-foreground">{memberIndex === 0 ? 'A' : 'B'}</p>}
+                        <WorkoutExerciseRow
+                          exercise={exercise}
+                          historyByLookupKey={historyByLookupKey}
+                          isLookupDataLoading={isLookupDataLoading}
+                          priorBestE1RM={peakE1RMByExerciseId[exercise.exercise.id] ?? null}
+                          recommendedSetPerformances={
+                            recommendationsByWorkoutExerciseId[exercise.id] ?? EMPTY_RECOMMENDATIONS
+                          }
+                          restStartTime={!paired && restTimerState?.exerciseId === exercise.id ? restTimerState.startTime : null}
+                          userWeightKg={userWeight?.weight_kg ?? null}
+                          variationsByExerciseId={variationsByExerciseId}
+                        />
+                      </div>
+                    ))}
+                    {canPair && (
+                      <Button variant="ghost" size="sm" className="text-muted-foreground" disabled={isLoadingHistory} onClick={() => {
+                        const roundCount = Math.max(...candidates.map(exercise =>
+                          Math.max(exercise.sets.length, historyByWorkoutExerciseId[exercise.id]?.length || DEFAULT_AUTO_ADD_SET_COUNT)
+                        ));
+                        dispatch(pairWorkoutExercises({ firstId: candidates[0].id, secondId: candidates[1].id, roundCount }));
+                        setRestTimerState(null);
+                      }}>Pair with {candidates[1].exercise.name}</Button>
+                    )}
+                  </div>
+                );
+              })}
             </AnimatePresence>
 
             <div className="flex justify-start pt-1">

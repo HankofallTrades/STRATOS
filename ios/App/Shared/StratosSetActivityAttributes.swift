@@ -1,4 +1,6 @@
+#if os(iOS)
 import ActivityKit
+#endif
 import Foundation
 
 /// What logging a set right now would record. Mirrors `SetTarget` in
@@ -135,7 +137,7 @@ struct StratosPlannedSet: Codable, Hashable {
 /// size limit, which a thirty-set session would run into. The plan itself lives
 /// in `StratosActivityStore`, which the Done button reads from the app's own
 /// process.
-struct StratosSetActivityAttributes: ActivityAttributes {
+struct StratosSetActivityAttributes {
     struct ContentState: Codable, Hashable {
         var current: StratosPlannedSet
         /// What the lock screen is showing now: `current.target` as the plan
@@ -152,6 +154,10 @@ struct StratosSetActivityAttributes: ActivityAttributes {
         var isLogged: Bool
     }
 }
+
+#if os(iOS)
+extension StratosSetActivityAttributes: ActivityAttributes {}
+#endif
 
 private extension KeyedEncodingContainer {
     /// `encode`, but `nil` becomes a null rather than nothing at all.

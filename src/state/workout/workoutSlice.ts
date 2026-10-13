@@ -3,6 +3,20 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Workout, ExerciseSet, WorkoutExercise, StrengthSet, CardioSet, SessionFocus } from '../../lib/types/workout';
 import { isCardioSet, isStrengthSet, timeToSeconds, secondsToTime } from '../../lib/types/workout';
 import type { RootState } from '../store'; // Import RootState for selectors
+import { workoutExerciseGroups } from '@/domains/fitness/data/supersets';
+
+const appendStrengthSet = (exercise: WorkoutExercise) => {
+  exercise.sets.push({
+    id: uuidv4(),
+    weight: 0,
+    reps: exercise.exercise.is_static ? null : 0,
+    time: null,
+    exerciseId: exercise.exerciseId,
+    completed: false,
+    variation: exercise.variation ?? 'Standard',
+    equipmentType: exercise.equipmentType,
+  });
+};
 
 interface WorkoutState {
   currentWorkout: Workout | null;
@@ -123,7 +137,41 @@ const workoutSlice = createSlice({
             (ex) => ex.id === action.payload.id
         );
         if (exerciseIndex === -1) return;
-        state.currentWorkout.exercises[exerciseIndex] = action.payload;
+        const supersetId = state.currentWorkout.exercises[exerciseIndex].supersetId;
+        const incompatible = action.payload.exercise.exercise_type === 'cardio' || action.payload.exercise.exercise_category === 'breathwork';
+        if (supersetId && incompatible) {
+            state.currentWorkout.exercises.forEach(ex => {
+                if (ex.supersetId === supersetId) ex.supersetId = null;
+            });
+        }
+        state.currentWorkout.exercises[exerciseIndex] = {
+            ...action.payload,
+            supersetId: incompatible ? null : supersetId,
+        };
+    },
+    pairWorkoutExercises(state, action: PayloadAction<{ firstId: string; secondId: string; roundCount: number }>) {
+        if (!state.currentWorkout) return;
+        const { firstId, secondId, roundCount } = action.payload;
+        const exercises = state.currentWorkout.exercises;
+        const index = exercises.findIndex(ex => ex.id === firstId);
+        const first = exercises[index];
+        const second = exercises[index + 1];
+        if (!first || !second || second.id !== secondId || first.supersetId || second.supersetId) return;
+        const members = [first, second];
+        if (members.some(ex => ex.exercise.exercise_type === 'cardio' || ex.exercise.exercise_category === 'breathwork')) return;
+        if (!Number.isInteger(roundCount) || roundCount < 1) return;
+        const count = Math.max(roundCount, first.sets.length, second.sets.length);
+        const supersetId = uuidv4();
+        for (const member of members) {
+            member.supersetId = supersetId;
+            while (member.sets.length < count) appendStrengthSet(member);
+        }
+    },
+    breakSuperset(state, action: PayloadAction<string>) {
+        if (!state.currentWorkout) return;
+        for (const exercise of state.currentWorkout.exercises) {
+            if (exercise.supersetId === action.payload) exercise.supersetId = null;
+        }
     },
     addSetToExercise(
         state,
@@ -139,6 +187,14 @@ const workoutSlice = createSlice({
         (ex) => ex.id === action.payload.workoutExerciseId
       );
       if (!workoutExercise) return;
+
+      const group = workoutExerciseGroups(state.currentWorkout.exercises).find(members =>
+        members.some(member => member.id === workoutExercise.id)
+      );
+      if (group?.length === 2) {
+        group.forEach(appendStrengthSet);
+        return;
+      }
 
       const isStatic = action.payload.isStatic;
 
@@ -237,6 +293,15 @@ const workoutSlice = createSlice({
             (ex) => ex.id === action.payload.workoutExerciseId
         );
         if (workoutExercise) {
+            const group = workoutExerciseGroups(state.currentWorkout.exercises).find(members =>
+                members.some(member => member.id === workoutExercise.id)
+            );
+            if (group?.length === 2) {
+                const index = workoutExercise.sets.findIndex(set => set.id === action.payload.setId);
+                if (index < 0 || group.some(member => member.sets[index]?.completed)) return;
+                group.forEach(member => { member.sets.splice(index, 1); });
+                return;
+            }
             workoutExercise.sets = workoutExercise.sets.filter((s) => s.id !== action.payload.setId);
         }
     },
@@ -319,6 +384,12 @@ const workoutSlice = createSlice({
     },
     deleteWorkoutExercise(state, action: PayloadAction<string>) { // workoutExerciseId
         if (state.currentWorkout) {
+            const supersetId = state.currentWorkout.exercises.find(ex => ex.id === action.payload)?.supersetId;
+            if (supersetId) {
+                state.currentWorkout.exercises.forEach(ex => {
+                    if (ex.supersetId === supersetId) ex.supersetId = null;
+                });
+            }
             state.currentWorkout.exercises = state.currentWorkout.exercises.filter(
                 (ex) => ex.id !== action.payload
             );
@@ -338,6 +409,8 @@ export const {
   stopWarmup,
   addExerciseToWorkout,
   replaceWorkoutExercise,
+  pairWorkoutExercises,
+  breakSuperset,
   addSetToExercise,
   addCardioSetToExercise,
   updateSet,

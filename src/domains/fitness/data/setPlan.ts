@@ -13,6 +13,7 @@ import {
   type StrengthRecommendationAction,
 } from "./recommendations";
 import type { SetTarget } from "./setTarget";
+import { workoutExerciseGroups } from "./supersets";
 
 /**
  * How a planned set is performed, which decides what a suggestion can even mean.
@@ -177,7 +178,16 @@ export const buildSetPlan = ({
     });
   }
 
-  return setPlan;
+  const entriesByExercise = new Map<string, SetPlan>();
+  for (const entry of setPlan) {
+    const entries = entriesByExercise.get(entry.workoutExerciseId) ?? [];
+    entries.push(entry);
+    entriesByExercise.set(entry.workoutExerciseId, entries);
+  }
+  return workoutExerciseGroups(exercises).flatMap(group => {
+    const entries = group.flatMap(member => entriesByExercise.get(member.id) ?? []);
+    return group.length === 2 ? entries.sort((a, b) => a.setNumber - b.setNumber) : entries;
+  }).map((entry, index) => ({ ...entry, position: index + 1 }));
 };
 
 /** Suggestions for one exercise, keyed by its 1-based set number. */

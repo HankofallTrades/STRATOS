@@ -1,5 +1,6 @@
 import type { Workout as WorkoutType } from "@/lib/types/workout";
 import { isCardioSet, isStrengthSet } from "@/lib/types/workout";
+import { workoutExerciseGroups } from "./supersets";
 
 export type PersistedWorkoutType = "strength" | "cardio" | "mixed";
 
@@ -108,9 +109,10 @@ export const buildCompletedWorkoutForHistory = (
       return;
     }
 
-    if (!exerciseHistoryMap[workoutExercise.exerciseId]) {
-      orderedExerciseIds.push(workoutExercise.exerciseId);
-      exerciseHistoryMap[workoutExercise.exerciseId] = {
+    const historyKey = workoutExercise.supersetId ? `instance:${workoutExercise.id}` : `exercise:${workoutExercise.exerciseId}`;
+    if (!exerciseHistoryMap[historyKey]) {
+      orderedExerciseIds.push(historyKey);
+      exerciseHistoryMap[historyKey] = {
         ...workoutExercise,
         id: workoutExercise.id,
         workoutId: workout.id,
@@ -118,8 +120,8 @@ export const buildCompletedWorkoutForHistory = (
       };
     }
 
-    const savedWorkoutExerciseId = exerciseHistoryMap[workoutExercise.exerciseId].id;
-    exerciseHistoryMap[workoutExercise.exerciseId].sets.push(
+    const savedWorkoutExerciseId = exerciseHistoryMap[historyKey].id;
+    exerciseHistoryMap[historyKey].sets.push(
       ...completedSets.map(set => ({
         ...set,
         workoutExerciseId: savedWorkoutExerciseId,
@@ -127,8 +129,12 @@ export const buildCompletedWorkoutForHistory = (
     );
   });
 
+  const exercises = orderedExerciseIds.map(id => exerciseHistoryMap[id]);
+  for (const group of workoutExerciseGroups(exercises)) {
+    if (group.length === 1) group[0].supersetId = null;
+  }
   return {
     ...workout,
-    exercises: orderedExerciseIds.map(id => exerciseHistoryMap[id]),
+    exercises,
   };
 };

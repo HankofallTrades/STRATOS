@@ -58,6 +58,30 @@ beforeEach(() => {
 });
 
 describe("commitFinalizedWorkout", () => {
+  it("keeps pair identity and pending rounds in the offline queue, then saves the same snapshot", async () => {
+    const pairedWorkout: Workout = {
+      ...workout,
+      exercises: [
+        { ...workout.exercises[0], supersetId: "pair" },
+        { ...workout.exercises[0], id: "we-2", exerciseId: "ex-2", supersetId: "pair", sets: [
+          { id: "set-2", exerciseId: "ex-2", weight: 40, reps: 8, completed: true },
+          { id: "set-3", exerciseId: "ex-2", weight: 0, reps: 0, completed: false },
+        ] },
+      ],
+    };
+    const pairedSnapshot = { ...snapshot, workout: pairedWorkout };
+    vi.mocked(saveWorkoutToDb).mockRejectedValueOnce(new Error("Failed to fetch"));
+    expect(await commitFinalizedWorkout(pairedSnapshot, deps)).toEqual({ status: "queued" });
+    const queued = vi.mocked(enqueueWorkout).mock.calls[0][0];
+    expect(queued.workout.exercises.map(ex => [ex.id, ex.supersetId, ex.sets.length]))
+      .toEqual([["we-1", "pair", 1], ["we-2", "pair", 2]]);
+    expect(dispatchedHistoryWorkout().exercises.map(ex => ex.supersetId)).toEqual(["pair", "pair"]);
+    vi.mocked(saveWorkoutToDb).mockResolvedValueOnce({ workoutId: "server-9" });
+    expect(await commitFinalizedWorkout({ ...pairedSnapshot, workout: queued.workout }, deps))
+      .toEqual({ status: "saved", workoutId: "server-9" });
+    expect(vi.mocked(saveWorkoutToDb).mock.calls[1][1]).toEqual(pairedWorkout);
+  });
+
   it("saved: history gets the SERVER id, and any queued copy is removed", async () => {
     vi.mocked(saveWorkoutToDb).mockResolvedValue({ workoutId: "server-9" });
 
