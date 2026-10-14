@@ -32,7 +32,7 @@ The stone group and quiet A/B labels establish a pair without competing accents.
 | Medium | Two bare + controls look exactly like independent Add Set. Both actually add a round to both exercises; only the accessible label explains this. | [02](02-paired.png), [07](07-added-round.png) | One visible group “Add Round” action, preserving both sets and shared count. |
 | Low | Rest entering the group header wraps “Superset · 3 rounds” from one line to two at 390px. | Compare [03](03-a1.png) and [04](04-round1.png) | Reserve a stable timer slot or give it a separate compact line; avoid moving the member below it. |
 
-The four highest-impact fixes are drafted in [follow-ups.md](follow-ups.md). Linear creation is pending Executor confirmation; **no follow-up issues created yet**.
+The four highest-impact fixes are tracked in [I-50](https://linear.app/daimodus/issue/I-50), [I-51](https://linear.app/daimodus/issue/I-51), [I-52](https://linear.app/daimodus/issue/I-52), [I-53](https://linear.app/daimodus/issue/I-53); details in [follow-ups.md](follow-ups.md).
 
 ## Visual design
 
@@ -83,4 +83,4 @@ Targeted Set Plan/workout reducer tests: 32 passed. Typecheck guard: 74 existing
 
 ## Code review
 
-Standards: 0 findings. Spec: initial gaps in in-order second-round, long-name and contrast checks addressed above; supporting visuals moved before critique. Linear follow-ups remain pending required confirmation. Native evidence remains unavailable and disclosed.
+Standards: 0 findings. Spec: initial gaps in in-order second-round, long-name and contrast checks addressed above; supporting visuals moved before critique. Linear follow-ups created 2026-10-14: I-50 through I-53. Native evidence remains unavailable and disclosed.

@@ -1,6 +1,6 @@
-# I-49 follow-up drafts
+# I-49 follow-ups
 
-Linear creation pending Executor confirmation. Parent I-49; team StratOS; project Stratos. Preserve fixed A/B pairs and shared round semantics throughout.
+Created 2026-10-14: [I-50](https://linear.app/daimodus/issue/I-50), [I-51](https://linear.app/daimodus/issue/I-51), [I-52](https://linear.app/daimodus/issue/I-52), [I-53](https://linear.app/daimodus/issue/I-53). Parent I-49; team StratOS; project Stratos. Preserve fixed A/B pairs and shared round semantics throughout.
 
 ## High — Show current A/B set and round progression
 
