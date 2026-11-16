@@ -19,8 +19,10 @@ notify() { osascript -e "display notification \"$1\" with title \"STRATOS iOS\""
 fail() { log "$1"; notify "$1 See ~/Library/Logs/stratos-ios-renew.log"; exit 1; }
 
 last=$(cat "$IOS_INSTALL_STAMP" 2>/dev/null || echo 0)
-age_days=$(( ($(date +%s) - last) / 86400 ))
-if [ "$age_days" -lt "$RENEW_AFTER_DAYS" ]; then
+now=$(date +%s)
+age_days=$(( (now - last) / 86400 ))
+expires=$(cat "$IOS_INSTALL_STAMP.expires" 2>/dev/null || echo 0)
+if [ "$age_days" -lt "$RENEW_AFTER_DAYS" ] && { [ "$expires" -eq 0 ] || [ "$((expires - now))" -gt 172800 ]; }; then
   log "last install $age_days days ago; nothing to do"
   exit 0
 fi
@@ -46,10 +48,13 @@ done
 
 log "build is $age_days days old; reinstalling origin/main at $(git -C "$WORKTREE" rev-parse --short HEAD)"
 (cd "$WORKTREE" && npm ci --prefer-offline --no-audit --no-fund >/dev/null) || fail "npm ci failed in the renew worktree."
-"$WORKTREE/scripts/ios-device-install.sh"
+install_status=0
+STRATOS_IOS_SOURCE="$WORKTREE" "$REPO/scripts/ios-device-install.sh" || install_status=$?
 # The launch step fails on a locked phone even though the install landed, so
 # judge by the stamp, not the exit code.
 if [ "$(cat "$IOS_INSTALL_STAMP" 2>/dev/null || echo 0)" -gt "$last" ]; then
+  [ "$install_status" -eq 0 ] \
+    || fail "Installed, but launch failed. Unlock the iPhone and open STRATOS; if prompted, trust the developer in Settings → General → VPN & Device Management."
   log "reinstalled"
 else
   fail "Reinstall failed."

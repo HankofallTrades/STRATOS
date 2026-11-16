@@ -7,7 +7,7 @@
 # certificate and the device list, so nothing personal lands in the repo.
 set -euo pipefail
 
-cd "$(dirname "$0")/.."
+cd "${STRATOS_IOS_SOURCE:-$(dirname "$0")/..}"
 
 BUNDLE_ID=com.daimodus.stratos
 DERIVED_DATA=build/ios-device
@@ -78,11 +78,26 @@ xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
   -derivedDataPath "$DERIVED_DATA" \
   -allowProvisioningUpdates DEVELOPMENT_TEAM="$IOS_DEVELOPMENT_TEAM" build
 
+# A reinstall can reuse a profile; its expiry is not seven days from today.
+# The widget has its own profile and can expire before the app's.
+PROFILE_EXPIRY=0
+for profile in "$APP/embedded.mobileprovision" "$APP/PlugIns/StratosWidget.appex/embedded.mobileprovision"; do
+  expiry_iso=$(security cms -D -i "$profile" 2>/dev/null | plutil -extract ExpirationDate raw -o - -) \
+    || fail "cannot read provisioning profile expiry: $profile"
+  expiry=$(node -e 'const n = Date.parse(process.argv[1]); if (!Number.isFinite(n)) process.exit(1); console.log(Math.floor(n / 1000));' "$expiry_iso") \
+    || fail "invalid provisioning profile expiry: $profile"
+  [ "$expiry" -gt "$(date +%s)" ] \
+    || fail "provisioning profile has expired. Sign back in under Xcode → Settings → Accounts, then re-run."
+  if [ "$PROFILE_EXPIRY" -eq 0 ] || [ "$expiry" -lt "$PROFILE_EXPIRY" ]; then
+    PROFILE_EXPIRY=$expiry
+    PROFILE_EXPIRY_ISO=$expiry_iso
+  fi
+done
+
 xcrun devicectl device install app --device "$IOS_DEVICE_ID" "$APP"
 # ios-renew.sh reads this to tell how old the build on the phone is, and points
 # it back at the main checkout when it builds from its own worktree.
 date +%s > "${IOS_INSTALL_STAMP:-$DERIVED_DATA/last-install}"
+echo "$PROFILE_EXPIRY" > "${IOS_INSTALL_STAMP:-$DERIVED_DATA/last-install}.expires"
+echo "ios:device: installed $BUNDLE_ID on $IOS_DEVICE_ID; provisioning expires on $PROFILE_EXPIRY_ISO"
 xcrun devicectl device process launch --device "$IOS_DEVICE_ID" "$BUNDLE_ID"
-
-# 8. A free Personal Team's profile stops launching after seven days.
-echo "ios:device: installed $BUNDLE_ID on $IOS_DEVICE_ID; free-signing build expires on $(date -v+7d +%Y-%m-%d)"

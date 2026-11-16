@@ -29,6 +29,7 @@ type Fixture = {
   devices?: unknown[];
   env?: Record<string, string>;
   envFile?: string;
+  profileExpiry?: string;
 };
 
 /**
@@ -57,9 +58,11 @@ function run(fixture: Fixture) {
     `case "$1" in
       find-identity) printf '%s\\n' "$STUB_IDENTITIES" ;;
       find-certificate) echo "-----BEGIN CERTIFICATE-----" ;;
+      cms) echo "profile" ;;
       *) echo "unexpected security $*" >&2; exit 99 ;;
     esac`
   );
+  stub("plutil", `printf '%s\\n' "$STUB_PROFILE_EXPIRY"`);
   stub("openssl", `printf '%s\\n' "$STUB_CERT_SUBJECT"`);
   stub(
     "xcrun",
@@ -87,11 +90,13 @@ function run(fixture: Fixture) {
         result: { devices: fixture.devices ?? [DEVICE_A] },
       }),
       STRATOS_IOS_ENV: envFile,
+      IOS_INSTALL_STAMP: path.join(dir, "last-install"),
+      STUB_PROFILE_EXPIRY: fixture.profileExpiry ?? "2099-01-01T00:00:00Z",
       ...fixture.env,
     },
   });
 
-  return { ...result, calls: readFileSync(log, "utf8").trim().split("\n").filter(Boolean) };
+  return { ...result, dir, calls: readFileSync(log, "utf8").trim().split("\n").filter(Boolean) };
 }
 
 describe("scripts/ios-device-install.sh", () => {
@@ -107,7 +112,24 @@ describe("scripts/ios-device-install.sh", () => {
       "xcrun devicectl device install app --device AAAA-1111 build/ios-device/Build/Products/Debug-iphoneos/App.app",
       "xcrun devicectl device process launch --device AAAA-1111 com.daimodus.stratos",
     ]);
-    expect(r.stdout).toMatch(/expires .*\d{4}-\d{2}-\d{2}/);
+    expect(r.stdout).toContain("2099-01-01T00:00:00Z");
+    expect(readFileSync(path.join(r.dir, "last-install.expires"), "utf8").trim()).toBe(String(Date.parse("2099-01-01T00:00:00Z") / 1000));
+  });
+
+  it("refuses an expired provisioning profile before installing", () => {
+    const r = run({ profileExpiry: "2020-01-01T00:00:00Z" });
+
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toMatch(/profile.*expired/i);
+    expect(r.calls.join("\n")).not.toContain("device install");
+  });
+
+  it("refuses an unreadable profile rather than guessing seven more days", () => {
+    const r = run({ profileExpiry: "invalid" });
+
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toMatch(/profile.*expir/i);
+    expect(r.calls.join("\n")).not.toContain("device install");
   });
 
   it("stops before syncing when there is no Apple Development identity", () => {

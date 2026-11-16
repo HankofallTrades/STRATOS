@@ -45,10 +45,12 @@ npm run ios:device    # scripts/ios-device-install.sh
 If it stops with an `ios:device:` message before syncing, the problem is the
 setup below, not the build. It prints the date the free-signing build stops
 launching; after that the app icon is there but will not open, and the fix is
-to run the command again.
+to run the command again. The printed expiry is the earliest actual provisioning
+profile expiry across the app and widget, not seven days from reinstalling.
 
 `scripts/ios-renew.sh` does that on a schedule: it reinstalls once the last
-install is five days old and the phone is reachable, and posts a macOS
+install is five days old (or a profile expires within two days) and the phone
+is reachable, and posts a macOS
 notification if it cannot. It fetches and builds the tip of `origin/main`, so
 pushes from any machine reach the phone, in its own worktree
 (`~/Library/Caches/stratos-ios-renew/worktree`), never the working tree. Run it
@@ -56,6 +58,18 @@ daily with a launchd agent in `~/Library/LaunchAgents/` (`ProgramArguments` the
 script, `StartCalendarInterval` at noon, output to
 `~/Library/Logs/stratos-ios-renew.log`), loaded with
 `launchctl bootstrap gui/$(id -u) <plist>`.
+
+Renewal uses the install script from the main checkout, with
+`STRATOS_IOS_SOURCE` pointing at the clean worktree. Installer fixes take effect
+locally without waiting for `origin/main`; app code still comes from `origin/main`.
+
+If renewal fails, check `~/Library/Logs/stratos-ios-renew.log`. `No Accounts`
+means Xcode → Settings → Accounts needs an Apple Account added or signed back
+in; a signing certificate in Keychain alone cannot renew profiles. Re-run
+`scripts/ios-renew.sh` afterward. An install followed by a failed launch is
+reported separately: unlock the phone and open STRATOS, trusting the developer
+under Settings → General → VPN & Device Management if prompted. Trusting a
+developer does not extend an expired provisioning profile.
 
 The one-time setup it cannot do for you, in order:
 
