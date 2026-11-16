@@ -88,3 +88,17 @@ previously broke `db push`.
 
 Issues live in **Linear** (workspace `daimodus`, team `StratOS`, project
 `Stratos`), not GitHub Issues.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in Linear, team `StratOS`, project `Stratos`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Use the five default triage labels. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: root `CONTEXT.md` and `docs/adr/`. See `docs/agents/domain.md`.
