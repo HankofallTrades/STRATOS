@@ -42,11 +42,11 @@ private extension StratosActivityStore {
 
 enum StratosSetActivityController {
     /// Shows whatever the stored plan and journal currently add up to.
-    static func refresh() async {
+    static func refresh() async throws {
         let store = StratosActivityStore()
         guard let state = StratosActivityCursor.contentState(
             plan: store.plan(),
-            journal: store.journal()
+            journal: try store.journal()
         ) else {
             await end()
             return
@@ -61,9 +61,9 @@ enum StratosSetActivityController {
     /// current", so a second tap on a stale render — the activity has advanced
     /// but the button the finger landed on had not redrawn — logs nothing
     /// instead of logging the next set by accident.
-    static func completeSet(setId: String) async {
+    static func completeSet(setId: String) async throws {
         let store = StratosActivityStore()
-        let journal = store.journal()
+        let journal = try store.journal()
 
         guard let current = store.openSet(setId: setId, journal: journal) else {
             log.notice("Done pressed for a set that is no longer current; ignoring")
@@ -75,8 +75,8 @@ enum StratosSetActivityController {
         // steppers is that the set did not go that way.
         let target = StratosActivityCursor.target(for: current, journal: journal)
 
-        store.append(StratosActivityJournalEntry(completing: current, target: target))
-        await refresh()
+        try store.append(StratosActivityJournalEntry(completing: current, target: target))
+        try await refresh()
     }
 
     /// Records a stepper tap and redraws the lock screen with the new number.
@@ -85,9 +85,9 @@ enum StratosSetActivityController {
     /// both crossed the bridge with the set. All that happens here is the
     /// journalling, so that a number the user changed survives the phone being
     /// put back in a pocket.
-    static func adjustSet(setId: String, field: String, direction: Int) async {
+    static func adjustSet(setId: String, field: String, direction: Int) async throws {
         let store = StratosActivityStore()
-        let journal = store.journal()
+        let journal = try store.journal()
 
         guard let current = store.openSet(setId: setId, journal: journal) else {
             log.notice("a stepper was tapped for a set that is no longer current; ignoring")
@@ -113,8 +113,8 @@ enum StratosSetActivityController {
             return
         }
 
-        store.append(StratosActivityJournalEntry(adjusting: current, to: adjusted))
-        await refresh()
+        try store.append(StratosActivityJournalEntry(adjusting: current, to: adjusted))
+        try await refresh()
     }
 
 

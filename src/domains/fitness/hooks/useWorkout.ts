@@ -12,7 +12,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/state/auth/AuthProvider';
-import { reconciledWorkoutForFinish } from '../data/activityJournalReplay';
+import { reconcileActivityJournal } from '../data/activityJournalReplay';
 import { commitFinalizedWorkout } from '../data/workoutCommit';
 import { finalizeWorkout } from '../data/workoutPersistence';
 import { invalidateWorkoutDependentQueries } from '../data/queryInvalidation';
@@ -34,10 +34,19 @@ export const useWorkoutPersistence = () => {
         // set of a session is often the one logged from the lock screen. The
         // workout is re-read here because waiting for that replay is exactly
         // what makes the rendered one stale (I-39).
-        const workout = await reconciledWorkoutForFinish({
+        const replay = await reconcileActivityJournal({
             dispatch,
             getState: store.getState,
         });
+        if (replay.status === "failed") {
+            toast({
+                title: "Couldn't recover lock-screen sets",
+                description: "Your workout is still open. Try Finish again.",
+                variant: "destructive",
+            });
+            return { success: false, reason: 'journal_read_failed' };
+        }
+        const workout = replay.workout;
         if (!workout) return;
 
         const hasCompletedSets = workout.exercises.some(ex =>

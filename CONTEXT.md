@@ -237,6 +237,11 @@ worth saving, which would otherwise offer to discard a workout whose only logged
 set was still in the journal. Passes are queued rather than dropped, because
 "one is already running" is the answer Finish must not accept.
 
+An **empty Activity Journal** is a journal successfully read with no entries;
+an unreadable journal leaves lock-screen actions unknown. Finish requires a
+successful read before the workout can be saved or treated as having no logged
+sets.
+
 A replayed adjustment is written into the set itself, and the Set Plan targets a
 set's own numbers ahead of any suggestion, so the whole journal is cleared once
 it has been replayed. Neither surface is the authority on an adjusted set: the

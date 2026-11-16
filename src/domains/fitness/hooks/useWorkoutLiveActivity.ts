@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useStore } from "react-redux";
 
 import { useAppDispatch, useAppSelector } from "@/hooks/redux";
+import { toast } from "@/hooks/use-toast";
 import type { RootState } from "@/state/store";
 import { selectIsWorkoutActive } from "@/state/workout/workoutSlice";
 import { endLiveActivity, syncLiveActivity } from "@/lib/native/liveActivity";
@@ -41,7 +42,16 @@ export const useWorkoutLiveActivity = (setPlan: SetPlan): void => {
    * is snapshotted (I-39).
    */
   const replayJournal = useCallback(
-    () => reconcileActivityJournal({ dispatch, getState: store.getState }),
+    async () => {
+      const result = await reconcileActivityJournal({ dispatch, getState: store.getState });
+      if (result.status === "failed" && result.failureStarted) {
+        toast({
+          title: "Couldn't recover lock-screen sets",
+          description: "You can keep training. We'll try again when you reopen or tap Finish.",
+          variant: "destructive",
+        });
+      }
+    },
     [dispatch, store]
   );
 

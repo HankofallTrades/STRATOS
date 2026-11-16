@@ -1,27 +1,33 @@
 import { configureStore } from "@reduxjs/toolkit";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { StrengthSet, Workout, WorkoutExercise } from "@/lib/types/workout";
 import type { AppDispatch, RootState } from "@/state/store";
 import workoutReducer, { setCompleted, startWorkout } from "@/state/workout/workoutSlice";
 
-vi.mock("@/lib/native/liveActivity", () => ({
-  readActivityJournal: vi.fn(async () => []),
-  clearActivityJournal: vi.fn(async () => {}),
+import type { ActivityJournalEntry } from "./activityJournal";
+import { reconcileActivityJournal, type ActivityJournalReplayResult } from "./activityJournalReplay";
+
+// Keep the real bridge adapter in the path: mocking readActivityJournal would
+// hide the bug where a rejected native call was turned into an empty journal.
+const native = vi.hoisted(() => ({
+  journal: vi.fn<() => Promise<{ entries: ActivityJournalEntry[] }>>(),
+  clearJournal: vi.fn<() => Promise<void>>(),
+  isNativePlatform: vi.fn(() => true),
+}));
+vi.mock("@capacitor/core", () => ({
+  Capacitor: { isNativePlatform: native.isNativePlatform },
+  registerPlugin: () => native,
 }));
 
-import { clearActivityJournal, readActivityJournal } from "@/lib/native/liveActivity";
+const recoveredWorkout = (result: ActivityJournalReplayResult): Workout | null => {
+  expect(result.status).toBe("reconciled");
+  if (result.status !== "reconciled") throw new Error("Reconciliation failed");
+  return result.workout;
+};
 
-import type { ActivityJournalEntry } from "./activityJournal";
-import {
-  reconcileActivityJournal,
-  reconciledWorkoutForFinish,
-} from "./activityJournalReplay";
-
-// Replay is async and Finish is tappable the whole time it runs. These tests
-// are about that ordering and nothing else: what a journal *means* is
-// activityJournal.test.ts's business, so there is one entry here and it is
-// always a plain completion.
+// Exercise ordering and read failures through the real bridge. What an entry
+// means is activityJournal.test.ts's business; one completion is enough here.
 
 const squatSet = (id: string): StrengthSet => ({
   id,
@@ -90,65 +96,70 @@ const deferred = <Value>() => {
 };
 
 beforeEach(() => {
-  vi.clearAllMocks();
-  vi.mocked(readActivityJournal).mockResolvedValue([]);
-  vi.mocked(clearActivityJournal).mockResolvedValue(undefined);
+  vi.resetAllMocks();
+  native.isNativePlatform.mockReturnValue(true);
+  native.journal.mockResolvedValue({ entries: [] });
+  native.clearJournal.mockResolvedValue(undefined);
+  vi.spyOn(console, "warn").mockImplementation(() => {});
+  vi.spyOn(console, "error").mockImplementation(() => {});
 });
 
-describe("reconciledWorkoutForFinish", () => {
+afterEach(() => vi.restoreAllMocks());
+
+describe("reconcileActivityJournal — Finish snapshot", () => {
   it("hands back a workout that already holds the lock screen's last set", async () => {
     // The gesture the whole ticket is about: log the last set on the lock
     // screen, open the app, hit Finish. The snapshot is taken from what this
     // returns, so a set that is still only in the journal here is a set that
     // never reaches the database.
-    vi.mocked(readActivityJournal).mockResolvedValue([completion]);
+    native.journal.mockResolvedValue({ entries: [completion] });
     const { deps } = activeStore();
 
-    const workout = await reconciledWorkoutForFinish(deps);
+    const workout = await reconcileActivityJournal(deps);
 
-    expect(completedSetIds(workout)).toEqual(["set-1"]);
+    expect(completedSetIds(recoveredWorkout(workout))).toEqual(["set-1"]);
   });
 
   it("waits for a replay that is already in flight", async () => {
     // Foreground starts a replay; Finish is tapped one bridge round trip
     // later. Reading the store without waiting would snapshot the workout as
     // it was before the replay's dispatches landed.
-    const read = deferred<ActivityJournalEntry[]>();
-    vi.mocked(readActivityJournal).mockReturnValueOnce(read.promise);
+    const read = deferred<{ entries: ActivityJournalEntry[] }>();
+    native.journal.mockReturnValueOnce(read.promise);
     const { deps } = activeStore();
 
     const reconciling = reconcileActivityJournal(deps);
-    const settling = reconciledWorkoutForFinish(deps);
-    read.resolve([completion]);
+    const settling = reconcileActivityJournal(deps);
+    read.resolve({ entries: [completion] });
 
     const workout = await settling;
     await reconciling;
 
-    expect(completedSetIds(workout)).toEqual(["set-1"]);
+    expect(completedSetIds(recoveredWorkout(workout))).toEqual(["set-1"]);
   });
 
   it("logs the set once when a replay and a finish overlap", async () => {
     // Both passes see the same entry if the clear has not landed yet. The set
     // must end up completed once — a second completion would restart the rest
     // timer and fire the haptic for a set the user logged minutes ago.
-    vi.mocked(readActivityJournal).mockResolvedValue([completion]);
+    native.journal.mockResolvedValue({ entries: [completion] });
     const { deps, completionsDispatched } = activeStore();
 
     const reconciling = reconcileActivityJournal(deps);
-    const workout = await reconciledWorkoutForFinish(deps);
+    const workout = await reconcileActivityJournal(deps);
     await reconciling;
 
-    expect(completedSetIds(workout)).toEqual(["set-1"]);
+    expect(completedSetIds(recoveredWorkout(workout))).toEqual(["set-1"]);
     expect(completionsDispatched()).toBe(1);
   });
 
   it("returns the workout untouched when the journal is empty", async () => {
     const { deps } = activeStore();
 
-    const workout = await reconciledWorkoutForFinish(deps);
+    const workout = await reconcileActivityJournal(deps);
 
-    expect(completedSetIds(workout)).toEqual([]);
-    expect(clearActivityJournal).not.toHaveBeenCalled();
+    expect(completedSetIds(recoveredWorkout(workout))).toEqual([]);
+    expect(native.clearJournal).not.toHaveBeenCalled();
   });
 });
 
@@ -156,21 +167,21 @@ describe("reconcileActivityJournal", () => {
   it("clears only through the last entry it read", async () => {
     // A Done tap can land between the read and the clear. Naming the last
     // entry replayed is what keeps that tap for the next pass.
-    vi.mocked(readActivityJournal).mockResolvedValue([completion]);
+    native.journal.mockResolvedValue({ entries: [completion] });
 
     await reconcileActivityJournal(activeStore().deps);
 
-    expect(clearActivityJournal).toHaveBeenCalledWith("journal-1");
+    expect(native.clearJournal).toHaveBeenCalledWith({ throughId: "journal-1" });
   });
 
   it("leaves the journal alone when there is no workout to replay into", async () => {
     // A journal from a session that has not been reopened yet. Clearing it
     // here would throw away sets the user logged.
-    vi.mocked(readActivityJournal).mockResolvedValue([completion]);
+    native.journal.mockResolvedValue({ entries: [completion] });
 
     await reconcileActivityJournal(activeStore(false).deps);
 
-    expect(clearActivityJournal).not.toHaveBeenCalled();
+    expect(native.clearJournal).not.toHaveBeenCalled();
   });
 
   it("does not replay a second time what the first pass already cleared", async () => {
@@ -178,8 +189,8 @@ describe("reconcileActivityJournal", () => {
     // second pass reads a journal the first one has already emptied, rather
     // than dispatching the same completion again.
     const journal = [completion];
-    vi.mocked(readActivityJournal).mockImplementation(async () => journal);
-    vi.mocked(clearActivityJournal).mockImplementation(async () => {
+    native.journal.mockImplementation(async () => ({ entries: journal }));
+    native.clearJournal.mockImplementation(async () => {
       journal.length = 0;
     });
     const { deps } = activeStore();
@@ -189,7 +200,75 @@ describe("reconcileActivityJournal", () => {
       reconcileActivityJournal(deps),
     ]);
 
-    expect(readActivityJournal).toHaveBeenCalledTimes(2);
-    expect(clearActivityJournal).toHaveBeenCalledTimes(1);
+    expect(native.journal).toHaveBeenCalledTimes(2);
+    expect(native.clearJournal).toHaveBeenCalledTimes(1);
+  });
+});
+
+
+describe("Activity Journal read failures", () => {
+  it.each([new Error("journal unreadable"), { code: "UNIMPLEMENTED" }])(
+    "refuses a Finish snapshot when native reading fails: %s",
+    async error => {
+      native.journal.mockRejectedValue(error);
+      const { deps, completionsDispatched } = activeStore();
+      const before = deps.getState();
+
+      const result = await reconcileActivityJournal(deps);
+
+      expect(result).toEqual({ status: "failed", error, failureStarted: true });
+      expect(result).not.toHaveProperty("workout");
+      expect(deps.getState()).toBe(before);
+      expect(completionsDispatched()).toBe(0);
+      expect(native.clearJournal).not.toHaveBeenCalled();
+    }
+  );
+
+  it("does not treat a missing entries field as an empty journal", async () => {
+    native.journal.mockResolvedValue({} as { entries: ActivityJournalEntry[] });
+    expect(await reconcileActivityJournal(activeStore().deps)).toMatchObject({ status: "failed" });
+    expect(native.clearJournal).not.toHaveBeenCalled();
+  });
+
+  it("recovers on the next queued pass after a failed foreground read", async () => {
+    native.journal.mockRejectedValueOnce(new Error("read failed"));
+    native.journal.mockResolvedValueOnce({ entries: [completion] });
+    const { deps, completionsDispatched } = activeStore();
+
+    const foreground = reconcileActivityJournal(deps);
+    const finish = reconcileActivityJournal(deps);
+
+    expect(await foreground).toMatchObject({ status: "failed" });
+    expect(completedSetIds(recoveredWorkout(await finish))).toEqual(["set-1"]);
+    expect(completionsDispatched()).toBe(1);
+    expect(native.clearJournal).toHaveBeenCalledWith({ throughId: "journal-1" });
+  });
+
+  it("reports a foreground failure once until a successful read ends the episode", async () => {
+    const { deps } = activeStore();
+    native.journal.mockRejectedValue(new Error("read failed"));
+
+    expect(await reconcileActivityJournal(deps)).toMatchObject({ failureStarted: true });
+    expect(await reconcileActivityJournal(deps)).toMatchObject({ failureStarted: false });
+    native.journal.mockResolvedValueOnce({ entries: [] });
+    expect(await reconcileActivityJournal(deps)).toMatchObject({ status: "reconciled" });
+    expect(await reconcileActivityJournal(deps)).toMatchObject({ failureStarted: true });
+  });
+
+  it("keeps failure episodes separate for different workouts", async () => {
+    const { deps } = activeStore();
+    native.journal.mockRejectedValue(new Error("read failed"));
+    await reconcileActivityJournal(deps);
+    deps.dispatch(startWorkout({ initialExercises: [squat()] }));
+
+    expect(await reconcileActivityJournal(deps)).toMatchObject({ failureStarted: true });
+  });
+
+  it("needs no native journal on the web", async () => {
+    native.isNativePlatform.mockReturnValue(false);
+    const { deps } = activeStore();
+
+    expect(completedSetIds(recoveredWorkout(await reconcileActivityJournal(deps)))).toEqual([]);
+    expect(native.journal).not.toHaveBeenCalled();
   });
 });

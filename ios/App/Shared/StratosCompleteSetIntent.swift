@@ -26,7 +26,7 @@ struct StratosCompleteSetIntent: LiveActivityIntent {
     }
 
     func perform() async throws -> some IntentResult {
-        await StratosSetActivityController.completeSet(setId: setId)
+        try await StratosSetActivityController.completeSet(setId: setId)
         return .result()
     }
 }

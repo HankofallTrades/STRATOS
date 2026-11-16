@@ -36,7 +36,7 @@ struct StratosAdjustSetIntent: LiveActivityIntent {
     }
 
     func perform() async throws -> some IntentResult {
-        await StratosSetActivityController.adjustSet(
+        try await StratosSetActivityController.adjustSet(
             setId: setId,
             field: field,
             direction: direction

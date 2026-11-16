@@ -38,7 +38,7 @@ public class StratosLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         // at all: the user was pressing its button moments ago, so it stays up
         // and the foreground replay settles it.
         Task {
-            guard StratosActivityStore().journal().isEmpty else { return }
+            guard let journal = try? StratosActivityStore().journal(), journal.isEmpty else { return }
             await StratosSetActivityController.end()
         }
     }
@@ -51,8 +51,12 @@ public class StratosLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
 
         store.save(plan: plan)
         Task {
-            await StratosSetActivityController.refresh()
-            call.resolve()
+            do {
+                try await StratosSetActivityController.refresh()
+                call.resolve()
+            } catch {
+                call.reject("StratosLiveActivity.sync could not read the activity journal", nil, error)
+            }
         }
     }
 
@@ -65,7 +69,13 @@ public class StratosLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func journal(_ call: CAPPluginCall) {
-        let entries = store.journal()
+        let entries: [StratosActivityJournalEntry]
+        do {
+            entries = try store.journal()
+        } catch {
+            call.reject("StratosLiveActivity.journal could not read the activity journal", nil, error)
+            return
+        }
         let payloads = entries.compactMap(\.bridgePayload)
 
         // All of them or none. Handing back the ones that encoded would be the
@@ -89,8 +99,12 @@ public class StratosLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             return
         }
 
-        store.clearJournal(throughId: throughId)
-        call.resolve()
+        do {
+            try store.clearJournal(throughId: throughId)
+            call.resolve()
+        } catch {
+            call.reject("StratosLiveActivity.clearJournal could not read the activity journal", nil, error)
+        }
     }
 
     /// Reads the Set Plan off the bridge.

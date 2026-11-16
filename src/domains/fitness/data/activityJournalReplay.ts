@@ -9,6 +9,7 @@ import {
 } from "@/state/workout/workoutSlice";
 
 import { replayActivityJournal } from "./activityJournal";
+import type { ActivityJournalEntry } from "./activityJournal";
 
 // Folding the Activity Journal back into the workout, and the ordering that
 // hangs off it.
@@ -23,6 +24,14 @@ export interface ActivityJournalReplayDeps {
   getState: () => RootState;
 }
 
+export type ActivityJournalReplayResult =
+  | { status: "reconciled"; workout: Workout | null }
+  | { status: "failed"; error: unknown; failureStarted: boolean };
+
+// An episode survives screen remounts, but belongs to one store and workout.
+// Finish always reports its failure; foreground only reports the first one.
+const failedWorkouts = new WeakMap<ActivityJournalReplayDeps["getState"], string>();
+
 /**
  * Read the journal, dispatch what it means, then clear what was read.
  *
@@ -30,15 +39,29 @@ export interface ActivityJournalReplayDeps {
  * foreground event or from Finish, and the workout it has to reconcile against
  * is the one that exists now, not the one from whichever render asked.
  */
-const replayOnce = async ({ dispatch, getState }: ActivityJournalReplayDeps) => {
+const replayOnce = async ({ dispatch, getState }: ActivityJournalReplayDeps): Promise<ActivityJournalReplayResult> => {
   // With no workout on screen there is nothing to replay into, and clearing the
   // journal would throw away entries the session they belong to has not come
   // back to yet. A journal left over from a dead session is cleared by the next
   // one, whose sets it names none of.
-  if (!selectCurrentWorkout(getState())) return;
+  const workout = selectCurrentWorkout(getState());
+  if (!workout) {
+    failedWorkouts.delete(getState);
+    return { status: "reconciled", workout: null };
+  }
 
-  const entries = await readActivityJournal();
-  if (entries.length === 0) return;
+  let entries: ActivityJournalEntry[];
+  try {
+    entries = await readActivityJournal();
+  } catch (error) {
+    const failureStarted = failedWorkouts.get(getState) !== workout.id;
+    failedWorkouts.set(getState, workout.id);
+    return { status: "failed", error, failureStarted };
+  }
+  failedWorkouts.delete(getState);
+  if (entries.length === 0) {
+    return { status: "reconciled", workout: selectCurrentWorkout(getState()) };
+  }
 
   const { completions, adjustments, skipped } = replayActivityJournal({
     entries,
@@ -83,6 +106,7 @@ const replayOnce = async ({ dispatch, getState }: ActivityJournalReplayDeps) => 
   }
 
   await clearActivityJournal(entries[entries.length - 1].id);
+  return { status: "reconciled", workout: selectCurrentWorkout(getState()) };
 };
 
 /**
@@ -99,35 +123,20 @@ const replayOnce = async ({ dispatch, getState }: ActivityJournalReplayDeps) => 
  * would answer Finish immediately and wrongly. Running them concurrently would
  * have both read the same journal before either dispatched, and everything
  * listening for `setCompleted` would fire twice for one set.
+ *
+ * Only a successful read returns a workout snapshot. Finish uses that snapshot
+ * rather than its stale render; a failed read never means an empty workout.
  */
-let replayQueue: Promise<void> = Promise.resolve();
+let replayQueue: Promise<unknown> = Promise.resolve();
 
 export const reconcileActivityJournal = (
   deps: ActivityJournalReplayDeps
-): Promise<void> => {
+): Promise<ActivityJournalReplayResult> => {
   // Both arms run the next pass: a failed one must not wedge the chain shut.
-  replayQueue = replayQueue.then(
+  const replay = replayQueue.then(
     () => replayOnce(deps),
     () => replayOnce(deps)
   );
-  return replayQueue;
-};
-
-/**
- * The workout as Finish should see it: whatever the lock screen logged is in it.
- *
- * Finish reads the workout through this rather than from its own render, since
- * the replay it just waited for is precisely what made that render stale. The
- * commit seam is untouched — this is its preamble, not a third thing
- * `commitFinalizedWorkout` has to know about, and it is down here rather than in
- * the hook so the ordering it exists for can be tested without a React runtime.
- *
- * "Reconciled", not "settled": settling is what the commit does to workout
- * history on the far side of this, and the two must not share a word.
- */
-export const reconciledWorkoutForFinish = async (
-  deps: ActivityJournalReplayDeps
-): Promise<Workout | null> => {
-  await reconcileActivityJournal(deps);
-  return selectCurrentWorkout(deps.getState());
+  replayQueue = replay;
+  return replay;
 };

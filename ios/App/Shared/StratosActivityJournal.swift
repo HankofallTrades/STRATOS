@@ -60,13 +60,10 @@ enum StratosActivityJournalKind {
     static let adjusted = "set-adjusted"
 }
 
-/// The keys carry the shape they were written in. Changing a stored type is
-/// therefore a key bump, because the alternative is worse: a decode of the old
-/// shape fails whole, the store reads as empty, and an un-replayed Done tap is
-/// gone with nothing said. Bumping loses the same data but loses it on purpose,
-/// on a build that knows why. There is one user and one device, so the cost is
-/// at most the sets logged on a lock screen that was never reopened before the
-/// update.
+/// The keys carry the shape they were written in. An incompatible stored type
+/// needs a deliberate migration or key bump: journal decoding now refuses an
+/// unreadable shape and preserves it. Bumping abandons the old entries, so it
+/// must account for sets logged before an update and not yet replayed.
 private enum StratosActivityStoredShape {
     /// v3: the plan entry gained an `adjustment` the Done button cannot do
     /// without, and the journal gained adjustment entries (I-20).
@@ -119,13 +116,19 @@ struct StratosActivityStore {
         defaults.removeObject(forKey: Self.planKey)
     }
 
-    func journal() -> [StratosActivityJournalEntry] {
-        decode(Self.journalKey)
+    func journal() throws -> [StratosActivityJournalEntry] {
+        // Missing storage is an empty journal. Existing but unreadable storage
+        // leaves lock-screen actions unknown, so preserve it and refuse the read.
+        guard let stored = defaults.object(forKey: Self.journalKey) else { return [] }
+        guard let data = stored as? Data else {
+            throw CocoaError(.coderReadCorrupt)
+        }
+        return try JSONDecoder().decode([StratosActivityJournalEntry].self, from: data)
     }
 
-    func append(_ entry: StratosActivityJournalEntry) {
-        Self.writes.sync {
-            encode(journal() + [entry], forKey: Self.journalKey)
+    func append(_ entry: StratosActivityJournalEntry) throws {
+        try Self.writes.sync {
+            encode(try journal() + [entry], forKey: Self.journalKey)
         }
     }
 
@@ -144,9 +147,9 @@ struct StratosActivityStore {
     /// mid-clear is either wholly before it — and named by the replay, so
     /// dropped on purpose — or wholly after, and survives it. Read outside the
     /// queue, the clear would write back a journal that never saw the append.
-    func clearJournal(throughId id: String) {
-        Self.writes.sync {
-            let entries = journal()
+    func clearJournal(throughId id: String) throws {
+        try Self.writes.sync {
+            let entries = try journal()
             guard let index = entries.firstIndex(where: { $0.id == id }) else { return }
 
             encode(Array(entries[entries.index(after: index)...]), forKey: Self.journalKey)

@@ -84,10 +84,13 @@ export const readActivityJournal = async (): Promise<ActivityJournalEntry[]> => 
   if (!Capacitor.isNativePlatform()) return [];
   try {
     const { entries } = await plugin.journal();
-    return entries ?? [];
+    if (!Array.isArray(entries)) {
+      throw new Error("The activity journal did not return its entries");
+    }
+    return entries;
   } catch (error) {
     reportLiveActivityFailure("read the activity journal", error);
-    return [];
+    throw error;
   }
 };
 
